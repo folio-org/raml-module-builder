@@ -8,7 +8,6 @@ import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
-import io.vertx.core.Promise;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -55,7 +54,6 @@ public class PostgresClientTest {
 
   private String oldConfigFilePath;
   private boolean oldIsEmbedded;
-  private int oldEmbeddedPort;
   /** empty = no environment variables */
   private JsonObject empty = new JsonObject();
 
@@ -69,15 +67,12 @@ public class PostgresClientTest {
     PostgresClient.setConfigFilePath(null);
     oldIsEmbedded = PostgresClient.isEmbedded();
     PostgresClient.setIsEmbedded(false);
-    oldEmbeddedPort = PostgresClient.getEmbeddedPort();
-    PostgresClient.setEmbeddedPort(-1);
   }
 
   @After
   public void restoreConfig() {
     PostgresClient.setConfigFilePath(oldConfigFilePath);
     PostgresClient.setIsEmbedded(oldIsEmbedded);
-    PostgresClient.setEmbeddedPort(oldEmbeddedPort);
   }
 
   @Test
@@ -86,8 +81,8 @@ public class PostgresClientTest {
     PostgresClient.setConfigFilePath("nonexisting");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", null, empty);
     assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
-    assertThat(config.getString("host"), is("127.0.0.1"));
-    assertThat(config.getInteger("port"), is(6000));
+    assertThat(config.containsKey("host"), is(false));
+    assertThat(config.containsKey("port"), is(false));
     assertThat(config.getString("username"), is("username"));
   }
 
@@ -95,11 +90,8 @@ public class PostgresClientTest {
   public void configDefaultWithPortAndTenant() throws Exception {
     int port = NetworkUtils.nextFreePort();
     PostgresClient.setConfigFilePath("nonexisting");
-    PostgresClient.setEmbeddedPort(port);
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "barschema", empty);
     assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
-    assertThat(config.getString("host"), is("127.0.0.1"));
-    assertThat(config.getInteger("port"), is(port));
     assertThat(config.getString("username"), is("barschema"));
   }
 
@@ -265,7 +257,7 @@ public class PostgresClientTest {
     row.addString(foo);
     row.addString(bar);
     row.addDouble(biz);
-    row.addStringArray(baz);
+    row.addArrayOfString(baz);
 
     testClient.populateExternalColumns(externalColumnSetters, o, row);
     assertThat(o.getFoo(), is(foo));
@@ -510,7 +502,7 @@ public class PostgresClientTest {
       row.addString("foo " + i);
       row.addString("bar " + i);
       row.addDouble((double) i);
-      row.addStringArray(new String[] { "This", "is", "a", "test" } );
+      row.addArrayOfString(new String[] { "This", "is", "a", "test" } );
       rows.add(row);
     }
     return new LocalRowSet(total).withColumns(columnNames).withRows(rows);

@@ -1,0 +1,19 @@
+{
+  "tables": [
+    {
+      "tableName": "tab_ol_off",
+      "withOptimisticLocking": "off"
+    },
+    {
+      "tableName": "tab_ol_log",
+      "withOptimisticLocking": "logOnConflict"
+    },
+    {
+      "tableName": "tab_ol_fail",
+      "withOptimisticLocking": "off"
+    },
+    {
+      "tableName": "tab_ol_none"
+    }
+  ]
+}

@@ -63,6 +63,7 @@ public final class PgUtil {
   private static final String RESPOND_204                       = "respond204";
   private static final String RESPOND_400_WITH_TEXT_PLAIN       = "respond400WithTextPlain";
   private static final String RESPOND_404_WITH_TEXT_PLAIN       = "respond404WithTextPlain";
+  private static final String RESPOND_409_WITH_TEXT_PLAIN       = "respond409WithTextPlain";
   private static final String RESPOND_413_WITH_TEXT_PLAIN       = "respond413WithTextPlain";
   private static final String RESPOND_422_WITH_APPLICATION_JSON = "respond422WithApplicationJson";
   private static final String RESPOND_500_WITH_TEXT_PLAIN       = "respond500WithTextPlain";
@@ -194,6 +195,11 @@ public final class PgUtil {
    * If that also throws an exception create a failed future.
    *
    * <p>All exceptions are caught and reported via the returned Future.
+   *
+   * <p>If valueMethod or failResponseMethod is null a NullPointerException is reported
+   * to indicate a fatal coding error, fail the unit test, and provide a stacktrace that
+   * the developers can use to find and fix the causing code. We expect this during
+   * development only, not in production.
    */
   static <T> Future<Response> response(T value, Method valueMethod, Method failResponseMethod) {
     try {
@@ -744,6 +750,72 @@ public final class PgUtil {
     }
   }
 
+   /**
+   * Delete records by CQL.
+   * @param table  the table that contains the records
+   * @param cql  the CQL query for filtering the records
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static void delete(String table,
+      String cql,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+
+    final Method respond500;
+    try {
+      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), null, null));
+      return;
+    }
+
+    final Method respond400;
+    final Method respond204;
+    try {
+      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+      respond204 = responseDelegateClass.getMethod(RESPOND_204);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return;
+    }
+
+    try {
+      CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, -1, -1);
+      PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
+
+      PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+      postgresClient.delete(preparedCql.getTableName(), preparedCql.getCqlWrapper(), reply -> {
+        try {
+          if (reply.failed()) {
+            String message = PgExceptionUtil.badRequestMessage(reply.cause());
+            if (message == null) {
+              message = reply.cause().getMessage();
+            }
+            logger.error(message, reply.cause());
+            asyncResultHandler.handle(response(message, respond400, respond500));
+            return;
+          }
+          asyncResultHandler.handle(response(respond204, respond500));
+        } catch (Exception e) {
+          logger.error(e.getMessage(), e);
+          asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+        }
+      });
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
+    }
+  }
+
   /**
    * Get a record by id.
    *
@@ -940,7 +1012,7 @@ public final class PgUtil {
    * @param vertxContext  the current context
    * @param clazz  the ResponseDelegate class created from the RAML file with these methods:
    *               respond204(), respond400WithTextPlain(Object), respond404WithTextPlain(Object),
-   *               respond500WithTextPlain(Object).
+   *               respond409WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by clazz
    */
   public static <T> void put(String table, T entity, String id,
@@ -962,6 +1034,7 @@ public final class PgUtil {
       Method respond204 = clazz.getMethod(RESPOND_204);
       Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
+      Method respond409 = getRespond409(clazz);
       if (! UuidUtil.isUuid(id)) {
         asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
         return;
@@ -970,7 +1043,12 @@ public final class PgUtil {
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.update(table, entity, id, reply -> {
         if (reply.failed()) {
-          asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
+          if (PgExceptionUtil.isVersionConflict(reply.cause())) {
+            Method method = respond409 == null ? respond400 : respond409;
+            asyncResultHandler.handle(response(reply.cause().getMessage(), method, respond500));
+          } else {
+            asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
+          }
           return;
         }
         int updated = reply.result().rowCount();
@@ -992,6 +1070,17 @@ public final class PgUtil {
     }
   }
 
+  private static Method getRespond409(Class<? extends ResponseDelegate> clazz) {
+    Method respond409;
+    try {
+      respond409 = clazz.getMethod(RESPOND_409_WITH_TEXT_PLAIN, Object.class);
+    } catch (NoSuchMethodException e) {
+      logger.warn("Response 409 is not defined for class " + clazz);
+      respond409 = null;
+    }
+    return respond409;
+  }
+
   /**
    * Post a list of T entities to the database. Fail all if any of them fails.
 
@@ -1003,7 +1092,7 @@ public final class PgUtil {
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
-   *               respond201(), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by responseClass
    */
   public static <T> void postSync(String table, List<T> entities, int maxEntities, boolean upsert,
@@ -1023,6 +1112,7 @@ public final class PgUtil {
 
     try {
       Method respond201 = responseClass.getMethod(RESPOND_201);
+      Method respond409 = getRespond409(responseClass);
       Method respond413 = responseClass.getMethod(RESPOND_413_WITH_TEXT_PLAIN, Object.class);
       if (entities != null && entities.size() > maxEntities) {
         String message = "Expected a maximum of " + maxEntities
@@ -1035,8 +1125,13 @@ public final class PgUtil {
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       Handler<AsyncResult<RowSet<Row>>> replyHandler = result -> {
         if (result.failed()) {
-          asyncResultHandler.handle(response(table, /* id */ "", result.cause(),
-              responseClass, respond500, respond500));
+          if (PgExceptionUtil.isVersionConflict(result.cause())) {
+            Method method = respond409 == null ? respond500 : respond409;
+            asyncResultHandler.handle(response(result.cause().getMessage(), method, respond500));
+          } else {
+            asyncResultHandler.handle(response(table, /* id */ "", result.cause(),
+                responseClass, respond500, respond500));
+          }
           return;
         }
         asyncResultHandler.handle(response(respond201, respond500));

@@ -1,8 +1,9 @@
 package org.folio.rest.impl;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.in;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -15,17 +16,16 @@ import java.util.TimeZone;
 import java.util.UUID;
 
 import org.folio.dbschema.Schema;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.CoreMatchers;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import de.flapdoodle.embed.process.collections.Collections;
@@ -53,11 +53,20 @@ public class TenantAPIIT {
   @BeforeClass
   public static void setUpClass() {
     vertx = VertxUtils.getVertxWithExceptionHandler();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
   @AfterClass
   public static void afterClass() {
     vertx.close();
+  }
+
+
+  @After
+  public void after(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantAttributes attributes = new TenantAttributes().withPurge(true);
+    tenantAPI.postTenantSync(attributes, okapiHeaders, context.asyncAssertSuccess(), vertx.getOrCreateContext());
   }
 
   /**
@@ -77,46 +86,42 @@ public class TenantAPIIT {
     };
   }
 
-  public void tenantDelete(TestContext context) {
+  public void tenantDeleteAsync(TestContext context) {
     TenantAttributes tenantAttributes = new TenantAttributes();
     tenantAttributes.setPurge(true);
     Async async = context.async();
-    vertx.runOnContext(run -> {
-      TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
-        TenantJob job = (TenantJob) res1.getEntity();
-        tenantAPI.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 ->
-          tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
+    TenantAPI tenantAPI = new TenantAPI();
+    tenantAPI.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
+      context.assertEquals(204, res1.getStatus());
+      tenantAPI.tenantExists(Vertx.currentContext(), tenantId)
+          .onComplete(context.asyncAssertSuccess(bool -> {
             context.assertFalse(bool, "tenant exists after purge");
             async.complete();
-          }))
-        ), Vertx.currentContext());
-      }), Vertx.currentContext());
-    });
+          }));
+    }), vertx.getOrCreateContext());
     async.await();
   }
 
   public String tenantPost(TestContext context) {
-    return tenantPost(context, null);
+    return tenantPost(new TenantAPI(), context, null);
   }
 
-  public String tenantPost(TestContext context, TenantAttributes tenantAttributes) {
+  public String tenantPost(TenantAPI api, TestContext context, TenantAttributes tenantAttributes) {
     Async async = context.async();
     StringBuilder id = new StringBuilder();
-    vertx.runOnContext(run -> {
-      TenantAPI tenantAPI = new TenantAPI();
-
-      tenantAPI.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
-        TenantJob job = (TenantJob) res1.getEntity();
-        id.append(job.getId());
-        tenantAPI.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 ->
-            tenantAPI.tenantExists(Vertx.currentContext(), tenantId, onSuccess(context, bool -> {
+    api.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
+      TenantJob job = (TenantJob) res1.getEntity();
+      id.append(job.getId());
+      api.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 -> {
+        TenantJob o = (TenantJob) res2.getEntity();
+        context.assertTrue(o.getComplete());
+        api.tenantExists(Vertx.currentContext(), tenantId)
+            .onComplete(onSuccess(context, bool -> {
               context.assertTrue(bool, "tenant exists after post");
               async.complete();
-            }))
-        ), Vertx.currentContext());
-      }), Vertx.currentContext());
-    });
+            }));
+      }), vertx.getOrCreateContext());
+    }), vertx.getOrCreateContext());
     async.await();
     return id.toString();
   }
@@ -126,7 +131,7 @@ public class TenantAPIIT {
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.tenantExists(Vertx.currentContext(), tenantId, res -> {
+      tenantAPI.tenantExists(Vertx.currentContext(), tenantId).onComplete(res -> {
         if (res.succeeded()) {
           result[0] = res.result();
         } else {
@@ -257,6 +262,30 @@ public class TenantAPIIT {
   }
 
   @Test
+  public void previousSchemaSqlExistsTrue(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    String tenantId = TenantTool.tenantId(okapiHeaders);
+    tenantAPI.previousSchema(vertx.getOrCreateContext(), tenantId, true)
+      .onComplete(context.asyncAssertFailure());
+  }
+
+  @Test
+  public void previousSchemaSqlExistsTrue2(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    String tenantId = TenantTool.tenantId(okapiHeaders);
+    Async async = context.async();
+    // only run create.ftl .. This makes previousSchema to find nothing on 2nd invocation
+    tenantAPI.sqlFile(vertx.getOrCreateContext(), tenantId, null, false)
+        .compose(files -> tenantAPI.postgresClient(vertx.getOrCreateContext()).runSQLFile(files[0], true))
+        .compose(x -> tenantAPI.previousSchema(vertx.getOrCreateContext(), tenantId, true)
+        .onComplete(context.asyncAssertSuccess(schema -> {
+          context.assertNull(schema);
+          async.complete();
+        })));
+    async.await();
+  }
+
+  @Test
   public void postWithSqlError(TestContext context) {
     PostgresClient postgresClient = mock(PostgresClient.class);
     when(postgresClient.runSQLFile(anyString(), anyBoolean())).thenReturn(Future.failedFuture("mock returns failure"));
@@ -267,14 +296,14 @@ public class TenantAPIIT {
       }
 
       @Override
-      void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler) {
-        handler.handle(Future.succeededFuture(false));
+      Future<Boolean> tenantExists(Context context, String tenantId) {
+        return Future.succeededFuture(false);
       }
     };
     TenantAttributes tenantAttributes = new TenantAttributes();
-    tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(response -> {
-      assertThat(response.getStatus(), is(201));
-      assertThat(((TenantJob) response.getEntity()).getError(), is("mock returns failure"));
+    tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(response -> {
+      assertThat(response.getStatus(), is(400));
+      assertThat((String) response.getEntity(), is("mock returns failure"));
 
     }), vertx.getOrCreateContext());
   }
@@ -291,16 +320,15 @@ public class TenantAPIIT {
       }
 
       @Override
-      void tenantExists(Context context, String tenantId, Handler<AsyncResult<Boolean>> handler) {
-        handler.handle(Future.succeededFuture(false));
+      Future<Boolean> tenantExists(Context context, String tenantId) {
+        return Future.succeededFuture(false);
       }
     };
-    tenantAPI.postTenantSync(null, okapiHeaders, context.asyncAssertSuccess(result -> {
-      assertThat(result.getStatus(), is(201));
-      TenantJob job = (TenantJob) result.getEntity();
+    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(400));
+      String error = (String) result.getEntity();
 
-      assertThat(job.getError(), is("SQL error"));
-      assertThat(job.getMessages().get(0), is("first failure"));
+      assertThat(error, is("first failure"));
     }), vertx.getOrCreateContext());
   }
 
@@ -312,16 +340,16 @@ public class TenantAPIIT {
         return "does/not/exist";
       }
     };
-    tenantAPI.postTenantSync(null, okapiHeaders, context.asyncAssertSuccess(result -> {
-      assertThat(result.getStatus(), is(201));
-      assertThat(((TenantJob) result.getEntity()).getError(), is("No schema.json"));
+    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(400));
+      assertThat(((String) result.getEntity()), is("No schema.json"));
     }), vertx.getOrCreateContext());
   }
 
   private void postWithSqlFileException(TestContext context, TenantAPI tenantAPI, Class<? extends Exception> exceptionClass) {
-    tenantAPI.postTenantSync(null, okapiHeaders, context.asyncAssertSuccess(result -> {
-      assertThat(result.getStatus(), is(201));
-      assertThat(((TenantJob) result.getEntity()).getError(),is(CoreMatchers.startsWith(exceptionClass.getName())));
+    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(400));
+      assertThat(((String) result.getEntity()),is(CoreMatchers.startsWith(exceptionClass.getName())));
     }), vertx.getOrCreateContext());
   }
 
@@ -329,7 +357,7 @@ public class TenantAPIIT {
   public void postWithSqlFileIOException(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
+      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
           throws IOException {
         throw new IOException();
       }
@@ -341,7 +369,7 @@ public class TenantAPIIT {
   public void postWithSqlFileTemplateException(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      public String sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
+      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
           throws TemplateException {
         throw new TemplateException(null);
       }
@@ -351,20 +379,19 @@ public class TenantAPIIT {
 
   @Test
   public void multi(TestContext context) {
-    tenantDelete(context);  // make sure tenant does not exist
+    tenantDeleteAsync(context);  // make sure tenant does not exist
     assertThat(tenantGet(context), is(false));
     tenantPost(context);    // create tenant
     assertThat(tenantGet(context), is(true));
     tenantPost(context);    // create tenant when tenant already exists
-    tenantPost(context, new TenantAttributes());
+    tenantPost(new TenantAPI(), context, new TenantAttributes());
     testMetadata(context);
-    tenantDelete(context);  // delete existing tenant
+    tenantDeleteAsync(context);  // delete existing tenant
     assertThat(tenantGet(context), is(false));
-    tenantDelete(context);  // delete non existing tenant
+    tenantDeleteAsync(context);  // delete non existing tenant
     assertThat(tenantGet(context), is(false));
     tenantPost(context);    // create tenant
     assertThat(tenantGet(context), is(true));
-
     String sql = "SELECT count(*) FROM " + PostgresClient.convertToPsqlStandard(tenantId) + ".test_tenantapi";
     PostgresClient.getInstance(vertx, tenantId).selectSingle(sql, context.asyncAssertSuccess(result -> {
       assertThat(result.getInteger(0), is(0));
@@ -374,23 +401,23 @@ public class TenantAPIIT {
   @Test
   public void invalidTenantName(TestContext context) {
     String invalidTenantId = "- ";
-    Async async = context.async();
     vertx.runOnContext(run -> {
-      new TenantAPI().tenantExists(Vertx.currentContext(), invalidTenantId, h -> {
-        context.assertTrue(h.succeeded());
-        context.assertFalse(h.result());
-        async.complete();
-      });
+      new TenantAPI().tenantExists(Vertx.currentContext(), invalidTenantId).onComplete(
+          context.asyncAssertSuccess(bool -> context.assertFalse(bool)));
     });
   }
 
   @Test
   public void getTenantByOperationIdNotFound(TestContext context) {
+    tenantPost(context);    // create tenant
+
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.getTenantByOperationId("1234", 0, okapiHeaders, onSuccess(context, result -> {
+      String unknownId = UUID.randomUUID().toString();
+      tenantAPI.getTenantByOperationId(unknownId, 0, okapiHeaders, onSuccess(context, result -> {
         assertThat(result.getStatus(), is(404));
+        assertThat((String) result.getEntity(), is("Job not found " + unknownId));
         async.complete();
       }), Vertx.currentContext());
     });
@@ -398,12 +425,30 @@ public class TenantAPIIT {
   }
 
   @Test
-  public void deleteTenantByOperationIdNotFound(TestContext context) {
+  public void getTenantByOperationIdInvalidUUID(TestContext context) {
+    tenantPost(context);    // create tenant
+
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
-      tenantAPI.deleteTenantByOperationId("1234", okapiHeaders, onSuccess(context, result -> {
+      String invalidUUID = "1234";
+      tenantAPI.getTenantByOperationId(invalidUUID, 0, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(400));
+        assertThat((String) result.getEntity(), is("Invalid UUID string: " + invalidUUID));
+        async.complete();
+      }), Vertx.currentContext());
+    });
+    async.await();
+  }
+
+  @Test
+  public void getTenantByOperationTenantNotFound(TestContext context) {
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      TenantAPI tenantAPI = new TenantAPI();
+      tenantAPI.getTenantByOperationId(UUID.randomUUID().toString(), 0, okapiHeaders, onSuccess(context, result -> {
         assertThat(result.getStatus(), is(404));
+        assertThat((String) result.getEntity(), is("Tenant not found folio_shared"));
         async.complete();
       }), Vertx.currentContext());
     });
@@ -426,9 +471,26 @@ public class TenantAPIIT {
   }
 
   @Test
-  public void deleteTenantByOperationIdFound(TestContext context) {
-    String id = tenantPost(context);    // create tenant
+  public void deleteTenantByOperationIdNotFound(TestContext context) {
+    tenantPost(context);    // create tenant
 
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      TenantAPI tenantAPI = new TenantAPI();
+      String unknownId = UUID.randomUUID().toString();
+      tenantAPI.deleteTenantByOperationId(unknownId, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(404));
+        String msg = (String) result.getEntity();
+        assertThat(msg, is("Job not found " + unknownId));
+        async.complete();
+      }), Vertx.currentContext());
+    });
+    async.await();
+  }
+
+  @Test
+  public void deleteTenantByOperationIdOK(TestContext context) {
+    String id = tenantPost(context);    // create tenant
     Async async = context.async();
     vertx.runOnContext(run -> {
       TenantAPI tenantAPI = new TenantAPI();
@@ -437,11 +499,41 @@ public class TenantAPIIT {
         async.complete();
       }), Vertx.currentContext());
     });
-    async.awaitSuccess();
+    async.await();
   }
 
   @Test
-  public void postTenantWithLoadFail(TestContext context) {
+  public void deleteTenantByOperationIdTenantNotFound(TestContext context) {
+    tenantDeleteAsync(context);
+    Async async = context.async();
+    vertx.runOnContext(run -> {
+      TenantAPI tenantAPI = new TenantAPI();
+      tenantAPI.deleteTenantByOperationId(UUID.randomUUID().toString(), okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(404));
+        String msg = (String) result.getEntity();
+        assertThat(msg, is("Tenant not found folio_shared"));
+        async.complete();
+      }), Vertx.currentContext());
+    });
+    async.await();
+  }
+
+  @Test
+  public void deleteTenantByOperationIdInvalidUUID(TestContext context) {
+    Async async = context.async();
+      TenantAPI tenantAPI = new TenantAPI();
+      String invalidUUID = "1234";
+      tenantAPI.deleteTenantByOperationId(invalidUUID, okapiHeaders, onSuccess(context, result -> {
+        assertThat(result.getStatus(), is(400));
+        String msg = (String) result.getEntity();
+        assertThat(msg, is("Invalid UUID string: " + invalidUUID));
+        async.complete();
+      }), Vertx.currentContext());
+    async.await();
+  }
+
+  @Test
+  public void postTenantWithLoadFailSync(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
       Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context ctx) {
@@ -449,25 +541,59 @@ public class TenantAPIIT {
       }
     };
     tenantAPI.postTenantSync(new TenantAttributes(), okapiHeaders, context.asyncAssertSuccess(result -> {
-      assertThat(result.getStatus(), is(201));
-      assertThat(((TenantJob) result.getEntity()).getError(), is("Load Failure"));
+      assertThat(result.getStatus(), is(400));
+      String msg = (String) result.getEntity();
+      assertThat(msg, is("Load Failure"));
     }), vertx.getOrCreateContext());
   }
 
   @Test
-  public void postTenantOk(TestContext context) {
+  public void postTenantWithLoadFailAsync(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI() {
+      @Override
+      Future<Integer> loadData(TenantAttributes attributes, String tenantId, Map<String, String> headers, Context ctx) {
+        return Future.failedFuture("Load Failure");
+      }
+    };
+    String id = tenantPost(tenantAPI, context, new TenantAttributes());
+    tenantAPI.getTenantByOperationId(id, 0, okapiHeaders, onSuccess(context, result -> {
+      assertThat(result.getStatus(), is(200));
+      TenantJob job = (TenantJob) result.getEntity();
+      assertThat(job.getComplete(), is(true));
+      assertThat(job.getError(), is("Load Failure"));
+    }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postTenantWithSqlErrorAsync(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantJob job = new TenantJob();
+    tenantAPI.runAsync(null, "SELECT (", job, okapiHeaders, vertx.getOrCreateContext())
+        .onComplete(context.asyncAssertFailure(cause -> {
+          assertThat(job.getError(), is("SQL error"));
+          // for some bizarre reason a space is put in front the returned stmt
+          assertThat(job.getMessages(), containsInAnyOrder(" SELECT ("));
+        }));
+  }
+
+  @Test
+  public void postTenantEnableSync(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI();
     TenantAttributes tenantAttributes = new TenantAttributes();
     tenantAttributes.setModuleFrom("mod-0.0.0");
     tenantAttributes.setModuleTo("mod-1.0.0");
     tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
-      assertThat(result.getStatus(), is(201));
-      TenantJob job = (TenantJob) result.getEntity();
-      assertThat(job.getTenant(), is("folio_shared"));
-      assertThat(job.getComplete(), is(true));
-      TenantAttributes returnedAttributes = job.getTenantAttributes();
-      assertThat(returnedAttributes, is(tenantAttributes));
+      assertThat(result.getStatus(), is(204));
     }), vertx.getOrCreateContext());
   }
 
+  @Test
+  public void postTenantDisable(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantAttributes tenantAttributes = new TenantAttributes();
+    tenantAttributes.setModuleFrom("mod-0.0.0");
+    tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(204));
+    }), vertx.getOrCreateContext());
+  }
 }

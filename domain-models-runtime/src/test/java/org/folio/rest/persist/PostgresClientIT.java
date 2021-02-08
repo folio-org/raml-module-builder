@@ -57,6 +57,7 @@ import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
@@ -104,6 +105,7 @@ public class PostgresClientIT {
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
   }
 
@@ -111,11 +113,7 @@ public class PostgresClientIT {
   public static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
 
-    String embed = System.getProperty("embed_postgres", "").toLowerCase().trim();
-    if ("true".equals(embed)) {
-      PostgresClient.setIsEmbedded(true);
-      PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-    }
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     PostgresClient.setExplainQueryThreshold(0);
 
     // fail the complete test class if the connection to postgres doesn't work
@@ -1749,7 +1747,7 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(getConnection());
+        getConnection().onComplete(handler);
       }
 
       @Override
@@ -1795,7 +1793,7 @@ public class PostgresClientIT {
 
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(getConnection());
+        getConnection().onComplete(handler);
       }
 
       @Override
@@ -1896,7 +1894,12 @@ public class PostgresClientIT {
 
       @Override
       public void close(Handler<AsyncResult<Void>> handler) {
+        close().onComplete(handler);
+      }
 
+      @Override
+      public Future<Void> close() {
+        return Future.succeededFuture();
       }
 
       @Override
@@ -1910,11 +1913,6 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Future<Void> close() {
-        return Future.succeededFuture();
-      }
-
-      @Override
       public DatabaseMetadata databaseMetadata() {
         throw new RuntimeException();
       }
@@ -1923,12 +1921,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
       }
 
       @Override
       public Future<SqlConnection> getConnection() {
-        return null;
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override
@@ -2075,12 +2073,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
       }
 
       @Override
       public Future<SqlConnection> getConnection() {
-        return null;
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override
@@ -2095,9 +2093,8 @@ public class PostgresClientIT {
 
       @Override
       public void close(Handler<AsyncResult<Void>> handler) {
-
+        close().onComplete(handler);
       }
-
 
       @Override
       public Future<Void> close() {
@@ -2203,12 +2200,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
       }
 
       @Override
       public Future<SqlConnection> getConnection() {
-        return null;
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override
@@ -2262,14 +2259,22 @@ public class PostgresClientIT {
 
   @Test
   public void executeOK(TestContext context) {
-    Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'", res -> {
-      assertSuccess(context, res);
-      context.assertEquals(1, res.result().rowCount());
-      async.complete();
-    });
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'",
+            context.asyncAssertSuccess(res -> {
+              context.assertEquals(1, res.rowCount());
+            }));
+  }
+
+  @Test
+  public void executeOKFuture(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'")
+        .onComplete(context.asyncAssertSuccess(res -> {
+          context.assertEquals(1, res.rowCount());
+        }));
   }
 
   @Test
@@ -2294,14 +2299,18 @@ public class PostgresClientIT {
 
   @Test
   public void executeParam(TestContext context) {
-    Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))), res -> {
-      assertSuccess(context, res);
-      context.assertEquals(1, res.result().rowCount());
-      async.complete();
-    });
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))),
+            context.asyncAssertSuccess(res -> context.assertEquals(1, res.rowCount())));
+  }
+
+  @Test
+  public void executeParamFuture(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))))
+        .onComplete(context.asyncAssertSuccess(res -> context.assertEquals(1, res.rowCount())));
   }
 
   @Test
@@ -2652,6 +2661,15 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectSingleFuture(TestContext context) {
+    postgresClient = createNumbers(context, 41, 42, 43);
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (41, 43, 45) ORDER BY i")
+        .onComplete(context.asyncAssertSuccess(select -> {
+          context.assertEquals(41, select.getInteger(0));
+        }));
+  }
+
+  @Test
   public void selectSingleTrans(TestContext context) {
     postgresClient = createNumbers(context, 45, 46, 47);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2669,6 +2687,15 @@ public class PostgresClientIT {
     postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
         Tuple.of(51, 53, 55),
         context.asyncAssertSuccess(select -> {
+          context.assertEquals(51, select.getInteger(0));
+        }));
+  }
+
+  @Test
+  public void selectSingleParamFuture(TestContext context) {
+    postgresClient = createNumbers(context, 51, 52, 53);
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+        Tuple.of(51, 53, 55)).onComplete(context.asyncAssertSuccess(select -> {
           context.assertEquals(51, select.getInteger(0));
         }));
   }

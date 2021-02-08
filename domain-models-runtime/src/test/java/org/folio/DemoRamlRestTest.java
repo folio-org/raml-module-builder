@@ -26,6 +26,7 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -74,6 +75,8 @@ public class DemoRamlRestTest {
     // some tests (withoutParameter, withoutYearParameter) fail under other locales like Locale.GERMANY
     Locale.setDefault(Locale.US);
 
+    // do not use PostgresClient.setPostgresTester here so we check that PostgresTesterEmbedded is working
+
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
     RestAssured.port = port;
@@ -86,7 +89,7 @@ public class DemoRamlRestTest {
       Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
       String location = postData(context, "http://localhost:" + port + "/_/tenant", buf,
         201, HttpMethod.POST, "application/json", TENANT, false);
-      checkURLs(context, "http://localhost:" + port + location, 200);
+      checkURLs(context, "http://localhost:" + port + location + "?wait=10000", 200);
 
     } catch (Exception e) {
       context.fail(e);
@@ -125,7 +128,7 @@ public class DemoRamlRestTest {
     try {
       Buffer buf = Buffer.buffer("{\"purge\": true}");
       postData(context, "http://localhost:" + port + "/_/tenant", buf,
-          201, HttpMethod.POST, "application/json", TENANT, false);
+          204, HttpMethod.POST, "application/json", TENANT, false);
     } catch (Exception e) {
       context.fail(e);
     }
@@ -179,7 +182,28 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
   }
 
+  @Test
+  public void acceptDefault(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200, null);
+  }
+
+  @Ignore
+  @Test
+  public void acceptNoMatch(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 400, "text/html");
+  }
+
+  @Ignore
+  @Test
+  public void contentTypeNoMatch(TestContext context) {
+    postBook(context, "?validate_field=data.description", 400,  "text/html");
+  }
+
   private void postBook(TestContext context, String parameterString, int expectedStatus) {
+    postBook(context, parameterString, expectedStatus, "application/json");
+  }
+
+  private void postBook(TestContext context, String parameterString, int expectedStatus, String contentType) {
     Book b = new Book();
     Data d = new Data();
     d.setAuthor("a");
@@ -195,7 +219,7 @@ public class DemoRamlRestTest {
       context.fail(e);
     }
     postData(context, "http://localhost:" + port + "/rmbtests/books"+parameterString, Buffer.buffer(book),
-        expectedStatus, HttpMethod.POST, "application/json", TENANT, false);
+        expectedStatus, HttpMethod.POST, contentType, TENANT, false);
   }
 
   @Test
@@ -235,7 +259,7 @@ public class DemoRamlRestTest {
     String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
 
     postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201,
-      HttpMethod.POST, "application/json", TENANT, false);
+      HttpMethod.POST, null, TENANT, false);
 
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);
     books = Json.decodeValue(buf, Books.class);
@@ -486,7 +510,9 @@ public class DemoRamlRestTest {
       WebClient client = WebClient.create(vertx);
       final HttpRequest<Buffer> request = client.getAbs(url);
       request.headers().add("x-okapi-tenant", TENANT);
-      request.headers().add("Accept", accept);
+      if (accept != null) {
+        request.headers().add("Accept", accept);
+      }
       request.send(x -> {
         x.map(httpClientResponse->
         {
@@ -528,7 +554,9 @@ public class DemoRamlRestTest {
     if (userIdHeader) {
       request.putHeader("X-Okapi-User-Id", "af23adf0-61ba-4887-bf82-956c4aae2260");
     }
-    request.putHeader("Content-type",  contenttype);
+    if (contenttype != null) {
+      request.putHeader("Content-type", contenttype);
+    }
     StringBuilder location = new StringBuilder();
     if (buffer != null) {
       request.sendBuffer(buffer, e-> postDataHandler(e, async, context, errorCode,

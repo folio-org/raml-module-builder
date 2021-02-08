@@ -663,7 +663,7 @@ public class AdminAPI implements Admin {
         sMaker.setSchema(schema);
       }
 
-      String sqlFile = sMaker.generateDDL(true);
+      String sqlFile = sMaker.generateIndexesOnly();
 
       PostgresClient.getInstance(vertxContext.owner()).runSQLFile(sqlFile, true,
         reply -> {

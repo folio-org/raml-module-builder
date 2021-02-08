@@ -1,5 +1,7 @@
 package org.folio.rest.persist;
 
+import org.folio.postgres.testing.PostgresTesterContainer;
+import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
@@ -22,26 +24,33 @@ public class RunSQLIT {
   @Parameter(0)
   public int expectedResultSize;
   @Parameter(1)
+  public int expectedResult2;
+  @Parameter(2)
   public String sql;
 
   private Vertx vertx;
   private PostgresClient client;
 
-  @Parameterized.Parameters(name = "{0} {1}")
+  @Parameterized.Parameters(name = "{0} {1} {2}")
   static public Iterable<Object []> data() {
     return Arrays.asList(new Object [][] {
-      { 0, "update pg_database set datname=null where false" },
-      { 0, "update pg_database set datname=null where false;" },
-      { 0, "update pg_database set datname=null where false\n" },
-      { 1, "syntaxerror" },
-      { 1, "syntaxerror;" },
-      { 1, "syntaxerror\n" },
-      { 2, "syntaxerror1;\nsyntaxerror2" },
-      { 2, "syntaxerror1;\nsyntaxerror2;" },
-      { 2, "syntaxerror1;\nsyntaxerror2\n" }
+        { 0, 0, "update pg_database set datname=null where false" },
+        { 0, 0, "update pg_database set datname=null where false;" },
+        { 0, 0, "update pg_database set datname=null where false\n" },
+        { 1, 1, "update pg_database set datname=null where false\nsyntax error" },
+        { 1, 1, "syntaxerror" },
+        { 1, 1, "syntaxerror;" },
+        { 1, 1, "syntaxerror\n" },
+        { 2, 1, "syntaxerror1;\nsyntaxerror2" },
+        { 2, 1, "syntaxerror1;\nsyntaxerror2;" },
+        { 2, 1, "syntaxerror1;\nsyntaxerror2\n" }
     });
   }
 
+  @BeforeClass
+  public static void beforeClass() {
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
+  }
   @Before
   public void setUp() {
     vertx = VertxUtils.getVertxFromContextOrNew();
@@ -62,4 +71,14 @@ public class RunSQLIT {
             "runSQL result.size()=" + result.size() + " [" + results + "]");
     }));
   }
+
+  @Test
+  public void sqlStopOnError(TestContext context) {
+    client.runSQLFile(sql, true, context.asyncAssertSuccess(result -> {
+      String results = result.stream().collect(Collectors.joining("\n"));
+      context.assertEquals(expectedResult2, result.size(),
+          "runSQL result.size()=" + result.size() + " [" + results + "]");
+    }));
+  }
+
 }

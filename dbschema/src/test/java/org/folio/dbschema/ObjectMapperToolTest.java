@@ -2,12 +2,12 @@ package org.folio.dbschema;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-import org.folio.dbschema.ObjectMapperTool;
-import org.folio.dbschema.Schema;
+import java.io.UncheckedIOException;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.util.ResourceUtil;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 class ObjectMapperToolTest {
@@ -15,6 +15,19 @@ class ObjectMapperToolTest {
   @Test
   void isUtilityClass() {
     UtilityClassTester.assertUtilityClass(ObjectMapperTool.class);
+  }
+
+  @Test
+  void testReadValueOK() {
+    String dbJson = ResourceUtil.asString("schema.json");
+    Schema dbSchema = ObjectMapperTool.readValue(dbJson, Schema.class);
+    assertThat(dbSchema.getTables().get(0).getTableName(), is("item"));
+  }
+
+  @Test
+  void testReadValueException() {
+    Assertions.assertThrows(UncheckedIOException.class,
+        () -> ObjectMapperTool.readValue("{\"foo\":true}", Schema.class));
   }
 
   @Test

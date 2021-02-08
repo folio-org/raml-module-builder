@@ -22,8 +22,9 @@ public class TenantApiTest extends ApiTestBase {
 
   @Test
   void post() {
+    String tenant = randomTenant();
     String location = given(r).
-        header("x-okapi-tenant", randomTenant()).
+        header("x-okapi-tenant", tenant).
         header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
         body("{\"module_to\":\"mod-api-1.0.0\"}").
         when().post("/_/tenant").
@@ -33,6 +34,7 @@ public class TenantApiTest extends ApiTestBase {
         extract().header("Location");
 
     given(r).
+        header("x-okapi-tenant", tenant).
         get(location + "?wait=5000").
         then().
         statusCode(200).
@@ -43,8 +45,9 @@ public class TenantApiTest extends ApiTestBase {
   // mod-event-config /_/tenant with "X-Okapi-Request-Id: 1" fails with 500 Internal Server Error
   @Test
   void posttWithRequestId() {
+    String tenant = randomTenant();
     String location = given(r).
-        header("x-okapi-tenant", randomTenant()).
+        header("x-okapi-tenant", tenant).
         header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
         header("X-Okapi-Request-Id", "1").
         body("{\"module_to\":\"mod-api-1.0.0\"}").
@@ -55,6 +58,7 @@ public class TenantApiTest extends ApiTestBase {
         extract().header("Location");
 
     given(r).
+        header("x-okapi-tenant", tenant).
         get(location + "?wait=5000").
         then().
         statusCode(200).

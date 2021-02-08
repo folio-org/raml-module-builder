@@ -21,24 +21,17 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
-import java.io.StringReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -47,8 +40,6 @@ import java.util.regex.Pattern;
 import javax.crypto.SecretKey;
 import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.util.SqlUtil;
@@ -71,12 +62,7 @@ import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
-import org.folio.rest.tools.utils.ResourceUtils;
-import org.postgresql.copy.CopyManager;
-import org.postgresql.core.BaseConnection;
-import ru.yandex.qatools.embed.postgresql.EmbeddedPostgres;
-import ru.yandex.qatools.embed.postgresql.PostgresProcess;
-import ru.yandex.qatools.embed.postgresql.distribution.Version;
+import org.folio.util.PostgresTester;
 
 /**
  * @author shale
@@ -107,6 +93,8 @@ public class PostgresClient {
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
   private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
+  private static PostgresTester postgresTester;
+
   private static final String    SELECT = "SELECT ";
   private static final String    UPDATE = "UPDATE ";
   private static final String    DELETE = "DELETE ";
@@ -123,7 +111,6 @@ public class PostgresClient {
   private static final String    HOST      = "host";
   private static final String    PORT      = "port";
   private static final String    DATABASE  = "database";
-  private static final String    DEFAULT_IP = "127.0.0.1";
 
   private static final String    GET_STAT_METHOD = "get";
   private static final String    SAVE_STAT_METHOD = "save";
@@ -139,7 +126,6 @@ public class PostgresClient {
   private static final String    SEMI_COLON = ";";
 
 
-  private static EmbeddedPostgres embeddedPostgres;
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
   private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
@@ -244,8 +230,19 @@ public class PostgresClient {
    *
    * @param embed - whether to use embedded specific defaults
    */
-  public static void setIsEmbedded(boolean embed){
+  public static void setIsEmbedded(boolean embed) {
+    if (embed) {
+      if (postgresTester == null) {
+        postgresTester = new PostgresTesterEmbedded(embeddedPort != -1 ? embeddedPort : EMBEDDED_POSTGRES_PORT);
+      }
+    }
     embeddedMode = embed;
+  }
+
+  public static void setPostgresTester(PostgresTester tester) {
+    stopEmbeddedPostgres();
+    embeddedMode = true;
+    postgresTester = tester;
   }
 
   /**
@@ -261,8 +258,11 @@ public class PostgresClient {
    *
    * <p>-1 is the default.
    *
-   * @param port  the port for embedded PostgreSQL, or -1 to not overwrite the port
+   * @param port  the port for embedded PostgreSQL, or -1 to not overwrite the port.
+   * @deprecated will be removed in a future release, use {@link #setPostgresTester(PostgresTester)} and {@link org.folio.postgres.testing.PostgresTesterContainer} instead that picks a free port.
+   *
    */
+  @Deprecated
   public static void setEmbeddedPort(int port){
     embeddedPort = port;
   }
@@ -271,10 +271,13 @@ public class PostgresClient {
    * @return the port number to use for embedded PostgreSQL, or -1 for not overwriting the
    *         port number of the configuration.
    * @see #setEmbeddedPort(int)
+   * @deprecated will be removed in a future release, use {@link #setPostgresTester(PostgresTester)} and {@link org.folio.postgres.testing.PostgresTesterContainer} instead that picks a free port.
    */
+  @Deprecated
   public static int getEmbeddedPort() {
     return embeddedPort;
   }
+
   /**
    * True if embedded specific defaults for the
    * PostgreSQL configuration should be used if there is no
@@ -491,11 +494,11 @@ public class PostgresClient {
     }
 
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
-    logPostgresConfig();
 
     if (isEmbedded()) {
       startEmbeddedPostgres();
     }
+    logPostgresConfig();
 
     client = createPgPool(vertx, postgreSQLClientConfig);
   }
@@ -531,17 +534,11 @@ public class PostgresClient {
       // LoadConfs.loadConfig writes its own log message
     }
     if (config == null) {
-      if (NetworkUtils.isLocalPortFree(EMBEDDED_POSTGRES_PORT)) {
-        log.info("No DB configuration found, starting embedded postgres with default config");
-        setIsEmbedded(true);
-      } else {
-        log.info("No DB configuration found, using default config, port is already in use");
-      }
+      log.info("No DB configuration found, switching to embedded mode");
+      setIsEmbedded(true);
       config = new JsonObject();
       config.put(USERNAME, USERNAME);
       config.put(PASSWORD, PASSWORD);
-      config.put(HOST, DEFAULT_IP);
-      config.put(PORT, EMBEDDED_POSTGRES_PORT);
       config.put(DATABASE, "postgres");
     }
     Object v = config.remove(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name());
@@ -554,12 +551,6 @@ public class PostgresClient {
       log.info("Using schema: " + tenantId);
       config.put(USERNAME, schemaName);
       config.put(PASSWORD, createPassword(tenantId));
-    }
-    if(embeddedPort != -1 && embeddedMode){
-      //over ride the declared default port - coming from the config file and use the
-      //passed in port as well. useful when multiple modules start up an embedded postgres
-      //in a single server.
-      config.put(PORT, embeddedPort);
     }
     return config;
   }
@@ -2878,7 +2869,7 @@ public class PostgresClient {
       int columnIndex = row.getColumnIndex(columnName);
       Object value = columnIndex == -1 ? null : row.getValue(columnIndex);
       if (isStringArrayType(value)) {
-        method.invoke(o, Arrays.asList(row.getStringArray(columnIndex)));
+        method.invoke(o, Arrays.asList(row.getArrayOfStrings(columnIndex)));
       } else {
         method.invoke(o, value);
       }
@@ -2915,7 +2906,19 @@ public class PostgresClient {
     getSQLConnection(conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
-    /**
+  /**
+   * Run a select query.
+   *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql - the sql query to run
+   * @return future result
+   */
+  public Future<RowSet<Row>> select(String sql) {
+    return Future.future(promise -> select(sql, promise));
+  }
+
+  /**
    * Run a select query.
    *
    * <p>To update see {@link #execute(String, Handler)}.
@@ -3041,6 +3044,18 @@ public class PostgresClient {
   /**
    * Run a select query and return the first record, or null if there is no result.
    *
+   * <p>To update see {@link #execute(String, Handler)}.
+   *
+   * @param sql  The sql query to run.
+   * @return future
+   */
+  public Future<Row> selectSingle(String sql) {
+    return selectSingle(sql, Tuple.tuple());
+  }
+
+  /**
+   * Run a select query and return the first record, or null if there is no result.
+   *
    * <p>This never closes the connection conn.
    *
    * <p>To update see {@link #execute(AsyncResult, String, Handler)}.
@@ -3064,6 +3079,17 @@ public class PostgresClient {
    */
   public void selectSingle(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
     getSQLConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Run a parameterized/prepared select query and return the first record, or null if there is no result.
+   *
+   * @param sql The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @return future.
+   */
+  public Future<Row> selectSingle(String sql, Tuple params) {
+    return Future.future(promise -> selectSingle(sql, params, promise));
   }
 
   static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<Row>> replyHandler) {
@@ -3177,31 +3203,37 @@ public class PostgresClient {
     }
   }
 
-    /**
-     * Execute an INSERT, UPDATE or DELETE statement.
-     * @param sql - the sql to run
-     * @param replyHandler - the result handler with UpdateResult
-     */
+  /**
+   * Execute an INSERT, UPDATE or DELETE statement.
+   * @param sql - the sql to run
+   * @param replyHandler - the result handler with UpdateResult
+   */
   public void execute(String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     execute(sql, Tuple.tuple(), replyHandler);
   }
 
   /**
+   * Execute an INSERT, UPDATE or DELETE statement.
+   * @param sql - the sql to run
+   * @return future result
+   */
+  public Future<RowSet<Row>> execute(String sql) {
+    return execute(sql, Tuple.tuple());
+  }
+
+  /**
    * Get vertx-pg-client connection
+   */
+  public Future<PgConnection> getConnection() {
+    return getClient().getConnection().map(sqlConnection -> (PgConnection) sqlConnection);
+  }
+
+  /**
+   * Get Vert.x {@link PgConnection}.
    * @param replyHandler
    */
   public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
-    getClient().getConnection(x -> {
-      if (x.failed()) {
-        replyHandler.handle(Future.failedFuture(x.cause()));
-        return;
-      }
-      try {
-        replyHandler.handle(Future.succeededFuture((PgConnection) x.result()));
-      } catch (Exception e) {
-        replyHandler.handle(Future.failedFuture(e));
-      }
-    });
+    getConnection().onComplete(replyHandler);
   }
 
   /**
@@ -3252,6 +3284,49 @@ public class PostgresClient {
   }
 
   /**
+   * Execute the given function within a transaction.
+   * <p>Similar to {@link PgPool#withTransaction(Function)}
+   * <ul>
+   *   <li>The connection is automatically closed in all cases when the function exits.</li>
+   *   <li>The transaction is automatically committed if the function returns a succeeded Future.
+   *   The transaction is automatically roll-backed if the function returns a failed Future or throws a Throwable.</li>
+   *   <li>The method returns a succeeded Future if the commit is successful, otherwise a failed Future.</li>
+   * </ul>
+   *
+   * @param function code to execute
+   */
+  public <T> Future<T> withTransaction(Function<PgConnection, Future<T>> function) {
+    return getConnection()
+      .flatMap(conn -> conn
+        .begin()
+        .flatMap(tx -> function
+          .apply(conn)
+          .compose(
+            res -> tx
+              .commit()
+              .flatMap(v -> Future.succeededFuture(res)),
+            err -> tx
+              .rollback()
+              .compose(v -> Future.failedFuture(err), failure -> Future.failedFuture(err))))
+        .onComplete(ar -> conn.close()));
+  }
+
+  /**
+   * Get a connection from the pool and execute the given function.
+   * <p>Similar to {@link PgPool#withConnection(Function)}
+   * <ul>
+   *   <li>The connection is automatically closed in all cases when the function exits.</li>
+   *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
+   *   thrown by the function.</li>
+   * </ul>
+   *
+   * @param function code to execute
+   */
+  public <T> Future<T> withConnection(Function<PgConnection, Future<T>> function) {
+    return getConnection().flatMap(conn -> function.apply(conn).onComplete(ar -> conn.close()));
+  }
+
+  /**
    * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
    * @param sql  The SQL statement to run.
    * @param params The parameters for the placeholders in sql.
@@ -3259,6 +3334,16 @@ public class PostgresClient {
    */
   public void execute(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
     getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
+   * @param sql  The SQL statement to run.
+   * @param params The parameters for the placeholders in sql.
+   * @return async result.
+   */
+  public Future<RowSet<Row>> execute(String sql, Tuple params) {
+    return Future.future(promise -> execute(sql, params, promise));
   }
 
   /**
@@ -3529,25 +3614,6 @@ public class PostgresClient {
   }
 
   /**
-   * Drop the database if it exists.
-   * @param database  database name
-   * @throws SQLException  on database error
-   * @throws IllegalArgumentException  if database name is too long, contains
-   *          illegal characters or letters with diacritical marks or non-Latin letters
-   */
-  public void dropCreateDatabase(String database) throws SQLException {
-    if (! isValidPostgresIdentifier(database)) {
-      throw new IllegalArgumentException("Illegal character in database name: " + database);
-    }
-
-    try (Connection connection = getStandaloneConnection("postgres", true);
-        Statement statement = connection.createStatement()) {
-      statement.executeUpdate("DROP DATABASE IF EXISTS " + database); //NOSONAR
-      statement.executeUpdate("CREATE DATABASE " + database); //NOSONAR
-    }
-  }
-
-  /**
    * Split string into lines.
    */
   private static List<String> lines(String string) {
@@ -3649,273 +3715,92 @@ public class PostgresClient {
     }
   }
 
-  private Connection getStandaloneConnection(String newDB, boolean superUser) throws SQLException {
-    String host = postgreSQLClientConfig.getString(HOST);
-    int port = postgreSQLClientConfig.getInteger(PORT);
-    String user = postgreSQLClientConfig.getString(USERNAME);
-    String pass = postgreSQLClientConfig.getString(PASSWORD);
-    String db = postgreSQLClientConfig.getString(DATABASE);
-
-    if(newDB != null){
-      db = newDB;
-      if(!superUser){
-        pass = newDB;
-        user = newDB;
-      }
-    }
-    return DriverManager.getConnection(
-      "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
-  }
-
   /**
-   * Copy files via the COPY FROM postgres syntax
-   * Support 3 modes
-   * 1. In line (STDIN) Notice the mandatory \. at the end of all entries to import
-   * COPY config_data (jsonb) FROM STDIN ENCODING 'UTF8';
-   * {"module":"SETTINGS","config_name":"locale","update_date":"1.1.2017","code":"system.currency_symbol.dk","description":"currency code","default": false,"enabled": true,"value": "kr"}
-   * \.
-   * 2. Copy from a data file packaged in the jar
-   * COPY config_data (jsonb) FROM 'data/locales.data' ENCODING 'UTF8';
-   * 3. Copy from a file on disk (absolute path)
-   * COPY config_data (jsonb) FROM 'C:\\Git\\configuration\\mod-configuration-server\\src\\main\\resources\\data\\locales.data' ENCODING 'UTF8';
-
-   * @param copyInStatement
-   * @param connection
-   * @throws Exception
+   * Execute multiple SQL commands in a transaction as superuser.
+   *<p>
+   *   Currently this function always succeeds. Failure is indicated by
+   *   the lines returned (empty on no errors).
+   *</p>
+   * @param sql SQL lines
+   * @param stopOnError whether to ignore errors
+   * @param replyHandler result with lines that failed.
    */
-  private void copyIn(String copyInStatement, Connection connection) throws Exception {
-    long totalInsertedRecords = 0;
-    CopyManager copyManager = new CopyManager((BaseConnection) connection);
-    if(copyInStatement.contains("STDIN")){
-      //run as is
-      int sep = copyInStatement.indexOf("\n");
-      String copyIn = copyInStatement.substring(0, sep);
-      String data = copyInStatement.substring(sep+1);
-      totalInsertedRecords = copyManager.copyIn(copyIn, new StringReader(data));
-    }
-    else{
-      //copy from a file,
-      String[] valuesInQuotes = StringUtils.substringsBetween(copyInStatement , "'", "'");
-      if(valuesInQuotes.length == 0){
-        log.warn("SQL statement: COPY FROM, has no STDIN and no file path wrapped in ''");
-        throw new Exception("SQL statement: COPY FROM, has no STDIN and no file path wrapped in ''");
-      }
-      //do not read from the file system for now as this needs to support data files packaged in
-      //the jar, read files into memory and load - consider improvements to this
-      String filePath = valuesInQuotes[0];
-      String data;
-      if(new File(filePath).isAbsolute()){
-        data = FileUtils.readFileToString(new File(filePath), "UTF8");
-      }
-      else{
-        try {
-          //assume running from within a jar,
-          data = ResourceUtils.resource2String(filePath);
-        } catch (Exception e) {
-          //from IDE
-          data = ResourceUtils.resource2String("/"+filePath);
-        }
-      }
-      copyInStatement = copyInStatement.replace("'"+filePath+"'", "STDIN");
-      totalInsertedRecords = copyManager.copyIn(copyInStatement, new StringReader(data));
-    }
-    log.info("Inserted " + totalInsertedRecords + " via COPY IN. Tenant: " + tenantId);
-  }
-
   private void execute(String[] sql, boolean stopOnError,
-      Handler<AsyncResult<List<String>>> replyHandler){
+                       Handler<AsyncResult<List<String>>> replyHandler) {
 
     long s = System.nanoTime();
-    log.info("Executing " + sql.length + " statements with id " + Arrays.hashCode(sql));
-    List<String> results = new ArrayList<>();
-    vertx.executeBlocking(dothis -> {
-      Connection connection = null;
-      Statement statement = null;
-      boolean error = false;
-      try {
+    log.info("Executing multiple statements with id " + Arrays.hashCode(sql));
+    List<String> results = new LinkedList<>();
 
-        /* this should be  super user account that is in the config file */
-        connection = getStandaloneConnection(null, false);
-        connection.setAutoCommit(false);
-        statement = connection.createStatement();
-
-        for (int j = 0; j < sql.length; j++) {
-          try {
-            log.info("trying to execute " + (j + 1) + ": "
-                + sql[j].substring(0, Math.min(sql[j].length()-1, 1000)));
-            if(sql[j].trim().toUpperCase().startsWith("COPY ")){
-              copyIn(sql[j], connection);
-            }
-            else{
-              statement.executeUpdate(sql[j]); //NOSONAR
-            }
-            log.info("Successfully executed " + (j + 1) + ": "
-                + sql[j].substring(0, Math.min(sql[j].length()-1, 400)));
-          } catch (Exception e) {
-            results.add(sql[j]);
-            error = true;
-            log.error(e.getMessage(),e);
-            if(stopOnError){
-              break;
-            }
+    getInstance(vertx).getClient().getConnection()
+        .compose(conn -> conn.begin()
+            .compose(tx -> {
+              Future<Void> future = Future.succeededFuture();
+              for (int i = 0; i < sql.length; i++) {
+                String stmt = sql[i];
+                future = future.compose(x -> {
+                  log.info("trying to execute: {}" + stmt);
+                  return conn.query(stmt).execute()
+                      .compose(good -> {
+                        log.info("Successfully executed {}", stmt);
+                        return Future.succeededFuture();
+                      }, res -> {
+                        log.error(res.getMessage(), res);
+                        results.add(stmt);
+                        if (stopOnError) {
+                          return Future.failedFuture(stmt);
+                        } else {
+                          return Future.succeededFuture();
+                        }
+                      }).mapEmpty();
+                });
+              }
+              return future
+                  .compose(x -> {
+                    if (results.isEmpty()) {
+                      return tx.commit();
+                    } else {
+                      return tx.rollback();
+                    }
+                  }, x -> tx.rollback())
+                  .eventually(y -> conn.close());
+            }))
+        .onComplete(x -> {
+          if (x.failed()) {
+            log.error(x.cause().getMessage(), x.cause());
           }
-        }
-        try {
-          if(error){
-            connection.rollback();
-            log.error("Rollback for: " + Arrays.hashCode(sql));
-          }
-          else{
-            connection.commit();
-            log.info("Successfully committed: " + Arrays.hashCode(sql));
-          }
-        } catch (Exception e) {
-          error = true;
-          log.error("Commit failed " + Arrays.hashCode(sql) + SPACE + e.getMessage(), e);
-        }
-      }
-      catch(Exception e){
-        log.error(e.getMessage(), e);
-        error = true;
-      }
-      finally {
-        try {
-          if(statement != null) statement.close();
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-        }
-        try {
-          if(connection != null) connection.close();
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-        }
-        if(error){
-          dothis.fail("error");
-        }
-        else{
-          dothis.complete();
-        }
-      }
-    }, done -> {
-      logTimer(EXECUTE_STAT_METHOD, "" + Arrays.hashCode(sql), s);
-      replyHandler.handle(Future.succeededFuture(results));
-    });
-  }
-
-  private static void rememberEmbeddedPostgres() {
-     embeddedPostgres = new EmbeddedPostgres(Version.Main.V10);
+          logTimer(EXECUTE_STAT_METHOD, "" + Arrays.hashCode(sql), s);
+          replyHandler.handle(Future.succeededFuture(results));
+        });
   }
 
   /**
    * Start an embedded PostgreSQL.
-   * doesn't change the configuration.
-   *
-   * @throws IOException  when starting embedded PostgreSQL fails
+   * Changes HOST and PORT oc configuration
    */
   public void startEmbeddedPostgres() throws IOException {
     // starting Postgres
     setIsEmbedded(true);
-    if (embeddedPostgres == null) {
-      int port = postgreSQLClientConfig.getInteger(PORT);
+
+    if (!postgresTester.isStarted()) {
       String username = postgreSQLClientConfig.getString(USERNAME);
       String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
-      String locale = "en_US.UTF-8";
-      String operatingSystem = System.getProperty("os.name").toLowerCase();
-      if (operatingSystem.contains("win")) {
-        locale = "american_usa";
-      }
-      rememberEmbeddedPostgres();
-      embeddedPostgres.start("localhost", port, database, username, password,
-        Arrays.asList("-E", "UTF-8", "--locale", locale));
+      postgresTester.start(database, username, password);
       Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
-
-      log.info("embedded postgres started on port " + port);
-    } else {
-      log.info("embedded postgres is already running...");
     }
-  }
-
-  /**
-   * .sql files
-   * @param path
-   */
-  public void importFileEmbedded(String path) {
-    // starting Postgres
-    if (embeddedMode) {
-      if (embeddedPostgres != null) {
-        Optional<PostgresProcess> optionalPostgresProcess = embeddedPostgres.getProcess();
-        if (optionalPostgresProcess.isPresent()) {
-          log.info("embedded postgress import starting....");
-          PostgresProcess postgresProcess = optionalPostgresProcess.get();
-          postgresProcess.importFromFile(new File(path));
-          log.info("embedded postgress import complete....");
-        } else {
-          log.warn("embedded postgress is not running...");
-        }
-      } else {
-        log.info("embedded postgress not enabled");
-      }
-    }
-  }
-
-  /**
-   * This is a blocking call - run in an execBlocking statement
-   * import data in a tab delimited file into columns of an existing table
-   * Using only default values of the COPY FROM STDIN Postgres command
-   * @param path - path to the file
-   * @param tableName - name of the table to import the content into
-   */
-  public void importFile(String path, String tableName) {
-
-    long recordsImported[] = new long[]{-1};
-    vertx.<String>executeBlocking(dothis -> {
-      try {
-        String host = postgreSQLClientConfig.getString(HOST);
-        int port = postgreSQLClientConfig.getInteger(PORT);
-        String user = postgreSQLClientConfig.getString(USERNAME);
-        String pass = postgreSQLClientConfig.getString(PASSWORD);
-        String db = postgreSQLClientConfig.getString(DATABASE);
-
-        log.info("Connecting to " + db);
-
-        Connection con = DriverManager.getConnection(
-          "jdbc:postgresql://"+host+":"+port+"/"+db, user , pass);
-
-        log.info("Copying text data rows from stdin");
-
-        CopyManager copyManager = new CopyManager((BaseConnection) con);
-
-        FileReader fileReader = new FileReader(path);
-        recordsImported[0] = copyManager.copyIn("COPY "+tableName+" FROM STDIN", fileReader );
-
-      } catch (Exception e) {
-        log.error(messages.getMessage("en", MessageConsts.ImportFailed), e);
-        dothis.fail(e);
-      }
-      dothis.complete("Done.");
-
-    }, whendone -> {
-
-      if(whendone.succeeded()){
-        log.info("Done importing file: " + path + ". Number of records imported: " + recordsImported[0]);
-      }
-      else{
-        log.info("Failed importing file: " + path);
-      }
-
-    });
-
+    postgreSQLClientConfig.put(PORT, postgresTester.getPort());
+    postgreSQLClientConfig.put(HOST, postgresTester.getHost());
   }
 
   public static void stopEmbeddedPostgres() {
-    if (embeddedPostgres != null) {
+    if (postgresTester != null) {
       closeAllClients();
       LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
-      embeddedPostgres.stop();
-      embeddedPostgres = null;
       embeddedMode = false;
+      postgresTester.close();
+      postgresTester = null;
     }
   }
 

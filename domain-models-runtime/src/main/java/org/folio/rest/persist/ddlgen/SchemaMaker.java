@@ -40,11 +40,9 @@ public class SchemaMaker {
   private Schema previousSchema;
   private String schemaJson = "{}";
 
-  /**
-   * @param onTable
-   */
-  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion, String newVersion){
-    if(SchemaMaker.cfg == null){
+  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion,
+                     String newVersion) {
+    if(SchemaMaker.cfg == null) {
       //do this ONLY ONCE
       SchemaMaker.cfg = new Configuration(new Version(2, 3, 26));
       // Where do we load the templates from:
@@ -61,35 +59,32 @@ public class SchemaMaker {
     this.rmbVersion = RmbVersion.getRmbVersion();
   }
 
-  public String generateDDL() throws IOException, TemplateException {
-    return generateDDL(false);
+  public String generatePurge() throws IOException, TemplateException {
+    return generateDDL("delete.ftl");
   }
 
-  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException {
+  public String generateSchemas() throws IOException, TemplateException {
+    return generateDDL("schemas.ftl");
+  }
 
+  public String generateCreate() throws IOException, TemplateException {
+    return generateDDL("create.ftl");
+  }
+
+  private String generateDDL(String template) throws IOException, TemplateException {
     templateInput.put("myuniversity", this.tenant);
 
     templateInput.put("mymodule", this.module);
 
     templateInput.put("mode", this.mode);
 
-    if("delete".equalsIgnoreCase(this.mode.name())){
-      return handleDelete();
-    }
-
-    if(this.schema == null){
-      //log this
-      System.out.print("Must call setSchema() first...");
-      return null;
-    }
-
     String pVersion = this.previousVersion;
 
-    if(pVersion == null){
+    if (pVersion == null) {
       //will be null on deletes unless its read from db by rmb
       pVersion = "0.0";
     }
-    if(newVersion == null){
+    if (newVersion == null) {
       newVersion = "0.0";
     }
 
@@ -103,11 +98,6 @@ public class SchemaMaker {
 
     templateInput.put("schemaJson", this.getSchemaJson());
 
-    schema.setup();
-    if (previousSchema != null) {
-      previousSchema.setup();
-    }
-
     templateInput.put("tables", tables());
 
     templateInput.put("views", this.schema.getViews());
@@ -116,10 +106,6 @@ public class SchemaMaker {
 
     templateInput.put("exactCount", this.schema.getExactCount()+"");
 
-    String template = "main.ftl";
-    if(recreateIndexMode){
-      template = "indexes_only.ftl";
-    }
     Template tableTemplate = cfg.getTemplate(template);
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
@@ -127,11 +113,8 @@ public class SchemaMaker {
     return writer.toString();
   }
 
-  private String handleDelete() throws IOException, TemplateException {
-    Writer writer = new StringWriter();
-    Template tableTemplate = cfg.getTemplate("delete.ftl");
-    tableTemplate.process(templateInput, writer);
-    return writer.toString();
+  public String generateIndexesOnly() throws IOException, TemplateException {
+    return generateDDL("indexes_only.ftl");
   }
 
   /**
@@ -213,6 +196,7 @@ public class SchemaMaker {
 
   public void setSchema(Schema schema) {
     this.schema = schema;
+    schema.setup();
   }
 
   public Schema getPreviousSchema() {
@@ -221,6 +205,9 @@ public class SchemaMaker {
 
   public void setPreviousSchema(Schema previousSchema) {
     this.previousSchema = previousSchema;
+    if (previousSchema !=  null) {
+      previousSchema.setup();
+    }
   }
 
   public String getSchemaJson() {

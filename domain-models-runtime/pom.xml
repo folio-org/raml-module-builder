@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>32.0.0-SNAPSHOT</version>
+    <version>32.2.0-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -22,7 +22,6 @@
     <filebeat_log_path>${basedir}/logs/filebeat</filebeat_log_path>
     <filebeat_registry_file>${basedir}/logs/filebeat/registry</filebeat_registry_file>
     <logstash_instance>ec2-52-27-98-246.us-west-2.compute.amazonaws.com:5044</logstash_instance>
-    <postgresql.version>9.4.1209</postgresql.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <generate_routing_context>/rmbtests/test</generate_routing_context>
   </properties>
@@ -131,12 +130,6 @@
       <artifactId>de.flapdoodle.embed.process</artifactId>
       <version>2.0.5</version>
     </dependency>
-
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>${postgresql.version}</version>
-    </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-pg-client</artifactId>
@@ -177,6 +170,12 @@
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>testing</artifactId>
+      <version>${project.parent.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>postgres-testing</artifactId>
       <version>${project.parent.version}</version>
       <scope>test</scope>
     </dependency>

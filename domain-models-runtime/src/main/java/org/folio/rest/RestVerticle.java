@@ -21,10 +21,6 @@ import java.util.function.Consumer;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.mail.MessagingException;
-import javax.mail.internet.InternetHeaders;
-import javax.mail.internet.MimeBodyPart;
-import javax.mail.internet.MimeMultipart;
 import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.ValidatorFactory;
@@ -34,8 +30,8 @@ import javax.ws.rs.core.Response;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.base.Joiner;
-import com.google.common.io.ByteStreams;
 
+import io.vertx.core.Future;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
@@ -52,7 +48,6 @@ import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.client.test.HttpClientMock2;
-import org.folio.rest.tools.codecs.PojoEventBusCodec;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.AsyncResponseResult;
@@ -67,21 +62,17 @@ import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
-import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.util.StringUtil;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.MultiMap;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.eventbus.EventBus;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
-import io.vertx.core.http.HttpServerFileUpload;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
@@ -89,7 +80,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.StaticHandler;
 
 public class RestVerticle extends AbstractVerticle {
@@ -100,7 +90,6 @@ public class RestVerticle extends AbstractVerticle {
 
   public static final String        OKAPI_HEADER_TENANT             = "x-okapi-tenant";
   public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
-  public static final String        OKAPI_HEADER_PERMISSIONS        = "X-Okapi-Permissions";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
   public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
   public static final String        OKAPI_REQUESTID_HEADER          = "X-Okapi-Request-Id";
@@ -110,12 +99,9 @@ public class RestVerticle extends AbstractVerticle {
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
-  private static final String       SUPPORTED_CONTENT_TYPE_FORMDATA = "multipart/form-data";
   private static final String       SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
-  private static final String       SUPPORTED_CONTENT_TYPE_JSON_API_DEF = "application/vnd.api+json";
+  private static final String       DEFAULT_CONTENT_TYPE            = "application/json";
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
-  private static final String       SUPPORTED_CONTENT_TYPE_XML_DEF  = "application/xml";
-  private static final String       SUPPORTED_CONTENT_TYPE_FORM     = "application/x-www-form-urlencoded";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static final String       HTTP_PORT_SETTING               = "http.port";
   private static final String       CLASS                           = "class";
@@ -142,15 +128,6 @@ public class RestVerticle extends AbstractVerticle {
   private static String             deploymentId                     = "";
 
   private final Messages            messages                        = Messages.getInstance();
-
-  private EventBus eventBus;
-
-  // this is only to run via IDE - otherwise see pom which runs the verticle and
-  // requires passing -cluster and preferable -cluster-home args
-  public static void main(String[] args) {
-    Vertx vertx = VertxUtils.getVertxWithExceptionHandler();
-    vertx.deployVerticle(new RestVerticle());
-  }
 
   static {
     //validationFactory used to validate the pojos which are created from the json
@@ -201,42 +178,8 @@ public class RestVerticle extends AbstractVerticle {
     // Create a router object.
     Router router = Router.router(vertx);
 
-    eventBus = vertx.eventBus();
-
     log.info(context.getInstanceCount() + " verticles deployed ");
 
-    try {
-      //register codec to be able to pass pojos on the event bus
-      eventBus.registerCodec(new PojoEventBusCodec());
-    } catch (Exception e3) {
-      if (e3.getMessage().startsWith("Already a codec registered with name")) {
-        //needed in case we run multiple verticle instances
-        //in this vertx instace - re-registering the same codec twice throws an
-        //exception
-        log.info("Attempt to register PojoEventBusCodec again... this is acceptable ");
-      }
-      else{
-        throw e3;
-      }
-    }
-
-    // needed so that we get the body content of the request - note that this
-    // will read the entire body into memory
-    final BodyHandler handler = BodyHandler.create();
-
-    // IMPORTANT!!!
-    // the body of the request will be read into memory for ALL PUT, ALL PATCH requests
-    // and for POST requests with the content-types below ONLY!!!
-    // multipart, for example will not be read by the body handler as vertx saves
-    // multiparts and www-encoded to disk - hence multiparts will be handled differently
-    // see uploadHandler further down
-    router.put().handler(handler);
-    router.patch().handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_DEF).handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_JSON_API_DEF).handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_TEXT_DEF).handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_XML_DEF).handler(handler);
-    router.post().consumes(SUPPORTED_CONTENT_TYPE_FORM).handler(handler);
     // run pluggable startup code in a class implementing the InitAPI interface
     // in the "org.folio.rest.impl" package
     runHook(vv -> {
@@ -434,12 +377,6 @@ public class RestVerticle extends AbstractVerticle {
                 //are as described in the raml
                 checkAcceptContentType(produces, consumes, rc, validRequest);
 
-                // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
-                //to the requested URL - array will be populated by parseParams() function
-                Iterator<Map.Entry<String, Object>> paramList = params.iterator();
-                Object[] paramArray = new Object[params.size()];
-                parseParams(rc, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
-
                 //Get method in class to be run for this requested API endpoint
                 Method[] method2Run = new Method[]{null};
                 for (int i = 0; i < methods.length; i++) {
@@ -456,11 +393,7 @@ public class RestVerticle extends AbstractVerticle {
                 final boolean[] isContentUpload = new boolean[] { false };
                 final int[] uploadParamPosition = new int[] { -1 };
                 params.forEach(param -> {
-                  if (((JsonObject) param.getValue()).getString("type").equals(FILE_UPLOAD_PARAM)) {
-                    isContentUpload[0] = true;
-                    uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
-                  }
-                  else if(((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")){
+                  if(((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")){
                     //application/octet-stream passed - this is handled in a stream like manner
                     //and the corresponding function called must annotate with a @Stream - and be able
                     //to handle the function being called repeatedly on parts of the data
@@ -469,63 +402,38 @@ public class RestVerticle extends AbstractVerticle {
                   }
                 });
 
-                // file upload requested (multipart/form-data) but the url is not to the /admin/upload
-                // meaning, an implementing module is using its own upload handling, so read the content and
-                // pass to implementing function just like any other call
-                if (isContentUpload[0] && !streamData) {
+                // create the array and then populate it by parsing the url parameters which are needed to invoke the function mapped
+                //to the requested URL - array will be populated by parseParams() function
+                Iterator<Map.Entry<String, Object>> paramList = params.iterator();
+                Object[] paramArray = new Object[params.size()];
 
-                  //if file upload - set needed handlers
-                  // looks something like -> multipart/form-data; boundary=----WebKitFormBoundaryzeZR8KqAYJyI2jPL
-                  if (consumes != null && consumes.contains(SUPPORTED_CONTENT_TYPE_FORMDATA)) {
-                    //multipart
-                    handleMultipartUpload(rc, request, uploadParamPosition, paramArray, validRequest);
-                    request.endHandler( a -> {
-                      if (validRequest[0]) {
-                        //if request is valid - invoke it
-                        try {
-                          invoke(method2Run[0], paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
-                            withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
-                            sendResponse(rc, v, start, tenantId[0]);
-                          });
-                        } catch (Exception e1) {
-                          withRequestId(rc, () -> log.error(e1.getMessage(), e1));
-                          rc.response().end();
-                        }
-                      }
-                    });
-                  }
-
-                  else {
-                    //assume input stream
-                    handleInputStreamUpload(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
-                      uploadParamPosition, paramArray, validRequest, start);
-                  }
-                }
-                else if(streamData){
-
+                if (streamData) {
+                  parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
                   handleStream(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
                     uploadParamPosition, paramArray, validRequest, start);
-
-                }
-                else{
-                  if (validRequest[0]) {
-                    //if request is valid - invoke it
-                    try {
-                      invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
-                        withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
-                        sendResponse(rc, v, start, tenantId[0]);
-                      });
-                    } catch (Exception e1) {
-                      withRequestId(rc, () -> log.error(e1.getMessage(), e1));
-                      rc.response().end();
+                } else {
+                  // regular request (no streaming).. Read the request body before checking params + body
+                  Buffer body = Buffer.buffer();
+                  rc.request().handler(body::appendBuffer);
+                  rc.request().endHandler(endRes -> {
+                    parseParams(rc, body, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
+                    if (validRequest[0]) {
+                      //if request is valid - invoke it
+                      try {
+                        invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
+                          withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
+                          sendResponse(rc, v, start, tenantId[0]);
+                        });
+                      } catch (Exception e1) {
+                        withRequestId(rc, () -> log.error(e1.getMessage(), e1));
+                        rc.response().end();
+                      }
+                    } else {
+                      endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
+                          validRequest);
                     }
-                  }
+                  });
                 }
-              }
-              else{
-                endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.UnableToProcessRequest),
-                  validRequest);
-                return;
               }
             }
           } catch (Exception e) {
@@ -591,51 +499,6 @@ public class RestVerticle extends AbstractVerticle {
       }
     });
   }
-  /**
-   * @param method2Run
-   * @param rc
-   * @param request
-   * @param okapiHeaders
-   * @param tenantId
-   * @param instance
-   * @param uploadParamPosition
-   * @param paramArray
-   * @param validRequest
-   * @param start
-   */
-  private void handleInputStreamUpload(Method method2Run, RoutingContext rc, HttpServerRequest request,
-      Object instance, String[] tenantId, Map<String, String> okapiHeaders,
-      int[] uploadParamPosition, Object[] paramArray, boolean[] validRequest, long start) {
-
-    final Buffer content = Buffer.buffer();
-
-    request.handler(new Handler<Buffer>() {
-      @Override
-      public void handle(Buffer buff) {
-        content.appendBuffer(buff);
-      }
-    });
-    request.endHandler( e -> {
-      paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(content.getBytes());
-      try {
-        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, new StreamStatus(), v -> {
-          withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run));
-          sendResponse(rc, v, start, tenantId[0]);
-        });
-      } catch (Exception e1) {
-        withRequestId(rc, () -> log.error(e1.getMessage(), e1));
-        rc.response().end();
-      }
-    });
-
-    request.exceptionHandler(new Handler<Throwable>(){
-      @Override
-      public void handle(Throwable event) {
-        endRequestWithError(rc, 400, true, event.getMessage(), validRequest);
-      }
-    });
-
-  }
 
   private void readInGitProps(){
     InputStream in = getClass().getClassLoader().getResourceAsStream("git.properties");
@@ -649,70 +512,6 @@ public class RestVerticle extends AbstractVerticle {
       } catch (Exception e) {
         log.warn(e.getMessage());
       }
-    }
-  }
-
-  /**
-   * @param request
-   * @param uploadParamPosition
-   * @param paramArray
-   * @param validRequest
-   */
-  private void handleMultipartUpload(RoutingContext rc,
-      HttpServerRequest request, int[] uploadParamPosition, Object[] paramArray, boolean[] validRequest) {
-    request.setExpectMultipart(true);
-    MimeMultipart mmp = new MimeMultipart();
-    //place the mmp as an argument to the 'to be called' function - at the correct position
-    paramArray[uploadParamPosition[0]] = mmp;
-    request.uploadHandler(new MultiPartHandler(rc, mmp, validRequest));
-  }
-
-  class MultiPartHandler implements Handler<io.vertx.core.http.HttpServerFileUpload> {
-
-    MimeMultipart mmp;
-    RoutingContext rc;
-    boolean[] validRequest;
-    Buffer content = Buffer.buffer();
-
-    public MultiPartHandler(RoutingContext rc, MimeMultipart mmp, boolean[] validRequest){
-      this.rc = rc;
-      this.mmp = mmp;
-      this.validRequest = validRequest;
-    }
-
-    @Override
-    public void handle(HttpServerFileUpload upload) {
-      upload.handler(new Handler<Buffer>() {
-        @Override
-        public void handle(Buffer buff) { /** called as data comes in */
-          if(content == null){
-            content = Buffer.buffer();
-          }
-          content.appendBuffer(buff);
-        }
-      });
-      upload.exceptionHandler(new Handler<Throwable>() {
-        @Override
-        public void handle(Throwable event) {
-          endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage(), validRequest);
-        }
-      });
-      /** endHandler called for each part in the multipart, so if uploading 2 files - will be called twice */
-      upload.endHandler(new Handler<Void>() {
-        @Override
-        public void handle(Void event) {
-          InternetHeaders headers = new InternetHeaders();
-          MimeBodyPart mbp = null;
-          try {
-            mbp = new MimeBodyPart(headers, content.getBytes());
-            mbp.setFileName(upload.filename());
-            mmp.addBodyPart(mbp);
-            content = null;
-          } catch (MessagingException e) {
-            withRequestId(rc, () -> log.error(e.getMessage(), e));
-          }
-        }
-      });
     }
   }
 
@@ -935,16 +734,6 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  public JsonObject loadConfig(String configFile) {
-    try {
-      byte[] jsonData = ByteStreams.toByteArray(getClass().getClassLoader().getResourceAsStream(configFile));
-      return new JsonObject(new String(jsonData));
-    } catch (IOException e) {
-      log.error(e.getMessage(), e);
-    }
-    return new JsonObject();
-  }
-
   private MappedClasses populateConfig() {
     MappedClasses mappedURLs = new MappedClasses();
     JsonObject jObjClasses = new JsonObject();
@@ -1094,7 +883,6 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   private void cmdProcessing() throws IOException {
-    String importDataPath = null;
     // TODO need to add a normal command line parser
     List<String> cmdParams = processArgs();
 
@@ -1123,15 +911,6 @@ public class RestVerticle extends AbstractVerticle {
           PostgresClient.setIsEmbedded(true);
           PostgresClient.setConfigFilePath(null);
         }
-        else if (param != null && param.startsWith("postgres_import_path=")) {
-          try {
-            importDataPath = param.split("=")[1];
-            System.out.println("Setting path to import DB file....  " + importDataPath);
-          } catch (Exception e) {
-            // any problems - print exception and continue
-            log.error(e.getMessage(), e);
-          }
-        }
         else{
           //assume module specific cmd line args with '=' separator
           String []arg = param.split("=");
@@ -1144,16 +923,6 @@ public class RestVerticle extends AbstractVerticle {
                 + "JVM argument, pass it before the jar, not after");
           }
         }
-      }
-
-      if (PostgresClient.isEmbedded() || importDataPath != null) {
-        PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-      }
-
-      if (importDataPath != null) {
-        // blocks as well for now
-        System.out.println("Import DB file....  " + importDataPath);
-        PostgresClient.getInstance(vertx).importFileEmbedded(importDataPath);
       }
     }
   }
@@ -1185,7 +954,8 @@ public class RestVerticle extends AbstractVerticle {
       // if this was left out by the client they must add for request to return
       // clean up simple stuff from the clients header - trim the string and remove ';' in case
       // it was put there as a suffix
-      String contentType = StringUtils.defaultString(request.getHeader("Content-type")).replaceFirst(";.*", "").trim();
+      String contentType = StringUtils.defaultString(request.getHeader("Content-type"), DEFAULT_CONTENT_TYPE)
+          .replaceFirst(";.*", "").trim();
       if (!consumes.contains(removeBoundry(contentType))) {
         endRequestWithError(rc, 400, true, messages.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType),
           validRequest);
@@ -1194,7 +964,7 @@ public class RestVerticle extends AbstractVerticle {
 
     // type of data expected to be returned by the server
     if (produces != null && validRequest[0]) {
-      String accept = StringUtils.defaultString(request.getHeader("Accept"));
+      String accept = StringUtils.defaultString(request.getHeader("Accept"), "*/*");
       if (acceptCheck(produces, accept) == null) {
         // use contains because multiple values may be passed here
         // for example json/application; text/plain mismatch of content type found
@@ -1204,7 +974,7 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  private void parseParams(RoutingContext rc, Iterator<Map.Entry<String, Object>> paramList, boolean[] validRequest, JsonArray consumes,
+  private void parseParams(RoutingContext rc, Buffer body, Iterator<Map.Entry<String, Object>> paramList, boolean[] validRequest, JsonArray consumes,
       Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
 
     HttpServerRequest request = rc.request();
@@ -1236,7 +1006,7 @@ public class RestVerticle extends AbstractVerticle {
               // we have special handling for the Result Handler and context, it is also assumed that
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
-              String bodyContent = rc.getBodyAsString();
+              String bodyContent = body == null ? null : body.toString();
               withRequestId(rc, () -> log.debug(rc.request().path() + " -------- bodyContent -------- " + bodyContent));
               if(bodyContent != null){
                 if("java.io.Reader".equals(valueType)){

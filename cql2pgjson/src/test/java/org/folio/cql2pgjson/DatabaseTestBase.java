@@ -15,11 +15,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.folio.util.ResourceUtil;
-
-import ru.yandex.qatools.embed.postgresql.PostgresExecutable;
-import ru.yandex.qatools.embed.postgresql.PostgresProcess;
-import ru.yandex.qatools.embed.postgresql.PostgresStarter;
-import ru.yandex.qatools.embed.postgresql.config.PostgresConfig;
+import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
  * Provide conn with a java.sql.Connection to the test database.
@@ -30,7 +26,7 @@ public class DatabaseTestBase {
   private static final String DB_NAME = "test_cql2pgjson";
   private static final String EMBEDDED_USERNAME = "test";
   private static final String EMBEDDED_PASSWORD = "test";
-  private static PostgresProcess postgresProcess;
+  private static PostgreSQLContainer<?> postgresSQLContainer;
   /** java.sql.Connection to be used for the tests */
   static Connection conn;
 
@@ -146,27 +142,22 @@ public class DatabaseTestBase {
       }
     }
 
-    // start embedded Postgres
     try {
-      final PostgresStarter<PostgresExecutable, PostgresProcess> runtime = PostgresStarter.getDefaultInstance();
-      final PostgresConfig config = PostgresConfig.defaultWithDbName(DB_NAME, EMBEDDED_USERNAME, EMBEDDED_PASSWORD);
-      config.getAdditionalInitDbParams().addAll(Arrays.asList(  // no not use the operating system's locale
-          "-E", "UTF-8",
-          "--locale=C",
-          "--lc-collate=C",
-          "--lc-ctype=C"
-      ));
+      postgresSQLContainer = new PostgreSQLContainer<>("postgres:12-alpine")
+          .withDatabaseName(DB_NAME)
+          .withUsername(EMBEDDED_USERNAME)
+          .withPassword(EMBEDDED_PASSWORD);
+      postgresSQLContainer.start();
+
       String url = url(
-          config.net().host(),
-          config.net().port(),
-          config.storage().dbName(),
-          config.credentials().username(),
-          config.credentials().password()
+          postgresSQLContainer.getHost(),
+          postgresSQLContainer.getFirstMappedPort(),
+          postgresSQLContainer.getDatabaseName(),
+          postgresSQLContainer.getUsername(),
+          postgresSQLContainer.getPassword()
           );
-      PostgresExecutable exec = runtime.prepare(config);
-      postgresProcess = exec.start();
       conn = DriverManager.getConnection(url);
-    } catch (IOException | SQLException e) {
+    } catch (SQLException e) {
       throw new SQLRuntimeException(e.getMessage(), e);
     }
   }
@@ -191,9 +182,9 @@ public class DatabaseTestBase {
       }
       conn = null;
     }
-    if (postgresProcess != null) {
-      postgresProcess.stop();
-      postgresProcess = null;
+    if (postgresSQLContainer != null) {
+      postgresSQLContainer.stop();
+      postgresSQLContainer = null;
     }
   }
 
@@ -212,7 +203,7 @@ public class DatabaseTestBase {
 
   /**
    * Run the selectStatement and return the first column of the result.
-   * @param sqlStatement  the SELECT command to run
+   * @param selectStatement  the SELECT command to run
    * @return the first column of the result, converted into Strings
    * @throws SQLRuntimeException on SQLException
    */

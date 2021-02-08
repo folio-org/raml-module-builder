@@ -1,3 +1,30 @@
+## 32.1.0 2021-01-05
+
+ * [RMB-782](https://issues.folio.org/browse/RMB-782) Make postTenantSync public
+ * [RMB-781](https://issues.folio.org/browse/RMB-781) Mention raml-util update for RMB upgrade notes
+ * [RMB-642](https://issues.folio.org/browse/RMB-642) Remove JDBC driver, use vertx-pg-client for running migrations
+ * [RMB-780](https://issues.folio.org/browse/RMB-780) NPE in logs after migrating to RMB v32.0.0
+
+## 32.0.0 2020-12-21
+
+New features (some of which are breaking changes):
+
+ * [RMB-609](https://issues.folio.org/browse/RMB-609) Update to Vert.x 4.0.0
+ * [RMB-655](https://issues.folio.org/browse/RMB-655) Add default metrics to RMB: Outgoing API calls
+ * [RMB-669](https://issues.folio.org/browse/RMB-669) Add default metrics to RMB: incoming API calls
+ * [RMB-720](https://issues.folio.org/browse/RMB-720) Replace DropWizard with Micrometer InfluxDB metrics options
+ * [RMB-727](https://issues.folio.org/browse/RMB-727) Implement support for optimistic locking
+ * [RMB-754](https://issues.folio.org/browse/RMB-754) Provide implementation for the async tenant API
+ * [RMB-772](https://issues.folio.org/browse/RMB-772) Persist tenant operation
+ * [RMB-759](https://issues.folio.org/browse/RMB-759) Consistent format for createdDate and updatedDate metadata
+ * [RMB-389](https://issues.folio.org/browse/RMB-389) PgUtil.delete by CQL
+ * Use okapi-common 4.5.0 (which is also using Vert.x 4.0.0)
+
+Fixes:
+
+ * [RMB-744](https://issues.folio.org/browse/RMB-744) Q2 to Q3 upgrade - "POST request for module_version /_/tenant failed with REVOKE ALL PRIVILEGES ON SCHEMA public FROM module_schema;"
+ * [RMB-728](https://issues.folio.org/browse/RMB-728) Unable to use 'var' keyword when a module uses aspects plugin
+
 ## 31.1.0 2020-09-16
 
  * [RMB-699](https://issues.folio.org/browse/RMB-699) Fix Module name detection broken

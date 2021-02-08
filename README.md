@@ -1,7 +1,7 @@
 
 # Raml-Module-Builder
 
-Copyright (C) 2016-2020 The Open Library Foundation
+Copyright (C) 2016-2021 The Open Library Foundation
 
 [ClassPath.java](domain-models-interface-extensions/src/main/java/org/folio/rest/tools/utils/ClassPath.java) and
 [ClassPathTest.java](domain-models-interface-extensions/src/test/java/org/folio/rest/tools/utils/ClassPathTest.java)
@@ -34,7 +34,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Adding code to run periodically](#adding-code-to-run-periodically)
 * [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
 * [Adding a shutdown hook](#adding-a-shutdown-hook)
-* [Implementing file uploads](#implementing-file-uploads)
+* [Implementing uploads](#implementing-uploads)
 * [Implement chunked bulk download](#implement-chunked-bulk-download)
 * [PostgreSQL integration](#postgresql-integration)
     * [Credentials](#credentials)
@@ -63,6 +63,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Query Syntax](#query-syntax)
 * [Estimated totalRecords](#estimated-totalrecords)
 * [Metadata](#metadata)
+* [Optimistic Locking](#optimistic-locking)
 * [Facet Support](#facet-support)
 * [JSON Schema fields](#json-schema-fields)
 * [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
@@ -292,7 +293,9 @@ Environment variables with periods/dots in their names are deprecated in RMB bec
 
 See the [Vert.x Async PostgreSQL Client Configuration documentation](https://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration) for the details.
 
-The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
+The environment variable `DB_MAXPOOLSIZE` sets the maximum number of concurrent connections for a tenant that one module instance opens. They are only opened if needed. If all connections for a tenant are in use further requests for that tenant will wait until one connnection becomes free. Other tenants and other instances of a module are unaffected. The default is 4.
+
+The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. A connection becomes idle if the query ends, it is not idle if it is waiting for a response. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
 
 The environment variable `DB_EXPLAIN_QUERY_THRESHOLD` is not observed by
 Postgres itself, but is a value - in milliseconds - that triggers query
@@ -654,61 +657,15 @@ public class ShutdownImpl implements ShutdownAPI {
 Note that when implementing the generated interfaces it is possible to add a constructor to the implementing class. This constructor will be called for every API call. This is another way you can implement custom code that will run per request.
 
 
-## Implementing file uploads
+## Implementing uploads
 
-The RMB supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
+The RMB allows for content to be streamed to a specific implemented interface.
+For example, to upload a large file without having to save it all in memory:
 
-#### File uploads Option 1
+ - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
+ - Declare the RAML as receiving `application/octet-stream`.
 
-A multipart RAML declaration may look something like this:
-
-```raml
-/uploadmultipart:
-    description: Uploads a file
-    post:
-      description: |
-          Uploads a file
-      body:
-        multipart/form-data:
-          formParameters:
-            file:
-              description: The file to be uploaded
-              required: true
-              type: file
-```
-
-The body content would look something like this:
-
-```sh
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-Content-Disposition: form-data; name="config.json"; filename="kv_configuration.sample"
-Content-Type: application/octet-stream
-
-<file content 1>
-
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-Content-Disposition: form-data; name="sample.drl"; filename="Sample.drl"
-Content-Type: application/octet-stream
-
-<file content 2>
-
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-```
-
-There will be a `MimeMultipart` parameter passed into the generated interfaces. An implementing
-module can access its content in the following manner:
-
-```sh
-int parts = entity.getCount();
-for (int i = 0; i < parts; i++) {
-        BodyPart part = entity.getBodyPart(i);
-        Object o = part.getContent();
-}
-```
-
-where each section in the body (separated by the boundary) is a "part".
-
-An octet/stream can look something like this:
+Example RAML:
 
 ```raml
  /uploadOctet:
@@ -720,17 +677,6 @@ An octet/stream can look something like this:
         application/octet-stream:
 ```
 
-The interfaces generated from the above will contain a parameter of type `java.io.InputStream`
-representing the uploaded file.
-
-
-#### File uploads Option 2
-
-The RMB allows for content to be streamed to a specific implemented interface.
-For example, to upload a large file without having to save it all in memory:
-
- - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
- - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
 
 The RMB will then call the function every time a chunk of data is received.
 This means that a new Object is instantiated by the RMB for each chunk of
@@ -1100,12 +1046,12 @@ An example of this kind of structure is `contributors ` (property) from
 mod-inventory-storage . `contributorTypeId` is the type of contributor
 (type1).
 
-With CQL you can limit searches to `property1` with regular match in
-`subfield`, with type1=value2 with
+With CQL you can limit searches to `property` with regular match in
+`subfield`, with type1=value1 with
 
     property =/@type1=value1 value
 
-Observe that the relation modifier is preceeded with the @-character to
+Observe that the relation modifier is preceded with the @-character to
 avoid clash with other CQL relation modifiers.
 
 The type1, type2 and subfield must all be defined in schema.json, because
@@ -1201,7 +1147,11 @@ The field in the child table points to the primary key `id` field of the parent 
 * The `foreignKey` entry in schema.json automatically creates an index on the foreign key field.
 * For fast queries, declare an index on any other searched field like `title` in the schema.json file.
 * For a multi-table join, use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
-  It must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance.
+  The `targetPath` array must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance, queries are possible in both directions.
+* When querying in parent → child direction each sub-expression may refer to a different child/grandchild/...:
+Searching for instances using `item.status.name=="Missing" and item.effectiveLocationId="fcd64ce1-6995-48f0-840e-89ffa2288371"`
+will look for an instance that has at least one item that is missing and this or some other item of the instance has the effective location.
+Use a child-to-parent query against the item endpoint if both conditions should apply to the same item record.
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The sortBy clause doesn't support foreign table fields. Use the API endpoint of the records with the field you want to sort on.
 * The schema for the above example:
@@ -1321,7 +1271,7 @@ cleaned up with DELETE.
 
 The RAML defining the API:
 
-   https://github.com/folio-org/raml/blob/raml1.0/ramls/tenant.raml
+   https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml
 
 By default RMB includes an implementation of the Tenant API which assumes Postgres being present.
 Implementation in
@@ -1357,7 +1307,7 @@ later with a call to `getTenantByOperationId`.
 
 Extend the `loadData` method, to load sample/reference data for a module.
 
-```
+```java
 @Validate
 @Override
 Future<Integer> loadData(TenantAttributes attributes, String tenantId,
@@ -1416,6 +1366,23 @@ For example, to copy `reference-data` to `ref-data` in resources:
 </execution>
 ```
 
+#### Unit testing
+
+For unit testing method `TenantAPI.postTenantSync` may be used
+to initialize the tenant. This method is a straight API call and is
+not called via HTTP. Use it before/after using our own provided
+interfaces in `org.folio.rest.impl`. Example:
+
+```java
+  // create
+  TenantAPI tenantAPI = new TenantAPI();
+  TenantAttributes tenantAttributes = new TenantAttributes();
+  tenantAttributes.setModuleTo("mod-2.0.0");
+  tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result ->
+    assertThat(result.getStatus(), is(204))
+  ), vertx.getOrCreateContext());
+
+```
 
 #### The Post Tenant API
 
@@ -1480,6 +1447,7 @@ For each **table** in `tables` property:
 14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all JSON entries in the table
 15. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into `jsonb->'id'` on each insert and update.
 16. `pkColumnName` - No longer supported. The name of the primary key column is always `id` and is copied into `jsonb->'id'` in each insert and update. The method PostgresClient.setIdField(String) no longer exists.
+17. `withOptimisticLocking` - `off` (default), `logOnConflict`, or `failOnConflict`, for details see [Optimistic Locking section](#optimistic-locking) below
 
 The **views** section is a bit more self explanatory, as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```
@@ -1808,6 +1776,63 @@ Replace 1000 by `exactCount` if configured differently.
 ## Metadata
 
 RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT / PATCH) comes into an RMB module, RMB will check if the passed-in JSON's schema declares a reference to the metadata schema. If so, RMB will populate the JSON with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
+
+## Optimistic Locking
+
+RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 409 HTTP response code if 409 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code.
+
+* `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
+* `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction with a customized SQL error code 23F09.
+* `logOnConflict` Optimistic Locking is enabled but the conflicting update succeeds, the version conflict info is logged with a customized SQL error code 23F09. Consult [Vertx logging](https://vertx.io/docs/vertx-core/java/#_logging) and [PostgreSQL Errors and Messages](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html) if `logOnConflict` doesn't log.
+
+_Sample log entries:_
+
+```
+01:14:07 [] [] [] [] WARN  ?                    Backend notice: severity='NOTICE', code='23F09', message='Ignoring optimistic locking conflict while overwriting changed record 57db089f-18e4-7815-55d5-4cc6607e9059: Stored _version is 2, _version of request is "1"' ...
+```
+
+```
+01:15:20 [] [] [] [] ERROR PostgresClient       saveBatch size=2 { "message": "version conflict", "severity": "ERROR", "code": "23F09", "where": "PL/pgSQL function raise_409() line 1 at RAISE", "file": "pl_exec.c", "line": "3337", "routine": "exec_stmt_raise" }
+```
+Use mod-inventory-storage `instance` table as an example, do following to enable optimistic locking
+
+* in db `schema.json`, add `withOptimisticLocking` attribute for `instance` table definition
+
+```
+{
+  "tableName": "instance",
+  "withOptimisticLocking": "logOnConflict",
+  ...
+}
+```
+
+* in `instance.json`, add `_version` field
+
+```
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "An instance record",
+  "type": "object",
+  "properties": {
+   "_version": {
+    "type": "integer",
+    "description": "Record version for optimistic locking"
+   }
+  ...
+}
+```
+
+* update raml file to define 409 response code. For example in `instance-storage.raml` add below for `/{instanceId}` API
+
+```
+put:
+  responses:
+    409:
+      description: "Conflict"
+      body:
+        text/plain:
+          example: "Optimistic locking version has changed"
+```
 
 ## Facet Support
 

@@ -2,12 +2,13 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>32.0.0-SNAPSHOT</version>
+  <version>32.2.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
     <module>testing</module>
     <module>util</module>
+    <module>postgres-testing</module>
     <module>dbschema</module>
     <module>cql2pgjson</module>
     <module>cql2pgjson-cli</module>
@@ -30,7 +31,7 @@
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
     <maven.version>3.6.3</maven.version>
     <postgresql-embedded-version>2.10</postgresql-embedded-version>
-    <vertx.version>4.0.0.CR2</vertx.version>
+    <vertx.version>4.0.0</vertx.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -187,14 +188,20 @@
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-common</artifactId>
-        <version>4.3.0</version>
+        <version>4.5.0</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-collections4</artifactId>
         <version>4.1</version>
       </dependency>
-
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>1.15.1</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
