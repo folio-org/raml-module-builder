@@ -104,12 +104,6 @@ public class RestVerticle extends AbstractVerticle {
   private static final String       SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
   private static final String       FILE_UPLOAD_PARAM               = "javax.mail.internet.MimeMultipart";
   private static final String       HTTP_PORT_SETTING               = "http.port";
-  private static final String       CLASS                           = "class";
-  private static final String       CONSUMES                        = "consumes";
-  private static final String       FUNCTION                        = "function";
-  private static final String       PARAMS                          = "params";
-  private static final String       PRODUCES                        = "produces";
-  private static final String       NON_ANNOTATED                   = "NON_ANNOTATED";
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static final ObjectMapper MAPPER                          = ObjectMapperTool.getMapper();
@@ -343,7 +337,7 @@ public class RestVerticle extends AbstractVerticle {
 
               if (validRequest[0]) {
                 //get interface mapped to this url
-                String iClazz = ret.getString(CLASS);
+                String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
                 // convert from interface to an actual class implementing it, which appears in the impl package
                 aClass = InterfaceToImpl.convert2Impl(
                     DomainModelConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
@@ -358,18 +352,17 @@ public class RestVerticle extends AbstractVerticle {
                   o = aClass.newInstance();
                 }
                 final Object instance = o;
-
                 // function to invoke for the requested url
-                String function = ret.getString(FUNCTION);
+                String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
                 // parameters for the function to invoke
-                JsonObject params = ret.getJsonObject(PARAMS);
+                JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
                 // all methods in the class whose function is mapped to the called url
                 // needed so that we can get a reference to the Method object and call it via reflection
                 Method[] methods = aClass.getMethods();
-                // what the api will return as output (Accept)
-                JsonArray produces = ret.getJsonArray(PRODUCES);
-                // what the api expects to get (content-type)
-                JsonArray consumes = ret.getJsonArray(CONSUMES);
+                // what the api will return as output (Content-Type)
+                JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
+                // what the api expects to get (Accept)
+                JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
 
                 HttpServerRequest request = rc.request();
 
@@ -996,7 +989,7 @@ public class RestVerticle extends AbstractVerticle {
         // entities in HTTP BODY for post and put requests or the 3 injected params
         // (okapi headers, vertx context and vertx handler) - file uploads are also not annotated but are not handled here due
         // to their async upload - so explicitly skip them
-        if (NON_ANNOTATED.equals(paramType) && !FILE_UPLOAD_PARAM.equals(valueType)) {
+        if (AnnotationGrabber.NON_ANNOTATED_PARAM.equals(paramType) && !FILE_UPLOAD_PARAM.equals(valueType)) {
           try {
             // this will also validate the json against the pojo created from the schema
             Class<?> entityClazz = Class.forName(valueType);

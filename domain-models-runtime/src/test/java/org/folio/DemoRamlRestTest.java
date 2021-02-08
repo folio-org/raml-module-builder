@@ -26,7 +26,6 @@ import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -187,13 +186,11 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200, null);
   }
 
-  @Ignore
   @Test
   public void acceptNoMatch(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 400, "text/html");
   }
 
-  @Ignore
   @Test
   public void contentTypeNoMatch(TestContext context) {
     postBook(context, "?validate_field=data.description", 400,  "text/html");
