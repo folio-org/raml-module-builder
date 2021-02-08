@@ -447,20 +447,6 @@
                     <exclude>org/folio/rest/tools/utils/ModuleName.class</exclude>
                   </excludes>
                 </filter>
-                <filter>
-                  <!-- exclude classes from jaxb-xjc that already exist in com.sun.codemodel:codemodel -->
-                  <artifact>com.sun.xml.bind:jaxb-xjc</artifact>
-                  <excludes>
-                    <exclude>com/sun/codemodel/**</exclude>
-                  </excludes>
-                </filter>
-                <filter>
-                  <!-- exclude classes from jaxb-xjc that already exist in com.sun.codemodel:codemodel -->
-                  <artifact>commons-collections:commons-collections</artifact>
-                  <excludes>
-                    <exclude>org/apache/commons/collections/**</exclude>
-                  </excludes>
-                </filter>
               </filters>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
             </configuration>
