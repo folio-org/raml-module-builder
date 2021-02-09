@@ -348,12 +348,12 @@ Adjust the POM file to match your project, e.g. artifactID, version, etc.
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>32.3.0</version>
+      <version>32.2.0</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>postgres-testing</artifactId>
-      <version>32.3.0</version>
+      <version>32.2.0</version>
       <scope>test</scope>
     </dependency>
     ...
@@ -361,7 +361,7 @@ Adjust the POM file to match your project, e.g. artifactID, version, etc.
   </dependencies>
 ```
 
-(postgres-testing is available in version 32.3.0 and later)
+(postgres-testing is available in version 32.2.0 and later)
 
 ### Step 3: Add the plugins to your pom.xml
 
@@ -541,10 +541,12 @@ public class InitAPIs implements InitAPI {
 ## Adding code to run periodically
 
 This API can be used if your module *instance* needs to perform ongoing tasks.
-Consider using Okapi's timer facility if the task to be performed is "per-tenant"
+Consider using Okapi's
+[timer facility](https://github.com/folio-org/okapi/blob/master/doc/guide.md#timer-interface)
+if the task to be performed is "per-tenant"
 and only needs to be executed on one instance and not all instances of the module.
 If the task performs operations on persistent storage, that is typically a sign
-that it should be using the Okapi timer facility (not was is presented in this section).
+that it should be using the Okapi timer facility (not what is presented in this section).
 
 It is possible to add custom code that will run periodically. For example,
 to ongoingly check status of something in the system and act upon that.
