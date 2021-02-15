@@ -425,15 +425,18 @@ public final class PgUtil {
       postgresClient.delete(table, id, reply -> {
         if (reply.failed()) {
           response(table, id, reply.cause(), clazz, respond400, respond500).onComplete(promise);
+          return;
         }
         int deleted = reply.result().rowCount();
         if (deleted == 0) {
           response(NOT_FOUND, respond404, respond500).onComplete(promise);
+          return;
         }
         if (deleted != 1) {
           String message = "Deleted " + deleted + " records in " + table + " for id: " + id;
           logger.fatal(message);
           response(message, respond500, respond500).onComplete(promise);
+          return;
         }
         response(respond204, respond500).onComplete(promise);
       });
@@ -678,6 +681,7 @@ public final class PgUtil {
           response.setStatusCode(400);
           response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
           response.end(message);
+          return;
         }
         streamGetResult(reply.result(), element, response);
       });
@@ -776,6 +780,7 @@ public final class PgUtil {
             }
             logger.error(message, reply.cause());
             response(message, respond400, respond500).onComplete(promise);
+            return;
           }
           List<T> list = reply.result().getResults();
           C collection = collection(collectionClazz, list, reply.result().getResultInfo().getTotalRecords());
@@ -845,6 +850,7 @@ public final class PgUtil {
             }
             logger.error(message, reply.cause());
             response(message, respond400, respond500).onComplete(promise);
+            return;
           }
           response(respond204, respond500).onComplete(promise);
         } catch (Exception e) {
@@ -918,9 +924,11 @@ public final class PgUtil {
       postgresClient.getById(table, id, clazz, reply -> {
         if (reply.failed()) {
           response(reply.cause().getMessage(), respond500, respond500).onComplete(promise);
+          return;
         }
         if (reply.result() == null) {
           response(NOT_FOUND, respond404, respond500).onComplete(promise);
+          return;
         }
         response(reply.result(), respond200, respond500).onComplete(promise);
       });
@@ -1074,6 +1082,7 @@ public final class PgUtil {
       postgresClient.saveAndReturnUpdatedEntity(table, id, entity, reply -> {
         if (reply.failed()) {
           response(table, id, reply.cause(), clazz, respond400, respond500).onComplete(promise);
+          return;
         }
         response(reply.result(), id, headersFor201Method, withLocation,
             respond201, respond500).onComplete(promise);
@@ -1155,15 +1164,18 @@ public final class PgUtil {
           } else {
             response(table, id, reply.cause(), clazz, respond400, respond500).onComplete(promise);
           }
+          return;
         }
         int updated = reply.result().rowCount();
         if (updated == 0) {
           response(NOT_FOUND, respond404, respond500).onComplete(promise);
+          return;
         }
         if (updated != 1) {
           String message = "Updated " + updated + " records in " + table + " for id: " + id;
           logger.fatal(message);
           response(message, respond500, respond500).onComplete(promise);
+          return;
         }
         response(respond204, respond500).onComplete(promise);
       });
@@ -1480,6 +1492,7 @@ public final class PgUtil {
             Throwable cause = reply.cause();
             logger.error("Optimized SQL failed: " + cause.getMessage() + ": " + sql, cause);
             response(cause.getMessage(), respond500, respond500).onComplete(promise);
+            return;
           }
           C collection = collection(clazz, collectionClazz, reply.result(), offset, limit);
           response(collection, respond200, respond500).onComplete(promise);
