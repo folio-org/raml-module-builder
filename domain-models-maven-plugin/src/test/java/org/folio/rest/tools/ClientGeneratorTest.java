@@ -22,7 +22,7 @@ public class ClientGeneratorTest {
     System.setProperty("project.basedir", ".");
     sourceDir = System.getProperties().getProperty("project.basedir")
       + ClientGenerator.PATH_TO_GENERATE_TO
-      + ClientGenerator.CLIENT_GEN_PACKAGE.replace('.', '/');
+      + AnnotationGrabber.CLIENT_GEN_PACKAGE.replace('.', '/');
   }
 
   @After

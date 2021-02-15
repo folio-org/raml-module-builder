@@ -63,11 +63,11 @@ public class GenerateRunner {
    */
   public GenerateRunner(String outputDirectory) {
     this.outputDirectory = outputDirectory;
-    outputDirectoryWithPackage = outputDirectory + RTFConsts.INTERFACE_PACKAGE.replace('.', '/');
+    outputDirectoryWithPackage = outputDirectory + AnnotationGrabber.INTERFACE_PACKAGE.replace('.', '/');
     configuration = new Configuration();
     configuration.setModelPackage(MODEL_PACKAGE_DEFAULT);
-    configuration.setResourcePackage(RTFConsts.INTERFACE_PACKAGE);
-    configuration.setSupportPackage(RTFConsts.INTERFACE_PACKAGE +".support");
+    configuration.setResourcePackage(AnnotationGrabber.INTERFACE_PACKAGE);
+    configuration.setSupportPackage(AnnotationGrabber.INTERFACE_PACKAGE +".support");
     configuration.setOutputDirectory(new File(this.outputDirectory));
     configuration.setJsonMapper(AnnotationStyle.valueOf(("jackson2").toUpperCase()));
     configuration.setTypeConfiguration(new String[]{"core.one"});
@@ -141,7 +141,7 @@ public class GenerateRunner {
     //if we are generating interfaces, we need to remove any generated client code
     //as if the interfaces have changed in a way (pojos removed, etc...) that causes
     //the client generated code to cause compilation errors
-    String clientDir = outputDirectory + RTFConsts.CLIENT_GEN_PACKAGE.replace('.', '/');
+    String clientDir = outputDirectory + AnnotationGrabber.CLIENT_GEN_PACKAGE.replace('.', '/');
     ClientGenerator.makeCleanDir(clientDir);
   }
 

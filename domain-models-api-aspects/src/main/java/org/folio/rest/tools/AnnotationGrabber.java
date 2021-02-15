@@ -26,8 +26,6 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 public class AnnotationGrabber {
-  public static final String  DELIMITER              = "&!!&";
-  public static final String  PATH_MAPPING_FILE      = "API_PATH_MAPPINGS";
   public static final String  PATH_ANNOTATION        = Path.class.getName();
   public static final String  INTERFACE_PACKAGE      = "org.folio.rest.jaxrs.resource";
   public static final String  CLASS_NAME             = "class";
@@ -49,6 +47,7 @@ public class AnnotationGrabber {
   public static final String  DEFAULT_PARAM          = "@javax.ws.rs.DefaultValue";
   public static final String  NON_ANNOTATED_PARAM    = "NON_ANNOTATED";
   public static final String  CONTENT_TYPE           = "Content-Type";
+  public static final String  CLIENT_GEN_PACKAGE     = "org.folio.rest.client";
 
   private static final Logger log = Logger.getLogger(AnnotationGrabber.class.getName());
 

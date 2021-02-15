@@ -12,6 +12,7 @@ import javax.lang.model.element.Modifier;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
+import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.Enum2Annotation;
 import org.folio.rest.annotations.Validate;
@@ -145,10 +146,10 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
       ParameterSpec orgParam = modifiedParams.get(j);
       List<AnnotationSpec> an = orgParam.annotations;
       for (AnnotationSpec a : an) {
-        if (a.type.toString().equals("javax.ws.rs.QueryParam")) {
+        if (a.type.toString().equals(AnnotationGrabber.QUERY_PARAM)) {
           modifiedParams.set(j, annotateNew(methodParams.next(), orgParam));
         }
-        if (a.type.toString().equals("javax.ws.rs.PathParam")) {
+        if (a.type.toString().equals(AnnotationGrabber.PATH_PARAM)) {
           GResource curRes = method.resource();
           while (curRes != null) {
             for (GParameter u : curRes.uriParameters()) {
