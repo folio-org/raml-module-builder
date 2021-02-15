@@ -15,14 +15,17 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
+import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.Books;
 import org.folio.rest.jaxrs.model.Data;
 import org.folio.rest.jaxrs.model.Datetime;
 import org.folio.rest.jaxrs.model.Metadata;
+import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.rest.tools.utils.TenantInit;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -62,6 +65,7 @@ public class DemoRamlRestTest {
   private static Locale oldLocale = Locale.getDefault();
   private static String TENANT = "folio_shared";
   private static RequestSpecification tenant;
+  private static TenantClient client;
 
   @Rule
   public Timeout timeout = Timeout.seconds(5);
@@ -85,11 +89,17 @@ public class DemoRamlRestTest {
     try {
       dropSchemaRole(context);
       deployRestVerticle(context);
+      client = new TenantClient("http://localhost:" + port, TENANT, null);
+      TenantAttributes ta = new TenantAttributes().withModuleTo("raml-moduile-builder-1.0.0");
+      Async async = context.async();
+      TenantInit.exec(client, ta, 10000).onFailure(x -> context.fail(x)).onComplete(x -> async.complete());
+      /*
       Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
       String location = postData(context, "http://localhost:" + port + "/_/tenant", buf,
         201, HttpMethod.POST, "application/json", TENANT, false);
       checkURLs(context, "http://localhost:" + port + location + "?wait=10000", 200);
 
+       */
     } catch (Exception e) {
       context.fail(e);
     }
