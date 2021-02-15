@@ -17,18 +17,18 @@ class ClientHelpersTest implements WithAssertions {
   @Test
   void jsonProcessingException() {
     assertThatThrownBy(() -> ClientHelpers.pojo2json(new Object() {}))
-    .isInstanceOf(JsonProcessingException.class);
+    .isInstanceOf(IllegalArgumentException.class);
   }
 
   @Test
-  void json() throws Exception {
+  void json() {
     JsonObject json = new JsonObject().put("abc", "x\"y\"z").put("array", new JsonArray());
     JsonObject json2 = new JsonObject(ClientHelpers.pojo2json(json));
     assertThat(json2).isEqualTo(json);
   }
 
   @Test
-  void pojo() throws Exception {
+  void pojo() {
     class Foo {
       @JsonProperty String bar;
       @JsonProperty String baz;
