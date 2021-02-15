@@ -11,7 +11,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import io.restassured.response.Response;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.http.ContentType;
@@ -82,15 +81,20 @@ public class ApiTestBase {
     ta = new TenantAttributes().withModuleTo("mod-api-1.0.0").withParameters(list);
 
     // create tenant (schema, tables, ...)
-    Response response = given(r).header("x-okapi-url-to", "http://localhost:" + port).
-        contentType(ContentType.JSON)
+    String location = given(r)
+        .header("x-okapi-url-to", "http://localhost:" + port)
+        .contentType(ContentType.JSON)
         .body(Json.encode(ta))
         .when().post("/_/tenant")
-        .then().statusCode(201).extract().response();
-    String location = response.header("Location");
-    given(r).
-        when().get(location + "?wait=5000").
-        then().statusCode(200);
+        .then().statusCode(201)
+        .extract().header("Location");
+
+    given(r)
+        .header("x-okapi-url-to", "http://localhost:" + port)
+        .when().get(location + "?wait=5000")
+        .then()
+        .statusCode(200)
+        .body("error", is(nullValue()));
   }
 
   /**

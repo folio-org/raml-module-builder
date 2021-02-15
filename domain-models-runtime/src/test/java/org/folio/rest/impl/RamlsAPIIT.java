@@ -6,8 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.folio.rest.tools.GenerateRunner;
+import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.util.ResourceUtil;
 import org.junit.AfterClass;
@@ -104,7 +103,7 @@ public class RamlsAPIIT {
   @Test
   public void testReplaceReferences(TestContext context) throws IOException {
     RamlsAPI ramlsAPI = new RamlsAPI();
-    String raml = ResourceUtil.asString(System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + "/test.raml");
+    String raml = ResourceUtil.asString(System.getProperty("raml_files", DomainModelConsts.SOURCES_DEFAULT) + "/test.raml");
     raml = ramlsAPI.replaceReferences(raml, "http://localhost:9130");
     assertTrue(raml.contains("test: !include http://localhost:9130/_/jsonSchemas?path=test.schema"));
     assertFalse(raml.contains("test: !include test.schema"));

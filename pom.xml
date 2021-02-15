@@ -13,7 +13,7 @@
     <module>cql2pgjson</module>
     <module>cql2pgjson-cli</module>
     <module>domain-models-api-aspects</module>
-    <module>domain-models-interface-extensions</module>
+    <module>domain-models-maven-plugin</module>
     <module>domain-models-api-interfaces</module>
     <module>domain-models-runtime</module>
     <module>domain-models-runtime-it</module>
@@ -29,6 +29,7 @@
   <properties>
     <aspectj.version>1.9.6</aspectj.version>
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
+    <maven.version>3.6.3</maven.version>
     <postgresql-embedded-version>2.10</postgresql-embedded-version>
     <vertx.version>4.0.2</vertx.version>
 
@@ -50,6 +51,11 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>30.0-jre</version>
+      </dependency>
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
@@ -88,6 +94,11 @@
         <version>4.13.1</version>
       </dependency>
       <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.11</version>
+      </dependency>
+      <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-bom</artifactId>
         <version>2.13.3</version>
@@ -109,7 +120,7 @@
         <artifactId>hamcrest</artifactId>
         <version>2.2</version>
       </dependency>
-      <dependency>
+      <dependency>  <!-- http://hamcrest.org/JavaHamcrest/distributables#upgrading-from-hamcrest-1x -->
         <groupId>org.hamcrest</groupId>
         <artifactId>hamcrest-library</artifactId>
         <version>2.2</version>

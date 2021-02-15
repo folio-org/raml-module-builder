@@ -16,7 +16,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.JsonSchemas;
-import org.folio.rest.tools.GenerateRunner;
+import org.folio.rest.resource.DomainModelConsts;
 import org.folio.util.ResourceUtil;
 
 import io.vertx.core.AsyncResult;
@@ -33,10 +33,10 @@ public class JsonSchemasAPI implements JsonSchemas {
   private static final String OKAPI_URL_HEADER = "x-okapi-url";
   /** resource path (jar, classes), not a file system path */
   private static final String RAMLS_PATH =
-    (System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + '/').replace('\\', '/');
+    (System.getProperty("raml_files", DomainModelConsts.SOURCES_DEFAULT) + '/').replace('\\', '/');
   private static final String HASH_TAG = "#";
 
-  private static final List<String> JSON_SCHEMAS = getJsonSchemasList(RAMLS_PATH + GenerateRunner.JSON_SCHEMA_LIST);
+  private static final List<String> JSON_SCHEMAS = getJsonSchemasList(RAMLS_PATH + DomainModelConsts.JSON_SCHEMA_LIST);
 
   @Validate
   @Override

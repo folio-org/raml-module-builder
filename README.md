@@ -1707,17 +1707,18 @@ The JSON Schemas API is a multiple interface which affords RMB modules to expose
 
 The interface has a single GET endpoint with an optional query parameter path.
 Without the path query parameter the response will be an "application/json" array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
-Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
-`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
-specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify
-directory in the form of glob expression (e.g. "raml-util/**")
- For example:
+The `ramls` subdirectory is the default to search for schema files. Add `<ramlDirs>`
+to the domain-models-maven-plugin configuration in pom.xml to change it, for example:
+
 ```
-<systemProperty>
-  <key>schema_paths</key>
-  <value>schemas/**,raml-util/**</value>
-</systemProperty>
+            <configuration>
+              <ramlDirs>
+                <ramlDir>ramls</ramlDir>
+                <ramlDir>ramls/raml-util/ramls</ramlDir>
+              </ramlDirs>
+            </configuration>
 ```
+
 If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
 
 The RAML defining the API:
@@ -2160,37 +2161,21 @@ public class CustomHealthCheck extends AdminAPI {
 
 The framework can generate a Client class for every RAML file with a function for every API endpoint in the RAML.
 
-To generate a client API from your RAML add the following plugin to your pom.xml
+To generate a client API from your RAML use the `generateClients` option of the domain-models-maven-plugin in your pom.xml:
 
 ```xml
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.5.0</version>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${raml-module-builder-version}</version>
         <executions>
           <execution>
-            <id>generate_client</id>
-            <phase>process-classes</phase>
+            <id>generate_interfaces</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>client.generate</key>
-                  <value>true</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>json.type</key>
-                  <value>postgres</value>
-                </systemProperty>
-              </systemProperties>
+              <generateClients>true</generateClients>
             </configuration>
           </execution>
         </executions>

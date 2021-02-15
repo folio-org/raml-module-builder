@@ -20,6 +20,7 @@ import io.vertx.sqlclient.RowSet;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.rest.RestVerticle;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.model.AdminLoglevelPutLevel;
 import org.folio.rest.jaxrs.model.AdminPostgresMaintenancePostCommand;
@@ -29,8 +30,6 @@ import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.dbschema.TenantOperation;
 import org.folio.rest.security.AES;
-import org.folio.rest.tools.ClientGenerator;
-import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.LRUCache;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.dbschema.ObjectMapperTool;
@@ -345,7 +344,7 @@ public class AdminAPI implements Admin {
   public void postAdminGetPassword(String key, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
+    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT) );
 
     if(tenantId == null){
       asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
@@ -553,10 +552,7 @@ public class AdminAPI implements Admin {
   public void postAdminPostgresMaintenance(String table, AdminPostgresMaintenancePostCommand command, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-    String module = PomReader.INSTANCE.getModuleName();
-
-    String querySuffix = tenantId+"_"+module+"."+table+";";
+    String querySuffix = getSchema(okapiHeaders) +"."+table+";";
     String query = null;
 
     if(AdminPostgresMaintenancePostCommand.ANALYZE == command){
@@ -592,14 +588,7 @@ public class AdminAPI implements Admin {
   public void putAdminPostgresDropIndexes(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-
-    if(tenantId == null){
-      asyncResultHandler.handle(io.vertx.core.Future.failedFuture("tenantId cannot be null"));
-      return;
-    }
-    String moduleName = PomReader.INSTANCE.getModuleName();
-    String schema = tenantId.toLowerCase() + "_" + moduleName;
+    String schema = getSchema(okapiHeaders);
     String query =
         "SELECT * FROM pg_catalog.pg_class c JOIN pg_catalog.pg_index i ON (c.oid = i.indexrelid ) "
         + "JOIN pg_class t ON (i.indrelid = t.oid ) JOIN pg_namespace n ON (c.relnamespace = n.oid ) "
@@ -639,7 +628,8 @@ public class AdminAPI implements Admin {
           else{
             log.info("No indexes to delete");
             asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-              PutAdminPostgresDropIndexesResponse.respond400WithTextPlain("No indexes to delete, for tenant " + tenantId)));
+              PutAdminPostgresDropIndexesResponse.respond400WithTextPlain(
+                  "No indexes to delete, for tenant " + TenantTool.tenantId(okapiHeaders))));
           }
         }
         else{
@@ -658,18 +648,9 @@ public class AdminAPI implements Admin {
   public void putAdminPostgresCreateIndexes(Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
-    String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(ClientGenerator.OKAPI_HEADER_TENANT) );
-
-    if(tenantId == null){
-      asyncResultHandler.handle(io.vertx.core.Future.failedFuture("tenantId cannot be null"));
-      return;
-    }
-
     try {
-
-      String moduleName = PomReader.INSTANCE.getModuleName();
-
-      SchemaMaker sMaker = new SchemaMaker(tenantId, moduleName,
+      String tenantId = TenantTool.tenantId(okapiHeaders);
+      SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(),
         TenantOperation.CREATE, null, null);
 
       InputStream tableInput = AdminAPI.class.getClassLoader().getResourceAsStream(
@@ -719,6 +700,10 @@ public class AdminAPI implements Admin {
         respond500WithTextPlain(e.getMessage())));
     }
 
+  }
+
+  private String getSchema(Map<String,String> okapiHeaders) {
+    return PostgresClient.convertToPsqlStandard(TenantTool.tenantId(okapiHeaders));
   }
 
 }

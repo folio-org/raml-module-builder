@@ -44,10 +44,8 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.AnnotationGrabber;
-import org.folio.rest.tools.ClientGenerator;
-import org.folio.rest.tools.PomReader;
-import org.folio.rest.tools.RTFConsts;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.messages.MessageConsts;
@@ -58,6 +56,7 @@ import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.JsonUtils;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
+import org.folio.HttpStatus;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
@@ -84,7 +83,7 @@ import io.vertx.ext.web.handler.StaticHandler;
 
 public class RestVerticle extends AbstractVerticle {
 
-  public static final String        OKAPI_HEADER_TENANT             = ClientGenerator.OKAPI_HEADER_TENANT;
+  public static final String        OKAPI_HEADER_TENANT             = "x-okapi-tenant";
   public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
   public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
@@ -335,7 +334,8 @@ public class RestVerticle extends AbstractVerticle {
                 //get interface mapped to this url
                 String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
                 // convert from interface to an actual class implementing it, which appears in the impl package
-                aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
+                aClass = InterfaceToImpl.convert2Impl(
+                    DomainModelConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
                 Object o = null;
                 // call back the constructor of the class - gives a hook into the class not based on the apis
                 // passing the vertx and context objects in to it.
@@ -347,7 +347,6 @@ public class RestVerticle extends AbstractVerticle {
                   o = aClass.newInstance();
                 }
                 final Object instance = o;
-
                 // function to invoke for the requested url
                 String function = ret.getString(AnnotationGrabber.FUNCTION_NAME);
                 // parameters for the function to invoke
@@ -355,9 +354,9 @@ public class RestVerticle extends AbstractVerticle {
                 // all methods in the class whose function is mapped to the called url
                 // needed so that we can get a reference to the Method object and call it via reflection
                 Method[] methods = aClass.getMethods();
-                // what the api will return as output (Accept)
+                // what the api will return as output (Content-Type)
                 JsonArray produces = ret.getJsonArray(AnnotationGrabber.PRODUCES);
-                // what the api expects to get (content-type)
+                // what the api expects to get (Accept)
                 JsonArray consumes = ret.getJsonArray(AnnotationGrabber.CONSUMES);
 
                 HttpServerRequest request = rc.request();
@@ -380,6 +379,7 @@ public class RestVerticle extends AbstractVerticle {
                 // check if we are dealing with a file upload , currently only multipart/form-data and application/octet
                 //in the raml definition for such a function
                 final boolean[] isContentUpload = new boolean[] { false };
+                final boolean[] useRoutingContext = { false };
                 final int[] uploadParamPosition = new int[] { -1 };
                 params.forEach(param -> {
                   if(((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")){
@@ -397,19 +397,19 @@ public class RestVerticle extends AbstractVerticle {
                 Object[] paramArray = new Object[params.size()];
 
                 if (streamData) {
-                  parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
-                  handleStream(method2Run[0], rc, request, instance, tenantId, okapiHeaders,
+                  parseParams(rc, null, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders, useRoutingContext);
+                  handleStream(method2Run[0], rc, useRoutingContext[0], request, instance, tenantId, okapiHeaders,
                     uploadParamPosition, paramArray, validRequest, start);
                 } else {
                   // regular request (no streaming).. Read the request body before checking params + body
                   Buffer body = Buffer.buffer();
                   rc.request().handler(body::appendBuffer);
                   rc.request().endHandler(endRes -> {
-                    parseParams(rc, body, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders);
+                    parseParams(rc, body, paramList, validRequest, consumes, paramArray, pathParams, okapiHeaders, useRoutingContext);
                     if (validRequest[0]) {
                       //if request is valid - invoke it
                       try {
-                        invoke(method2Run[0], paramArray, instance, rc,  tenantId, okapiHeaders, new StreamStatus(), v -> {
+                        invoke(method2Run[0], paramArray, instance, rc, useRoutingContext[0], tenantId, okapiHeaders, new StreamStatus(), v -> {
                           withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + function));
                           sendResponse(rc, v, start, tenantId[0]);
                         });
@@ -444,7 +444,7 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  private void handleStream(Method method2Run, RoutingContext rc, HttpServerRequest request,
+  private void handleStream(Method method2Run, RoutingContext rc, boolean useRoutingContext, HttpServerRequest request,
       Object instance, String[] tenantId, Map<String, String> okapiHeaders,
       int[] uploadParamPosition, Object[] paramArray, boolean[] validRequest, long start){
     request.handler(new Handler<Buffer>() {
@@ -455,7 +455,7 @@ public class RestVerticle extends AbstractVerticle {
           stat.setStatus(0);
           paramArray[uploadParamPosition[0]] =
               new ByteArrayInputStream( buff.getBytes() );
-          invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
+          invoke(method2Run, paramArray, instance, rc, useRoutingContext, tenantId, okapiHeaders, stat, v -> {
             withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run));
           });
         } catch (Exception e1) {
@@ -468,7 +468,7 @@ public class RestVerticle extends AbstractVerticle {
       StreamStatus stat = new StreamStatus();
       stat.setStatus(1);
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
-      invoke(method2Run, paramArray, instance, rc,  tenantId, okapiHeaders, stat, v -> {
+      invoke(method2Run, paramArray, instance, rc, useRoutingContext, tenantId, okapiHeaders, stat, v -> {
         withRequestId(rc, () -> LogUtil.formatLogMessage(className, "start", " invoking " + method2Run));
         //all data has been stored in memory - not necessarily all processed
         sendResponse(rc, v, start, tenantId[0]);
@@ -480,7 +480,7 @@ public class RestVerticle extends AbstractVerticle {
         StreamStatus stat = new StreamStatus();
         stat.setStatus(2);
         paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
-        invoke(method2Run, paramArray, instance, rc, tenantId, okapiHeaders, stat,
+        invoke(method2Run, paramArray, instance, rc, useRoutingContext, tenantId, okapiHeaders, stat,
             v -> withRequestId(rc, () ->
               LogUtil.formatLogMessage(className, "start", " invoking " + method2Run))
         );
@@ -648,7 +648,7 @@ public class RestVerticle extends AbstractVerticle {
     Consumer<Map.Entry<String,String>> consumer = entry -> {
       String headerKey = entry.getKey().toLowerCase();
       if(headerKey.startsWith(OKAPI_HEADER_PREFIX)){
-        if(headerKey.equalsIgnoreCase(ClientGenerator.OKAPI_HEADER_TENANT)){
+        if(headerKey.equalsIgnoreCase(OKAPI_HEADER_TENANT)){
           tenantId[0] = entry.getValue();
         }
         headers.put(headerKey, entry.getValue());
@@ -657,19 +657,8 @@ public class RestVerticle extends AbstractVerticle {
     mm.forEach(consumer);
   }
 
-  private void invoke(Method method, Object[] params, Object o, RoutingContext rc, String[] tenantId,
+  private void invoke(Method method, Object[] params, Object o, RoutingContext rc, boolean addRCParam, String[] tenantId,
       Map<String,String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
-
-    String generateRCforFunc = PomReader.INSTANCE.getProps().getProperty("generate_routing_context");
-    boolean addRCParam = false;
-    if(generateRCforFunc != null){
-      String []addRC = generateRCforFunc.split(",");
-      for (int i = 0; i < addRC.length; i++) {
-        if(addRC[i].equals(rc.request().path())){
-          addRCParam = true;
-        }
-      }
-    }
 
     //if streaming is requested the status will be 0 (streaming started)
     //or 1 streaming data complete
@@ -736,7 +725,7 @@ public class RestVerticle extends AbstractVerticle {
     MappedClasses mappedURLs = new MappedClasses();
     JsonObject jObjClasses = new JsonObject();
     try {
-      jObjClasses.mergeIn(AnnotationGrabber.generateMappings());
+      jObjClasses.mergeIn(AnnotationGrabber.generateMappings(null));
     } catch (Exception e) {
       log.error(e.getMessage(), e);
     }
@@ -776,6 +765,14 @@ public class RestVerticle extends AbstractVerticle {
     });
   }
 
+  private static ArrayList<Class<?>> convert2impl(String clazz, boolean allowMultiple)
+      throws ClassNotFoundException, IOException {
+    return InterfaceToImpl.convert2Impl(
+        DomainModelConsts.PACKAGE_OF_IMPLEMENTATIONS,
+        DomainModelConsts.PACKAGE_OF_HOOK_INTERFACES + "." + clazz,
+        allowMultiple);
+  }
+
   /**
    * ONLY 1 Impl is allowed currently!
    * implementors of the InitAPI interface must call back the handler in there init() implementation like this:
@@ -783,7 +780,7 @@ public class RestVerticle extends AbstractVerticle {
    */
   private void runHook(Handler<AsyncResult<Boolean>> resultHandler) throws Exception {
     try {
-      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".InitAPI", false);
+      ArrayList<Class<?>> aClass = convert2impl("InitAPI", false);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("init", paramArray);
@@ -803,7 +800,7 @@ public class RestVerticle extends AbstractVerticle {
    */
   private void runPeriodicHook() throws Exception {
     try {
-      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".PeriodicAPI", true);
+      ArrayList<Class<?>> aClass = convert2impl("PeriodicAPI", true);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] {};
         Method method = aClass.get(i).getMethod("runEvery", paramArray);
@@ -836,7 +833,7 @@ public class RestVerticle extends AbstractVerticle {
    */
   private void runPostDeployHook(Handler<AsyncResult<Boolean>> resultHandler) throws Exception {
     try {
-      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".PostDeployVerticle", true);
+      ArrayList<Class<?>> aClass = convert2impl("PostDeployVerticle", true);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("init", paramArray);
@@ -857,7 +854,7 @@ public class RestVerticle extends AbstractVerticle {
    */
   private void runShutdownHook(Handler<AsyncResult<Void>> resultHandler) throws Exception {
     try {
-      ArrayList<Class<?>> aClass = InterfaceToImpl.convert2Impl(RTFConsts.PACKAGE_OF_IMPLEMENTATIONS, RTFConsts.PACKAGE_OF_HOOK_INTERFACES + ".ShutdownAPI", false);
+      ArrayList<Class<?>> aClass = convert2impl("ShutdownAPI", false);
       for (int i = 0; i < aClass.size(); i++) {
         Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
         Method method = aClass.get(i).getMethod("shutdown", paramArray);
@@ -965,7 +962,7 @@ public class RestVerticle extends AbstractVerticle {
   }
 
   private void parseParams(RoutingContext rc, Buffer body, Iterator<Map.Entry<String, Object>> paramList, boolean[] validRequest, JsonArray consumes,
-      Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
+      Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders, boolean [] useRC) {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
@@ -991,8 +988,10 @@ public class RestVerticle extends AbstractVerticle {
             // this will also validate the json against the pojo created from the schema
             Class<?> entityClazz = Class.forName(valueType);
 
-            if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context") &&
-                !valueType.equals("java.util.Map") && !valueType.equals("java.io.InputStream") && !valueType.equals("io.vertx.ext.web.RoutingContext")) {
+            if (valueType.equals("io.vertx.ext.web.RoutingContext")) {
+              useRC[0] = true;
+            } else if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context") &&
+                !valueType.equals("java.util.Map") && !valueType.equals("java.io.InputStream")) {
               // we have special handling for the Result Handler and context, it is also assumed that
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
@@ -1010,7 +1009,7 @@ public class RestVerticle extends AbstractVerticle {
                     paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
                   } catch (UnrecognizedPropertyException e) {
                     withRequestId(rc, () -> log.error(e.getMessage(), e));
-                    endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(
+                    endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true, JsonUtils.entity2String(
                       ValidationHelper.createValidationErrorMessage("", "", e.getMessage())) , validRequest);
                     return;
                   }
@@ -1027,7 +1026,8 @@ public class RestVerticle extends AbstractVerticle {
               paramArray[order] = resp[1];
 
               if (!isValid) {
-                endRequestWithError(rc, RTFConsts.VALIDATION_ERROR_HTTP_CODE, true, JsonUtils.entity2String(errorResp), validRequest);
+                endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true,
+                    JsonUtils.entity2String(errorResp), validRequest);
                 return;
               }
               if (!field2validate.isEmpty()) {
@@ -1234,7 +1234,7 @@ public class RestVerticle extends AbstractVerticle {
         error.getParameters().add(p);
         error.setMessage(cv.getMessage());
         error.setCode("-1");
-        error.setType(RTFConsts.VALIDATION_FIELD_ERROR);
+        error.setType(DomainModelConsts.VALIDATION_FIELD_ERROR);
         //return the error if the validation is requested on a specific field
         //and that field fails validation. if another field fails validation
         //that is ok as validation on that specific field wasnt requested

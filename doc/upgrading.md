@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 33.0](#version-330)
 * [Version 32.0](#version-320)
 * [Version 31.0](#version-310)
 * [Version 30.2](#version-302)
@@ -17,6 +18,39 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 33.0
+
+* [RMB-785](https://issues.folio.org/browse/RMB-785) domain-models-maven-plugin:
+  In pom.xml replace the exec-maven-plugin sections that call
+  `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>` or
+  `<mainClass>org.folio.rest.tools.ClientGenerator</mainClass>` by
+
+```xml
+      <plugin>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${raml-module-builder-version}</version>
+        <executions>
+          <execution>
+            <id>generate_interfaces</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+```
+
+Add configuration if you need to disable generating interfaces or to
+enable generating clients:
+
+```xml
+            <configuration>
+              <generateInterfaces>false</generateInterfaces>
+              <generateClients>true</generateClients>
+            </configuration>
+```
 
 ## Version 32.0
 
