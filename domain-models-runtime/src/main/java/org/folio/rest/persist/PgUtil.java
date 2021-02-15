@@ -1019,7 +1019,7 @@ public final class PgUtil {
         + clazz.getCanonicalName());
   }
 
-    /**
+  /**
    * Post entity to table.
    *
    * <p>Create a random UUID for id if entity doesn't contain one.
@@ -1050,7 +1050,7 @@ public final class PgUtil {
    * <p>Create a random UUID for id if entity doesn't contain one.
    *
    * <p>All exceptions are caught and reported via the asyncResultHandler.
-   *  @param table  table name
+   * @param table  table name
    * @param entity  the entity to post. If the id field is missing or null it is set to a random UUID.
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
@@ -1112,7 +1112,7 @@ public final class PgUtil {
   }
 
 
-   /**
+  /**
    * Put entity to table.
    *
    * <p>All exceptions are caught and reported via the asyncResultHandler.
