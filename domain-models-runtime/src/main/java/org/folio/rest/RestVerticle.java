@@ -84,10 +84,6 @@ import io.vertx.ext.web.handler.StaticHandler;
 
 public class RestVerticle extends AbstractVerticle {
 
-  public static final String        DEFAULT_UPLOAD_BUS_ADDRS        = "admin.uploaded.files";
-  public static final String        DEFAULT_TEMP_DIR                = System.getProperty("java.io.tmpdir");
-  public static final String        JSON_URL_MAPPINGS               = "API_PATH_MAPPINGS";
-
   public static final String        OKAPI_HEADER_TENANT             = "x-okapi-tenant";
   public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
@@ -1053,17 +1049,17 @@ public class RestVerticle extends AbstractVerticle {
             endRequestWithError(rc, 400, true, "Json content error " + e.getMessage(), validRequest);
 
           }
-        } else if (DomainModelConsts.HEADER_PARAM.equals(paramType)) {
+        } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
           // handle header params - read the header field from the
           // header (valueName) and get its value
           String value = request.getHeader(valueName);
           // set the value passed from the header as a param to the function
           paramArray[order] = value;
-        } else if (DomainModelConsts.PATH_PARAM.equals(paramType)) {
+        } else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
           // these are placeholder values in the path - for example
           // /patrons/{patronid} - this would be the patronid value
           paramArray[order] = pathParams[pathParamsIndex[0]++];
-        } else if (DomainModelConsts.QUERY_PARAM.equals(paramType)) {
+        } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
           String param = queryParams.get(valueName);
           // support date, enum, numbers or strings as query parameters
           try {

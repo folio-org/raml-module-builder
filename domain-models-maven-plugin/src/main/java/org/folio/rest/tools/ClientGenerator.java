@@ -53,7 +53,6 @@ import javax.mail.internet.MimeMultipart;
  */
 public class ClientGenerator implements ClientGrabber {
 
-  public static final String  QUERY_PARAM            = "@javax.ws.rs.QueryParam";
   public static final String  CLIENT_CLASS_SUFFIX    = "Client";
   @SuppressWarnings("squid:S1075")  // suppress "URIs should not be hardcoded"
   public static final String  PATH_TO_GENERATE_TO    = "/target/generated-sources/raml-jaxrs/";
@@ -579,7 +578,7 @@ public class ClientGenerator implements ClientGrabber {
       method.param(String.class, valueName);
       functionSpecificHeaderParams.add("request.putHeader(\""+valueName+"\", "+valueName+");");
     }
-    else if (QUERY_PARAM.equals(paramType)) {
+    else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
       // support date, enum, numbers or strings as query parameters
       try {
         if (valueType.contains("String")) {
