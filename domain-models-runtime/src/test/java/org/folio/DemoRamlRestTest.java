@@ -488,7 +488,7 @@ public class DemoRamlRestTest {
    *
    */
   @Test
-  public void checkClientCode(TestContext context) throws Exception {
+  public void checkClientCode(TestContext context) {
     AdminClient aClient = new AdminClient("http://localhost:" + port, "abc", "abc", false);
     aClient.putAdminLoglevel(AdminLoglevelPutLevel.FINE, "org", context.asyncAssertSuccess());
     aClient.getAdminJstack(context.asyncAssertSuccess());

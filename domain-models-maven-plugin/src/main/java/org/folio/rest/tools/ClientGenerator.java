@@ -32,6 +32,7 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -441,7 +442,7 @@ public class ClientGenerator implements ClientGrabber {
     JExpression expr = jcodeModel.ref(java.net.URLEncoder.class)
       .staticInvoke("encode")
         .arg(JExpr.ref(details.valueName))
-        .arg("UTF-8");
+        .arg(jcodeModel.ref(StandardCharsets.class).staticRef("UTF_8"));
     b.invoke(details.queryParams, APPEND).arg(expr);
   }
 
@@ -556,7 +557,6 @@ public class ClientGenerator implements ClientGrabber {
             JConditional ifClause = methodBody._if(JExpr.ref(objParamName).ne(JExpr._null()));
             JBlock b = ifClause._then();
             if(mappingType.equals("postgres")){
-              method._throws(Exception.class);
               b.directStatement("buffer.appendString("
                   + "org.folio.rest.tools.ClientHelpers.pojo2json("+objParamName+"));");
             }else{
@@ -583,7 +583,6 @@ public class ClientGenerator implements ClientGrabber {
       try {
         if (valueType.contains("String")) {
           method.param(String.class, valueName);
-          method._throws(UnsupportedEncodingException.class);
           addParameter(new ParameterDetails(methodBody, queryParams, valueName)
             .withOp(ParameterOp.ENCODE));
         } else if (valueType.contains("Date")) {

@@ -39,12 +39,8 @@ class RmbtestsClientTest {
       vtc.completeNow();
     })).listen(8888, server -> {
       Date date = new Date(24 * 60 * 60 * 1000);  // 1 day (in milliseconds) after 1970-01-01T00:00:00
-      try {
-        new RmbtestsClient("http://localhost:8888", "test_tenant", "token")
-        .getRmbtestsBooks("author", date, 1, 1, "isbn", null, response -> {});
-      } catch (UnsupportedEncodingException e) {
-        vtc.failNow(e);
-      }
+      new RmbtestsClient("http://localhost:8888", "test_tenant", "token")
+          .getRmbtestsBooks("author", date, 1, 1, "isbn", null, response -> {});
     });
   }
 }
