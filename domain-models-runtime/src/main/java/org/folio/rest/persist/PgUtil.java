@@ -1030,8 +1030,8 @@ public final class PgUtil {
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param clazz  the ResponseDelegate class generated as defined by the RAML file, must have these methods:
-*               headersFor201(), respond201WithApplicationJson(T, HeadersFor201),
-*               respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+*                  headersFor201(), respond201WithApplicationJson(T, HeadersFor201),
+*                  respond400WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by clazz
    * @return
    */
