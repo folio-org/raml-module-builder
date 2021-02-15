@@ -6,6 +6,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.http.HttpHeaders;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.Json;
@@ -384,6 +385,67 @@ public final class PgUtil {
     }
   }
 
+    /**
+   * Delete a record from a table.
+   *
+   * <p>All exceptions are caught and reported via the asyncResultHandler.
+   *
+   * @param table  where to delete
+   * @param id  the primary key of the record to delete
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param clazz  the ResponseDelegate class created from the RAML file with these methods:
+   *               respond204(), respond400WithTextPlain(Object), respond404WithTextPlain(Object),
+   *               respond500WithTextPlain(Object).
+   * @return future where to return the result created by clazz
+   */
+   public static Future<Response> deleteById(String table, String id,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> clazz) {
+        final Method respond500;
+    try {
+      respond500 = clazz.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      return response(e.getMessage(), null, null);
+    }
+
+    try {
+      Method respond204 = clazz.getMethod(RESPOND_204);
+      Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+      Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
+      if (! UuidUtil.isUuid(id)) {
+        return responseInvalidUuid(table + ".id", id, clazz, respond400, respond500);
+      }
+
+      Promise<Response> promise = Promise.promise();
+
+      PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
+      postgresClient.delete(table, id, reply -> {
+        if (reply.failed()) {
+          response(table, id, reply.cause(), clazz, respond400, respond500).onComplete(promise);
+          return;
+        }
+        int deleted = reply.result().rowCount();
+        if (deleted == 0) {
+          response(NOT_FOUND, respond404, respond500).onComplete(promise);
+          return;
+        }
+        if (deleted != 1) {
+          String message = "Deleted " + deleted + " records in " + table + " for id: " + id;
+          logger.fatal(message);
+          response(message, respond500, respond500).onComplete(promise);
+          return;
+        }
+        response(respond204, respond500).onComplete(promise);
+      });
+      return promise.future();
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      return response(e.getMessage(), respond500, respond500);
+    }
+   }
+
   /**
    * Delete a record from a table.
    *
@@ -402,47 +464,7 @@ public final class PgUtil {
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> clazz,
       Handler<AsyncResult<Response>> asyncResultHandler) {
-
-    final Method respond500;
-    try {
-      respond500 = clazz.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
-    }
-
-    try {
-      Method respond204 = clazz.getMethod(RESPOND_204);
-      Method respond400 = clazz.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
-      Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
-      if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
-        return;
-      }
-      PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
-      postgresClient.delete(table, id, reply -> {
-        if (reply.failed()) {
-          asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
-          return;
-        }
-        int deleted = reply.result().rowCount();
-        if (deleted == 0) {
-          asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
-          return;
-        }
-        if (deleted != 1) {
-          String message = "Deleted " + deleted + " records in " + table + " for id: " + id;
-          logger.fatal(message);
-          asyncResultHandler.handle(response(message, respond500, respond500));
-          return;
-        }
-        asyncResultHandler.handle(response(respond204, respond500));
-      });
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
-    }
+    deleteById(table,id,okapiHeaders,vertxContext,clazz).onComplete(asyncResultHandler);
   }
 
   /**
@@ -664,6 +686,7 @@ public final class PgUtil {
       });
   }
 
+
   /**
    * Get records by CQL.
    * @param table  the table that contains the records
@@ -684,6 +707,28 @@ public final class PgUtil {
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
+    get(table,clazz,collectionClazz,cql,offset,limit,okapiHeaders,vertxContext,responseDelegateClass).onComplete(asyncResultHandler);
+  }
+
+  /**
+   * Get records by CQL.
+   * @param table  the table that contains the records
+   * @param clazz  the class of the record type T
+   * @param collectionClazz  the class of the collection type C containing records of type T
+   * @param cql  the CQL query for filtering and sorting the records
+   * @param offset number of records to skip, use 0 or negative number for not skipping
+   * @param limit maximum number of records to return, use a negative number for no limit
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return future  where to return the result created by the responseDelegateClass
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T, C> Future<Response> get(String table, Class<T> clazz, Class<C> collectionClazz,
+      String cql, int offset, int limit,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass) {
 
     final Method respond500;
     final Method respond400;
@@ -692,38 +737,38 @@ public final class PgUtil {
       respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
+      return response(e.getMessage(), null, null);
     }
 
     try {
       CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
-      get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
+      return get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass);
     } catch (FieldException e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
+      return response(e.getMessage(), respond400, respond500);
     }
   }
 
-  static <T, C> void get(PreparedCQL preparedCql, Class<T> clazz, Class<C> collectionClazz,
+  static <T, C> Future<Response> get(PreparedCQL preparedCql, Class<T> clazz, Class<C> collectionClazz,
       Map<String, String> okapiHeaders, Context vertxContext,
-      Class<? extends ResponseDelegate> responseDelegateClass,
-      Handler<AsyncResult<Response>> asyncResultHandler) {
+      Class<? extends ResponseDelegate> responseDelegateClass) {
 
     final Method respond500;
     try {
       respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
+      return response(e.getMessage(), null, null);
     }
 
     try {
       Method respond200 = responseDelegateClass.getMethod(RESPOND_200_WITH_APPLICATION_JSON, collectionClazz);
       Method respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
+
+      Promise<Response> promise = Promise.promise();
+
       PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
       postgresClient.get(preparedCql.getTableName(), clazz, preparedCql.getCqlWrapper(), true, reply -> {
         try {
@@ -733,47 +778,65 @@ public final class PgUtil {
               message = reply.cause().getMessage();
             }
             logger.error(message, reply.cause());
-            asyncResultHandler.handle(response(message, respond400, respond500));
+            response(message, respond400, respond500).onComplete(promise);
             return;
           }
           List<T> list = reply.result().getResults();
           C collection = collection(collectionClazz, list, reply.result().getResultInfo().getTotalRecords());
-          asyncResultHandler.handle(response(collection, respond200, respond500));
+          response(collection, respond200, respond500).onComplete(promise);
         } catch (Exception e) {
           logger.error(e.getMessage(), e);
-          asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+          response(e.getMessage(), respond500, respond500).onComplete(promise);
         }
       });
+      return promise.future();
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return response(e.getMessage(), respond500, respond500);
     }
   }
 
-   /**
-   * Delete records by CQL.
-   * @param table  the table that contains the records
-   * @param cql  the CQL query for filtering the records
-   * @param okapiHeaders  http headers provided by okapi
-   * @param vertxContext  the current context
-   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
-   *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
-   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
-   */
+    /**
+    * Delete records by CQL.
+    * @param table  the table that contains the records
+    * @param cql  the CQL query for filtering the records
+    * @param okapiHeaders  http headers provided by okapi
+    * @param vertxContext  the current context
+    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+    *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+    * @param asyncResultHandler  where to return the result created by the responseDelegateClass
+    */
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static void delete(String table,
       String cql,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
+    delete(table, cql, okapiHeaders, vertxContext, responseDelegateClass).onComplete(asyncResultHandler);
+  }
+
+   /**
+   * Delete records by CQL.
+    * @param table  the table that contains the records
+    * @param cql  the CQL query for filtering the records
+    * @param okapiHeaders  http headers provided by okapi
+    * @param vertxContext  the current context
+    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+*    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+    * @return future where to return the result created by the responseDelegateClass
+    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static Future<Response> delete(String table,
+      String cql,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass) {
 
     final Method respond500;
     try {
       respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
+      return response(e.getMessage(), null, null);
     }
 
     final Method respond400;
@@ -783,14 +846,15 @@ public final class PgUtil {
       respond204 = responseDelegateClass.getMethod(RESPOND_204);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
-      return;
+      return response(e.getMessage(), respond500, respond500);
     }
 
     try {
       CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, -1, -1);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
+
+      Promise<Response> promise = Promise.promise();
 
       PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
       postgresClient.delete(preparedCql.getTableName(), preparedCql.getCqlWrapper(), reply -> {
@@ -801,22 +865,23 @@ public final class PgUtil {
               message = reply.cause().getMessage();
             }
             logger.error(message, reply.cause());
-            asyncResultHandler.handle(response(message, respond400, respond500));
+            response(message, respond400, respond500).onComplete(promise);
             return;
           }
-          asyncResultHandler.handle(response(respond204, respond500));
+          response(respond204, respond500).onComplete(promise);
         } catch (Exception e) {
           logger.error(e.getMessage(), e);
-          asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+          response(e.getMessage(), respond500, respond500).onComplete(promise);
         }
       });
+      return promise.future();
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
+      return response(e.getMessage(), respond400, respond500);
     }
   }
 
-  /**
+    /**
    * Get a record by id.
    *
    * <p>All exceptions are caught and reported via the asyncResultHandler.
@@ -834,37 +899,59 @@ public final class PgUtil {
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
+    getById(table,clazz,id,okapiHeaders, vertxContext, responseDelegateClass).onComplete(asyncResultHandler);
+  }
+
+  /**
+   * Get a record by id.
+   *
+   * <p>All exceptions are caught and reported via the asyncResultHandler.
+   *
+   * @param table  the table that contains the record
+   * @param clazz  the class of the response type T
+   * @param id  the primary key of the record to get
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+*    must have these methods: respond200(T), respond404WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return future where to return the result created by the responseDelegateClass
+   */
+  public static <T> Future<Response> getById(String table, Class<T> clazz, String id,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass) {
 
     final Method respond500;
     try {
       respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
+      return response(e.getMessage(), null, null);
     }
     try {
       Method respond200 = responseDelegateClass.getMethod(RESPOND_200_WITH_APPLICATION_JSON, clazz);
       Method respond404 = responseDelegateClass.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
       if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, responseDelegateClass, respond404, respond500));
-        return;
+        return responseInvalidUuid(table + ".id", id, responseDelegateClass, respond404, respond500);
       }
+
+      Promise<Response> promise = Promise.promise();
+
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.getById(table, id, clazz, reply -> {
         if (reply.failed()) {
-          asyncResultHandler.handle(response(reply.cause().getMessage(), respond500, respond500));
+          response(reply.cause().getMessage(), respond500, respond500).onComplete(promise);
           return;
         }
         if (reply.result() == null) {
-          asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
+          response(NOT_FOUND, respond404, respond500).onComplete(promise);
           return;
         }
-        asyncResultHandler.handle(response(reply.result(), respond200, respond500));
+        response(reply.result(), respond200, respond500).onComplete(promise);
       });
+      return promise.future();
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return response(e.getMessage(), respond500, respond500);
     }
   }
 
@@ -937,15 +1024,15 @@ public final class PgUtil {
    * <p>Create a random UUID for id if entity doesn't contain one.
    *
    * <p>All exceptions are caught and reported via the asyncResultHandler.
-   *
    * @param table  table name
    * @param entity  the entity to post. If the id field is missing or null it is set to a random UUID.
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param clazz  the ResponseDelegate class generated as defined by the RAML file, must have these methods:
-   *               headersFor201(), respond201WithApplicationJson(T, HeadersFor201),
-   *               respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+*                  headersFor201(), respond201WithApplicationJson(T, HeadersFor201),
+*                  respond400WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by clazz
+   * @return
    */
   @SuppressWarnings("squid:S1523")  // suppress "Dynamically executing code is security-sensitive"
                                     // we use only hard-coded names
@@ -953,6 +1040,29 @@ public final class PgUtil {
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> clazz,
       Handler<AsyncResult<Response>> asyncResultHandler) {
+    post(table,entity,okapiHeaders,vertxContext,clazz).onComplete(asyncResultHandler);
+  }
+
+  /**
+   * Post entity to table.
+   *
+   * <p>Create a random UUID for id if entity doesn't contain one.
+   *
+   * <p>All exceptions are caught and reported via the asyncResultHandler.
+   * @param table  table name
+   * @param entity  the entity to post. If the id field is missing or null it is set to a random UUID.
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param clazz  the ResponseDelegate class generated as defined by the RAML file, must have these methods:
+*               headersFor201(), respond201WithApplicationJson(T, HeadersFor201),
+*               respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return Future<Response>  where to return the result created by clazz
+   */
+  @SuppressWarnings("squid:S1523")  // suppress "Dynamically executing code is security-sensitive"
+                                    // we use only hard-coded names
+  public static <T> Future<Response> post(String table, T entity,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> clazz) {
 
     final Method respond500;
 
@@ -960,8 +1070,7 @@ public final class PgUtil {
       respond500 = clazz.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(Future.failedFuture(e));
-      return;
+      return Future.failedFuture(e);
     }
 
     try {
@@ -982,23 +1091,25 @@ public final class PgUtil {
 
       String id = initId(entity);
       if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
-        return;
+        return responseInvalidUuid(table + ".id", id, clazz, respond400, respond500);
       }
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
+      Promise<Response> promise = Promise.promise();
       postgresClient.saveAndReturnUpdatedEntity(table, id, entity, reply -> {
         if (reply.failed()) {
-          asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
+          response(table, id, reply.cause(), clazz, respond400, respond500).onComplete(promise);
           return;
         }
-        asyncResultHandler.handle(response(reply.result(), id, headersFor201Method, withLocation,
-            respond201, respond500));
+        response(reply.result(), id, headersFor201Method, withLocation,
+            respond201, respond500).onComplete(promise);
       });
+      return promise.future();
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return response(e.getMessage(), respond500, respond500);
     }
   }
+
 
   /**
    * Put entity to table.
@@ -1019,6 +1130,27 @@ public final class PgUtil {
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> clazz,
       Handler<AsyncResult<Response>> asyncResultHandler) {
+      put(table,entity,id,okapiHeaders,vertxContext,clazz).onComplete(asyncResultHandler);
+  }
+
+  /**
+   * Put entity to table.
+   *
+   * <p>All exceptions are caught and reported via the asyncResultHandler.
+   *
+   * @param table  table name
+   * @param entity  the new entity to store. The id field is set to the id value.
+   * @param id  the id value to use for entity
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param clazz  the ResponseDelegate class created from the RAML file with these methods:
+   *               respond204(), respond400WithTextPlain(Object), respond404WithTextPlain(Object),
+   *               respond409WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return   where to return the result created by clazz
+   */
+  public static <T> Future<Response> put(String table, T entity, String id,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> clazz) {
 
     final Method respond500;
 
@@ -1026,8 +1158,7 @@ public final class PgUtil {
       respond500 = clazz.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
+      return response(e.getMessage(), null, null);
     }
 
     try {
@@ -1036,37 +1167,38 @@ public final class PgUtil {
       Method respond404 = clazz.getMethod(RESPOND_404_WITH_TEXT_PLAIN, Object.class);
       Method respond409 = getRespond409(clazz);
       if (! UuidUtil.isUuid(id)) {
-        asyncResultHandler.handle(responseInvalidUuid(table + ".id", id, clazz, respond400, respond500));
-        return;
+        return responseInvalidUuid(table + ".id", id, clazz, respond400, respond500);
       }
       setId(entity, id);
+      final Promise<Response> promise = Promise.promise();
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.update(table, entity, id, reply -> {
         if (reply.failed()) {
           if (PgExceptionUtil.isVersionConflict(reply.cause())) {
             Method method = respond409 == null ? respond400 : respond409;
-            asyncResultHandler.handle(response(reply.cause().getMessage(), method, respond500));
+            response(reply.cause().getMessage(), method, respond500).onComplete(promise);
           } else {
-            asyncResultHandler.handle(response(table, id, reply.cause(), clazz, respond400, respond500));
+            response(table, id, reply.cause(), clazz, respond400, respond500).onComplete(promise);
           }
           return;
         }
         int updated = reply.result().rowCount();
         if (updated == 0) {
-          asyncResultHandler.handle(response(NOT_FOUND, respond404, respond500));
+          response(NOT_FOUND, respond404, respond500).onComplete(promise);
           return;
         }
         if (updated != 1) {
           String message = "Updated " + updated + " records in " + table + " for id: " + id;
           logger.fatal(message);
-          asyncResultHandler.handle(response(message, respond500, respond500));
+          response(message, respond500, respond500).onComplete(promise);
           return;
         }
-        asyncResultHandler.handle(response(respond204, respond500));
+        response(respond204, respond500).onComplete(promise);
       });
+      return promise.future();
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return response(e.getMessage(), respond500, respond500);
     }
   }
 
@@ -1083,22 +1215,40 @@ public final class PgUtil {
 
   /**
    * Post a list of T entities to the database. Fail all if any of them fails.
-
    * @param table database table to store into
    * @param entities  the records to store
    * @param maxEntities  fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
-   *     suggested value is from 100 ... 10000.
+ *     suggested value is from 100 ... 10000.
    * @param upsert  true to update records with the same id, false to fail all entities if one has an existing id
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
-   *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
-   * @param asyncResultHandler  where to return the result created by responseClass
+  *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler where to return the result created by responseClass
    */
   public static <T> void postSync(String table, List<T> entities, int maxEntities, boolean upsert,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
+    postSync(table, entities, maxEntities, upsert, okapiHeaders, vertxContext, responseClass).onComplete(asyncResultHandler);
+  }
+
+  /**
+   * Post a list of T entities to the database. Fail all if any of them fails.
+   * @param table database table to store into
+   * @param entities  the records to store
+   * @param maxEntities  fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
+ *     suggested value is from 100 ... 10000.
+   * @param upsert  true to update records with the same id, false to fail all entities if one has an existing id
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
+*               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return future where to return the result created by responseClass
+   */
+  public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities, boolean upsert,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseClass) {
 
     final Method respond500;
 
@@ -1106,8 +1256,7 @@ public final class PgUtil {
       respond500 = responseClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
+      return response(e.getMessage(), null, null);
     }
 
     try {
@@ -1117,33 +1266,35 @@ public final class PgUtil {
       if (entities != null && entities.size() > maxEntities) {
         String message = "Expected a maximum of " + maxEntities
             + " records to prevent out of memory but got " + entities.size();
-        asyncResultHandler.handle(response(message, respond413, respond500));
-        return;
+        return response(message, respond413, respond500);
       }
       // RestVerticle populates a single record only, not an array of records
+
+      Promise<Response> promise = Promise.promise();
+
       MetadataUtil.populateMetadata(entities, okapiHeaders);
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       Handler<AsyncResult<RowSet<Row>>> replyHandler = result -> {
         if (result.failed()) {
           if (PgExceptionUtil.isVersionConflict(result.cause())) {
             Method method = respond409 == null ? respond500 : respond409;
-            asyncResultHandler.handle(response(result.cause().getMessage(), method, respond500));
+            response(result.cause().getMessage(), method, respond500).onComplete(promise);
           } else {
-            asyncResultHandler.handle(response(table, /* id */ "", result.cause(),
-                responseClass, respond500, respond500));
+            response(table, /* id */ "", result.cause(),
+                responseClass, respond500, respond500).onComplete(promise);
           }
-          return;
         }
-        asyncResultHandler.handle(response(respond201, respond500));
+        response(respond201, respond500).onComplete(promise);
       };
       if (upsert) {
         postgresClient.upsertBatch(table, entities, replyHandler);
       } else {
         postgresClient.saveBatch(table, entities, replyHandler);
       }
+      return promise.future();
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return response(e.getMessage(), respond500, respond500);
     }
   }
 
@@ -1222,6 +1373,35 @@ public final class PgUtil {
     optimizedSqlSize = size;
   }
 
+   /**
+   * Run the cql query using optimized SQL (if possible) or standard SQL.
+   * <p>
+   * PostgreSQL has no statistics about a field within a JSONB resulting in bad performance.
+   * <p>
+   * This method requires that the sortField has a b-tree index (non-unique) and caseSensitive=false
+   * and removeAccents=true, and that the cql query is supported by a full text index.
+   * <p>
+   * This method starts a full table scan until getOptimizedSqlSize() records have been scanned.
+   * Then it assumes that there are only a few result records and uses the full text match.
+   * If the requested number of records have been found it stops immediately.
+   *
+    * @param table
+    * @param clazz
+    * @param cql
+    * @param okapiHeaders
+    * @param vertxContext
+    * @param responseDelegateClass
+    * @return future
+    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T, C> Future<Response> getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
+                                                String sortField, String cql, int offset, int limit,
+                                                Map<String, String> okapiHeaders, Context vertxContext,
+                                                Class<? extends ResponseDelegate> responseDelegateClass) {
+    return getWithOptimizedSql(table, clazz, collectionClazz, sortField, cql, offset, limit, 0,
+        okapiHeaders, vertxContext, responseDelegateClass);
+  }
+
   /**
    * Run the cql query using optimized SQL (if possible) or standard SQL.
    * <p>
@@ -1249,7 +1429,38 @@ public final class PgUtil {
                                                 Class<? extends ResponseDelegate> responseDelegateClass,
                                                 Handler<AsyncResult<Response>> asyncResultHandler) {
     getWithOptimizedSql(table, clazz, collectionClazz, sortField, cql, offset, limit, 0,
-        okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
+        okapiHeaders, vertxContext, responseDelegateClass).onComplete(asyncResultHandler);
+  }
+
+    /**
+   * Run the cql query using optimized SQL (if possible) or standard SQL.
+   * <p>
+   * PostgreSQL has no statistics about a field within a JSONB resulting in bad performance.
+   * <p>
+   * This method requires that the sortField has a b-tree index (non-unique) and caseSensitive=false
+   * and removeAccents=true, and that the cql query is supported by a full text index.
+   * <p>
+   * This method starts a full table scan until getOptimizedSqlSize() records have been scanned.
+   * Then it assumes that there are only a few result records and uses the full text match.
+   * If the requested number of records have been found it stops immediately.
+   *
+   * @param table
+   * @param clazz
+   * @param cql
+   * @param okapiHeaders
+   * @param vertxContext
+   * @param responseDelegateClass
+   * @param asyncResultHandler
+   */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static <T, C> void getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
+                                                String sortField, String cql, int offset, int limit,
+                                                int queryTimeout, Map<String, String> okapiHeaders,
+                                                Context vertxContext,
+                                                Class<? extends ResponseDelegate> responseDelegateClass,
+                                                Handler<AsyncResult<Response>> asyncResultHandler) {
+    getWithOptimizedSql(table, clazz, collectionClazz, sortField, cql, offset, limit, queryTimeout,
+        okapiHeaders, vertxContext, responseDelegateClass).onComplete(asyncResultHandler);
   }
 
     /**
@@ -1263,29 +1474,26 @@ public final class PgUtil {
      * This method starts a full table scan until getOptimizedSqlSize() records have been scanned.
      * Then it assumes that there are only a few result records and uses the full text match.
      * If the requested number of records have been found it stops immediately.
-     *
-     * @param table
+     *  @param table
      * @param clazz
      * @param cql
+     * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
      * @param okapiHeaders
      * @param vertxContext
-     * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
      * @param responseDelegateClass
-     * @param asyncResultHandler
+     * @return
      */
-  public static <T, C> void getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
+  public static <T, C> Future<Response> getWithOptimizedSql(String table, Class<T> clazz, Class<C> collectionClazz,
       String sortField, String cql, int offset, int limit, int queryTimeout,
       Map<String, String> okapiHeaders, Context vertxContext,
-      Class<? extends ResponseDelegate> responseDelegateClass,
-      Handler<AsyncResult<Response>> asyncResultHandler) {
+      Class<? extends ResponseDelegate> responseDelegateClass) {
 
     final Method respond500;
     try {
       respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), null, null));
-      return;
+      return response(e.getMessage(), null, null);
     }
 
     final Method respond200;
@@ -1295,8 +1503,7 @@ public final class PgUtil {
       respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
-      return;
+      return response(e.getMessage(), respond500, respond500);
     }
 
     try {
@@ -1306,36 +1513,35 @@ public final class PgUtil {
       String sql = generateOptimizedSql(sortField, preparedCql, offset, limit);
       if (sql == null) {
         // the cql is not suitable for optimization, generate simple sql
-        get(preparedCql, clazz, collectionClazz,
-            okapiHeaders, vertxContext, responseDelegateClass, asyncResultHandler);
-        return;
+        return get(preparedCql, clazz, collectionClazz,
+            okapiHeaders, vertxContext, responseDelegateClass);
       }
 
       logger.info("Optimized SQL generated. Source CQL: " + cql);
-
+      Promise<Response> promise = Promise.promise();
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.select(sql, queryTimeout, reply -> {
         try {
           if (reply.failed()) {
             Throwable cause = reply.cause();
             logger.error("Optimized SQL failed: " + cause.getMessage() + ": " + sql, cause);
-            asyncResultHandler.handle(response(cause.getMessage(), respond500, respond500));
+            response(cause.getMessage(), respond500, respond500).onComplete(promise);
             return;
           }
           C collection = collection(clazz, collectionClazz, reply.result(), offset, limit);
-          asyncResultHandler.handle(response(collection, respond200, respond500));
+          response(collection, respond200, respond500).onComplete(promise);
         } catch (Exception e) {
           logger.error(e.getMessage(), e);
-          asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
-          return;
+          response(e.getMessage(), respond500, respond500).onComplete(promise);
         }
       });
+      return promise.future();
     } catch (FieldException | QueryValidationException e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond400, respond500));
+      return response(e.getMessage(), respond400, respond500);
     } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      asyncResultHandler.handle(response(e.getMessage(), respond500, respond500));
+      return response(e.getMessage(), respond500, respond500);
     }
   }
 
