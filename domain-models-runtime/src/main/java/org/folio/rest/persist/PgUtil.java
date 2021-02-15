@@ -797,7 +797,7 @@ public final class PgUtil {
     }
   }
 
-   /**
+     /**
    * Delete records by CQL.
     * @param table  the table that contains the records
     * @param cql  the CQL query for filtering the records
@@ -806,14 +806,31 @@ public final class PgUtil {
     * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
 *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
     * @param asyncResultHandler  where to return the result created by the responseDelegateClass
-    * @return
+    */
+  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  public static void delete(String table,
+      String cql,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+    delete(table, cql, okapiHeaders, vertxContext, responseDelegateClass).onComplete(asyncResultHandler);
+  }
+
+   /**
+   * Delete records by CQL.
+    * @param table  the table that contains the records
+    * @param cql  the CQL query for filtering the records
+    * @param okapiHeaders  http headers provided by okapi
+    * @param vertxContext  the current context
+    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+*    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+    * @return where to return the result created by the responseDelegateClass
     */
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static Future<Response> delete(String table,
       String cql,
       Map<String, String> okapiHeaders, Context vertxContext,
-      Class<? extends ResponseDelegate> responseDelegateClass,
-      Handler<AsyncResult<Response>> asyncResultHandler) {
+      Class<? extends ResponseDelegate> responseDelegateClass) {
 
     final Method respond500;
     try {
