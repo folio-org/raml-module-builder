@@ -797,14 +797,14 @@ public final class PgUtil {
     }
   }
 
-     /**
-   * Delete records by CQL.
+    /**
+    * Delete records by CQL.
     * @param table  the table that contains the records
     * @param cql  the CQL query for filtering the records
     * @param okapiHeaders  http headers provided by okapi
     * @param vertxContext  the current context
     * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
-*    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+    *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
     * @param asyncResultHandler  where to return the result created by the responseDelegateClass
     */
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
@@ -824,7 +824,7 @@ public final class PgUtil {
     * @param vertxContext  the current context
     * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
 *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
-    * @return where to return the result created by the responseDelegateClass
+    * @return future where to return the result created by the responseDelegateClass
     */
   @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
   public static Future<Response> delete(String table,
@@ -1225,13 +1225,31 @@ public final class PgUtil {
    * @param vertxContext  the current context
    * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
 *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
-   * @param asyncResultHandler  where to return the result created by responseClass
-   * @return
+   * @param asyncResultHandler where to return the result created by responseClass
    */
-  public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities, boolean upsert,
+  public static <T> void postSync(String table, List<T> entities, int maxEntities, boolean upsert,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
+    postSync(table, entities, maxEntities, upsert, okapiHeaders, vertxContext, responseClass).onComplete(asyncResultHandler);
+  }
+
+  /**
+   * Post a list of T entities to the database. Fail all if any of them fails.
+   * @param table database table to store into
+   * @param entities  the records to store
+   * @param maxEntities  fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
+ *     suggested value is from 100 ... 10000.
+   * @param upsert  true to update records with the same id, false to fail all entities if one has an existing id
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
+*               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return future where to return the result created by responseClass
+   */
+  public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities, boolean upsert,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseClass) {
 
     final Method respond500;
 
@@ -1263,8 +1281,8 @@ public final class PgUtil {
             Method method = respond409 == null ? respond500 : respond409;
             response(result.cause().getMessage(), method, respond500).onComplete(promise);
           } else {
-            asyncResultHandler.handle(response(table, /* id */ "", result.cause(),
-                responseClass, respond500, respond500));
+            response(table, /* id */ "", result.cause(),
+                responseClass, respond500, respond500).onComplete(promise);
           }
         }
         response(respond201, respond500).onComplete(promise);
