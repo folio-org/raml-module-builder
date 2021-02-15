@@ -1125,7 +1125,7 @@ public final class PgUtil {
    * @param clazz  the ResponseDelegate class created from the RAML file with these methods:
    *               respond204(), respond400WithTextPlain(Object), respond404WithTextPlain(Object),
    *               respond409WithTextPlain(Object), respond500WithTextPlain(Object).
-   * @return asyncResultHandler  where to return the result created by clazz
+   * @param asyncResultHandler  where to return the result created by clazz
    */
   public static <T> void put(String table, T entity, String id,
       Map<String, String> okapiHeaders, Context vertxContext,
@@ -1224,7 +1224,7 @@ public final class PgUtil {
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
-*               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+  *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler where to return the result created by responseClass
    */
   public static <T> void postSync(String table, List<T> entities, int maxEntities, boolean upsert,
