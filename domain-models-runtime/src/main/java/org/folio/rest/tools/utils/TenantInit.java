@@ -2,9 +2,7 @@ package org.folio.rest.tools.utils;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.web.client.HttpResponse;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.client.TenantClient;
@@ -25,44 +23,42 @@ public class TenantInit {
   public static Future<Void> exec(TenantClient client, TenantAttributes tenantAttributes, int waitMs) {
     Promise<Void> promise = Promise.promise();
     try {
-      log.info("about to call POST /_/tenant");
       client.postTenant(tenantAttributes, res1 -> {
         if (res1.failed()) {
           promise.fail(res1.cause());
           return;
         }
-        int status = res1.result().statusCode();
-        if (status == 204) {
+        int status1 = res1.result().statusCode();
+        if (status1 == 204) {
           promise.complete();
           return;
-        } else if (status != 201) {
-          promise.fail("tenant post returned " + status + " " + res1.result().bodyAsString());
+        } else if (status1 != 201) {
+          promise.fail("tenant post returned " + status1 + " " + res1.result().bodyAsString());
           return;
         }
         String id = res1.result().bodyAsJsonObject().getString("id");
-
-        log.info("about to call GET /_/tenant/" + id);
-        try {
-          promise.handle(Future.<HttpResponse<Buffer>>future(p -> client.getTenantByOperationId(id, waitMs, p))
-              .compose(res2 -> {
-                log.info("GET returned");
-                if (res2.statusCode() != 200) {
-                  return Future.failedFuture("tenant get returned " + res2.statusCode() + " " + res2.bodyAsString());
-                }
-                JsonObject bodyJson = res2.bodyAsJsonObject();
-                if (!bodyJson.getBoolean("complete")) {
-                  return Future.failedFuture("tenant job did not complete");
-                }
-                String error = bodyJson.getString("error");
-                if (error != null) {
-                  return Future.failedFuture(error);
-                }
-                return Future.succeededFuture();
-              }));
-        } catch (Exception e) {
-          log.warn(e.getMessage(), e);
-          promise.fail(e);
-        }
+        client.getTenantByOperationId(id, waitMs, res2 -> {
+          if (res2.failed()) {
+            promise.fail(res2.cause());
+            return;
+          }
+          int status2 = res2.result().statusCode();
+          if (status2 != 200) {
+            promise.fail("tenant get returned " + status2 + " " + res2.result().bodyAsString());
+            return;
+          }
+          JsonObject bodyJson = res2.result().bodyAsJsonObject();
+          if (!bodyJson.getBoolean("complete")) {
+            promise.fail("tenant job did not complete");
+            return;
+          }
+          String error = bodyJson.getString("error");
+          if (error != null) {
+            promise.fail(error);
+            return;
+          }
+          promise.complete();
+        });
       });
     } catch (Exception e) {
       log.warn(e.getMessage(), e);

@@ -62,7 +62,7 @@ public class DemoRamlRestTest {
 
   private static Vertx vertx;
   private static int port;
-  private static Locale oldLocale = Locale.getDefault();
+  private static Locale oldLocale = Locale.getDefault(); // only needed for embedded postgres
   private static String TENANT = "folio_shared";
   private static RequestSpecification tenant;
   private static TenantClient client;
@@ -76,7 +76,7 @@ public class DemoRamlRestTest {
   @BeforeClass
   public static void setUp(TestContext context) throws IOException {
     // some tests (withoutParameter, withoutYearParameter) fail under other locales like Locale.GERMANY
-    Locale.setDefault(Locale.US);
+    Locale.setDefault(Locale.US); // only needed for embedded postgres
 
     // do not use PostgresClient.setPostgresTester here so we check that PostgresTesterEmbedded is working
 
@@ -87,35 +87,13 @@ public class DemoRamlRestTest {
     tenant = new RequestSpecBuilder().addHeader("x-okapi-tenant", TENANT).build();
 
     try {
-      dropSchemaRole(context);
       deployRestVerticle(context);
       client = new TenantClient("http://localhost:" + port, TENANT, null);
-      TenantAttributes ta = new TenantAttributes().withModuleTo("raml-moduile-builder-1.0.0");
-      Async async = context.async();
-      TenantInit.exec(client, ta, 10000).onFailure(x -> context.fail(x)).onComplete(x -> async.complete());
-      /*
-      Buffer buf = Buffer.buffer("{\"module_to\":\"raml-module-builder-1.0.0\"}");
-      String location = postData(context, "http://localhost:" + port + "/_/tenant", buf,
-        201, HttpMethod.POST, "application/json", TENANT, false);
-      checkURLs(context, "http://localhost:" + port + location + "?wait=10000", 200);
-
-       */
+      TenantAttributes ta = new TenantAttributes().withModuleTo("raml-module-builder-1.0.0");
+      TenantInit.exec(client, ta, 60000).onComplete(context.asyncAssertSuccess());
     } catch (Exception e) {
       context.fail(e);
     }
-  }
-
-  private static void dropSchemaRole(TestContext context) {
-    // Dropping is needed when developers reuse the database to save startup time.
-    Async async = context.async();
-    PostgresClient postgresClient = PostgresClient.getInstance(Vertx.vertx());
-    postgresClient.execute("drop schema " + TENANT + "_raml_module_builder cascade", ignore1 -> {
-      postgresClient.execute("drop role " + TENANT + "_raml_module_builder", ignore2 -> {
-        PostgresClient.closeAllClients();
-        async.complete();
-      });
-    });
-    async.await(5000);
   }
 
   private static void deployRestVerticle(TestContext context) {
@@ -134,16 +112,11 @@ public class DemoRamlRestTest {
    */
   @AfterClass
   public static void tearDown(TestContext context) {
-    try {
-      Buffer buf = Buffer.buffer("{\"purge\": true}");
-      postData(context, "http://localhost:" + port + "/_/tenant", buf,
-          204, HttpMethod.POST, "application/json", TENANT, false);
-    } catch (Exception e) {
-      context.fail(e);
-    }
     Locale.setDefault(oldLocale);
-    PostgresClient.stopEmbeddedPostgres();
-    vertx.close(context.asyncAssertSuccess());
+    TenantInit.purge(client, 60000).onComplete(context.asyncAssertSuccess(x -> {
+      PostgresClient.stopEmbeddedPostgres();
+      vertx.close(context.asyncAssertSuccess());
+    }));
   }
 
   @Test
