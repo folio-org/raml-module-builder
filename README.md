@@ -1305,7 +1305,7 @@ an asynchronous fashion. The handler provided will be called
 very early in the process and before `schema.json` is fully processed.
 For this reason doing anything in the handler is problematic as the
 database is not fully populated with data. Furthermore, if there are
-any errors that could occur in the your post handler, it seems natural to
+any errors that could occur in your post handler, it seems natural to
 throw an error, but the underlying RMB code does not know about that, and
 thus, continues its operation - including managing a job in the background.
 
@@ -1321,16 +1321,17 @@ DO NOT DO THIS:
      }
   }, context);
 ```
-`LiquibaseUtil.initializeSchemaForTenant`
-assumes the database is configured. The handler is called when module
+
+The `LiquibaseUtil.initializeSchemaForTenant`
+assumes that the database is configured. The handler is called when the module
 is invoked always (on purge, disable as well). Throwing error is problematic
-because postTenant has already done someting. And, finally, the status
+because postTenant has already done something. And, finally, the status
 code of `ar` is not even inspected.
 
 For these reasons, in most cases, it is discouraged to call
 `super.postTenant`. Instead extend the `loadData` method (see below).
 
-If your module - based on RMB - does not use a storage there is not
+If your module - based on RMB - does not use a storage then there is not
 a problem - you must not call `super.postTenant` and you can just
 implement an easy postTenant implementation in sync fashion -
 returning 204 for OK/No Content.
@@ -2136,7 +2137,7 @@ Some are listed below (and see the [full set](#documentation-of-the-apis)):
 
 ## Instrumentation
 
-RMB shares the same instrumentation code with Okapi. Please see 
+RMB shares the same instrumentation code with Okapi. Please see
 [Okapi instrumentation](https://github.com/folio-org/okapi/blob/master/doc/guide.md#instrumentation).
 Change `okapi-core/target/okapi-core-fat.jar dev` in the example to RMB based module jar name and parameters.
 
