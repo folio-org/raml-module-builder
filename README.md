@@ -1280,16 +1280,18 @@ In Eclipse you may use "Run as ... Maven Build" for doing so.
 
 ## Tenant API
 
-The Postgres Client support in the RMB is schema specific, meaning that it expects every tenant to be
-represented by its own schema. The Tenant API is asynchronous as of RMB 32 and later.
-The tenant job is initiated by a POST and may be inspected with GET and optionally be
-cleaned up with DELETE.
+The Postgres Client support in the RMB is schema specific, meaning that
+it expects every tenant to be represented by its own schema. The Tenant
+API is asynchronous as of RMB 32 and later. The tenant job is initiated
+by a POST and may be inspected with GET and optionally be cleaned up
+with DELETE.
 
 The RAML defining the API:
 
    https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml
 
-By default RMB includes an implementation of the Tenant API which assumes Postgres being present.
+By default RMB includes an implementation of the Tenant API which assumes
+Postgres being present.
 Implementation in
  [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) file. You might want to extend/override this because:
 
@@ -1298,30 +1300,46 @@ Implementation in
 
 #### Extending the Tenant API
 
-In order to implement your tenant API, extend `TenantAPI` class:
+Since RMB 32, the postTenant that is provided is working in
+an asynchronous fashion. The handler provided will be called
+very early in the process and before `schema.json` is fully processed.
+For this reason doing anything in the handler is problematic as the
+database is not fully populated with data. Furthermore, if there are
+any errors that could occur in your post handler, it seems natural to
+throw an error, but the underlying RMB code does not know about that, and
+thus, continues its operation - including managing a job in the background.
+
+Here's an example of incorrect usage.
+DO NOT DO THIS:
 
 ```java
-package org.folio.rest.impl;
-import javax.ws.rs.core.Response;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-
-public class MyTenantAPI extends TenantAPI {
-  @Validate
-  @Override
-  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-      Handler<AsyncResult<Response>> handler, Context context) {
-
-    ..
-  }
-  ..
-}
+  super.postTenant(entiry, headers, ar -> {
+     LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+     if (someerror) {
+       handler.handle(Future.succeededFuture(
+              PostTenantResponse.respond400TextPlain(...)));
+     }
+  }, context);
 ```
 
-But note that as of RMB this should be implemented asynchronously.. meaning that the handler response
-should be called early in the process with a location and that the status of the job can be inspected
-later with a call to `getTenantByOperationId`.
+The `LiquibaseUtil.initializeSchemaForTenant`
+assumes that the database is configured. The handler is called when the module
+is invoked always (on purge, disable as well). Throwing error is problematic
+because postTenant has already done something. And, finally, the status
+code of `ar` is not even inspected.
 
-Extend the `loadData` method, to load sample/reference data for a module.
+For these reasons, in most cases, it is discouraged to call
+`super.postTenant`. Instead extend the `loadData` method (see below).
+
+If your module - based on RMB - does not use a storage then there is not
+a problem - you must not call `super.postTenant` and you can just
+implement an easy postTenant implementation in sync fashion -
+returning 204 for OK/No Content.
+
+Extend the `loadData` method, to load sample/reference data for a module
+or do any other initialiation of a module - such as doing LiquibaseUtil
+work. The loadData is called upon create/upgrade.
+
 
 ```java
 @Validate
@@ -1330,14 +1348,18 @@ Future<Integer> loadData(TenantAttributes attributes, String tenantId,
                          Map<String, String> headers, Context vertxContext) {
   return super.loadData(attributes, tenantId, headers, vertxContext)
       .compose(superRecordsLoaded -> {
-        // load n records
+        // load n records or any other initialization
         return Future.succeededFuture(superRecordsLoaded + n);
       });
 }
 ```
 
-There is no right way to load data, but consider that data load will be both happening for first time tenant
-usage of the module and during an upgrade process. Your data loading should be idempotent. If files are stored
+The Integer here is the number of records loaded - just add 0 if
+no sample/ref is loaded.
+
+There is no right way to load data, but consider that data load will be
+both happening for first time tenant usage of the module and during an
+upgrade process. Your data loading should be idempotent. If files are stored
 as resources and as JSON files, you can use the TenantLoading utility.
 
 ```java
@@ -2115,7 +2137,7 @@ Some are listed below (and see the [full set](#documentation-of-the-apis)):
 
 ## Instrumentation
 
-RMB shares the same instrumentation code with Okapi. Please see 
+RMB shares the same instrumentation code with Okapi. Please see
 [Okapi instrumentation](https://github.com/folio-org/okapi/blob/master/doc/guide.md#instrumentation).
 Change `okapi-core/target/okapi-core-fat.jar dev` in the example to RMB based module jar name and parameters.
 
