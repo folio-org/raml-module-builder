@@ -1305,8 +1305,8 @@ an asynchronous fashion. The handler provided will be called
 very early in the process and before `schema.json` is fully processed.
 For this reason doing anything in the handler is problematic as the
 database is not fully populated with data. Furthermore, if there are
-any errors could occur in the your post handler, it seems natural to throw
-an error, but the underlying RMB code does not know about that, and
+any errors that could occur in the your post handler, it seems natural to
+throw an error, but the underlying RMB code does not know about that, and
 thus, continues its operation - including managing a job in the background.
 
 Here's an example of incorrect usage.
