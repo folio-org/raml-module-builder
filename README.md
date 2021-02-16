@@ -1300,7 +1300,7 @@ Implementation in
 
 #### Extending the Tenant API
 
-Since RMB 32, the postTenant that is provided is working in a
+Since RMB 32, the postTenant that is provided is working in
 an asynchronous fashion. The handler provided will be called
 very early in the process and before `schema.json` is fully processed.
 For this reason doing anything in the handler is problematic as the
