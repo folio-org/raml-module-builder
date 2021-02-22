@@ -54,11 +54,13 @@ import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
-import org.folio.rest.tools.PomReader;
+import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
 
@@ -129,8 +131,6 @@ public class PostgresClient {
   private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
-
-  private static final String    MODULE_NAME              = PomReader.INSTANCE.getModuleName();
 
   private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
@@ -1763,7 +1763,9 @@ public class PostgresClient {
         if (asyncResult.succeeded()) {
           asyncResult.result().setCloseHandler(close -> conn.result().close(vertx));
         } else {
-          conn.result().close(vertx);
+          if (conn != null && conn.succeeded()) {
+            conn.result().close(vertx);
+          }
         }
         replyHandler.handle(asyncResult);
       } catch (Exception e) {
@@ -2066,7 +2068,7 @@ public class PostgresClient {
     } else if (!wrapper.getWhereClause().isEmpty()) {
       // only do estimation when filter is in use (such as CQL).
       queryHelper.countQuery = SELECT + schemaName + DOT + "count_estimate('"
-        + org.apache.commons.lang.StringEscapeUtils.escapeSql(query)
+        + query.replace("'", "''")
         + "')";
     }
     return queryHelper;
@@ -3803,11 +3805,11 @@ public class PostgresClient {
   }
 
   public static String convertToPsqlStandard(String tenantId){
-    return tenantId.toLowerCase() + "_" + MODULE_NAME;
+    return tenantId.toLowerCase() + "_" + ModuleName.getModuleName();
   }
 
   public static String getModuleName(){
-    return MODULE_NAME;
+    return ModuleName.getModuleName();
   }
 
   /**

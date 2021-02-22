@@ -5,9 +5,8 @@ import static org.junit.Assert.assertEquals;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-
+import org.folio.rest.RestVerticle;
 import org.folio.rest.testing.UtilityClassTester;
-import org.folio.rest.tools.ClientGenerator;
 import org.junit.Test;
 
 public class TenantToolTest {
@@ -44,6 +43,6 @@ public class TenantToolTest {
 
   @Test
   public void b() {
-    assertEquals("b", TenantTool.tenantId(map(ClientGenerator.OKAPI_HEADER_TENANT, "b")));
+    assertEquals("b", TenantTool.tenantId(map(RestVerticle.OKAPI_HEADER_TENANT, "b")));
   }
 }

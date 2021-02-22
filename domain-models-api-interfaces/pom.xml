@@ -17,6 +17,10 @@
       <artifactId>vertx-core</artifactId>
     </dependency>
     <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web</artifactId>
+    </dependency>
+    <dependency>
       <groupId>org.glassfish.jersey.media</groupId>
       <artifactId>jersey-media-json-jackson</artifactId>
     </dependency>
@@ -31,6 +35,10 @@
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
       <artifactId>jackson-annotations</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
     </dependency>
     <dependency>
       <groupId>javax.ws.rs</groupId>
@@ -58,37 +66,14 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>domain-models-interface-extensions</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-    <dependency>
       <groupId>xerces</groupId>
       <artifactId>xmlParserAPIs</artifactId>
       <version>2.6.2</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
-      <groupId>com.sun.codemodel</groupId>
-      <artifactId>codemodel</artifactId>
-      <version>2.6</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>com.sun.xml.bind</groupId>
-      <artifactId>jaxb-xjc</artifactId>
-      <version>2.1.6</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-      <groupId>javax.ws.rs</groupId>
-      <artifactId>jsr311-api</artifactId>
-      <version>1.1.1</version>
-      <scope>compile</scope>
-    </dependency>
-    <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-collections4</artifactId>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-collections4</artifactId>
     </dependency>
   </dependencies>
 
@@ -103,32 +88,23 @@
       </plugin>
 
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${project.parent.version}</version>
         <executions>
           <execution>
-            <id>generate_interfaces</id>
-            <phase>generate-sources</phase>
+            <id>generate-interfaces</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>org.folio.rest.tools.GenerateRunner</mainClass>
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>raml_files</key>
-                  <value>${ramlfiles_path},${ramlfiles_util_path}/ramls</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>jsonschema.customfield</key>
-                  <value>{"fieldname": "test", "fieldvalue": true, "annotation": {"type":"javax.validation.constraints.Null"}}</value>
-                </systemProperty>
-              </systemProperties>
+              <ramlDirs>
+                <ramlDir>ramls</ramlDir>
+                <ramlDir>ramls/raml-util/ramls</ramlDir>
+              </ramlDirs>
+              <jsonSchemaCustomFields>
+                <field>{"fieldname": "test", "fieldvalue": true, "annotation": {"type":"javax.validation.constraints.Null"}}</field>
+              </jsonSchemaCustomFields>
             </configuration>
           </execution>
         </executions>
