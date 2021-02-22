@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.emptyArray;
 import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.junit.jupiter.api.Test;
 import io.vertx.core.Future;
@@ -15,6 +16,11 @@ import javax.ws.rs.core.Response;
 import java.util.regex.Pattern;
 
 public class RestRoutingTest {
+  @Test
+  public void utilityClass() {
+    UtilityClassTester.assertUtilityClass(RestRouting.class);
+  }
+
   Object parseEnum(String value, String defaultValue) throws Exception {
     return RestRouting.parseEnum(
         "org.folio.rest.jaxrs.model.CalendarPeriodsServicePointIdCalculateopeningGetUnit",

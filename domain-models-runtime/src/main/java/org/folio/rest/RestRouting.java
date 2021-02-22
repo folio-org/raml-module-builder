@@ -146,7 +146,7 @@ public final class RestRouting {
          * so that they do not reach the implementing function
          */
         try {
-          if(!(content instanceof JsonObject)){
+          if (!(content instanceof JsonObject)){
             content = JsonObject.mapFrom(content);
           }
           ((JsonObject)content).remove(cv.getPropertyPath().toString());
@@ -161,13 +161,7 @@ public final class RestRouting {
       String field = cv.getPropertyPath().toString();
       p.setKey(field);
       Object val = cv.getInvalidValue();
-      if(val == null){
-        p.setValue("null");
-      }
-      else{
-        p.setValue(val.toString());
-
-      }
+      p.setValue(val == null ? "null" : val.toString());
       error.getParameters().add(p);
       error.setMessage(cv.getMessage());
       error.setCode("-1");
@@ -273,11 +267,9 @@ public final class RestRouting {
               if (bodyContent != null){
                 if ("java.io.Reader".equals(valueType)){
                   paramArray[order] = new StringReader(bodyContent);
-                }
-                else if ("java.lang.String".equals(valueType)) {
+                } else if ("java.lang.String".equals(valueType)) {
                   paramArray[order] = bodyContent;
-                }
-                else if (bodyContent.length() > 0) {
+                } else if (bodyContent.length() > 0) {
                   try {
                     paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
                   } catch (UnrecognizedPropertyException e) {
@@ -335,7 +327,7 @@ public final class RestRouting {
           try {
             if (valueType.equals("java.lang.String")) {
               // regular string param in query string - just push value
-              if (param == null && defaultVal != null) {
+              if (param == null) {
                 // no value passed - check if there is a default value
                 paramArray[order] = defaultVal;
               } else {
@@ -357,11 +349,9 @@ public final class RestRouting {
                 } else {
                   paramArray[order] = valueType.equals("int") ? 0 : null;
                 }
-              }
-              else if("".equals(param)) {
+              } else if ("".equals(param)) {
                 emptyNumericParam = true;
-              }
-              else {
+              } else {
                 paramArray[order] = Integer.valueOf(param);
               }
             } else if (valueType.equals("boolean") || valueType.equals("java.lang.Boolean")) {
@@ -374,12 +364,7 @@ public final class RestRouting {
               }
             } else if (valueType.contains("List")) {
               List<String> vals = queryParams.getAll(valueName);
-              if (vals == null) {
-                paramArray[order] = null;
-              }
-              else {
-                paramArray[order] = vals;
-              }
+              paramArray[order] = vals;
             } else if (valueType.equals("java.math.BigDecimal") || valueType.equals("java.lang.Number")) {
               if (param == null) {
                 if (defaultVal != null) {
@@ -390,8 +375,7 @@ public final class RestRouting {
               }
               else if ("".equals(param)) {
                 emptyNumericParam = true;
-              }
-              else {
+              } else {
                 paramArray[order] = new BigDecimal(param.replace(",", "")); // big decimal can contain ","
               }
             } else { // enum object type
@@ -402,7 +386,7 @@ public final class RestRouting {
                 endRequestWithError(rc, 400, true, ee.getMessage());
               }
             }
-            if(emptyNumericParam){
+            if (emptyNumericParam) {
               endRequestWithError(rc, 400, true, valueName + " does not have a default value in the RAML and has been passed empty");
             }
           } catch (Exception e) {
@@ -420,14 +404,12 @@ public final class RestRouting {
     //or 1 streaming data complete
     //or 2 streaming aborted
     //otherwise it will be -1 and flags wont be set
-    if(streamed.getStatus() == 0){
+    if (streamed.getStatus() == 0) {
       headers.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
-    }
-    else if(streamed.getStatus() == 1){
+    } else if (streamed.getStatus() == 1) {
       headers.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
       headers.put(RestVerticle.STREAM_COMPLETE, String.valueOf(rc.hashCode()));
-    }
-    else if (streamed.getStatus() == 2){
+    } else if (streamed.getStatus() == 2) {
       headers.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
       headers.put(RestVerticle.STREAM_ABORT, String.valueOf(rc.hashCode()));
     }
@@ -637,7 +619,7 @@ public final class RestRouting {
    */
   static boolean isStreamed(Annotation[] annotations) {
     for (int i = 0; i < annotations.length; i++) {
-      if(annotations[i].annotationType().equals(Stream.class)){
+      if (annotations[i].annotationType().equals(Stream.class)) {
         return true;
       }
     }
@@ -717,7 +699,7 @@ public final class RestRouting {
     if (streamData) {
       final int[] uploadParamPosition = new int[] { -1 };
       params.forEach(param -> {
-        if(((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")){
+        if (((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")) {
           //application/octet-stream passed - this is handled in a stream like manner
           //and the corresponding function called must annotate with a @Stream - and be able
           //to handle the function being called repeatedly on parts of the data
