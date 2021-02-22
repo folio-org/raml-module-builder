@@ -2,7 +2,6 @@ package org.folio.rest;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -28,8 +27,6 @@ import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.client.test.HttpClientMock2;
-import org.folio.rest.tools.messages.MessageConsts;
-import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.LogUtil;
 
@@ -50,7 +47,6 @@ public class RestVerticle extends AbstractVerticle {
   private static String             className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static String             deploymentId                     = "";
-  private final Messages            messages                        = Messages.getInstance();
 
   @Override
   public void start(Promise<Void> startPromise) throws Exception {

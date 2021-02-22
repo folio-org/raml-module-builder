@@ -63,9 +63,9 @@ public class RestRoutingTest {
 
   @Test
   void matchUrl() {
-    assertThat(RestRouting.matchPath("/", Pattern.compile("^/x$")), is(nullValue()));
-    assertThat(RestRouting.matchPath("/x", Pattern.compile("^/$")), is(nullValue()));
-    assertThat(RestRouting.matchPath("/x", Pattern.compile("^/y$")), is(nullValue()));
+    assertThat(RestRouting.matchPath("/", Pattern.compile("^/x$")), is(emptyArray()));
+    assertThat(RestRouting.matchPath("/x", Pattern.compile("^/$")), is(emptyArray()));
+    assertThat(RestRouting.matchPath("/x", Pattern.compile("^/y$")), is(emptyArray()));
     assertThat(RestRouting.matchPath("/", Pattern.compile("^/$")), is(emptyArray()));
     assertThat(RestRouting.matchPath("/x/yy", Pattern.compile("^/x/yy$")), is(emptyArray()));
     assertThat(RestRouting.matchPath("/x/yy", Pattern.compile("^/x/([^/]+)$")),

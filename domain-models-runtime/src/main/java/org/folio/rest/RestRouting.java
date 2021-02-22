@@ -67,6 +67,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public final class RestRouting {
+  private static final String CONTENT_TYPE = "Content-Type";
   private static final String SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
   private static final String DEFAULT_CONTENT_TYPE            = "application/json";
   private static final String SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
@@ -94,9 +95,9 @@ public final class RestRouting {
       response.setChunked(chunked);
       response.setStatusCode(status);
       if (status == 422) {
-        response.putHeader("Content-type", SUPPORTED_CONTENT_TYPE_JSON_DEF);
+        response.putHeader(CONTENT_TYPE, SUPPORTED_CONTENT_TYPE_JSON_DEF);
       } else {
-        response.putHeader("Content-type", SUPPORTED_CONTENT_TYPE_TEXT_DEF);
+        response.putHeader(CONTENT_TYPE, SUPPORTED_CONTENT_TYPE_TEXT_DEF);
       }
       if (message != null) {
         response.write(message);
@@ -133,64 +134,62 @@ public final class RestRouting {
    */
   static Object[] isValidRequest(RoutingContext rc, Object content, Errors errorResp, List<String> singleField, Class<?> entityClazz) {
     Set<? extends ConstraintViolation<?>> validationErrors = validationFactory.getValidator().validate(content);
+    if (validationErrors.isEmpty()) {
+      return new Object[]{Boolean.TRUE, content};
+    }
     boolean ret = true;
-    if (validationErrors.size() > 0) {
-      //StringBuffer sb = new StringBuffer();
-
-      for (ConstraintViolation<?> cv : validationErrors) {
-
-        if("must be null".equals(cv.getMessage())){
-          /**
-           * read only fields are marked with a 'must be null' annotation @null
-           * so the client should not pass them in, if they were passed in, remove them here
-           * so that they do not reach the implementing function
-           */
-          try {
-            if(!(content instanceof JsonObject)){
-              content = JsonObject.mapFrom(content);
-            }
-            ((JsonObject)content).remove(cv.getPropertyPath().toString());
-            continue;
-          } catch (Exception e) {
-            withRequestId(rc, () -> LOGGER.warn("Failed to remove " + cv.getPropertyPath().toString()
-                + " field from body when calling " + rc.request().absoluteURI(), e));
-          }
-        }
-        Error error = new Error();
-        Parameter p = new Parameter();
-        String field = cv.getPropertyPath().toString();
-        p.setKey(field);
-        Object val = cv.getInvalidValue();
-        if(val == null){
-          p.setValue("null");
-        }
-        else{
-          p.setValue(val.toString());
-
-        }
-        error.getParameters().add(p);
-        error.setMessage(cv.getMessage());
-        error.setCode("-1");
-        error.setType(DomainModelConsts.VALIDATION_FIELD_ERROR);
-        //return the error if the validation is requested on a specific field
-        //and that field fails validation. if another field fails validation
-        //that is ok as validation on that specific field wasnt requested
-        //or there are validation errors and this is not a per field validation request
-        if (singleField != null && (singleField.contains(field) || singleField.isEmpty())) {
-          errorResp.getErrors().add(error);
-          ret = false;
-        }
-        //sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
-      }
-      if(content instanceof JsonObject){
-        //we have sanitized the passed in object by removing read-only fields
+    for (ConstraintViolation<?> cv : validationErrors) {
+      if ("must be null".equals(cv.getMessage())){
+        /**
+         * read only fields are marked with a 'must be null' annotation @null
+         * so the client should not pass them in, if they were passed in, remove them here
+         * so that they do not reach the implementing function
+         */
         try {
-          content = MAPPER.readValue(((JsonObject)content).encode(), entityClazz);
-        } catch (IOException e) {
-          withRequestId(rc, () -> LOGGER.error(
-              "Failed to serialize body content after removing read-only fields when calling "
-                  + rc.request().absoluteURI(), e));
+          if(!(content instanceof JsonObject)){
+            content = JsonObject.mapFrom(content);
+          }
+          ((JsonObject)content).remove(cv.getPropertyPath().toString());
+          continue;
+        } catch (Exception e) {
+          withRequestId(rc, () -> LOGGER.warn("Failed to remove {} field from body when calling {}",
+              cv.getPropertyPath().toString(), rc.request().absoluteURI(), e));
         }
+      }
+      Error error = new Error();
+      Parameter p = new Parameter();
+      String field = cv.getPropertyPath().toString();
+      p.setKey(field);
+      Object val = cv.getInvalidValue();
+      if(val == null){
+        p.setValue("null");
+      }
+      else{
+        p.setValue(val.toString());
+
+      }
+      error.getParameters().add(p);
+      error.setMessage(cv.getMessage());
+      error.setCode("-1");
+      error.setType(DomainModelConsts.VALIDATION_FIELD_ERROR);
+      //return the error if the validation is requested on a specific field
+      //and that field fails validation. if another field fails validation
+      //that is ok as validation on that specific field wasnt requested
+      //or there are validation errors and this is not a per field validation request
+      if (singleField != null && (singleField.contains(field) || singleField.isEmpty())) {
+        errorResp.getErrors().add(error);
+        ret = false;
+      }
+      //sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
+    }
+    if (content instanceof JsonObject){
+      //we have sanitized the passed in object by removing read-only fields
+      try {
+        content = MAPPER.readValue(((JsonObject)content).encode(), entityClazz);
+      } catch (IOException e) {
+        withRequestId(rc, () -> LOGGER.error(
+            "Failed to serialize body content after removing read-only fields when calling {}",
+                rc.request().absoluteURI(), e));
       }
     }
     return new Object[]{Boolean.valueOf(ret), content};
@@ -269,7 +268,8 @@ public final class RestRouting {
               //an inputsteam parameter occurs when application/octet is declared in the raml
               //in which case the content will be streamed to he function
               String bodyContent = body == null ? null : body.toString();
-              withRequestId(rc, () -> LOGGER.debug(rc.request().path() + " -------- bodyContent -------- " + bodyContent));
+              withRequestId(rc, () -> LOGGER.debug("{} -------- bodyContent -------- {}",
+                  rc.request().path(), bodyContent));
               if (bodyContent != null){
                 if ("java.io.Reader".equals(valueType)){
                   paramArray[order] = new StringReader(bodyContent);
@@ -288,7 +288,6 @@ public final class RestRouting {
                   }
                 }
               }
-
               Errors errorResp = new Errors();
 
               //is this request only to validate a field value and not an actual
@@ -319,7 +318,6 @@ public final class RestRouting {
           } catch (Exception e) {
             withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
             endRequestWithError(rc, 400, true, "Json content error " + e.getMessage());
-
           }
         } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
           // handle header params - read the header field from the
@@ -394,7 +392,7 @@ public final class RestRouting {
                 emptyNumericParam = true;
               }
               else {
-                paramArray[order] = new BigDecimal(param.replaceAll(",", "")); // big decimal can contain ","
+                paramArray[order] = new BigDecimal(param.replace(",", "")); // big decimal can contain ","
               }
             } else { // enum object type
               try {
@@ -439,7 +437,7 @@ public final class RestRouting {
     int pos = 0;
 
     //this endpoint indicated it wants to receive the routing context as a parameter
-    if(addRCParam){
+    if (addRCParam) {
       //the amount of extra params added is 4 not 3
       size = 4;
       //the first param of the extra params is the injected RC
@@ -470,24 +468,24 @@ public final class RestRouting {
         // catch exception for now in case of null point and show generic
         // message
         message = e.getCause().getMessage();
-      } catch (Throwable ee) {
+      } catch (Exception ee) {
         message = MESSAGES.getMessage("en", MessageConsts.UnableToProcessRequest);
       }
       endRequestWithError(rc, 400, true, message);
     }
   }
 
-  static private void handleStream(Method method2Run, RoutingContext rc, boolean useRoutingContext, HttpServerRequest request,
+  static private void handleStream(Method method2Run, RoutingContext rc, boolean useRoutingContext,
                             Object instance, String[] tenantId, Map<String, String> okapiHeaders,
-                            int[] uploadParamPosition, Object[] paramArray, long start){
+                            int[] uploadParamPosition, Object[] paramArray, long start) {
+    HttpServerRequest request = rc.request();
     request.handler(buff -> {
       try {
         StreamStatus stat = new StreamStatus();
         stat.setStatus(0);
-        paramArray[uploadParamPosition[0]] =
-            new ByteArrayInputStream( buff.getBytes() );
+        paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(buff.getBytes());
         invoke(method2Run, paramArray, instance, rc, useRoutingContext, okapiHeaders, stat, v -> {
-          withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(), "start", " invoking " + method2Run));
+          withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(), method2Run.getName(), " invoking " + method2Run));
         });
       } catch (Exception e1) {
         withRequestId(rc, () -> LOGGER.error(e1.getMessage(), e1));
@@ -499,7 +497,7 @@ public final class RestRouting {
       stat.setStatus(1);
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
       invoke(method2Run, paramArray, instance, rc, useRoutingContext, okapiHeaders, stat, v -> {
-        withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(), "start", " invoking " + method2Run));
+        withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(), method2Run.getName(), " invoking " + method2Run));
         //all data has been stored in memory - not necessarily all processed
         sendResponse(rc, v, start, tenantId[0]);
       });
@@ -510,7 +508,7 @@ public final class RestRouting {
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
       invoke(method2Run, paramArray, instance, rc, useRoutingContext, okapiHeaders, stat,
           v -> withRequestId(rc, () ->
-              LogUtil.formatLogMessage(method2Run.getName(), "start", " invoking " + method2Run))
+              LogUtil.formatLogMessage(method2Run.getName(), method2Run.getName(), " invoking " + method2Run))
       );
       endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage());
     });
@@ -519,9 +517,9 @@ public final class RestRouting {
   static void getOkapiHeaders(RoutingContext rc, Map<String, String> headers, String[] tenantId) {
     MultiMap mm = rc.request().headers();
     Consumer<Map.Entry<String,String>> consumer = entry -> {
-      String headerKey = entry.getKey().toLowerCase();
-      if(headerKey.startsWith(RestVerticle.OKAPI_HEADER_PREFIX)){
-        if(headerKey.equalsIgnoreCase(RestVerticle.OKAPI_HEADER_TENANT)){
+      String headerKey = entry.getKey().toLowerCase(); // should be changed and headers should be multiMap and not Map
+      if (headerKey.startsWith(RestVerticle.OKAPI_HEADER_PREFIX)) {
+        if (headerKey.equalsIgnoreCase(RestVerticle.OKAPI_HEADER_TENANT)) {
           tenantId[0] = entry.getValue();
         }
         headers.put(headerKey, entry.getValue());
@@ -650,13 +648,11 @@ public final class RestRouting {
    * Match the path agaist pattern.
    * @return the matching groups urldecoded, may be an empty array, or null if the pattern doesn't match
    */
-  @SuppressWarnings("java:S1168")  // suppress "Empty arrays should be returned instead of null"
   static String[] matchPath(String path, Pattern pattern) {
     Matcher m = pattern.matcher(path);
     if (! m.find()) {
-      return null;
+      return new String[0];
     }
-
     int groups = m.groupCount();
     // pathParams are the place holders in the raml query string
     // for example /admin/{admin_id}/yyy/{yyy_id} - the content in between the {} are path params
@@ -669,7 +665,6 @@ public final class RestRouting {
   }
 
   static void handleRequest(RoutingContext rc, Class<?> aClass, JsonObject ret, Method method, Pattern pattern) {
-    Vertx vertx = rc.vertx();
     long start = System.nanoTime();
     Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
     String []tenantId = new String[]{null};
@@ -679,25 +674,20 @@ public final class RestRouting {
           MESSAGES.getMessage("en", MessageConsts.UnableToProcessRequest) + " Tenant must be set");
       return;
     }
-    Constructor<?> constructorWithArgs = null;
-    Constructor<?> constructorWithNoArgs = null;
-    try {
-      constructorWithArgs = aClass.getConstructor(Vertx.class, String.class);
-    } catch (NoSuchMethodException e1) {
-      try {
-        constructorWithNoArgs = aClass.getConstructor();
-      } catch (NoSuchMethodException e2) {
-        LOGGER.error(e2.getMessage(), e2);
-        endRequestWithError(rc, 500, true, "Server error");
-        return;
-      }
-    }
     Object o;
     try {
-      if (constructorWithArgs != null) {
-        o = constructorWithArgs.newInstance(vertx, tenantId[0]);
-      } else {
-        o = constructorWithNoArgs.newInstance();
+      try {
+        Constructor<?> constructorWithArgs = aClass.getConstructor(Vertx.class, String.class);
+        o = constructorWithArgs.newInstance(rc.vertx(), tenantId[0]);
+      } catch (NoSuchMethodException e1) {
+        try {
+          Constructor<?> constructorWithNoArgs = aClass.getConstructor();
+          o = constructorWithNoArgs.newInstance();
+        } catch (NoSuchMethodException e2) {
+          LOGGER.error(e2.getMessage(), e2);
+          endRequestWithError(rc, 500, true, "Server error");
+          return;
+        }
       }
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
@@ -738,7 +728,7 @@ public final class RestRouting {
       if (rc.response().ended()) {
         return;
       }
-      handleStream(method, rc, useRoutingContext[0], rc.request(), instance, tenantId, okapiHeaders,
+      handleStream(method, rc, useRoutingContext[0], instance, tenantId, okapiHeaders,
           uploadParamPosition, paramArray, start);
     } else {
       // regular request (no streaming).. Read the request body before checking params + body
@@ -807,7 +797,7 @@ public final class RestRouting {
       // if this was left out by the client they must add for request to return
       // clean up simple stuff from the clients header - trim the string and remove ';' in case
       // it was put there as a suffix
-      String contentType = StringUtils.defaultString(request.getHeader("Content-type"), DEFAULT_CONTENT_TYPE)
+      String contentType = StringUtils.defaultString(request.getHeader(CONTENT_TYPE), DEFAULT_CONTENT_TYPE)
           .replaceFirst(";.*", "").trim();
       if (!consumes.contains(removeBoundry(contentType))) {
         endRequestWithError(rc, 400, true, MESSAGES.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType));
@@ -834,44 +824,41 @@ public final class RestRouting {
       return Future.failedFuture(e);
     }
     for (String classURL : jObjClasses.fieldNames()) {
-      Class<?> aClass;
       JsonObject ret = jObjClasses.getJsonObject(classURL);
       String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
-      // convert from interface to an actual class implementing it, which appears in the impl package
       try {
-        aClass = InterfaceToImpl.convert2Impl(
+        Class<?> aClass = InterfaceToImpl.convert2Impl(
             DomainModelConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
-      } catch (IOException e) {
-        LOGGER.warn(e.getMessage(), e);
-        continue;
-      } catch (ClassNotFoundException e) {
-        LOGGER.info("Looks like {} is not implemented", iClazz);
-        continue;
-      }
-      // only the regular expressions are arrays (rest is other kinds of info)
-      for (String classPaths : ret.fieldNames()) {
-        Object value = ret.getValue(classPaths);
-        if (value instanceof JsonArray) {
-          JsonArray methodsForPath = (JsonArray) value;
-          for (int i = 0; i < methodsForPath.size(); i++) {
-            JsonObject methodInfo = methodsForPath.getJsonObject(i);
-            String function = methodInfo.getString(AnnotationGrabber.FUNCTION_NAME);
-            String httpMethodS = methodInfo.getString(AnnotationGrabber.HTTP_METHOD);
-            httpMethodS = httpMethodS.substring(httpMethodS.lastIndexOf('.') + 1);
-            HttpMethod httpMethod = HttpMethod.valueOf(httpMethodS);
-            String regex = methodInfo.getString(AnnotationGrabber.REGEX_URL);
-            String ramlPath = methodInfo.getString(AnnotationGrabber.METHOD_URL);
+        // there is an implementation
+        for (String classPaths : ret.fieldNames()) {
+          Object value = ret.getValue(classPaths);
+          if (value instanceof JsonArray) {
+            JsonArray methodsForPath = (JsonArray) value;
+            for (int i = 0; i < methodsForPath.size(); i++) {
+              JsonObject methodInfo = methodsForPath.getJsonObject(i);
+              String function = methodInfo.getString(AnnotationGrabber.FUNCTION_NAME);
+              String httpMethodS = methodInfo.getString(AnnotationGrabber.HTTP_METHOD);
+              httpMethodS = httpMethodS.substring(httpMethodS.lastIndexOf('.') + 1);
+              HttpMethod httpMethod = HttpMethod.valueOf(httpMethodS);
+              String regex = methodInfo.getString(AnnotationGrabber.REGEX_URL);
+              String ramlPath = methodInfo.getString(AnnotationGrabber.METHOD_URL);
 
-            Method[] classMethods = aClass.getMethods();
-            for (Method classMethod : classMethods) {
-              if (classMethod.getName().equals(function)) {
-                LOGGER.info("Adding route {} {} -> {}", httpMethod.name(), ramlPath, function);
-                router.routeWithRegex(httpMethod, regex).handler(ctx -> handleRequest(ctx, aClass,
-                    methodInfo, classMethod, Pattern.compile(regex)));
+              Method[] classMethods = aClass.getMethods();
+              for (Method classMethod : classMethods) {
+                if (classMethod.getName().equals(function)) {
+                  LOGGER.info("Adding route {} {} -> {}", () -> httpMethod.name(), () -> ramlPath, () -> function);
+                  router.routeWithRegex(httpMethod, regex).handler(ctx -> handleRequest(ctx, aClass,
+                      methodInfo, classMethod, Pattern.compile(regex)));
+                }
               }
             }
           }
         }
+      } catch (IOException e) {
+        LOGGER.warn(e.getMessage(), e);
+        return Future.failedFuture(e);
+      } catch (ClassNotFoundException e) {
+        LOGGER.info("Looks like {} is not implemented", iClazz);
       }
     }
     return Future.succeededFuture();
