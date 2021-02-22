@@ -163,7 +163,7 @@ public class DemoRamlRestTest {
 
   @Test
   public void wrongPath(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/x/books", 400); // should be 404
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/x/books", 404);
   }
 
   @Test

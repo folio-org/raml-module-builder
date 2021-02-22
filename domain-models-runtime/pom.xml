@@ -439,6 +439,12 @@
               <artifactSet />
               <filters>
                 <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>**/Log4j2Plugins.dat</exclude>
+                  </excludes>
+                </filter>
+                <filter>
                   <!-- exclude what domain-models-maven-plugin will recreate based on module raml data -->
                   <artifact>org.folio:domain-models-api-interfaces</artifact>
                   <excludes>
