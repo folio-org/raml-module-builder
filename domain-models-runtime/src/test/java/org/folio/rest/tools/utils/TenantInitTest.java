@@ -176,7 +176,7 @@ public class TenantInitTest {
     postResponse = Buffer.buffer("{\"id\":1}");
 
     getStatus = 200;
-    getContent = "text/plain";
+    getContent = "application/json";
     getResponse = Buffer.buffer("{");
 
     TenantInit.exec(client, ta, 1).onComplete(context.asyncAssertFailure(cause ->
@@ -192,7 +192,7 @@ public class TenantInitTest {
     postResponse = Buffer.buffer("{\"id\":1}");
 
     getStatus = 200;
-    getContent = "text/plain";
+    getContent = "application/json";
     getResponse = Buffer.buffer("{\"id\":1,\"complete\":true, \"error\":\"job error\"}");
 
     TenantInit.exec(client, ta, 1).onComplete(context.asyncAssertFailure(cause ->
@@ -208,7 +208,7 @@ public class TenantInitTest {
     postResponse = Buffer.buffer("{\"id\":1}");
 
     getStatus = 200;
-    getContent = "text/plain";
+    getContent = "application/json";
     getResponse = Buffer.buffer("{\"id\":1,\"complete\":true}");
 
     TenantInit.exec(client, ta, 1).onComplete(context.asyncAssertSuccess());
@@ -221,7 +221,7 @@ public class TenantInitTest {
     postResponse = Buffer.buffer("{\"id\":1}");
 
     getStatus = 200;
-    getContent = "text/plain";
+    getContent = "application/json";
     getResponse = Buffer.buffer("{\"id\":1,\"complete\":true}");
 
     TenantInit.purge(client, 1).onComplete(context.asyncAssertSuccess());
