@@ -72,14 +72,14 @@ public class BooksDemoAPI implements Rmbtests {
     switch (query == null ? "null" : query) {
       case "badclass=true":
         PgUtil.streamGet(TABLE, /* can not be deserialized */ StringBuilder.class,
-          null, 0, 10, new LinkedList<String>(), "books", routingContext, okapiHeaders, vertxContext);
+          null, 0, 10, new LinkedList<>(), "books", routingContext, okapiHeaders, vertxContext);
         break;
       case "nullpointer=true":
         PgUtil.streamGet(TABLE, Book.class, null, 0, 10, null, "books",
           routingContext, /* okapiHeaders is null which results in exception */ null, vertxContext);
         break;
       case "slim=true":
-        PgUtil.streamGet(TABLE, SlimBook.class, null, 0, 10, new LinkedList<String>(), "books",
+        PgUtil.streamGet(TABLE, SlimBook.class, null, 0, 10, new LinkedList<>(), "books",
           routingContext, okapiHeaders, vertxContext);
         break;
       case "wrapper=true":
@@ -91,7 +91,7 @@ public class BooksDemoAPI implements Rmbtests {
         }
         break;
       default:
-        PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<String>(), "books",
+        PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<>(), "books",
           routingContext, okapiHeaders, vertxContext);
     }
   }

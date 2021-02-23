@@ -187,7 +187,7 @@ public final class RestRouting {
             rc.request().absoluteURI(), e));
       }
     }
-    return new Object[]{Boolean.valueOf(ret), content};
+    return new Object[]{ret, content};
   }
 
   /**
@@ -230,7 +230,7 @@ public final class RestRouting {
   }
 
   private static void parseParams(RoutingContext rc, Buffer body, Iterator<Map.Entry<String, Object>> paramList,
-                                  Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders, boolean[] useRC) {
+                                  Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
@@ -256,9 +256,14 @@ public final class RestRouting {
           Class<?> entityClazz = Class.forName(valueType);
 
           if (valueType.equals("io.vertx.ext.web.RoutingContext")) {
-            useRC[0] = true;
-          } else if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context") &&
-              !valueType.equals("java.util.Map") && !valueType.equals("java.io.InputStream")) {
+            paramArray[order] = rc;
+          } else if (valueType.equals("java.util.Map")) {
+            paramArray[order] = okapiHeaders;
+          } else if (valueType.equals("io.vertx.core.Context")) {
+            paramArray[order] = rc.vertx().getOrCreateContext();
+          } else if (valueType.equals("io.vertx.core.Handler")) {
+            paramArray[order] = null; // will set it later in invoke
+          } else if (!valueType.equals("java.io.InputStream")) {
             // we have special handling for the Result Handler and context, it is also assumed that
             //an inputsteam parameter occurs when application/octet is declared in the raml
             //in which case the content will be streamed to he function
@@ -397,7 +402,7 @@ public final class RestRouting {
     });
   }
 
-  static void invoke(Method method, Object[] params, Object o, RoutingContext rc, boolean addRCParam,
+  static void invoke(Method method, Object[] params, Object o, RoutingContext rc,
                      Map<String, String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
 
     //if streaming is requested the status will be 0 (streaming started)
@@ -413,36 +418,12 @@ public final class RestRouting {
       headers.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
       headers.put(RestVerticle.STREAM_ABORT, String.valueOf(rc.hashCode()));
     }
-
-    Object[] newArray = new Object[params.length];
-    int size = 3;
-    int pos = 0;
-
-    //this endpoint indicated it wants to receive the routing context as a parameter
-    if (addRCParam) {
-      //the amount of extra params added is 4 not 3
-      size = 4;
-      //the first param of the extra params is the injected RC
-      newArray[params.length - size] = rc;
-      pos = 1;
-    }
-
-    for (int i = 0; i < params.length - size; i++) {
-      newArray[i] = params[i];
-    }
-
-    //inject call back handler into each function
-    newArray[params.length - (size - (pos + 1))] = resultHandler;
-
-    //inject vertx context into each function
-    newArray[params.length - (size - (pos + 2))] = rc.vertx().getOrCreateContext();
-
-    newArray[params.length - (size - pos)] = headers;
-
     headers.forEach(FolioLoggingContext::put);
 
+    // params filled, except for resultHandler (2nd last parameter)
+    params[params.length - 2] = resultHandler;
     try {
-      method.invoke(o, newArray);
+      method.invoke(o, params);
     } catch (Exception e) {
       withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
       String message;
@@ -457,7 +438,7 @@ public final class RestRouting {
     }
   }
 
-  private static void handleStream(Method method2Run, RoutingContext rc, boolean useRoutingContext,
+  private static void handleStream(Method method2Run, RoutingContext rc,
                                    Object instance, String[] tenantId, Map<String, String> okapiHeaders,
                                    JsonObject params, Object[] paramArray, long start) {
     final int[] uploadParamPosition = new int[]{-1};
@@ -475,9 +456,10 @@ public final class RestRouting {
         StreamStatus stat = new StreamStatus();
         stat.setStatus(0);
         paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(buff.getBytes());
-        invoke(method2Run, paramArray, instance, rc, useRoutingContext, okapiHeaders, stat, v -> {
-          withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(), method2Run.getName(), " invoking " + method2Run));
-        });
+        invoke(method2Run, paramArray, instance, rc, okapiHeaders, stat, v ->
+          withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(),
+              method2Run.getName(), " invoking " + method2Run))
+        );
       } catch (Exception e1) {
         withRequestId(rc, () -> LOGGER.error(e1.getMessage(), e1));
         rc.response().end();
@@ -487,8 +469,9 @@ public final class RestRouting {
       StreamStatus stat = new StreamStatus();
       stat.setStatus(1);
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
-      invoke(method2Run, paramArray, instance, rc, useRoutingContext, okapiHeaders, stat, v -> {
-        withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(), method2Run.getName(), " invoking " + method2Run));
+      invoke(method2Run, paramArray, instance, rc, okapiHeaders, stat, v -> {
+        withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(),
+            method2Run.getName(), " invoking " + method2Run));
         //all data has been stored in memory - not necessarily all processed
         sendResponse(rc, v, start, tenantId[0]);
       });
@@ -497,9 +480,10 @@ public final class RestRouting {
       StreamStatus stat = new StreamStatus();
       stat.setStatus(2);
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
-      invoke(method2Run, paramArray, instance, rc, useRoutingContext, okapiHeaders, stat,
+      invoke(method2Run, paramArray, instance, rc, okapiHeaders, stat,
           v -> withRequestId(rc, () ->
-              LogUtil.formatLogMessage(method2Run.getName(), method2Run.getName(), " invoking " + method2Run))
+              LogUtil.formatLogMessage(method2Run.getName(),
+                  method2Run.getName(), " invoking " + method2Run))
       );
       endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage());
     });
@@ -698,29 +682,26 @@ public final class RestRouting {
     if (rc.response().ended()) {
       return;
     }
-    final boolean[] useRoutingContext = { false };
-
     String[] pathParams = matchPath(rc.request().path(), pattern);
 
     boolean streamData = isStreamed(method.getAnnotations());
     if (streamData) {
-      parseParams(rc, null, paramList, paramArray, pathParams, okapiHeaders, useRoutingContext);
+      parseParams(rc, null, paramList, paramArray, pathParams, okapiHeaders);
       if (rc.response().ended()) {
         return;
       }
-      handleStream(method, rc, useRoutingContext[0], instance, tenantId, okapiHeaders,
-          params, paramArray, start);
+      handleStream(method, rc, instance, tenantId, okapiHeaders, params, paramArray, start);
     } else {
       // regular request (no streaming).. Read the request body before checking params + body
       Buffer body = Buffer.buffer();
       rc.request().handler(body::appendBuffer);
       rc.request().endHandler(endRes -> {
-        parseParams(rc, body, paramList, paramArray, pathParams, okapiHeaders, useRoutingContext);
+        parseParams(rc, body, paramList, paramArray, pathParams, okapiHeaders);
         if (rc.response().ended()) {
           return;
         }
         try {
-          invoke(method, paramArray, instance, rc, useRoutingContext[0], okapiHeaders, new StreamStatus(), v -> {
+          invoke(method, paramArray, instance, rc, okapiHeaders, new StreamStatus(), v -> {
             withRequestId(rc, () -> LogUtil.formatLogMessage(method.getName(), "start", " invoking " + method.getName()));
             sendResponse(rc, v, start, tenantId[0]);
           });
