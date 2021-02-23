@@ -728,7 +728,7 @@ public final class RestRouting {
    * look for the boundary and return just the multipart/form-data multipart/form-data boundary=----WebKitFormBoundaryP8wZiNAoFszXOXEt if
    * boundary doesn't exist that return original string
    */
-  static String removeBoundry(String contentType) {
+  static String removeBoundary(String contentType) {
     int idx = contentType.indexOf("boundary");
     if (idx != -1) {
       return contentType.substring(0, idx - 1);
@@ -753,7 +753,7 @@ public final class RestRouting {
       // it was put there as a suffix
       String contentType = StringUtils.defaultString(request.getHeader(CONTENT_TYPE), DEFAULT_CONTENT_TYPE)
           .replaceFirst(";.*", "").trim();
-      if (!consumes.contains(removeBoundry(contentType))) {
+      if (!consumes.contains(removeBoundary(contentType))) {
         endRequestWithError(rc, 400, true, MESSAGES.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType));
       }
     }
