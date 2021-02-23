@@ -120,6 +120,11 @@ public class DemoRamlRestTest {
   }
 
   @Test
+  public void missingTenant(TestContext context) {
+    checkURLs(context, null,"http://localhost:" + port + "/rmbtests/books", 400, "*/*");
+  }
+
+  @Test
   public void date(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=&author=me", 400);
   }
@@ -522,12 +527,18 @@ public class DemoRamlRestTest {
   }
 
   public static Buffer checkURLs(TestContext context, String url, int codeExpected, String accept) {
+    return checkURLs(context, TENANT, url, codeExpected, accept);
+  }
+
+  public static Buffer checkURLs(TestContext context, String tenant, String url, int codeExpected, String accept) {
     Buffer res = Buffer.buffer();
     try {
       Async async = context.async();
       WebClient client = WebClient.create(vertx);
       final HttpRequest<Buffer> request = client.getAbs(url);
-      request.headers().add("x-okapi-tenant", TENANT);
+      if (tenant != null) {
+        request.headers().add("x-okapi-tenant", tenant);
+      }
       if (accept != null) {
         request.headers().add("Accept", accept);
       }
@@ -541,12 +552,12 @@ public class DemoRamlRestTest {
           async.complete();
           return null;
         }).otherwise(f-> {
-          context.fail(url + " - " + f.getMessage());
-          async.complete();
-          return null;
-         }
+              context.fail(url + " - " + f.getMessage());
+              async.complete();
+              return null;
+            }
         );
-        });
+      });
       async.await();
     } catch (Throwable e) {
       log.error(e.getMessage(), e);
