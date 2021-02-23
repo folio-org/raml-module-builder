@@ -428,6 +428,8 @@ public final class RestRouting {
 
     headers.forEach(FolioLoggingContext::put);
 
+    withRequestId(rc, () -> LOGGER.info("invoking {}", method.getName()));
+
     // params filled, except for resultHandler (2nd last parameter)
     params[params.length - 2] = resultHandler;
     try {
@@ -450,7 +452,6 @@ public final class RestRouting {
                                    Object instance, String[] tenantId, Map<String, String> okapiHeaders,
                                    JsonObject params, Object[] paramArray, long start) {
     final int[] uploadParamPosition = new int[]{-1};
-    String invokeMessage = " invoking " + method2Run;
     params.forEach(param -> {
       if (((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")) {
         //application/octet-stream passed - this is handled in a stream like manner
@@ -464,10 +465,7 @@ public final class RestRouting {
       try {
         paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(buff.getBytes());
         okapiHeaders.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
-        invoke(method2Run, paramArray, instance, rc, okapiHeaders, v ->
-          withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(),
-              method2Run.getName(), invokeMessage))
-        );
+        invoke(method2Run, paramArray, instance, rc, okapiHeaders, v -> {});
       } catch (Exception e1) {
         withRequestId(rc, () -> LOGGER.error(e1.getMessage(), e1));
         rc.response().end();
@@ -477,22 +475,16 @@ public final class RestRouting {
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
       okapiHeaders.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
       okapiHeaders.put(RestVerticle.STREAM_COMPLETE, String.valueOf(rc.hashCode()));
-      invoke(method2Run, paramArray, instance, rc, okapiHeaders, v -> {
-        withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(),
-            method2Run.getName(), invokeMessage));
+      invoke(method2Run, paramArray, instance, rc, okapiHeaders, v ->
         //all data has been stored in memory - not necessarily all processed
-        sendResponse(rc, v, start, tenantId[0]);
-      });
+        sendResponse(rc, v, start, tenantId[0])
+      );
     });
     request.exceptionHandler(event -> {
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
       okapiHeaders.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
       okapiHeaders.put(RestVerticle.STREAM_ABORT, String.valueOf(rc.hashCode()));
-      invoke(method2Run, paramArray, instance, rc, okapiHeaders,
-          v -> withRequestId(rc, () ->
-              LogUtil.formatLogMessage(method2Run.getName(),
-                  method2Run.getName(), invokeMessage))
-      );
+      invoke(method2Run, paramArray, instance, rc, okapiHeaders, v -> {});
       endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage());
     });
   }
@@ -709,10 +701,7 @@ public final class RestRouting {
           return;
         }
         try {
-          invoke(method, paramArray, instance, rc, okapiHeaders, v -> {
-            withRequestId(rc, () -> LogUtil.formatLogMessage(method.getName(), "start", " invoking " + method.getName()));
-            sendResponse(rc, v, start, tenantId[0]);
-          });
+          invoke(method, paramArray, instance, rc, okapiHeaders, v -> sendResponse(rc, v, start, tenantId[0]));
         } catch (Exception e1) {
           withRequestId(rc, () -> LOGGER.error(e1.getMessage(), e1));
           rc.response().end();
