@@ -223,9 +223,6 @@ public final class RestRouting {
       }
       if (enumName.equals(defaultString)) {
         defaultEnum = anEnum;
-        if (param == null) {
-          return defaultEnum;
-        }
       }
     }
     return defaultEnum;
