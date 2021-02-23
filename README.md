@@ -1422,6 +1422,14 @@ interfaces in `org.folio.rest.impl`. Example:
 
 ```
 
+A HTTP based alternatives is `TenantInit.exec` with a similar interface. Example:
+```java
+  TenantClient client = new TenantClient(....);
+  TenantAttributes tenantAttributes = new TenantAttributes().withModuleTo("mod-2.0.0");
+  TenantInit.exec(client, tenantAttributes, 60000).onComplete(context.asyncAssertSuccess());
+
+```
+
 #### The Post Tenant API
 
 The Postgres based Tenant API implementation will look for a file at `/resources/templates/db_scripts/`
