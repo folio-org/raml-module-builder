@@ -238,7 +238,7 @@ public final class RestRouting {
       parseParams1(rc, body, paramList, paramArray, pathParams, okapiHeaders);
     } catch (Exception e) {
       withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
-      if (rc.request().isEnded()) {
+      if (rc.response().ended()) {
         return;
       }
       endRequestWithError(rc, 400, true, e.getMessage());
