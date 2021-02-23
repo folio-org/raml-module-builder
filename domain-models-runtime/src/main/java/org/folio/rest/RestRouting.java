@@ -230,19 +230,21 @@ public final class RestRouting {
   }
 
   private static void parseParams(RoutingContext rc, Buffer body, Iterator<Map.Entry<String, Object>> paramList,
-                                  Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
+                                     Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
     int[] pathParamsIndex = new int[]{0};
 
-    paramList.forEachRemaining(entry -> {
-      String valueName = ((JsonObject) entry.getValue()).getString("value");
-      String valueType = ((JsonObject) entry.getValue()).getString("type");
-      String paramType = ((JsonObject) entry.getValue()).getString("param_type");
-      int order = ((JsonObject) entry.getValue()).getInteger("order");
-      Object defaultVal = ((JsonObject) entry.getValue()).getValue("default_value");
+    while (paramList.hasNext()) {
+      JsonObject v = (JsonObject) paramList.next().getValue();
+      String valueName = v.getString("value");
+      String valueType = v.getString("type");
+      String paramType = v.getString("param_type");
+      int order = v.getInteger("order");
+      Object defaultVal = v.getValue("default_value");
 
+      LOGGER.info("order={} valueType={} paramType={}", order, valueType, paramType);
       boolean emptyNumericParam = false;
       // validation of query params (other then enums), object in body (not including drools),
       // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
@@ -399,7 +401,7 @@ public final class RestRouting {
           endRequestWithError(rc, 400, true, e.getMessage());
         }
       }
-    });
+    }
   }
 
   static void invoke(Method method, Object[] params, Object o, RoutingContext rc,
