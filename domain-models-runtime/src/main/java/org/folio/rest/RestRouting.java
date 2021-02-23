@@ -1,5 +1,6 @@
 package org.folio.rest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.base.Joiner;
@@ -59,6 +60,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
+import java.text.ParseException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -230,11 +232,26 @@ public final class RestRouting {
   }
 
   private static void parseParams(RoutingContext rc, Buffer body, Iterator<Map.Entry<String, Object>> paramList,
-                                     Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
+                                  Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders) {
+
+    try {
+      parseParams1(rc, body, paramList, paramArray, pathParams, okapiHeaders);
+    } catch (Exception e) {
+      withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
+      if (rc.request().isEnded()) {
+        return;
+      }
+      endRequestWithError(rc, 400, true, e.getMessage());
+    }
+  }
+
+  private static void parseParams1(RoutingContext rc, Buffer body, Iterator<Map.Entry<String, Object>> paramList,
+                                   Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders)
+      throws ReflectiveOperationException, JsonProcessingException, ParseException {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
-    int[] pathParamsIndex = new int[]{0};
+    int pathParamsIndex = 0;
 
     while (paramList.hasNext()) {
       JsonObject v = (JsonObject) paramList.next().getValue();
@@ -244,7 +261,6 @@ public final class RestRouting {
       int order = v.getInteger("order");
       Object defaultVal = v.getValue("default_value");
 
-      LOGGER.info("order={} valueType={} paramType={}", order, valueType, paramType);
       boolean emptyNumericParam = false;
       // validation of query params (other then enums), object in body (not including drools),
       // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
@@ -253,71 +269,66 @@ public final class RestRouting {
       // (okapi headers, vertx context and vertx handler) - file uploads are also not annotated but are not handled here due
       // to their async upload - so explicitly skip them
       if (AnnotationGrabber.NON_ANNOTATED_PARAM.equals(paramType)) {
-        try {
-          // this will also validate the json against the pojo created from the schema
-          Class<?> entityClazz = Class.forName(valueType);
+        // this will also validate the json against the pojo created from the schema
+        Class<?> entityClazz = Class.forName(valueType);
 
-          if (valueType.equals("io.vertx.ext.web.RoutingContext")) {
-            paramArray[order] = rc;
-          } else if (valueType.equals("java.util.Map")) {
-            paramArray[order] = okapiHeaders;
-          } else if (valueType.equals("io.vertx.core.Context")) {
-            paramArray[order] = rc.vertx().getOrCreateContext();
-          } else if (valueType.equals("io.vertx.core.Handler")) {
-            paramArray[order] = null; // will set it later in invoke
-          } else if (!valueType.equals("java.io.InputStream")) {
-            // we have special handling for the Result Handler and context, it is also assumed that
-            //an inputsteam parameter occurs when application/octet is declared in the raml
-            //in which case the content will be streamed to he function
-            String bodyContent = body == null ? null : body.toString();
-            withRequestId(rc, () -> LOGGER.debug("{} -------- bodyContent -------- {}",
-                rc.request().path(), bodyContent));
-            if (bodyContent != null) {
-              if ("java.io.Reader".equals(valueType)) {
-                paramArray[order] = new StringReader(bodyContent);
-              } else if ("java.lang.String".equals(valueType)) {
-                paramArray[order] = bodyContent;
-              } else if (bodyContent.length() > 0) {
-                try {
-                  paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
-                } catch (UnrecognizedPropertyException e) {
-                  withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
-                  endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true, JsonUtils.entity2String(
-                      ValidationHelper.createValidationErrorMessage("", "", e.getMessage())));
-                  return;
-                }
+        if (valueType.equals("io.vertx.ext.web.RoutingContext")) {
+          paramArray[order] = rc;
+        } else if (valueType.equals("java.util.Map")) {
+          paramArray[order] = okapiHeaders;
+        } else if (valueType.equals("io.vertx.core.Context")) {
+          paramArray[order] = rc.vertx().getOrCreateContext();
+        } else if (valueType.equals("io.vertx.core.Handler")) {
+          paramArray[order] = null; // will set it later in invoke
+        } else if (!valueType.equals("java.io.InputStream")) {
+          // we have special handling for the Result Handler and context, it is also assumed that
+          //an inputsteam parameter occurs when application/octet is declared in the raml
+          //in which case the content will be streamed to he function
+          String bodyContent = body == null ? null : body.toString();
+          withRequestId(rc, () -> LOGGER.debug("{} -------- bodyContent -------- {}",
+              rc.request().path(), bodyContent));
+          if (bodyContent != null) {
+            if ("java.io.Reader".equals(valueType)) {
+              paramArray[order] = new StringReader(bodyContent);
+            } else if ("java.lang.String".equals(valueType)) {
+              paramArray[order] = bodyContent;
+            } else if (bodyContent.length() > 0) {
+              try {
+                paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
+              } catch (UnrecognizedPropertyException e) {
+                withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
+                endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true, JsonUtils.entity2String(
+                    ValidationHelper.createValidationErrorMessage("", "", e.getMessage())));
+                return;
               }
             }
-            Errors errorResp = new Errors();
-
-            //is this request only to validate a field value and not an actual
-            //request for additional processing
-            List<String> field2validate = request.params().getAll("validate_field");
-            Object[] resp = isValidRequest(rc, paramArray[order], errorResp, field2validate, entityClazz);
-            boolean isValid = (boolean) resp[0];
-            paramArray[order] = resp[1];
-
-            if (!isValid) {
-              endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true,
-                  JsonUtils.entity2String(errorResp));
-              return;
-            }
-            if (!field2validate.isEmpty()) {
-              //valid request for the field to validate request made
-              AsyncResponseResult arr = new AsyncResponseResult();
-              ResponseImpl ri = new ResponseImpl();
-              ri.setStatus(200);
-              arr.setResult(ri);
-              //right now this is the only flag available to stop
-              //any additional respones for this request. to fix
-              sendResponse(rc, arr, 0, null);
-              return;
-            }
-            MetadataUtil.populateMetadata(paramArray[order], okapiHeaders);
           }
-        } catch (Exception e) {
-          withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
-          endRequestWithError(rc, 400, true, "Json content error " + e.getMessage());
+          Errors errorResp = new Errors();
+
+          //is this request only to validate a field value and not an actual
+          //request for additional processing
+          List<String> field2validate = request.params().getAll("validate_field");
+          Object[] resp = isValidRequest(rc, paramArray[order], errorResp, field2validate, entityClazz);
+          boolean isValid = (boolean) resp[0];
+          paramArray[order] = resp[1];
+
+          if (!isValid) {
+            endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true,
+                JsonUtils.entity2String(errorResp));
+            return;
+          }
+          if (!field2validate.isEmpty()) {
+            //valid request for the field to validate request made
+            AsyncResponseResult arr = new AsyncResponseResult();
+            ResponseImpl ri = new ResponseImpl();
+            ri.setStatus(200);
+            arr.setResult(ri);
+            //right now this is the only flag available to stop
+            //any additional respones for this request. to fix
+            sendResponse(rc, arr, 0, null);
+            return;
+          }
+          MetadataUtil.populateMetadata(paramArray[order], okapiHeaders);
         }
       } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
         // handle header params - read the header field from the
@@ -328,77 +339,67 @@ public final class RestRouting {
       } else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
         // these are placeholder values in the path - for example
         // /patrons/{patronid} - this would be the patronid value
-        paramArray[order] = pathParams[pathParamsIndex[0]++];
+        paramArray[order] = pathParams[pathParamsIndex++];
       } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
         String param = queryParams.get(valueName);
         // support date, enum, numbers or strings as query parameters
-        try {
-          if (valueType.equals("java.lang.String")) {
-            // regular string param in query string - just push value
-            if (param == null) {
-              // no value passed - check if there is a default value
-              paramArray[order] = defaultVal;
-            } else {
-              paramArray[order] = param;
-            }
-          } else if (valueType.equals("java.util.Date")) {
-            // regular string param in query string - just push value
-            if (param == null) {
-              // no value passed - check if there is a default value
-              paramArray[order] = defaultVal;
-            } else {
-              paramArray[order] = DateUtils.parseDate(param, DATE_PATTERNS);
-            }
-          } else if (valueType.equals("int") || valueType.equals("java.lang.Integer")) {
-            // cant pass null to an int type
-            if (param == null) {
-              if (defaultVal != null) {
-                paramArray[order] = Integer.valueOf((String) defaultVal);
-              } else {
-                paramArray[order] = valueType.equals("int") ? 0 : null;
-              }
-            } else if ("".equals(param)) {
-              emptyNumericParam = true;
-            } else {
-              paramArray[order] = Integer.valueOf(param);
-            }
-          } else if (valueType.equals("boolean") || valueType.equals("java.lang.Boolean")) {
-            if (param == null) {
-              if (defaultVal != null) {
-                paramArray[order] = Boolean.valueOf((String) defaultVal);
-              }
-            } else {
-              paramArray[order] = Boolean.valueOf(param);
-            }
-          } else if (valueType.contains("List")) {
-            List<String> vals = queryParams.getAll(valueName);
-            paramArray[order] = vals;
-          } else if (valueType.equals("java.math.BigDecimal") || valueType.equals("java.lang.Number")) {
-            if (param == null) {
-              if (defaultVal != null) {
-                paramArray[order] = new BigDecimal((String) defaultVal);
-              } else {
-                paramArray[order] = null;
-              }
-            } else if ("".equals(param)) {
-              emptyNumericParam = true;
-            } else {
-              paramArray[order] = new BigDecimal(param.replace(",", "")); // big decimal can contain ","
-            }
-          } else { // enum object type
-            try {
-              paramArray[order] = parseEnum(valueType, param, defaultVal);
-            } catch (Exception ee) {
-              withRequestId(rc, () -> LOGGER.error(ee.getMessage(), ee));
-              endRequestWithError(rc, 400, true, ee.getMessage());
-            }
+        if (valueType.equals("java.lang.String")) {
+          // regular string param in query string - just push value
+          if (param == null) {
+            // no value passed - check if there is a default value
+            paramArray[order] = defaultVal;
+          } else {
+            paramArray[order] = param;
           }
-          if (emptyNumericParam) {
-            endRequestWithError(rc, 400, true, valueName + " does not have a default value in the RAML and has been passed empty");
+        } else if (valueType.equals("java.util.Date")) {
+          // regular string param in query string - just push value
+          if (param == null) {
+            // no value passed - check if there is a default value
+            paramArray[order] = defaultVal;
+          } else {
+            paramArray[order] = DateUtils.parseDate(param, DATE_PATTERNS);
           }
-        } catch (Exception e) {
-          withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
-          endRequestWithError(rc, 400, true, e.getMessage());
+        } else if (valueType.equals("int") || valueType.equals("java.lang.Integer")) {
+          // cant pass null to an int type
+          if (param == null) {
+            if (defaultVal != null) {
+              paramArray[order] = Integer.valueOf((String) defaultVal);
+            } else {
+              paramArray[order] = valueType.equals("int") ? 0 : null;
+            }
+          } else if ("".equals(param)) {
+            emptyNumericParam = true;
+          } else {
+            paramArray[order] = Integer.valueOf(param);
+          }
+        } else if (valueType.equals("boolean") || valueType.equals("java.lang.Boolean")) {
+          if (param == null) {
+            if (defaultVal != null) {
+              paramArray[order] = Boolean.valueOf((String) defaultVal);
+            }
+          } else {
+            paramArray[order] = Boolean.valueOf(param);
+          }
+        } else if (valueType.contains("List")) {
+          List<String> vals = queryParams.getAll(valueName);
+          paramArray[order] = vals;
+        } else if (valueType.equals("java.math.BigDecimal") || valueType.equals("java.lang.Number")) {
+          if (param == null) {
+            if (defaultVal != null) {
+              paramArray[order] = new BigDecimal((String) defaultVal);
+            } else {
+              paramArray[order] = null;
+            }
+          } else if ("".equals(param)) {
+            emptyNumericParam = true;
+          } else {
+            paramArray[order] = new BigDecimal(param.replace(",", "")); // big decimal can contain ","
+          }
+        } else { // enum object type
+          paramArray[order] = parseEnum(valueType, param, defaultVal);
+        }
+        if (emptyNumericParam) {
+          endRequestWithError(rc, 400, true, valueName + " does not have a default value in the RAML and has been passed empty");
         }
       }
     }
