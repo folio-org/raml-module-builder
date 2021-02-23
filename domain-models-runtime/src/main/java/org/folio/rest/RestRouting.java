@@ -403,21 +403,8 @@ public final class RestRouting {
   }
 
   static void invoke(Method method, Object[] params, Object o, RoutingContext rc,
-                     Map<String, String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
+                     Map<String, String> headers, Handler<AsyncResult<Response>> resultHandler) {
 
-    //if streaming is requested the status will be 0 (streaming started)
-    //or 1 streaming data complete
-    //or 2 streaming aborted
-    //otherwise it will be -1 and flags wont be set
-    if (streamed.getStatus() == 0) {
-      headers.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
-    } else if (streamed.getStatus() == 1) {
-      headers.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
-      headers.put(RestVerticle.STREAM_COMPLETE, String.valueOf(rc.hashCode()));
-    } else if (streamed.getStatus() == 2) {
-      headers.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
-      headers.put(RestVerticle.STREAM_ABORT, String.valueOf(rc.hashCode()));
-    }
     headers.forEach(FolioLoggingContext::put);
 
     // params filled, except for resultHandler (2nd last parameter)
@@ -453,10 +440,9 @@ public final class RestRouting {
     HttpServerRequest request = rc.request();
     request.handler(buff -> {
       try {
-        StreamStatus stat = new StreamStatus();
-        stat.setStatus(0);
         paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(buff.getBytes());
-        invoke(method2Run, paramArray, instance, rc, okapiHeaders, stat, v ->
+        okapiHeaders.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
+        invoke(method2Run, paramArray, instance, rc, okapiHeaders, v ->
           withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(),
               method2Run.getName(), " invoking " + method2Run))
         );
@@ -466,10 +452,10 @@ public final class RestRouting {
       }
     });
     request.endHandler(e -> {
-      StreamStatus stat = new StreamStatus();
-      stat.setStatus(1);
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
-      invoke(method2Run, paramArray, instance, rc, okapiHeaders, stat, v -> {
+      okapiHeaders.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
+      okapiHeaders.put(RestVerticle.STREAM_COMPLETE, String.valueOf(rc.hashCode()));
+      invoke(method2Run, paramArray, instance, rc, okapiHeaders, v -> {
         withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(),
             method2Run.getName(), " invoking " + method2Run));
         //all data has been stored in memory - not necessarily all processed
@@ -477,10 +463,10 @@ public final class RestRouting {
       });
     });
     request.exceptionHandler(event -> {
-      StreamStatus stat = new StreamStatus();
-      stat.setStatus(2);
       paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
-      invoke(method2Run, paramArray, instance, rc, okapiHeaders, stat,
+      okapiHeaders.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
+      okapiHeaders.put(RestVerticle.STREAM_ABORT, String.valueOf(rc.hashCode()));
+      invoke(method2Run, paramArray, instance, rc, okapiHeaders,
           v -> withRequestId(rc, () ->
               LogUtil.formatLogMessage(method2Run.getName(),
                   method2Run.getName(), " invoking " + method2Run))
@@ -701,7 +687,7 @@ public final class RestRouting {
           return;
         }
         try {
-          invoke(method, paramArray, instance, rc, okapiHeaders, new StreamStatus(), v -> {
+          invoke(method, paramArray, instance, rc, okapiHeaders, v -> {
             withRequestId(rc, () -> LogUtil.formatLogMessage(method.getName(), "start", " invoking " + method.getName()));
             sendResponse(rc, v, start, tenantId[0]);
           });
@@ -824,16 +810,4 @@ public final class RestRouting {
     }
     return Future.succeededFuture();
   }
-
-  static class StreamStatus {
-    private int status = -1;
-
-    public int getStatus() {
-      return status;
-    }
-    public void setStatus(int status) {
-      this.status = status;
-    }
-  }
-
 }
