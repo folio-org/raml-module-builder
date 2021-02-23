@@ -444,8 +444,8 @@ public final class RestRouting {
     }
   }
 
-  private static void handleStream(Method method2Run, RoutingContext rc,
-                                   Object instance, String[] tenantId, Map<String, String> okapiHeaders,
+  private static void handleStream(Method method2Run, RoutingContext rc, Object instance,
+                                   String[] tenantId, Map<String, String> okapiHeaders,
                                    JsonObject params, Object[] paramArray, long start) {
     final int[] uploadParamPosition = new int[]{-1};
     params.forEach(param -> {

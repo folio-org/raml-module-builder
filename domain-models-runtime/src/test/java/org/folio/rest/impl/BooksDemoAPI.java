@@ -35,8 +35,8 @@ public class BooksDemoAPI implements Rmbtests {
    */
   @Validate
   @Override
-  public void getRmbtestsBooks(String author, Date publicationDate, Number rating, int edition, String isbn,
-      List<String> facets, Map<String, String> okapiHeaders,
+  public void getRmbtestsBooks(String author, Date publicationDate, Number score, Number rating, int edition, String isbn,
+      boolean available, List<String> facets, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     asyncResultHandler.handle(Future.succeededFuture(GetRmbtestsBooksResponse.respond200WithApplicationJson(new

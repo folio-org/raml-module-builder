@@ -160,6 +160,44 @@ public class DemoRamlRestTest {
   }
 
   @Test
+  public void getEmptyRating(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=", 400);
+  }
+
+  // produces error, but shouldn't as there is a default value (an old error)
+  @Test
+  public void getEmptyScore(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&score=", 400);
+  }
+
+  @Test
+  public void getEmptyEdition(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&edition=", 400);
+  }
+
+  // note that isbn is size 15, 20 in /domain-models-maven-plugin/src/main/resources/overrides/raml_overrides.json
+  @Test
+  public void getWithIsbnS10(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2&isbn=1234567890", 400);
+  }
+
+  @Test
+  public void getWithIsbnS15(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2&isbn=123456789012345", 200);
+  }
+
+  @Test
+  public void getWithAvailableFalse(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2&available=false", 200);
+  }
+
+  // Boolean.valueOf turns any value to false , except "true" (ignoring case)
+  @Test
+  public void getWithAvailableBadValue(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2&available=xx", 200);
+  }
+
+  @Test
   public void history(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/admin/memory?history=true", 200, "text/html");
   }
