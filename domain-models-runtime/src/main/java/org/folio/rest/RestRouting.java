@@ -56,6 +56,7 @@ import java.io.StringReader;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.Iterator;
@@ -69,7 +70,7 @@ import java.util.regex.Pattern;
 public final class RestRouting {
   private static final String CONTENT_TYPE = "Content-Type";
   private static final String SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
-  private static final String DEFAULT_CONTENT_TYPE            = "application/json";
+  private static final String DEFAULT_CONTENT_TYPE = "application/json";
   private static final String SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
   private static final String[] DATE_PATTERNS = {
       "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
@@ -111,9 +112,9 @@ public final class RestRouting {
   /**
    * Copy the headers from source to destination. Join several headers of same key using "; ".
    */
-  private static void copyHeadersJoin(MultivaluedMap<String,String> source, MultiMap destination) {
+  private static void copyHeadersJoin(MultivaluedMap<String, String> source, MultiMap destination) {
     for (Map.Entry<String, List<String>> entry : source.entrySet()) {
-     String jointValue = Joiner.on("; ").join(entry.getValue());
+      String jointValue = Joiner.on("; ").join(entry.getValue());
       try {
         destination.add(entry.getKey(), jointValue);
       } catch (IllegalArgumentException e) {
@@ -125,6 +126,7 @@ public final class RestRouting {
 
   /**
    * return whether the request is valid [0] and a cleaned up version of the object [1]
+   *
    * @param rc
    * @param content
    * @param errorResp
@@ -139,21 +141,21 @@ public final class RestRouting {
     }
     boolean ret = true;
     for (ConstraintViolation<?> cv : validationErrors) {
-      if ("must be null".equals(cv.getMessage())){
+      if ("must be null".equals(cv.getMessage())) {
         /**
          * read only fields are marked with a 'must be null' annotation @null
          * so the client should not pass them in, if they were passed in, remove them here
          * so that they do not reach the implementing function
          */
         try {
-          if (!(content instanceof JsonObject)){
+          if (!(content instanceof JsonObject)) {
             content = JsonObject.mapFrom(content);
           }
-          ((JsonObject)content).remove(cv.getPropertyPath().toString());
+          ((JsonObject) content).remove(cv.getPropertyPath().toString());
           continue;
         } catch (Exception e) {
           withRequestId(rc, () -> LOGGER.warn("Failed to remove {} field from body when calling {}",
-              cv.getPropertyPath().toString(), rc.request().absoluteURI(), e));
+              cv.getPropertyPath(), rc.request().absoluteURI(), e));
         }
       }
       Error error = new Error();
@@ -174,16 +176,15 @@ public final class RestRouting {
         errorResp.getErrors().add(error);
         ret = false;
       }
-      //sb.append("\n" + cv.getPropertyPath() + "  " + cv.getMessage() + ",");
     }
-    if (content instanceof JsonObject){
+    if (content instanceof JsonObject) {
       //we have sanitized the passed in object by removing read-only fields
       try {
-        content = MAPPER.readValue(((JsonObject)content).encode(), entityClazz);
+        content = MAPPER.readValue(((JsonObject) content).encode(), entityClazz);
       } catch (IOException e) {
         withRequestId(rc, () -> LOGGER.error(
             "Failed to serialize body content after removing read-only fields when calling {}",
-                rc.request().absoluteURI(), e));
+            rc.request().absoluteURI(), e));
       }
     }
     return new Object[]{Boolean.valueOf(ret), content};
@@ -191,7 +192,7 @@ public final class RestRouting {
 
   /**
    * @return the enum value of type valueType where value.name equals param (fall-back: equals defaultValue).
-   *         Return null if the type neither has param nor defaultValue.
+   * Return null if the type neither has param nor defaultValue.
    * @throws ClassNotFoundException if valueType does not exist
    */
   @SuppressWarnings({
@@ -203,7 +204,7 @@ public final class RestRouting {
       throws ReflectiveOperationException {
 
     Class<?> enumClass = Class.forName(valueType);
-    if (! enumClass.isEnum()) {
+    if (!enumClass.isEnum()) {
       return null;
     }
     String defaultString = null;
@@ -229,176 +230,175 @@ public final class RestRouting {
   }
 
   private static void parseParams(RoutingContext rc, Buffer body, Iterator<Map.Entry<String, Object>> paramList,
-                           Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders, boolean [] useRC) {
+                                  Object[] paramArray, String[] pathParams, Map<String, String> okapiHeaders, boolean[] useRC) {
 
     HttpServerRequest request = rc.request();
     MultiMap queryParams = request.params();
-    int []pathParamsIndex = new int[] { 0 };
+    int[] pathParamsIndex = new int[]{0};
 
     paramList.forEachRemaining(entry -> {
-        String valueName = ((JsonObject) entry.getValue()).getString("value");
-        String valueType = ((JsonObject) entry.getValue()).getString("type");
-        String paramType = ((JsonObject) entry.getValue()).getString("param_type");
-        int order = ((JsonObject) entry.getValue()).getInteger("order");
-        Object defaultVal = ((JsonObject) entry.getValue()).getValue("default_value");
+      String valueName = ((JsonObject) entry.getValue()).getString("value");
+      String valueType = ((JsonObject) entry.getValue()).getString("type");
+      String paramType = ((JsonObject) entry.getValue()).getString("param_type");
+      int order = ((JsonObject) entry.getValue()).getInteger("order");
+      Object defaultVal = ((JsonObject) entry.getValue()).getValue("default_value");
 
-        boolean emptyNumericParam = false;
-        // validation of query params (other then enums), object in body (not including drools),
-        // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
-        // handle un-annotated parameters - this is assumed to be
-        // entities in HTTP BODY for post and put requests or the 3 injected params
-        // (okapi headers, vertx context and vertx handler) - file uploads are also not annotated but are not handled here due
-        // to their async upload - so explicitly skip them
-        if (AnnotationGrabber.NON_ANNOTATED_PARAM.equals(paramType)) {
-          try {
-            // this will also validate the json against the pojo created from the schema
-            Class<?> entityClazz = Class.forName(valueType);
+      boolean emptyNumericParam = false;
+      // validation of query params (other then enums), object in body (not including drools),
+      // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
+      // handle un-annotated parameters - this is assumed to be
+      // entities in HTTP BODY for post and put requests or the 3 injected params
+      // (okapi headers, vertx context and vertx handler) - file uploads are also not annotated but are not handled here due
+      // to their async upload - so explicitly skip them
+      if (AnnotationGrabber.NON_ANNOTATED_PARAM.equals(paramType)) {
+        try {
+          // this will also validate the json against the pojo created from the schema
+          Class<?> entityClazz = Class.forName(valueType);
 
-            if (valueType.equals("io.vertx.ext.web.RoutingContext")) {
-              useRC[0] = true;
-            } else if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context") &&
-                !valueType.equals("java.util.Map") && !valueType.equals("java.io.InputStream")) {
-              // we have special handling for the Result Handler and context, it is also assumed that
-              //an inputsteam parameter occurs when application/octet is declared in the raml
-              //in which case the content will be streamed to he function
-              String bodyContent = body == null ? null : body.toString();
-              withRequestId(rc, () -> LOGGER.debug("{} -------- bodyContent -------- {}",
-                  rc.request().path(), bodyContent));
-              if (bodyContent != null){
-                if ("java.io.Reader".equals(valueType)){
-                  paramArray[order] = new StringReader(bodyContent);
-                } else if ("java.lang.String".equals(valueType)) {
-                  paramArray[order] = bodyContent;
-                } else if (bodyContent.length() > 0) {
-                  try {
-                    paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
-                  } catch (UnrecognizedPropertyException e) {
-                    withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
-                    endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true, JsonUtils.entity2String(
-                        ValidationHelper.createValidationErrorMessage("", "", e.getMessage())));
-                    return;
-                  }
+          if (valueType.equals("io.vertx.ext.web.RoutingContext")) {
+            useRC[0] = true;
+          } else if (!valueType.equals("io.vertx.core.Handler") && !valueType.equals("io.vertx.core.Context") &&
+              !valueType.equals("java.util.Map") && !valueType.equals("java.io.InputStream")) {
+            // we have special handling for the Result Handler and context, it is also assumed that
+            //an inputsteam parameter occurs when application/octet is declared in the raml
+            //in which case the content will be streamed to he function
+            String bodyContent = body == null ? null : body.toString();
+            withRequestId(rc, () -> LOGGER.debug("{} -------- bodyContent -------- {}",
+                rc.request().path(), bodyContent));
+            if (bodyContent != null) {
+              if ("java.io.Reader".equals(valueType)) {
+                paramArray[order] = new StringReader(bodyContent);
+              } else if ("java.lang.String".equals(valueType)) {
+                paramArray[order] = bodyContent;
+              } else if (bodyContent.length() > 0) {
+                try {
+                  paramArray[order] = MAPPER.readValue(bodyContent, entityClazz);
+                } catch (UnrecognizedPropertyException e) {
+                  withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
+                  endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true, JsonUtils.entity2String(
+                      ValidationHelper.createValidationErrorMessage("", "", e.getMessage())));
+                  return;
                 }
               }
-              Errors errorResp = new Errors();
-
-              //is this request only to validate a field value and not an actual
-              //request for additional processing
-              List<String> field2validate = request.params().getAll("validate_field");
-              Object[] resp = isValidRequest(rc, paramArray[order], errorResp, field2validate, entityClazz);
-              boolean isValid = (boolean) resp[0];
-              paramArray[order] = resp[1];
-
-              if (!isValid) {
-                endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true,
-                    JsonUtils.entity2String(errorResp));
-                return;
-              }
-              if (!field2validate.isEmpty()) {
-                //valid request for the field to validate request made
-                AsyncResponseResult arr = new AsyncResponseResult();
-                ResponseImpl ri = new ResponseImpl();
-                ri.setStatus(200);
-                arr.setResult(ri);
-                //right now this is the only flag available to stop
-                //any additional respones for this request. to fix
-                sendResponse(rc, arr, 0, null);
-                return;
-              }
-              MetadataUtil.populateMetadata(paramArray[order], okapiHeaders);
             }
-          } catch (Exception e) {
-            withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
-            endRequestWithError(rc, 400, true, "Json content error " + e.getMessage());
+            Errors errorResp = new Errors();
+
+            //is this request only to validate a field value and not an actual
+            //request for additional processing
+            List<String> field2validate = request.params().getAll("validate_field");
+            Object[] resp = isValidRequest(rc, paramArray[order], errorResp, field2validate, entityClazz);
+            boolean isValid = (boolean) resp[0];
+            paramArray[order] = resp[1];
+
+            if (!isValid) {
+              endRequestWithError(rc, HttpStatus.HTTP_UNPROCESSABLE_ENTITY.toInt(), true,
+                  JsonUtils.entity2String(errorResp));
+              return;
+            }
+            if (!field2validate.isEmpty()) {
+              //valid request for the field to validate request made
+              AsyncResponseResult arr = new AsyncResponseResult();
+              ResponseImpl ri = new ResponseImpl();
+              ri.setStatus(200);
+              arr.setResult(ri);
+              //right now this is the only flag available to stop
+              //any additional respones for this request. to fix
+              sendResponse(rc, arr, 0, null);
+              return;
+            }
+            MetadataUtil.populateMetadata(paramArray[order], okapiHeaders);
           }
-        } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
-          // handle header params - read the header field from the
-          // header (valueName) and get its value
-          String value = request.getHeader(valueName);
-          // set the value passed from the header as a param to the function
-          paramArray[order] = value;
-        } else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
-          // these are placeholder values in the path - for example
-          // /patrons/{patronid} - this would be the patronid value
-          paramArray[order] = pathParams[pathParamsIndex[0]++];
-        } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
-          String param = queryParams.get(valueName);
-          // support date, enum, numbers or strings as query parameters
-          try {
-            if (valueType.equals("java.lang.String")) {
-              // regular string param in query string - just push value
-              if (param == null) {
-                // no value passed - check if there is a default value
-                paramArray[order] = defaultVal;
-              } else {
-                paramArray[order] = param;
-              }
-            } else if (valueType.equals("java.util.Date")) {
-              // regular string param in query string - just push value
-              if (param == null) {
-                // no value passed - check if there is a default value
-                paramArray[order] = defaultVal;
-              } else {
-                paramArray[order] = DateUtils.parseDate(param, DATE_PATTERNS);
-              }
-            } else if (valueType.equals("int") || valueType.equals("java.lang.Integer")) {
-              // cant pass null to an int type
-              if (param == null) {
-                if (defaultVal != null) {
-                  paramArray[order] = Integer.valueOf((String) defaultVal);
-                } else {
-                  paramArray[order] = valueType.equals("int") ? 0 : null;
-                }
-              } else if ("".equals(param)) {
-                emptyNumericParam = true;
-              } else {
-                paramArray[order] = Integer.valueOf(param);
-              }
-            } else if (valueType.equals("boolean") || valueType.equals("java.lang.Boolean")) {
-              if (param == null) {
-                if (defaultVal != null) {
-                  paramArray[order] = Boolean.valueOf((String)defaultVal);
-                }
-              } else {
-                paramArray[order] = Boolean.valueOf(param);
-              }
-            } else if (valueType.contains("List")) {
-              List<String> vals = queryParams.getAll(valueName);
-              paramArray[order] = vals;
-            } else if (valueType.equals("java.math.BigDecimal") || valueType.equals("java.lang.Number")) {
-              if (param == null) {
-                if (defaultVal != null) {
-                  paramArray[order] = new BigDecimal((String) defaultVal);
-                } else {
-                  paramArray[order] = null;
-                }
-              }
-              else if ("".equals(param)) {
-                emptyNumericParam = true;
-              } else {
-                paramArray[order] = new BigDecimal(param.replace(",", "")); // big decimal can contain ","
-              }
-            } else { // enum object type
-              try {
-                paramArray[order] = parseEnum(valueType, param, defaultVal);
-              } catch (Exception ee) {
-                withRequestId(rc, () -> LOGGER.error(ee.getMessage(), ee));
-                endRequestWithError(rc, 400, true, ee.getMessage());
-              }
-            }
-            if (emptyNumericParam) {
-              endRequestWithError(rc, 400, true, valueName + " does not have a default value in the RAML and has been passed empty");
-            }
-          } catch (Exception e) {
-            withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
-            endRequestWithError(rc, 400, true, e.getMessage());
-          }
+        } catch (Exception e) {
+          withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
+          endRequestWithError(rc, 400, true, "Json content error " + e.getMessage());
         }
+      } else if (AnnotationGrabber.HEADER_PARAM.equals(paramType)) {
+        // handle header params - read the header field from the
+        // header (valueName) and get its value
+        String value = request.getHeader(valueName);
+        // set the value passed from the header as a param to the function
+        paramArray[order] = value;
+      } else if (AnnotationGrabber.PATH_PARAM.equals(paramType)) {
+        // these are placeholder values in the path - for example
+        // /patrons/{patronid} - this would be the patronid value
+        paramArray[order] = pathParams[pathParamsIndex[0]++];
+      } else if (AnnotationGrabber.QUERY_PARAM.equals(paramType)) {
+        String param = queryParams.get(valueName);
+        // support date, enum, numbers or strings as query parameters
+        try {
+          if (valueType.equals("java.lang.String")) {
+            // regular string param in query string - just push value
+            if (param == null) {
+              // no value passed - check if there is a default value
+              paramArray[order] = defaultVal;
+            } else {
+              paramArray[order] = param;
+            }
+          } else if (valueType.equals("java.util.Date")) {
+            // regular string param in query string - just push value
+            if (param == null) {
+              // no value passed - check if there is a default value
+              paramArray[order] = defaultVal;
+            } else {
+              paramArray[order] = DateUtils.parseDate(param, DATE_PATTERNS);
+            }
+          } else if (valueType.equals("int") || valueType.equals("java.lang.Integer")) {
+            // cant pass null to an int type
+            if (param == null) {
+              if (defaultVal != null) {
+                paramArray[order] = Integer.valueOf((String) defaultVal);
+              } else {
+                paramArray[order] = valueType.equals("int") ? 0 : null;
+              }
+            } else if ("".equals(param)) {
+              emptyNumericParam = true;
+            } else {
+              paramArray[order] = Integer.valueOf(param);
+            }
+          } else if (valueType.equals("boolean") || valueType.equals("java.lang.Boolean")) {
+            if (param == null) {
+              if (defaultVal != null) {
+                paramArray[order] = Boolean.valueOf((String) defaultVal);
+              }
+            } else {
+              paramArray[order] = Boolean.valueOf(param);
+            }
+          } else if (valueType.contains("List")) {
+            List<String> vals = queryParams.getAll(valueName);
+            paramArray[order] = vals;
+          } else if (valueType.equals("java.math.BigDecimal") || valueType.equals("java.lang.Number")) {
+            if (param == null) {
+              if (defaultVal != null) {
+                paramArray[order] = new BigDecimal((String) defaultVal);
+              } else {
+                paramArray[order] = null;
+              }
+            } else if ("".equals(param)) {
+              emptyNumericParam = true;
+            } else {
+              paramArray[order] = new BigDecimal(param.replace(",", "")); // big decimal can contain ","
+            }
+          } else { // enum object type
+            try {
+              paramArray[order] = parseEnum(valueType, param, defaultVal);
+            } catch (Exception ee) {
+              withRequestId(rc, () -> LOGGER.error(ee.getMessage(), ee));
+              endRequestWithError(rc, 400, true, ee.getMessage());
+            }
+          }
+          if (emptyNumericParam) {
+            endRequestWithError(rc, 400, true, valueName + " does not have a default value in the RAML and has been passed empty");
+          }
+        } catch (Exception e) {
+          withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
+          endRequestWithError(rc, 400, true, e.getMessage());
+        }
+      }
     });
   }
 
   static void invoke(Method method, Object[] params, Object o, RoutingContext rc, boolean addRCParam,
-                     Map<String,String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
+                     Map<String, String> headers, StreamStatus streamed, Handler<AsyncResult<Response>> resultHandler) {
 
     //if streaming is requested the status will be 0 (streaming started)
     //or 1 streaming data complete
@@ -432,12 +432,12 @@ public final class RestRouting {
     }
 
     //inject call back handler into each function
-    newArray[params.length - (size-(pos+1))] = resultHandler;
+    newArray[params.length - (size - (pos + 1))] = resultHandler;
 
     //inject vertx context into each function
-    newArray[params.length - (size-(pos+2))] = rc.vertx().getOrCreateContext();
+    newArray[params.length - (size - (pos + 2))] = rc.vertx().getOrCreateContext();
 
-    newArray[params.length - (size-pos)] = headers;
+    newArray[params.length - (size - pos)] = headers;
 
     headers.forEach(FolioLoggingContext::put);
 
@@ -457,9 +457,18 @@ public final class RestRouting {
     }
   }
 
-  static private void handleStream(Method method2Run, RoutingContext rc, boolean useRoutingContext,
-                            Object instance, String[] tenantId, Map<String, String> okapiHeaders,
-                            int[] uploadParamPosition, Object[] paramArray, long start) {
+  private static void handleStream(Method method2Run, RoutingContext rc, boolean useRoutingContext,
+                                   Object instance, String[] tenantId, Map<String, String> okapiHeaders,
+                                   JsonObject params, Object[] paramArray, long start) {
+    final int[] uploadParamPosition = new int[]{-1};
+    params.forEach(param -> {
+      if (((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")) {
+        //application/octet-stream passed - this is handled in a stream like manner
+        //and the corresponding function called must annotate with a @Stream - and be able
+        //to handle the function being called repeatedly on parts of the data
+        uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
+      }
+    });
     HttpServerRequest request = rc.request();
     request.handler(buff -> {
       try {
@@ -477,7 +486,7 @@ public final class RestRouting {
     request.endHandler(e -> {
       StreamStatus stat = new StreamStatus();
       stat.setStatus(1);
-      paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte [0]);
+      paramArray[uploadParamPosition[0]] = new ByteArrayInputStream(new byte[0]);
       invoke(method2Run, paramArray, instance, rc, useRoutingContext, okapiHeaders, stat, v -> {
         withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(), method2Run.getName(), " invoking " + method2Run));
         //all data has been stored in memory - not necessarily all processed
@@ -498,7 +507,7 @@ public final class RestRouting {
 
   static void getOkapiHeaders(RoutingContext rc, Map<String, String> headers, String[] tenantId) {
     MultiMap mm = rc.request().headers();
-    Consumer<Map.Entry<String,String>> consumer = entry -> {
+    Consumer<Map.Entry<String, String>> consumer = entry -> {
       String headerKey = entry.getKey().toLowerCase(); // should be changed and headers should be multiMap and not Map
       if (headerKey.startsWith(RestVerticle.OKAPI_HEADER_PREFIX)) {
         if (headerKey.equalsIgnoreCase(RestVerticle.OKAPI_HEADER_TENANT)) {
@@ -548,12 +557,9 @@ public final class RestRouting {
   /**
    * Send the result as response.
    *
-   * @param rc
-   *          - where to send the result
-   * @param v
-   *          - the result to send
-   * @param start
-   *          - request's start time, using JVM's high-resolution time source, in nanoseconds
+   * @param rc    - where to send the result
+   * @param v     - the result to send
+   * @param start - request's start time, using JVM's high-resolution time source, in nanoseconds
    */
   static void sendResponse(RoutingContext rc, AsyncResult<Response> v, long start, String tenantId) {
     Response responseFromResult = getResponse(v);
@@ -582,12 +588,12 @@ public final class RestRouting {
         response.write(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(((OutStream) entity).getData()));
       }
       /* entity is of type BinaryOutStream - and will be written as a buffer */
-      else if (entity instanceof BinaryOutStream){
+      else if (entity instanceof BinaryOutStream) {
         response.write(Buffer.buffer(((BinaryOutStream) entity).getData()));
       }
       /* data is a string so just push it out, no conversion needed */
-      else if (entity instanceof String){
-        response.write(Buffer.buffer((String)entity));
+      else if (entity instanceof String) {
+        response.write(Buffer.buffer((String) entity));
       }
       /* catch all - anything else will be assumed to be a pojo which needs converting to json */
       else if (entity != null) {
@@ -607,7 +613,7 @@ public final class RestRouting {
         sb.append(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       } catch (Exception e) {
         String name = entity == null ? "null" : entity.getClass().getName();
-        withRequestId(rc, () -> LOGGER.error("writeValueAsString(" + name + ")", e));
+        withRequestId(rc, () -> LOGGER.error("writeValueAsString({})", name, e));
       }
     }
     withRequestId(rc, () -> LogUtil.formatStatsLogMessage(rc, (end - start) / 1000000, tenantId, sb.toString()));
@@ -628,11 +634,12 @@ public final class RestRouting {
 
   /**
    * Match the path agaist pattern.
+   *
    * @return the matching groups urldecoded, may be an empty array, or null if the pattern doesn't match
    */
   static String[] matchPath(String path, Pattern pattern) {
     Matcher m = pattern.matcher(path);
-    if (! m.find()) {
+    if (!m.find()) {
       return new String[0];
     }
     int groups = m.groupCount();
@@ -646,6 +653,17 @@ public final class RestRouting {
     return pathParams;
   }
 
+  static Object construct(Vertx vertx, String tenantId, Class<?> aClass)
+      throws IllegalAccessException, InvocationTargetException, InstantiationException, NoSuchMethodException {
+    try {
+      Constructor<?> constructorWithArgs = aClass.getConstructor(Vertx.class, String.class);
+      return constructorWithArgs.newInstance(vertx, tenantId);
+    } catch (NoSuchMethodException e1) {
+      Constructor<?> constructorWithNoArgs = aClass.getConstructor();
+      return constructorWithNoArgs.newInstance();
+    }
+  }
+
   static void handleRequest(RoutingContext rc, Class<?> aClass, JsonObject ret, Method method, Pattern pattern) {
     long start = System.nanoTime();
     Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
@@ -656,26 +674,16 @@ public final class RestRouting {
           MESSAGES.getMessage("en", MessageConsts.UnableToProcessRequest) + " Tenant must be set");
       return;
     }
-    Object o;
+    Object instanceTmp;
     try {
-      try {
-        Constructor<?> constructorWithArgs = aClass.getConstructor(Vertx.class, String.class);
-        o = constructorWithArgs.newInstance(rc.vertx(), tenantId[0]);
-      } catch (NoSuchMethodException e1) {
-        try {
-          Constructor<?> constructorWithNoArgs = aClass.getConstructor();
-          o = constructorWithNoArgs.newInstance();
-        } catch (NoSuchMethodException e2) {
-          LOGGER.error(e2.getMessage(), e2);
-          endRequestWithError(rc, 500, true, "Server error");
-          return;
-        }
-      }
+      instanceTmp = construct(rc.vertx(), tenantId[0], aClass);
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
       endRequestWithError(rc, 500, true, "Server error");
       return;
     }
+    final Object instance = instanceTmp;
+
     JsonObject params = ret.getJsonObject(AnnotationGrabber.METHOD_PARAMS);
 
     Iterator<Map.Entry<String, Object>> paramList = params.iterator();
@@ -695,23 +703,13 @@ public final class RestRouting {
     String[] pathParams = matchPath(rc.request().path(), pattern);
 
     boolean streamData = isStreamed(method.getAnnotations());
-    final Object instance = o;
     if (streamData) {
-      final int[] uploadParamPosition = new int[] { -1 };
-      params.forEach(param -> {
-        if (((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")) {
-          //application/octet-stream passed - this is handled in a stream like manner
-          //and the corresponding function called must annotate with a @Stream - and be able
-          //to handle the function being called repeatedly on parts of the data
-          uploadParamPosition[0] = ((JsonObject) param.getValue()).getInteger("order");
-        }
-      });
       parseParams(rc, null, paramList, paramArray, pathParams, okapiHeaders, useRoutingContext);
       if (rc.response().ended()) {
         return;
       }
       handleStream(method, rc, useRoutingContext[0], instance, tenantId, okapiHeaders,
-          uploadParamPosition, paramArray, start);
+          params, paramArray, start);
     } else {
       // regular request (no streaming).. Read the request body before checking params + body
       Buffer body = Buffer.buffer();
@@ -828,7 +826,7 @@ public final class RestRouting {
               Method[] classMethods = aClass.getMethods();
               for (Method classMethod : classMethods) {
                 if (classMethod.getName().equals(function)) {
-                  LOGGER.info("Adding route {} {} -> {}", () -> httpMethod.name(), () -> ramlPath, () -> function);
+                  LOGGER.info("Adding route {} {} -> {}", httpMethod::name, () -> ramlPath, () -> function);
                   router.routeWithRegex(httpMethod, regex).handler(ctx -> handleRequest(ctx, aClass,
                       methodInfo, classMethod, Pattern.compile(regex)));
                 }
