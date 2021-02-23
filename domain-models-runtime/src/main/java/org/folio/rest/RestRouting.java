@@ -597,8 +597,8 @@ public final class RestRouting {
    * @return
    */
   static boolean isStreamed(Annotation[] annotations) {
-    for (int i = 0; i < annotations.length; i++) {
-      if (annotations[i].annotationType().equals(Stream.class)) {
+    for (Annotation annotation : annotations) {
+      if (annotation.annotationType().equals(Stream.class)) {
         return true;
       }
     }
@@ -707,8 +707,8 @@ public final class RestRouting {
   static String acceptCheck(JsonArray l, String h) {
     String []hl = h.split(",");
     String hBest = null;
-    for (int i = 0; i < hl.length; i++) {
-      String mediaRange = hl[i].split(";")[0].trim();
+    for (String s : hl) {
+      String mediaRange = s.split(";")[0].trim();
       for (int j = 0; j < l.size(); j++) {
         String c = l.getString(j);
         if (mediaRange.compareTo("*/*") == 0 || c.equalsIgnoreCase(mediaRange)) {
