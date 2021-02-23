@@ -379,6 +379,7 @@ public final class RestRouting {
       String paramType = v.getString("param_type");
       int order = v.getInteger("order");
       Object defaultVal = v.getValue("default_value");
+      LOGGER.debug("order={} paramType={} valueType={}", order, paramType, valueType);
 
       // validation of query params (other then enums), object in body (not including drools),
       // and some header params validated by jsr311 (aspects) - the rest are handled in the code here
