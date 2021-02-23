@@ -450,6 +450,7 @@ public final class RestRouting {
                                    Object instance, String[] tenantId, Map<String, String> okapiHeaders,
                                    JsonObject params, Object[] paramArray, long start) {
     final int[] uploadParamPosition = new int[]{-1};
+    String invokeMessage = " invoking " + method2Run;
     params.forEach(param -> {
       if (((JsonObject) param.getValue()).getString("type").equals("java.io.InputStream")) {
         //application/octet-stream passed - this is handled in a stream like manner
@@ -465,7 +466,7 @@ public final class RestRouting {
         okapiHeaders.put(RestVerticle.STREAM_ID, String.valueOf(rc.hashCode()));
         invoke(method2Run, paramArray, instance, rc, okapiHeaders, v ->
           withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(),
-              method2Run.getName(), " invoking " + method2Run))
+              method2Run.getName(), invokeMessage))
         );
       } catch (Exception e1) {
         withRequestId(rc, () -> LOGGER.error(e1.getMessage(), e1));
@@ -478,7 +479,7 @@ public final class RestRouting {
       okapiHeaders.put(RestVerticle.STREAM_COMPLETE, String.valueOf(rc.hashCode()));
       invoke(method2Run, paramArray, instance, rc, okapiHeaders, v -> {
         withRequestId(rc, () -> LogUtil.formatLogMessage(method2Run.getName(),
-            method2Run.getName(), " invoking " + method2Run));
+            method2Run.getName(), invokeMessage));
         //all data has been stored in memory - not necessarily all processed
         sendResponse(rc, v, start, tenantId[0]);
       });
@@ -490,7 +491,7 @@ public final class RestRouting {
       invoke(method2Run, paramArray, instance, rc, okapiHeaders,
           v -> withRequestId(rc, () ->
               LogUtil.formatLogMessage(method2Run.getName(),
-                  method2Run.getName(), " invoking " + method2Run))
+                  method2Run.getName(), invokeMessage))
       );
       endRequestWithError(rc, 400, true, "unable to upload file " + event.getMessage());
     });
