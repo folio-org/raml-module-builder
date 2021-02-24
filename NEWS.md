@@ -1,3 +1,24 @@
+## 32.2.0 2021-02-24
+
+New API features:
+
+ * [RMB-741](https://issues.folio.org/browse/RMB-741) PostgresClient.withTransaction
+ * [RMB-483](https://issues.folio.org/browse/RMB-483) TestContainers instead of postgresql-embedded
+ * [RMB-601](https://issues.folio.org/browse/RMB-601) PgUtil futurisation for Vert.x 4
+ * [RMB-806](https://issues.folio.org/browse/RMB-806) TenantClient: async utility
+
+Other changes:
+
+￼* [RMB-519](https://issues.folio.org/browse/RMB-519) Default Accept: */*, Content-Type: application/json
+ * [RMB-768](https://issues.folio.org/browse/RMB-768) Default log4j2 logging should be line based patternlayout
+￼* [RMB-786](https://issues.folio.org/browse/RMB-786) Change OL trigger notice level
+
+Bugs fixed:
+
+￼* [RMB-799](https://issues.folio.org/browse/RMB-799) Update Vert.x from 4.0.0 to 4.0.2
+ * [RMB-788](https://issues.folio.org/browse/RMB-788) invalid id for GET /_/tenant/id hangs
+￼* [RMB-803](https://issues.folio.org/browse/RMB-803) Fix URL encoding in BuildCQL preventing CQL injection
+
 ## 32.1.0 2021-01-05
 
  * [RMB-782](https://issues.folio.org/browse/RMB-782) Make postTenantSync public
