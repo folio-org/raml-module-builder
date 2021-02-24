@@ -28,6 +28,7 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
   private static int port;
   private static Boolean initResult = null;
   private static int initCalls;
+  private static boolean shutdownFail;
   private static int shutdownCalls;
 
   @BeforeClass
@@ -54,6 +55,17 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
     }
   }
 
+  @Override
+  public void shutdown(Vertx vertx, Context context, Handler<AsyncResult<Void>> handler) {
+    LOGGER.info("shutdown handler called");
+    shutdownCalls++;
+    if (shutdownFail) {
+      handler.handle(Future.failedFuture("shutdown failed"));
+    } else {
+      handler.handle(Future.succeededFuture());
+    }
+  }
+
   Future<String> deploy() {
     shutdownCalls = 0;
     initCalls = 0;
@@ -63,16 +75,10 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
     return vertx.deployVerticle(RestVerticle.class, new DeploymentOptions().setConfig(config));
   }
 
-  @Override
-  public void shutdown(Vertx vertx, Context context, Handler<AsyncResult<Void>> handler) {
-    LOGGER.info("shutdown handler called");
-    shutdownCalls++;
-    handler.handle(Future.succeededFuture());
-  }
-
   @Test
   public void initHookTrue(TestContext context) {
     initResult = true;
+    shutdownFail = false;
     deploy()
         .onComplete(context.asyncAssertSuccess(res -> {
           context.assertEquals(2, initCalls);
@@ -85,9 +91,26 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
   }
 
   @Test
+  public void shutdownFail(TestContext context) {
+    initResult = true;
+    shutdownFail = true;
+    deploy()
+        .onComplete(context.asyncAssertSuccess(res -> {
+          context.assertEquals(2, initCalls);
+          context.assertEquals(0, shutdownCalls);
+          vertx.undeploy(res).onComplete(context.asyncAssertFailure(cause -> {
+            context.assertEquals(2, initCalls);
+            context.assertEquals(1, shutdownCalls);
+            // RestVerticle has this message hard coded in case of shutdown failure
+            context.assertEquals("shutdown hook failed....", cause.getMessage());
+          }));
+        }));
+  }
+
+  @Test
   public void initHookFail(TestContext context) {
     initResult = false;
-    JsonObject config = new JsonObject();
+    shutdownFail = false;
     deploy()
         .onComplete(context.asyncAssertFailure(cause -> {
           context.assertEquals("init failed", cause.getMessage());
@@ -99,6 +122,7 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
   @Test
   public void initHookException(TestContext context) {
     initResult = null;
+    shutdownFail = false;
     deploy()
         .onComplete(context.asyncAssertFailure(cause -> {
           context.assertNull(cause.getMessage());
