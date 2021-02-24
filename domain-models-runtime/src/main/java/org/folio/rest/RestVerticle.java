@@ -48,6 +48,8 @@ public class RestVerticle extends AbstractVerticle {
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static String             deploymentId                     = "";
 
+  private String packageOfImplementations;
+
   @Override
   public void start(Promise<Void> startPromise) throws Exception {
 
@@ -59,6 +61,8 @@ public class RestVerticle extends AbstractVerticle {
     deploymentId = UUID.randomUUID().toString();
 
     LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
+
+    packageOfImplementations = config().getString("packageOfImplementations", DomainModelConsts.PACKAGE_OF_IMPLEMENTATIONS);
 
     // Create a router object.
     Router router = Router.router(vertx);
@@ -92,9 +96,12 @@ public class RestVerticle extends AbstractVerticle {
       // we are here if port was not passed via cmd line
       port = config().getInteger(HTTP_PORT_SETTING, 8081);
     }
-    RestRouting.populateRoutes(router)
+    RestRouting.populateRoutes(router, packageOfImplementations)
         .compose(x -> runHook())
-        .compose(x -> server.requestHandler(router).listen(port))
+        .compose(x -> {
+          log.info("Listening port {}", port);
+          return server.requestHandler(router).listen(port);
+        })
         .compose(ret -> {
           try {
             // startup periodic impl if exists
@@ -158,10 +165,10 @@ public class RestVerticle extends AbstractVerticle {
     });
   }
 
-  private static ArrayList<Class<?>> convert2impl(String clazz, boolean allowMultiple)
+  private ArrayList<Class<?>> convert2impl(String clazz, boolean allowMultiple)
       throws ClassNotFoundException, IOException {
     return InterfaceToImpl.convert2Impl(
-        DomainModelConsts.PACKAGE_OF_IMPLEMENTATIONS,
+        packageOfImplementations,
         DomainModelConsts.PACKAGE_OF_HOOK_INTERFACES + "." + clazz,
         allowMultiple);
   }

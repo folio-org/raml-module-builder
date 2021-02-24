@@ -769,7 +769,7 @@ public final class RestRouting {
     }
   }
 
-  static Future<Void> populateRoutes(Router router) {
+  static Future<Void> populateRoutes(Router router, String packageOfImplementations) {
     JsonObject jObjClasses;
     try {
       jObjClasses = AnnotationGrabber.generateMappings(null);
@@ -782,7 +782,7 @@ public final class RestRouting {
       String iClazz = ret.getString(AnnotationGrabber.CLASS_NAME);
       try {
         Class<?> aClass = InterfaceToImpl.convert2Impl(
-            DomainModelConsts.PACKAGE_OF_IMPLEMENTATIONS, iClazz, false).get(0);
+            packageOfImplementations, iClazz, false).get(0);
         // there is an implementation
         for (String classPaths : ret.fieldNames()) {
           Object value = ret.getValue(classPaths);
