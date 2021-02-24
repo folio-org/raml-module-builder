@@ -54,6 +54,15 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
     }
   }
 
+  Future<String> deploy() {
+    shutdownCalls = 0;
+    initCalls = 0;
+    JsonObject config = new JsonObject();
+    config.put("packageOfImplementations", "org.folio.rest");
+    config.put("http.port", port);
+    return vertx.deployVerticle(RestVerticle.class, new DeploymentOptions().setConfig(config));
+  }
+
   @Override
   public void shutdown(Vertx vertx, Context context, Handler<AsyncResult<Void>> handler) {
     LOGGER.info("shutdown handler called");
@@ -63,13 +72,8 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
 
   @Test
   public void initHookTrue(TestContext context) {
-    shutdownCalls = 0;
-    initCalls = 0;
     initResult = true;
-    JsonObject config = new JsonObject();
-    config.put("packageOfImplementations", "org.folio.rest");
-    config.put("http.port", port);
-    vertx.deployVerticle(RestVerticle.class, new DeploymentOptions().setConfig(config))
+    deploy()
         .onComplete(context.asyncAssertSuccess(res -> {
           context.assertEquals(2, initCalls);
           context.assertEquals(0, shutdownCalls);
@@ -82,13 +86,9 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
 
   @Test
   public void initHookFail(TestContext context) {
-    shutdownCalls = 0;
-    initCalls = 0;
     initResult = false;
     JsonObject config = new JsonObject();
-    config.put("packageOfImplementations", "org.folio.rest");
-    config.put("http.port", port);
-    vertx.deployVerticle(RestVerticle.class, new DeploymentOptions().setConfig(config))
+    deploy()
         .onComplete(context.asyncAssertFailure(cause -> {
           context.assertEquals("init failed", cause.getMessage());
           context.assertEquals(1, initCalls);
@@ -98,13 +98,8 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
 
   @Test
   public void initHookException(TestContext context) {
-    shutdownCalls = 0;
-    initCalls = 0;
     initResult = null;
-    JsonObject config = new JsonObject();
-    config.put("packageOfImplementations", "org.folio.rest");
-    config.put("http.port", port);
-    vertx.deployVerticle(RestVerticle.class, new DeploymentOptions().setConfig(config))
+    deploy()
         .onComplete(context.asyncAssertFailure(cause -> {
           context.assertNull(cause.getMessage());
           context.assertEquals(1, initCalls);
