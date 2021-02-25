@@ -129,7 +129,6 @@ public class RestVerticle extends AbstractVerticle {
           return Future.succeededFuture();
         })
         .onFailure(cause -> {
-          String reason = cause.getMessage();
           log.error(cause.getMessage(), cause);
           startPromise.fail(cause);
         })
@@ -182,12 +181,12 @@ public class RestVerticle extends AbstractVerticle {
     Promise<Boolean> promise = Promise.promise();
     try {
       ArrayList<Class<?>> aClass = convert2impl("InitAPI", false);
-      for (int i = 0; i < aClass.size(); i++) {
-        Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
-        Method method = aClass.get(i).getMethod("init", paramArray);
-        method.invoke(aClass.get(i).newInstance(), vertx, context, promise);
+      for (Class<?> value : aClass) {
+        Class<?>[] paramArray = new Class[]{Vertx.class, Context.class, Handler.class};
+        Method method = value.getMethod("init", paramArray);
+        method.invoke(value.newInstance(), vertx, context, promise);
         LogUtil.formatLogMessage(getClass().getName(), "runHook",
-          "One time hook called with implemented class " + "named " + aClass.get(i).getName());
+            "One time hook called with implemented class " + "named " + value.getName());
       }
       return promise.future();
     } catch (ClassNotFoundException|NoSuchMethodException e) {
@@ -212,7 +211,7 @@ public class RestVerticle extends AbstractVerticle {
         LogUtil.formatLogMessage(getClass().getName(), "runPeriodicHook",
             "Periodic hook called with implemented class " + "named " + aClass.get(i).getName());
         final int j = i;
-        vertx.setPeriodic(((Long) delay).longValue(), aLong -> {
+        vertx.setPeriodic((Long) delay, aLong -> {
           try {
             Class<?>[] paramArray1 = new Class[] { Vertx.class, Context.class };
             Method method1 = aClass.get(j).getMethod("run", paramArray1);
@@ -235,12 +234,12 @@ public class RestVerticle extends AbstractVerticle {
   private void runPostDeployHook(Handler<AsyncResult<Boolean>> resultHandler) throws Exception {
     try {
       ArrayList<Class<?>> aClass = convert2impl("PostDeployVerticle", true);
-      for (int i = 0; i < aClass.size(); i++) {
-        Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
-        Method method = aClass.get(i).getMethod("init", paramArray);
-        method.invoke(aClass.get(i).newInstance(), vertx, context, resultHandler);
+      for (Class<?> value : aClass) {
+        Class<?>[] paramArray = new Class[]{Vertx.class, Context.class, Handler.class};
+        Method method = value.getMethod("init", paramArray);
+        method.invoke(value.newInstance(), vertx, context, resultHandler);
         LogUtil.formatLogMessage(getClass().getName(), "runHook",
-          "Post Deploy Hook called with implemented class " + "named " + aClass.get(i).getName());
+            "Post Deploy Hook called with implemented class " + "named " + value.getName());
       }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
@@ -256,12 +255,12 @@ public class RestVerticle extends AbstractVerticle {
   private void runShutdownHook(Handler<AsyncResult<Void>> resultHandler) throws Exception {
     try {
       ArrayList<Class<?>> aClass = convert2impl("ShutdownAPI", false);
-      for (int i = 0; i < aClass.size(); i++) {
-        Class<?>[] paramArray = new Class[] { Vertx.class, Context.class, Handler.class };
-        Method method = aClass.get(i).getMethod("shutdown", paramArray);
-        method.invoke(aClass.get(i).newInstance(), vertx, context, resultHandler);
+      for (Class<?> value : aClass) {
+        Class<?>[] paramArray = new Class[]{Vertx.class, Context.class, Handler.class};
+        Method method = value.getMethod("shutdown", paramArray);
+        method.invoke(value.newInstance(), vertx, context, resultHandler);
         LogUtil.formatLogMessage(getClass().getName(), "runShutdownHook",
-          "shutdown hook called with implemented class " + "named " + aClass.get(i).getName());
+            "shutdown hook called with implemented class " + "named " + value.getName());
       }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
@@ -270,7 +269,7 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  private void cmdProcessing() throws IOException {
+  private void cmdProcessing() {
     // TODO need to add a normal command line parser
     List<String> cmdParams = processArgs();
 
