@@ -102,7 +102,7 @@ public class RestVerticle extends AbstractVerticle {
           log.info("Listening port {}", port);
           return server.requestHandler(router).listen(port);
         })
-        .compose(ret -> {
+        .<Void>compose(ret -> {
           try {
             // startup periodic impl if exists
             runPeriodicHook();
@@ -116,23 +116,15 @@ public class RestVerticle extends AbstractVerticle {
           if (mockMode != null) {
             System.setProperty(HttpClientMock2.MOCK_MODE, mockMode);
           }
-          try {
-            runPostDeployHook(res2 -> {
-              if (!res2.succeeded()) {
-                log.error(res2.cause().getMessage(), res2.cause());
-              }
-            });
-          } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            return Future.failedFuture(e);
-          }
+          runPostDeployHook(res2 -> {
+            if (!res2.succeeded()) {
+              log.error(res2.cause().getMessage(), res2.cause());
+            }
+          });
           return Future.succeededFuture();
         })
-        .onFailure(cause -> {
-          log.error(cause.getMessage(), cause);
-          startPromise.fail(cause);
-        })
-        .onSuccess(x -> startPromise.complete());
+        .onFailure(cause -> log.error(cause.getMessage(), cause))
+        .onComplete(startPromise);
   }
 
   private void readInGitProps(){
@@ -229,9 +221,8 @@ public class RestVerticle extends AbstractVerticle {
 
   /**
    * ONE impl allowed
-   * @throws Exception
    */
-  private void runPostDeployHook(Handler<AsyncResult<Boolean>> resultHandler) throws Exception {
+  private void runPostDeployHook(Handler<AsyncResult<Boolean>> resultHandler) {
     try {
       ArrayList<Class<?>> aClass = convert2impl("PostDeployVerticle", true);
       for (Class<?> value : aClass) {
@@ -244,6 +235,8 @@ public class RestVerticle extends AbstractVerticle {
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
       LogUtil.formatLogMessage(getClass().getName(), "runPostDeployHook", "no Post Deploy Hook implementation found, continuing with deployment");
+    } catch (IOException|ReflectiveOperationException e) {
+      throw new RuntimeException(e);
     }
   }
 
