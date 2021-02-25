@@ -44,7 +44,6 @@ public class RestVerticle extends AbstractVerticle {
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
   private static final String       HTTP_PORT_SETTING               = "http.port";
-  private static final String       className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static String             deploymentId                     = "";
 
@@ -56,11 +55,11 @@ public class RestVerticle extends AbstractVerticle {
     readInGitProps();
 
     //process cmd line arguments
-    cmdProcessing();
+    cmdProcessing(processArgs());
 
     deploymentId = UUID.randomUUID().toString();
 
-    LogUtil.formatLogMessage(className, "start", "metrics enabled: " + vertx.isMetricsEnabled());
+    log.info("metrics enabled: {}", vertx.isMetricsEnabled());
 
     packageOfImplementations = config().getString("packageOfImplementations", DomainModelConsts.PACKAGE_OF_IMPLEMENTATIONS);
 
@@ -177,8 +176,7 @@ public class RestVerticle extends AbstractVerticle {
         Class<?>[] paramArray = new Class[]{Vertx.class, Context.class, Handler.class};
         Method method = value.getMethod("init", paramArray);
         method.invoke(value.newInstance(), vertx, context, promise);
-        LogUtil.formatLogMessage(getClass().getName(), "runHook",
-            "One time hook called with implemented class " + "named " + value.getName());
+        log.info("Init hook called with implemented class named {}", value.getName());
       }
       return promise.future();
     } catch (ClassNotFoundException|NoSuchMethodException e) {
@@ -200,8 +198,7 @@ public class RestVerticle extends AbstractVerticle {
         Class<?>[] paramArray = new Class[] {};
         Method method = aClass.get(i).getMethod("runEvery", paramArray);
         Object delay = method.invoke(aClass.get(i).newInstance());
-        LogUtil.formatLogMessage(getClass().getName(), "runPeriodicHook",
-            "Periodic hook called with implemented class " + "named " + aClass.get(i).getName());
+        log.info("Periodic hook called with implemented class named {}", aClass.get(i).getName());
         final int j = i;
         vertx.setPeriodic((Long) delay, aLong -> {
           try {
@@ -215,7 +212,7 @@ public class RestVerticle extends AbstractVerticle {
       }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
-      LogUtil.formatLogMessage(getClass().getName(), "runPeriodicHook", "no periodic implementation found, continuing with deployment");
+      log.info("No periodic implementation found, continuing with deployment");
     }
   }
 
@@ -229,12 +226,11 @@ public class RestVerticle extends AbstractVerticle {
         Class<?>[] paramArray = new Class[]{Vertx.class, Context.class, Handler.class};
         Method method = value.getMethod("init", paramArray);
         method.invoke(value.newInstance(), vertx, context, resultHandler);
-        LogUtil.formatLogMessage(getClass().getName(), "runHook",
-            "Post Deploy Hook called with implemented class " + "named " + value.getName());
+        log.info("Post Deploy Hook called with implemented class named {}", value.getName());
       }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
-      LogUtil.formatLogMessage(getClass().getName(), "runPostDeployHook", "no Post Deploy Hook implementation found, continuing with deployment");
+      log.info("No Post Deploy Hook implementation found, continuing with deployment");
     } catch (IOException|ReflectiveOperationException e) {
       throw new RuntimeException(e);
     }
@@ -252,19 +248,17 @@ public class RestVerticle extends AbstractVerticle {
         Class<?>[] paramArray = new Class[]{Vertx.class, Context.class, Handler.class};
         Method method = value.getMethod("shutdown", paramArray);
         method.invoke(value.newInstance(), vertx, context, resultHandler);
-        LogUtil.formatLogMessage(getClass().getName(), "runShutdownHook",
-            "shutdown hook called with implemented class " + "named " + value.getName());
+        log.info("shutdown hook called with implemented class named {}", value.getName());
       }
     } catch (ClassNotFoundException e) {
       // no hook implemented, this is fine, just startup normally then
-      LogUtil.formatLogMessage(getClass().getName(), "runShutdownHook", "no shutdown hook implementation found, continuing with shutdown");
+      log.info("No shutdown hook implementation found, continuing with shutdown");
       resultHandler.handle(io.vertx.core.Future.succeededFuture());
     }
   }
 
-  private void cmdProcessing() {
+  private static void cmdProcessing(List<String> cmdParams) {
     // TODO need to add a normal command line parser
-    List<String> cmdParams = processArgs();
 
     if (cmdParams != null) {
       for (String param : cmdParams) {
@@ -272,7 +266,7 @@ public class RestVerticle extends AbstractVerticle {
         if (param.startsWith("debug_log_package=")) {
           String debugPackage = param.split("=")[1];
           if(debugPackage != null && debugPackage.length() > 0){
-            LogUtil.formatLogMessage(className, "cmdProcessing", "Setting package " + debugPackage + " to debug");
+            log.info("Setting package {} to debug", debugPackage);
             LogUtil.updateLogConfiguration(debugPackage, "FINE");
           }
         }
@@ -280,12 +274,12 @@ public class RestVerticle extends AbstractVerticle {
           String dbconnection = param.split("=")[1];
           PostgresClient.setConfigFilePath(dbconnection);
           PostgresClient.setIsEmbedded(false);
-          LogUtil.formatLogMessage(className, "cmdProcessing", "Setting path to db config file....  " + dbconnection);
+          log.info("Setting path to db config file....  " + dbconnection);
         }
         else if (param.startsWith("embed_postgres=true")) {
           // allow setting config() from unit test mode which runs embedded
 
-          LogUtil.formatLogMessage(className, "cmdProcessing", "Using embedded postgres... starting... ");
+          log.info("Using embedded postgres... starting... ");
 
           // this blocks
           PostgresClient.setIsEmbedded(true);
@@ -296,11 +290,11 @@ public class RestVerticle extends AbstractVerticle {
           String []arg = param.split("=");
           if(arg.length == 2){
             MODULE_SPECIFIC_ARGS.put(arg[0], arg[1]);
-            log.info("module specific argument added: " + arg[0] + " with value " + arg[1]);
+            log.info("module specific argument added: {} with value {}", arg[0], arg[1]);
           }
           else{
-            log.warn("The following cmd line parameter was skipped, " + param + ". Expected format key=value\nIf this is a "
-                + "JVM argument, pass it before the jar, not after");
+            log.warn("The following cmd line parameter was skipped, {}. Expected format key=value\nIf this is a "
+                + "JVM argument, pass it before the jar, not after", param);
           }
         }
       }
