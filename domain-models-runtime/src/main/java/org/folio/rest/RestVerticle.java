@@ -44,7 +44,7 @@ public class RestVerticle extends AbstractVerticle {
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
   private static final String       HTTP_PORT_SETTING               = "http.port";
-  private static String             className                       = RestVerticle.class.getName();
+  private static final String       className                       = RestVerticle.class.getName();
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static String             deploymentId                     = "";
 
