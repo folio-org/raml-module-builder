@@ -120,6 +120,11 @@ public class DemoRamlRestTest {
   }
 
   @Test
+  public void missingTenant(TestContext context) {
+    checkURLs(context, null,"http://localhost:" + port + "/rmbtests/books", 400, "*/*");
+  }
+
+  @Test
   public void date(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=&author=me", 400);
   }
@@ -146,7 +151,7 @@ public class DemoRamlRestTest {
 
   @Test
   public void wrongPath(TestContext context) {
-    checkURLs(context, "http://localhost:" + port + "/rmbtests/x/books", 400); // should be 404
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/x/books", 404);
   }
 
   @Test
@@ -157,6 +162,44 @@ public class DemoRamlRestTest {
   @Test
   public void getOkWithDatetime(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=2011-12-03T10:15:30&author=you&rating=1.2", 200);
+  }
+
+  @Test
+  public void getEmptyRating(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=", 400);
+  }
+
+  // produces error, but shouldn't as there is a default value (an old error)
+  @Test
+  public void getEmptyScore(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&score=", 400);
+  }
+
+  @Test
+  public void getEmptyEdition(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&edition=", 400);
+  }
+
+  // note that isbn is size 15, 20 in /domain-models-maven-plugin/src/main/resources/overrides/raml_overrides.json
+  @Test
+  public void getWithIsbnS10(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2&isbn=1234567890", 400);
+  }
+
+  @Test
+  public void getWithIsbnS15(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2&isbn=123456789012345", 200);
+  }
+
+  @Test
+  public void getWithAvailableFalse(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2&available=false", 200);
+  }
+
+  // Boolean.valueOf turns any value to false , except "true" (ignoring case)
+  @Test
+  public void getWithAvailableBadValue(TestContext context) {
+    checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=1900-01-01&author=me&rating=1.2&available=xx", 200);
   }
 
   @Test
@@ -484,12 +527,18 @@ public class DemoRamlRestTest {
   }
 
   public static Buffer checkURLs(TestContext context, String url, int codeExpected, String accept) {
+    return checkURLs(context, TENANT, url, codeExpected, accept);
+  }
+
+  public static Buffer checkURLs(TestContext context, String tenant, String url, int codeExpected, String accept) {
     Buffer res = Buffer.buffer();
     try {
       Async async = context.async();
       WebClient client = WebClient.create(vertx);
       final HttpRequest<Buffer> request = client.getAbs(url);
-      request.headers().add("x-okapi-tenant", TENANT);
+      if (tenant != null) {
+        request.headers().add("x-okapi-tenant", tenant);
+      }
       if (accept != null) {
         request.headers().add("Accept", accept);
       }
@@ -503,12 +552,12 @@ public class DemoRamlRestTest {
           async.complete();
           return null;
         }).otherwise(f-> {
-          context.fail(url + " - " + f.getMessage());
-          async.complete();
-          return null;
-         }
+              context.fail(url + " - " + f.getMessage());
+              async.complete();
+              return null;
+            }
         );
-        });
+      });
       async.await();
     } catch (Throwable e) {
       log.error(e.getMessage(), e);
