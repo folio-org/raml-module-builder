@@ -28,6 +28,13 @@ traits:
           description: The date released for the first time in the US
           example: 1984-07-10
           required: true
+        score:
+          displayName: Score
+          type: number
+          description: Score
+          example: 1.00
+          required: false
+          default: 0.0
         rating:
           displayName: Rating
           type: number
@@ -42,8 +49,13 @@ traits:
         isbn:
           displayName: ISBN
           type: string
-          minLength: 10
           example: 0321736079?
+        available:
+          displayName: Whether item is avaiable
+          type: boolean
+          example: false
+          required: false
+          default: true
       responses:
         200:
          body:
