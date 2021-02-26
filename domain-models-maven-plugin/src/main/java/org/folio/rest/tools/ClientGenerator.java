@@ -334,13 +334,10 @@ public class ClientGenerator implements ClientGrabber {
     /* Handle place holders in the URL
       * replace {varName} with "+varName+" so that it will be replaced
       * in the url at runtime with the correct values */
-    Matcher m = Pattern.compile("\\{.*?\\}").matcher("^" + url);
-    while (m.find()) {
-      String varName = m.group().replace("{","").replace("}", "");
-      url = url.replace("{"+varName+"}", "\"+"+varName+"+\"");
-    }
 
-    url = "\"" + url + "\"+queryParams.toString()";
+    url = "\"" +
+        Pattern.compile("\\{([^{}/]+)\\}").matcher(url).replaceAll("\"+$1+\"") +
+        "\"+queryParams.toString()";
 
     /* Adding java doc for method */
     jmCreate.javadoc().add("Service endpoint " + url);
