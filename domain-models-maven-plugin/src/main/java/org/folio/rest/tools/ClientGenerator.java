@@ -334,13 +334,10 @@ public class ClientGenerator implements ClientGrabber {
     /* Handle place holders in the URL
       * replace {varName} with "+varName+" so that it will be replaced
       * in the url at runtime with the correct values */
-    Matcher m = Pattern.compile("\\{.*?\\}").matcher(url);
-    while(m.find()){
-      String varName = m.group().replace("{","").replace("}", "");
-      url = url.replace("{"+varName+"}", "\"+"+varName+"+\"");
-    }
 
-    url = "\""+url.substring(1)+"\"+queryParams.toString()";
+    url = "\"" +
+        Pattern.compile("\\{([^{}/]+)\\}").matcher(url).replaceAll("\"+$1+\"") +
+        "\"+queryParams.toString()";
 
     /* Adding java doc for method */
     jmCreate.javadoc().add("Service endpoint " + url);
@@ -357,7 +354,7 @@ public class ClientGenerator implements ClientGrabber {
       String valueName = ((JsonObject) entry.getValue()).getString("value");
       String valueType = ((JsonObject) entry.getValue()).getString("type");
       String paramType = ((JsonObject) entry.getValue()).getString("param_type");
-      if(handleParams(jmCreate, queryParams, paramType, valueType, valueName)){
+      if (handleParams(jmCreate, queryParams, paramType, valueType, valueName)) {
         bodyContentExists[0] = true;
       }
     });

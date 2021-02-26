@@ -88,7 +88,7 @@ public class AnnotationGrabber {
           for (Method method : type.getDeclaredMethods()) {
             Object value = method.invoke(annotations[i], (Object[]) null);
             if (type.isAssignableFrom(Path.class)) {
-              classSpecificMapping.put(CLASS_URL, "^" + value);
+              classSpecificMapping.put(CLASS_URL, value);
               if (clientGrabber != null) {
                 clientGrabber.generateClassMeta(intface.getName());
               }
@@ -301,18 +301,13 @@ public class AnnotationGrabber {
   }
 
   private static String getRegexForPath(String path) {
-    // fix this hack - by writing a better regex
     String regexPath = path.replaceAll(REPLACEMENT_FROM_REGEX, REPLACEMENT_TO_REGEX);
-    // regexPath = regexPath.replaceAll(REPLACEMENT_FROM_REGEX,
-    // REPLACEMENT_TO_REGEX);
-
     if (regexPath.endsWith(URL_PATH_DELIMITER)) {
       regexPath = regexPath.concat("?");
     } else {
       regexPath = regexPath.concat("/?");
     }
-    regexPath = regexPath.concat("$");
-    return regexPath;
+    return "^" + regexPath + "$";
   }
 
 
