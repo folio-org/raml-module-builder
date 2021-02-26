@@ -1881,6 +1881,16 @@ put:
           example: "Optimistic locking version has changed"
 ```
 
+#### API and Schema versioning for OptimisticLocking
+
+When enabling the `withOptimisticLocking` property on a table definition in `schema.json` an optional `_version` property MUST be added to the related entity definition in JSON Schema.
+
+When changing the value of the `withOptimisticLocking` property, there MUST be a corresponding change to the API version:
+
+* when changing from `off` to `logOnConflict` – the API version change should be minor (e.g 1.1 to 1.2)
+* when changing from `off` or `logOnConflict` to `failOnConflict` – the API version change should be major (e.g 1.1 to 2.0)
+* when changing from `failOnConflict` to `off` or `logConflict` – the API version change should be major (e.g 2.0 to 3.0)
+
 ## Facet Support
 
 RMB also allows easy faceting of result sets. The grouping / faceting is done in the database.
