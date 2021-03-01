@@ -74,6 +74,7 @@ public final class RestRouting {
   private static final String SUPPORTED_CONTENT_TYPE_JSON_DEF = "application/json";
   private static final String DEFAULT_CONTENT_TYPE = "application/json";
   private static final String SUPPORTED_CONTENT_TYPE_TEXT_DEF = "text/plain";
+  private static final String SUPPORTED_CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
   private static final String[] DATE_PATTERNS = {
       "yyyy-MM-dd'T'HH:mm:ss.SSSXXX",
       "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
@@ -755,6 +756,9 @@ public final class RestRouting {
           .replaceFirst(";.*", "").trim();
       if (!consumes.contains(removeBoundary(contentType))) {
         endRequestWithError(rc, 400, true, MESSAGES.getMessage("en", MessageConsts.ContentTypeError, consumes, contentType));
+      }
+      if (consumes.contains(SUPPORTED_CONTENT_TYPE_FORM)) {
+        rc.request().setExpectMultipart(true);
       }
     }
 

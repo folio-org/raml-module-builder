@@ -4,6 +4,9 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import io.restassured.path.json.JsonPath;
+import io.restassured.response.Response;
+import io.restassured.response.ResponseBodyExtractionOptions;
 import io.vertx.core.AsyncResult;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
@@ -345,6 +348,17 @@ public class DemoRamlRestTest {
     }
   }
 
+  @Test
+  public void testForm(TestContext context) {
+    JsonPath jsonPath = given().spec(tenant)
+        .formParam("form1name", "form1value")
+        .formParam("form2name", "form2value")
+        .post("/rmbtests/testForm")
+        .then()
+        .statusCode(200).extract().body().jsonPath();
+    context.assertEquals("form1value", jsonPath.getString("[0].form1name"));
+    context.assertEquals("form2value", jsonPath.getString("[1].form2name"));
+  }
 
   @Test
   public void postBookValidateAuthor(TestContext context) {

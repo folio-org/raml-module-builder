@@ -8,7 +8,7 @@
   <artifactId>domain-models-api-interfaces</artifactId>
   <properties>
     <jaxrsVersion>2.0</jaxrsVersion>
-    <generate_routing_context>/rmbtests/test</generate_routing_context>
+    <generate_routing_context>/rmbtests/test,/rmbtests/testForm</generate_routing_context>
   </properties>
 
   <dependencies>
