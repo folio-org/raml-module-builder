@@ -350,14 +350,14 @@ public class DemoRamlRestTest {
 
   @Test
   public void testForm(TestContext context) {
-    JsonPath jsonPath = given().spec(tenant)
+    given().spec(tenant)
         .formParam("form1name", "form1value")
         .formParam("form2name", "form2value")
         .post("/rmbtests/testForm")
         .then()
-        .statusCode(200).extract().body().jsonPath();
-    context.assertEquals("form1value", jsonPath.getString("[0].form1name"));
-    context.assertEquals("form2value", jsonPath.getString("[1].form2name"));
+        .statusCode(200)
+        .body("[0].form1name", is("form1value"))
+        .body("[1].form2name", is("form2value"));
   }
 
   @Test
