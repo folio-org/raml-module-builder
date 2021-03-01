@@ -46,7 +46,7 @@
     <generated_files_path>${basedir}/target/generated-sources/raml-jaxrs</generated_files_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <generate_routing_context>/rmbtests/test</generate_routing_context>
+    <generate_routing_context>/rmbtests/test,/rmbtests/testForm</generate_routing_context>
   </properties>
 
   <dependencyManagement>

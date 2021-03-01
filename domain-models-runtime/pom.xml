@@ -23,7 +23,6 @@
     <filebeat_registry_file>${basedir}/logs/filebeat/registry</filebeat_registry_file>
     <logstash_instance>ec2-52-27-98-246.us-west-2.compute.amazonaws.com:5044</logstash_instance>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <generate_routing_context>/rmbtests/test</generate_routing_context>
   </properties>
   <dependencies>
     <dependency>
