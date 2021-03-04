@@ -54,12 +54,10 @@ import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
-import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
@@ -82,6 +80,7 @@ public class PostgresClient {
   static final String            COUNT_FIELD = "count";
 
   static final int               STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
+  static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
 
   private static final String    ID_FIELD                 = "id";
   private static final String    RETURNING_ID             = " RETURNING id ";
@@ -128,7 +127,6 @@ public class PostgresClient {
 
   private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
-  private static ObjectMapper    mapper                   = ObjectMapperTool.getMapper();
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
 
@@ -206,8 +204,8 @@ public class PostgresClient {
    * @param startNanoTime  start time as returned by System.nanoTime()
    */
   private void statsTracker(String descriptionKey, String sql, long startNanoTime) {
-    long endNanoTime = System.nanoTime();
     if (log.isDebugEnabled()) {
+      long endNanoTime = System.nanoTime();
       logTimer(descriptionKey, sql, startNanoTime, endNanoTime);
     }
   }
@@ -593,7 +591,7 @@ public class PostgresClient {
     if (entity instanceof JsonObject) {
       return ((JsonObject) entity);
     } else {
-      return new JsonObject(mapper.writeValueAsString(entity));
+      return new JsonObject(MAPPER.writeValueAsString(entity));
     }
   }
 
@@ -692,7 +690,7 @@ public class PostgresClient {
    * @param handler  where to pass on the input AsyncResult
    * @return the Handler
    */
-   <T> Handler<AsyncResult<T>> closeAndHandleResult(
+  <T> Handler<AsyncResult<T>> closeAndHandleResult(
       AsyncResult<SQLConnection> conn, Handler<AsyncResult<T>> handler) {
 
     return ar -> {
@@ -739,6 +737,17 @@ public class PostgresClient {
   public void save(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
     getSQLConnection(conn -> save(conn, table, id, entity,
         /* returnId */ true, /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @return final id after applying triggers
+   */
+  public Future<String> save(String table, String id, Object entity) {
+    return Future.future(promise -> save(table, id, entity, promise));
   }
 
   /**
@@ -976,7 +985,7 @@ public class PostgresClient {
           RowSet<Row> result = query.result();
           String updatedEntityString = result.iterator().next().getValue(0).toString();
           @SuppressWarnings("unchecked")
-          T updatedEntity = (T) mapper.readValue(updatedEntityString, entity.getClass());
+          T updatedEntity = (T) MAPPER.readValue(updatedEntityString, entity.getClass());
           replyHandler.handle(Future.succeededFuture(updatedEntity));
         } catch (Exception e) {
           log.error(e.getMessage(), e);
@@ -2539,7 +2548,7 @@ public class PostgresClient {
    */
   public <T> void getById(AsyncResult<SQLConnection> conn,
       String table, String id, Class<T> clazz, Handler<AsyncResult<T>> replyHandler) {
-    getById(conn, false, table, id, json -> mapper.readValue(json, clazz), replyHandler);
+    getById(conn, false, table, id, json -> MAPPER.readValue(json, clazz), replyHandler);
   }
 
   /**
@@ -2552,7 +2561,7 @@ public class PostgresClient {
    */
   public <T> void getByIdForUpdate(AsyncResult<SQLConnection> conn,
       String table, String id, Class<T> clazz, Handler<AsyncResult<T>> replyHandler) {
-    getById(conn, true, table, id, json -> mapper.readValue(json, clazz), replyHandler);
+    getById(conn, true, table, id, json -> MAPPER.readValue(json, clazz), replyHandler);
   }
 
   /**
@@ -2644,7 +2653,7 @@ public class PostgresClient {
    */
   public <T> void getById(String table, JsonArray ids, Class<T> clazz,
       Handler<AsyncResult<Map<String,T>>> replyHandler) {
-    getById(table, ids, json -> mapper.readValue(json, clazz), replyHandler);
+    getById(table, ids, json -> MAPPER.readValue(json, clazz), replyHandler);
   }
 
   static class ResultsHelper<T> {
@@ -2772,7 +2781,7 @@ public class PostgresClient {
       try {
         // is this a facet entry - if so process it, otherwise will throw an exception
         // and continue trying to map to the pojos
-        o =  mapper.readValue(jo.toString(), org.folio.rest.jaxrs.model.Facet.class);
+        o =  MAPPER.readValue(jo.toString(), org.folio.rest.jaxrs.model.Facet.class);
         org.folio.rest.jaxrs.model.Facet of = (org.folio.rest.jaxrs.model.Facet) o;
         org.folio.rest.jaxrs.model.Facet facet = resultsHelper.facets.get(of.getType());
         if (facet == null) {
@@ -2783,7 +2792,7 @@ public class PostgresClient {
         resultsHelper.facet = true;
         return o;
       } catch (Exception e) {
-        o = mapper.readValue(jo.toString(), resultsHelper.clazz);
+        o = MAPPER.readValue(jo.toString(), resultsHelper.clazz);
       }
     } else {
       o = resultsHelper.clazz.newInstance();
@@ -3285,6 +3294,54 @@ public class PostgresClient {
 
   /**
    * Execute the given function within a transaction.
+   * <p>Similar to {@link #withTransaction(Function)} but with RMB specific {@link Connection}.
+   * <ul>
+   *   <li>The connection is automatically closed in all cases when the function exits.</li>
+   *   <li>The transaction is automatically committed if the function returns a succeeded Future.</li>
+   *   <li>The transaction is automatically roll-backed if the function returns a failed Future or throws a Throwable.</li>
+   *   <li>The method returns a succeeded Future if the commit is successful, otherwise a failed Future.</li>
+   * </ul>
+   *
+   * @param function code to execute
+   */
+  public <T> Future<T> withTrans(Function<Connection, Future<T>> function) {
+    return withTrans(0, function);
+  }
+
+  /**
+   * Execute the given function within a transaction and with query timeout.
+   * <p>Similar to {@link #withTransaction(Function)} but with RMB specific {@link Connection}.
+   * <ul>
+   *   <li>The connection is automatically closed in all cases when the function exits.</li>
+   *   <li>The transaction is automatically committed if the function returns a succeeded Future.</li>
+   *   <li>The transaction is automatically roll-backed if the function returns a failed Future or throws a Throwable.</li>
+   *   <li>The method returns a succeeded Future if the commit is successful, otherwise a failed Future.</li>
+   * </ul>
+   *
+   * @param timeout in milliseconds, 0 for no timeout
+   * @param function code to execute
+   */
+  public <T> Future<T> withTrans(int queryTimeout, Function<Connection, Future<T>> function) {
+    return withTransaction(pgConnection -> {
+      if (queryTimeout == 0) {
+        return function.apply(new Connection(this, pgConnection));
+      }
+
+      long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
+        if (ar.succeeded()) {
+          log.warn("Cancelling request due to timeout after {} ms", queryTimeout);
+        } else {
+          log.warn("Failed to send cancelling request", ar.cause());
+        }
+      }));
+
+      return function.apply(new Connection(this, pgConnection))
+          .onComplete(done -> vertx.cancelTimer(timerId));
+    });
+  }
+
+  /**
+   * Execute the given function within a transaction.
    * <p>Similar to {@link PgPool#withTransaction(Function)}
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
@@ -3292,6 +3349,9 @@ public class PostgresClient {
    *   The transaction is automatically roll-backed if the function returns a failed Future or throws a Throwable.</li>
    *   <li>The method returns a succeeded Future if the commit is successful, otherwise a failed Future.</li>
    * </ul>
+   *
+   * <p>Use {@link #withTrans(Function)} or {@link #withTrans(int, Function)} instead
+   * if you need the RMB specific methods that {@link Connection} provides.
    *
    * @param function code to execute
    */
