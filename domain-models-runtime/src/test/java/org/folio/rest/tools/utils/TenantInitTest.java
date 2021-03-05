@@ -1,6 +1,9 @@
 package org.folio.rest.tools.utils;
 
-import io.vertx.core.Promise;
+import static org.hamcrest.Matchers.isA;
+import static org.hamcrest.MatcherAssert.assertThat;
+
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServerOptions;
@@ -9,6 +12,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import java.net.ConnectException;
 import org.folio.rest.client.TenantClient;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.testing.UtilityClassTester;
@@ -88,18 +92,17 @@ public class TenantInitTest {
     TenantClient client2 = new TenantClient("http://localhost:" + NetworkUtils.nextFreePort(), "library", null);
     TenantAttributes ta = new TenantAttributes().withModuleTo("module-1.0.0");
     TenantInit.exec(client2, ta, 1).onComplete(context.asyncAssertFailure(cause ->
-      context.assertTrue(cause.getMessage().startsWith("Connection refused"), cause.getMessage())
+      assertThat(cause, isA(ConnectException.class))
     ));
   }
 
   @Test
   public void testBadPortGet(TestContext context) {
     TenantClient client2 = new TenantClient("http://localhost:" + NetworkUtils.nextFreePort(), "library", null);
-    Promise<Void> promise = Promise.promise();
-    TenantInit.execGet(client2, "1", 1, promise);
-    promise.future().onComplete(context.asyncAssertFailure(cause ->
-        context.assertTrue(cause.getMessage().startsWith("Connection refused"), cause.getMessage())
-    ));
+    Future.<Void>future(promise -> TenantInit.execGet(client2, "1", 1, promise))
+    .onComplete(context.asyncAssertFailure(cause -> {
+      assertThat(cause, isA(ConnectException.class));
+    }));
   }
 
   @Test
