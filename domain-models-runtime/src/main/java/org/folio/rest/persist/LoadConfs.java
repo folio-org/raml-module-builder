@@ -13,7 +13,7 @@ import com.google.common.io.ByteStreams;
 public final class LoadConfs {
   private static final Logger log = LogManager.getLogger(LoadConfs.class);
 
-  private LoadConfs() throws IllegalAccessException {
+  private LoadConfs() {
     throw new UnsupportedOperationException("Cannot instantiate a utility class");
   }
 
@@ -21,11 +21,11 @@ public final class LoadConfs {
     File file = new File(configFile);
     if (! file.isAbsolute()) {
       log.info("File must be absolute, skipping: {}", configFile);
-      return null;
+      return new byte[0];
     }
     if (! file.exists()) {
       log.info("File does not exist: {}", configFile);
-      return null;
+      return new byte[0];
     }
     log.info("Loading File: {}", configFile);
     return ByteStreams.toByteArray(new FileInputStream(file));
@@ -35,7 +35,7 @@ public final class LoadConfs {
     InputStream is = LoadConfs.class.getResourceAsStream(configFile);
     if (is == null) {
       log.info("Resource does not exist: {}", configFile);
-      return null;
+      return new byte[0];
     }
     log.info("Resource has been loaded: {}", configFile);
     return ByteStreams.toByteArray(is);
@@ -44,12 +44,13 @@ public final class LoadConfs {
   public static JsonObject loadConfig(String configFile) {
     try {
       byte[] jsonData = loadFile(configFile);
-      if (jsonData == null) {
+      if (jsonData.length == 0) {
         jsonData = loadResource(configFile);
       }
-      if (jsonData != null) {
-        return new JsonObject(new String(jsonData));
+      if (jsonData.length == 0) {
+        return null;
       }
+      return new JsonObject(new String(jsonData));
     } catch (Exception e) {
       log.error(configFile, e);
     }

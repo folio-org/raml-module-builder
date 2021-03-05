@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import org.folio.rest.testing.UtilityClassTester;
 import org.junit.jupiter.api.Test;
 
-public class LoadConfsTest {
+class LoadConfsTest {
 
   @Test
   void utilityClass() {
