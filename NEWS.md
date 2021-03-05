@@ -1,3 +1,39 @@
+## 33.0.0-pre1 2021-03-05
+
+Changes and improvements:
+ * [RMB-785](https://issues.folio.org/browse/RMB-785) Convert GenerateRunner into maven plugin
+ * [RMB-800](https://issues.folio.org/browse/RMB-800) Generated Client should not throw generic exception
+
+Fixes:
+ * [RMB-805](https://issues.folio.org/browse/RMB-805) RestVerticle should check for implementation at startup
+ * [RMB-809](https://issues.folio.org/browse/RMB-809) Fix Form parameters lost
+
+Other:
+ * [RMB-770](https://issues.folio.org/browse/RMB-770) Add personal data disclosure form
+ * [RMB-787](https://issues.folio.org/browse/RMB-787) Document guidance on API and Schema versioning for OptimisticLocking
+ * [RMB-793](https://issues.folio.org/browse/RMB-793) Documentation updates / mention testing artifact
+
+## 32.2.0 2021-02-24
+
+New API features:
+
+ * [RMB-741](https://issues.folio.org/browse/RMB-741) PostgresClient.withTransaction
+ * [RMB-483](https://issues.folio.org/browse/RMB-483) TestContainers instead of postgresql-embedded
+ * [RMB-601](https://issues.folio.org/browse/RMB-601) PgUtil futurisation for Vert.x 4
+ * [RMB-806](https://issues.folio.org/browse/RMB-806) TenantClient: async utility
+-
+Other changes:
+
+￼* [RMB-519](https://issues.folio.org/browse/RMB-519) Default Accept: */*, Content-Type: application/json
+ * [RMB-768](https://issues.folio.org/browse/RMB-768) Default log4j2 logging should be line based patternlayout
+￼* [RMB-786](https://issues.folio.org/browse/RMB-786) Change OL trigger notice level
+
+Bugs fixed:
+
+￼* [RMB-799](https://issues.folio.org/browse/RMB-799) Update Vert.x from 4.0.0 to 4.0.2
+ * [RMB-788](https://issues.folio.org/browse/RMB-788) invalid id for GET /_/tenant/id hangs
+￼* [RMB-803](https://issues.folio.org/browse/RMB-803) Fix URL encoding in BuildCQL preventing CQL injection
+
 ## 32.1.0 2021-01-05
 
  * [RMB-782](https://issues.folio.org/browse/RMB-782) Make postTenantSync public
@@ -415,7 +451,7 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 ## 23.6.0 2019-02-18
 
  * [RMB-332](https://issues.folio.org/browse/RMB-332) Move BooksDemoAPI impl to test
- * Update cql2pgjson from 3.0.3 to 3.1.0 CQLPG-76 CQLPG-86
+ * Update cql2pgjson from 3.0.3 to 3.1.0 [CQLPG-76](https://issues.folio.org/browse/CQLPG-76) CQLPG-86
 
 ## 23.5.0 2019-01-29
 
@@ -481,11 +517,11 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 
 ## 22.0.0 2018-10-13
  * [RMB-272](https://issues.folio.org/browse/RMB-272) Update cql2pg-json to version 3.0.0:
-   * CQLPG-63 Drop field name to full field path resolution. This is a breaking change,
+   * [CQLPG-63](https://issues.folio.org/browse/CQLPG-63) Drop field name to full field path resolution. This is a breaking change,
      using the unambiguous suffix "email" no longer resolves to "personal.email".
-   * CQLPG-61 Equals empty is not same as equals star. Matching "*" means all records,
+   * [CQLPG-61](https://issues.folio.org/browse/CQLPG-61) Equals empty is not same as equals star. Matching "*" means all records,
      matching "" means all records where that field is defined. This is a breaking change.
-   * CQLPG-58 Performance: Convert id searches using '=' or '==' into primary key _id searches.
+   * [CQLPG-58](https://issues.folio.org/browse/CQLPG-58) Performance: Convert id searches using '=' or '==' into primary key _id searches.
      This is a breaking change because it restricts the operators allowed for id and assumes
      that id is a UUID.
  * [RMB-271](https://issues.folio.org/browse/RMB-271) Also accept windows \r\n line endings in unit test.
@@ -663,7 +699,7 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 * [RMB-110](https://issues.folio.org/browse/RMB-110): Lift time limit in PostgresClientIT.parallel(...)
 * hack to handle simple text response for rmb http client
 * ResourceUtil.asString(...): more documentation, more options
-* CQLPG-29 "sortBy field" sorts by null (cql2pgjson:1.3.3)
+* [CQLPG-29](https://issues.folio.org/browse/CQLPG-29) "sortBy field" sorts by null (cql2pgjson:1.3.3)
 
 ## 16.0.2 2017-12-05
 
@@ -715,11 +751,11 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 ## 13.0.3
 
 * [RMB-49](https://issues.folio.org/browse/RMB-49) VertxUtils.getVertxWithExceptionHandler()
-* FOLIO-749 add exception handler to each vertx
+* [FOLIO-749](https://issues.folio.org/browse/FOLIO-749) add exception handler to each vertx
 
 ## 13.0.2
 
-* FOLIO-727 Support multi-field queries in CQL2PgJSON (upgraded CQL2PgJSON for this functionality)
+* [FOLIO-727](https://issues.folio.org/browse/FOLIO-727) Support multi-field queries in CQL2PgJSON (upgraded CQL2PgJSON for this functionality)
 
 ## 13.0.1
 
@@ -729,9 +765,9 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 
 * [RMB-42](https://issues.folio.org/browse/RMB-42) Generated clients populate Authorization header with okapi tenant
 * [RMB-34](https://issues.folio.org/browse/RMB-34) Validation response does not include content-type header
-* FOLIO-693 document HTTP status codes
-* DMOD-164 unit tests for Tenant API
-* FOLIO-685 explore auto-generation of fakes (mocks) for module testing
+* [FOLIO-693](https://issues.folio.org/browse/FOLIO-693) document HTTP status codes
+* [DMOD-164](https://issues.folio.org/browse/DMOD-164) unit tests for Tenant API
+* [FOLIO-685](https://issues.folio.org/browse/FOLIO-685) explore auto-generation of fakes (mocks) for module testing
 
 ## 12.1.4
 
