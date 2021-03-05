@@ -4,51 +4,51 @@ import io.vertx.core.json.JsonObject;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.rest.tools.utils.NetworkUtils;
-
 import com.google.common.io.ByteStreams;
 
 public final class LoadConfs {
   private static final Logger log = LogManager.getLogger(LoadConfs.class);
 
-  private LoadConfs() throws IllegalAccessException {
-    throw new IllegalAccessException("Cannot instantiate a utility class");
+  private LoadConfs() {
+    throw new UnsupportedOperationException("Cannot instantiate a utility class");
+  }
+
+  static byte[] loadFile(String configFile) throws IOException {
+    File file = new File(configFile);
+    if (! file.isAbsolute()) {
+      log.info("File must be absolute, skipping: {}", configFile);
+      return new byte[0];
+    }
+    if (! file.exists()) {
+      log.info("File does not exist: {}", configFile);
+      return new byte[0];
+    }
+    log.info("Loading File: {}", configFile);
+    return ByteStreams.toByteArray(new FileInputStream(file));
+  }
+
+  static byte[] loadResource(String configFile) throws IOException {
+    InputStream is = LoadConfs.class.getResourceAsStream(configFile);
+    if (is == null) {
+      log.info("Resource does not exist: {}", configFile);
+      return new byte[0];
+    }
+    log.info("Resource has been loaded: {}", configFile);
+    return ByteStreams.toByteArray(is);
   }
 
   public static JsonObject loadConfig(String configFile) {
-    boolean loadResource = true;
-
     try {
-      if(NetworkUtils.isValidURL(configFile)){
-        try {
-          return new JsonObject(NetworkUtils.readURL(configFile));
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-          return null;
-        }
+      byte[] jsonData = loadFile(configFile);
+      if (jsonData.length == 0) {
+        jsonData = loadResource(configFile);
       }
-      File file = new File(configFile);
-      byte[] jsonData = null;
-      if (file.isAbsolute()) {
-        if (file.exists()) {
-          jsonData = ByteStreams.toByteArray(new FileInputStream(file));
-          loadResource = false;
-          log.info("File has been loaded: {}", configFile);
-        } else {
-          log.info("File does not exist: {}", configFile);
-        }
-      }
-      if (loadResource) {
-          InputStream is = LoadConfs.class.getResourceAsStream(configFile);
-          if (is == null) {
-            log.info("Resource does not exist: {}", configFile);
-            return null;
-          }
-          log.info("Resource has been loaded: {}", configFile);
-          jsonData = ByteStreams.toByteArray(is);
+      if (jsonData.length == 0) {
+        return null;
       }
       return new JsonObject(new String(jsonData));
     } catch (Exception e) {
