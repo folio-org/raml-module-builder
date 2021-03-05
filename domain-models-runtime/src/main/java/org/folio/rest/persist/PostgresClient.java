@@ -54,12 +54,10 @@ import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
-import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
@@ -3717,13 +3715,11 @@ public class PostgresClient {
 
   /**
    * Execute multiple SQL commands in a transaction as superuser.
-   *<p>
-   *   Currently this function always succeeds. Failure is indicated by
-   *   the lines returned (empty on no errors).
-   *</p>
+   *
    * @param sql SQL lines
    * @param stopOnError whether to ignore errors
-   * @param replyHandler result with lines that failed.
+   * @param replyHandler succeeding AsyncResult with empty list on success, succeeding AsyncResult
+   *   with list of SQL lines that failed, failing AsyncResult if connection to database fails
    */
   private void execute(String[] sql, boolean stopOnError,
                        Handler<AsyncResult<List<String>>> replyHandler) {
@@ -3731,8 +3727,12 @@ public class PostgresClient {
     long s = System.nanoTime();
     log.info("Executing multiple statements with id " + Arrays.hashCode(sql));
     List<String> results = new LinkedList<>();
-
-    getInstance(vertx).getClient().getConnection()
+    PostgresClient postgresClient = getInstance(vertx);
+    if (postgresClient == null) {
+      replyHandler.handle(Future.failedFuture("Cannot create PostgresClient instance"));
+      return;
+    }
+    postgresClient.getClient().getConnection()
         .compose(conn -> conn.begin()
             .compose(tx -> {
               Future<Void> future = Future.succeededFuture();
