@@ -18,7 +18,6 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.AdditionalAnswers;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientMockTest {
@@ -35,10 +34,8 @@ public class PostgresClientMockTest {
     when(mockRowSet.size()).thenReturn(0);
     @SuppressWarnings("unchecked")
     PreparedQuery<RowSet<Row>> mockPreparedQuery = mock(PreparedQuery.class);
-    doAnswer(AdditionalAnswers.answerVoid(
-        (Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler)
-        -> handler.handle(Future.succeededFuture(mockRowSet))))
-        .when(mockPreparedQuery).execute(any(Tuple.class), any());
+    when(mockPreparedQuery.execute(any(Tuple.class)))
+    .thenReturn(Future.succeededFuture(mockRowSet));
     PgConnection mockPgConnection = mock(PgConnection.class);
     when(mockPgConnection.preparedQuery(anyString())).thenReturn(mockPreparedQuery);
     PgPool mockPgPool = mock(PgPool.class);
@@ -81,15 +78,11 @@ public class PostgresClientMockTest {
     pc.getByIdAsString(Future.failedFuture("fail"), table, id, context.asyncAssertFailure());
     when(mockPgPool.getConnection()).thenReturn(Future.failedFuture("fail"));
     pc.getByIdAsString(table, id, context.asyncAssertFailure());
-    doAnswer(AdditionalAnswers.answerVoid(
-        (Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler)
-        -> handler.handle(Future.failedFuture("fail"))))
-        .when(mockPreparedQuery).execute(any(Tuple.class), any());
+    when(mockPreparedQuery.execute(any(Tuple.class)))
+    .thenReturn(Future.failedFuture("fail"));
     pc.getByIdAsString(mockConn, table, id, context.asyncAssertFailure());
-    doAnswer(AdditionalAnswers.answerVoid(
-        (Tuple tuple, Handler<AsyncResult<RowSet<Row>>> handler)
-        -> handler.handle(Future.succeededFuture(mockRowSet))))
-        .when(mockPreparedQuery).execute(any(Tuple.class), any());
+    when(mockPreparedQuery.execute(any(Tuple.class)))
+    .thenReturn(Future.succeededFuture(mockRowSet));
     when(mockRow.getValue(anyInt())).thenThrow(new RuntimeException("fail"));
     pc.getByIdAsString(mockConn, table, id, context.asyncAssertFailure());
     pc.getByIdAsString(mockConn, table, "1", context.asyncAssertFailure());

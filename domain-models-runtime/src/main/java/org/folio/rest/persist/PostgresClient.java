@@ -707,12 +707,31 @@ public class PostgresClient {
   /**
    * Insert entity into table. Create a new id UUID and return it via replyHandler.
    * @param table database table (without schema)
-   * @param entity a POJO (plain old java object)
+   * @param entity a POJO (plain old java object), an existing id will be overwritten
+   * @return new id
+   */
+  public Future<String> save(String table, Object entity) {
+    return withConn(conn -> conn.save(table, entity));
+  }
+
+  /**
+   * Insert entity into table. Create a new id UUID and return it via replyHandler.
+   * @param table database table (without schema)
+   * @param entity a POJO (plain old java object), an existing id will be overwritten
    * @param replyHandler returns any errors and the result.
    */
   public void save(String table, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> save(conn, table, /* id */ null, entity,
-        /* returnId */ true, /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+    save(table, entity).onComplete(replyHandler);
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param entity a POJO (plain old java object)
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   */
+  public Future<String> save(String table, Object entity, boolean returnId) {
+    return withConn(conn -> conn.save(table, entity, returnId));
   }
 
   /**
@@ -723,8 +742,18 @@ public class PostgresClient {
    * @param replyHandler returns any errors and the result.
    */
   public void save(String table, Object entity, boolean returnId, Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> save(conn, table, /* id */ null, entity,
-        returnId, /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+    save(table, entity, returnId).onComplete(replyHandler);
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @return id
+   */
+  public Future<String> save(String table, String id, Object entity) {
+    return withConn(conn -> conn.save(table, id, entity));
   }
 
   /**
@@ -735,19 +764,7 @@ public class PostgresClient {
    * @param replyHandler returns any errors and the result (see returnId).
    */
   public void save(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> save(conn, table, id, entity,
-        /* returnId */ true, /* upsert */ false, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
-  }
-
-  /**
-   * Insert entity into table.
-   * @param table database table (without schema)
-   * @param id primary key for the record, or null if one should be created
-   * @param entity a POJO (plain old java object)
-   * @return final id after applying triggers
-   */
-  public Future<String> save(String table, String id, Object entity) {
-    return Future.future(promise -> save(table, id, entity, promise));
+    save(table, id, entity).onComplete(replyHandler);
   }
 
   /**
@@ -767,13 +784,35 @@ public class PostgresClient {
    * @param id primary key for the record, or null if one should be created
    * @param entity a POJO (plain old java object)
    * @param returnId true to return the id of the inserted record, false to return an empty string
+   */
+  public Future<String> save(String table, String id, Object entity, boolean returnId) {
+    return withConn(conn -> conn.save(table, id, entity, returnId));
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @param returnId true to return the id of the inserted record, false to return an empty string
    * @param replyHandler returns any errors and the result (see returnId).
    */
   public void save(String table, String id, Object entity,
       boolean returnId, Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> save(conn, table, id, entity,
-        returnId, /* upsert */ false, /* convertEntity */ true,
-        closeAndHandleResult(conn, replyHandler)));
+    save(table, id, entity, returnId).onComplete(replyHandler);
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param upsert whether to update if the record with that id already exists (INSERT or UPDATE)
+   */
+  public Future<String> save(String table, String id, Object entity,
+      boolean returnId, boolean upsert) {
+    return withConn(conn -> conn.save(table, id, entity, returnId, upsert));
   }
 
   /**
@@ -787,8 +826,18 @@ public class PostgresClient {
    */
   public void save(String table, String id, Object entity,
       boolean returnId, boolean upsert, Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> save(conn, table, id, entity,
-        returnId, upsert, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+    save(table, id, entity, returnId, upsert).onComplete(replyHandler);
+  }
+
+  /**
+   * Insert entity into table, or update it if it already exists.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity a POJO (plain old java object)
+   * @return id of the entity
+   */
+  public Future<String> upsert(String table, String id, Object entity) {
+    return withConn(conn -> conn.upsert(table, id, entity));
   }
 
   /**
@@ -799,8 +848,27 @@ public class PostgresClient {
    * @param replyHandler returns any errors and the id of the entity.
    */
   public void upsert(String table, String id, Object entity, Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> save(conn, table, id, entity,
-        /* returnId */ true, /* upsert */ true, /* convertEntity */ true, closeAndHandleResult(conn, replyHandler)));
+    upsert(table, id, entity).onComplete(replyHandler);
+  }
+
+  /**
+   * Insert or update.
+   *
+   * <p>Needed if upserting binary data as base64 where converting it to a json will corrupt the data
+   * otherwise this function is not needed as the default is true
+   * example:
+   *     byte[] data = ......;
+   *     JsonArray jsonArray = new JsonArray().add(data);
+   *     conn.upsert(TABLE_NAME, id, jsonArray, false)
+
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity either a POJO, or a JsonArray containing a byte[] element, see convertEntity
+   * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
+   * @return id
+   */
+  public Future<String> upsert(String table, String id, Object entity, boolean convertEntity) {
+    return withConn(conn -> conn.upsert(table, id, entity, convertEntity));
   }
 
   /**
@@ -821,9 +889,20 @@ public class PostgresClient {
    */
   public void upsert(String table, String id, Object entity, boolean convertEntity,
       Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> save(conn, table, id, entity,
-        /* returnId */ true, /* upsert */ true, /* convertEntity */ convertEntity,
-        closeAndHandleResult(conn, replyHandler)));
+    upsert(table, id, entity, convertEntity).onComplete(replyHandler);
+  }
+
+  /**
+   * Insert entity into table.
+   * @param table database table (without schema)
+   * @param id primary key for the record, or null if one should be created
+   * @param entity either a POJO, or a JsonArray containing a byte[] element, see convertEntity
+   * @param returnId true to return the id of the inserted record, false to return an empty string
+   * @param upsert whether to update if the record with that id already exists (INSERT or UPDATE)
+   * @param convertEntity true if entity is a POJO, false if entity is a JsonArray
+   */
+  public Future<String> save(String table, String id, Object entity, boolean returnId, boolean upsert, boolean convertEntity) {
+    return withConn(conn -> conn.save(table, id, entity, returnId, upsert, convertEntity));
   }
 
   /**
@@ -838,8 +917,7 @@ public class PostgresClient {
    */
   public void save(String table, String id, Object entity, boolean returnId, boolean upsert, boolean convertEntity,
       Handler<AsyncResult<String>> replyHandler) {
-    getSQLConnection(conn -> save(conn, table, id, entity,
-        returnId, upsert, convertEntity, closeAndHandleResult(conn, replyHandler)));
+    save(table, id, entity, returnId, upsert, convertEntity).onComplete(replyHandler);
   }
 
   /**
@@ -923,24 +1001,9 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
-      long start = System.nanoTime();
-      String sql = INSERT_CLAUSE + schemaName + DOT + table
-          + " (id, jsonb) VALUES ($1, " + (convertEntity ? "$2" : "$2::text") + ")"
-          + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb=EXCLUDED.jsonb" : "")
-          + " RETURNING " + (returnId ? "id" : "''");
-      sqlConnection.result().conn.preparedQuery(sql).execute(Tuple.of(
-          id == null ? UUID.randomUUID() : UUID.fromString(id),
-          convertEntity ? pojo2JsonObject(entity) : ((JsonArray)entity).getString(0)
-      ), query -> {
-        statsTracker(SAVE_STAT_METHOD, table, start);
-        if (query.failed()) {
-          replyHandler.handle(Future.failedFuture(query.cause()));
-        } else {
-          RowSet<Row> result = query.result();
-          String res = result.iterator().next().getValue(0).toString();
-          replyHandler.handle(Future.succeededFuture(res));
-        }
-      });
+      new Conn(this, sqlConnection.result().conn)
+      .save(table, id, entity, returnId, upsert, convertEntity)
+      .onComplete(replyHandler);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
@@ -2423,39 +2486,25 @@ public class PostgresClient {
       getConnection(promise);
     }
     promise.future()
-    .onFailure(ex -> replyHandler.handle(Future.failedFuture(ex)))
-    .onSuccess(connection -> {
-      String sql = SELECT + DEFAULT_JSONB_FIELD_NAME
-          + FROM + schemaName + DOT + table
-          + WHERE + ID_FIELD + "= $1"
-          + (lock ? " FOR UPDATE" : "");
-      try {
-        connection.preparedQuery(sql).execute(Tuple.of(UUID.fromString(id)), query -> {
-          if (query.failed()) {
-            replyHandler.handle(Future.failedFuture(query.cause()));
-            return;
+    .compose(connection -> new Conn(this, connection)
+        .getById(lock, table, id, function)
+        .onComplete(x -> {
+          if (conn == null) {
+            connection.close();
           }
-          RowSet<Row> result = query.result();
-          if (result.size() == 0) {
-            replyHandler.handle(Future.succeededFuture(null));
-            return;
-          }
-          try {
-            String entity = result.iterator().next().getValue(0).toString();
-            R r = function.apply(entity);
-            replyHandler.handle(Future.succeededFuture(r));
-          } catch (Exception e) {
-            replyHandler.handle(Future.failedFuture(e));
-          }
-        });
-      } catch (Exception e) {
-        replyHandler.handle(Future.failedFuture(e));
-      } finally {
-        if (conn == null) {
-          connection.close();
-        }
-      }
-    });
+        })
+    )
+    .onComplete(replyHandler);
+  }
+
+  /**
+   * Get the jsonb by id and return it as a String.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @return the JSON encoded as a String
+   */
+  public Future<String> getByIdAsString(String table, String id) {
+    return withConn(conn -> conn.getByIdAsString(table, id));
   }
 
   /**
@@ -2465,7 +2514,7 @@ public class PostgresClient {
    * @param replyHandler  the result; the JSON is encoded as a String
    */
   public void getByIdAsString(String table, String id, Handler<AsyncResult<String>> replyHandler) {
-    getByIdAsString(null, table, id, replyHandler);
+    getByIdAsString(table, id).onComplete(replyHandler);
   }
 
   /**
@@ -2496,10 +2545,20 @@ public class PostgresClient {
    * Get the jsonb by id and return it as a JsonObject.
    * @param table  the table to search in
    * @param id  the value of the id field
+   * @return the JSON is encoded as a JsonObject
+   */
+  public Future<JsonObject> getById(String table, String id) {
+    return withConn(conn -> conn.getById(table, id));
+  }
+
+  /**
+   * Get the jsonb by id and return it as a JsonObject.
+   * @param table  the table to search in
+   * @param id  the value of the id field
    * @param replyHandler  the result; the JSON is encoded as a JsonObject
    */
   public void getById(String table, String id, Handler<AsyncResult<JsonObject>> replyHandler) {
-    getById(null, table, id, replyHandler);
+    getById(table, id).onComplete(replyHandler);
   }
 
   /**
@@ -2531,11 +2590,22 @@ public class PostgresClient {
    * @param table  the table to search in
    * @param id  the value of the id field
    * @param clazz  the type of the pojo
+   * @return the JSON converted into a T pojo.
+   */
+  public <T> Future<T> getById(String table, String id, Class<T> clazz) {
+    return withConn(conn -> conn.getById(table, id, clazz));
+  }
+
+  /**
+   * Get the jsonb by id and return it as a pojo of type T.
+   * @param table  the table to search in
+   * @param id  the value of the id field
+   * @param clazz  the type of the pojo
    * @param replyHandler  the result; the JSON is converted into a T pojo.
    */
   public <T> void getById(String table, String id, Class<T> clazz,
       Handler<AsyncResult<T>> replyHandler) {
-    getById(null, table, id, clazz, replyHandler);
+    getById(table, id, clazz).onComplete(replyHandler);
   }
 
   /**
@@ -3294,7 +3364,7 @@ public class PostgresClient {
 
   /**
    * Execute the given function within a transaction.
-   * <p>Similar to {@link #withTransaction(Function)} but with RMB specific {@link Connection}.
+   * <p>Similar to {@link #withTransaction(Function)} but with RMB specific {@link Conn}.
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The transaction is automatically committed if the function returns a succeeded Future.</li>
@@ -3304,13 +3374,13 @@ public class PostgresClient {
    *
    * @param function code to execute
    */
-  public <T> Future<T> withTrans(Function<Connection, Future<T>> function) {
+  public <T> Future<T> withTrans(Function<Conn, Future<T>> function) {
     return withTrans(0, function);
   }
 
   /**
    * Execute the given function within a transaction and with query timeout.
-   * <p>Similar to {@link #withTransaction(Function)} but with RMB specific {@link Connection}.
+   * <p>Similar to {@link #withTransaction(Function)} but with RMB specific {@link Conn}.
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The transaction is automatically committed if the function returns a succeeded Future.</li>
@@ -3321,10 +3391,10 @@ public class PostgresClient {
    * @param timeout in milliseconds, 0 for no timeout
    * @param function code to execute
    */
-  public <T> Future<T> withTrans(int queryTimeout, Function<Connection, Future<T>> function) {
+  public <T> Future<T> withTrans(int queryTimeout, Function<Conn, Future<T>> function) {
     return withTransaction(pgConnection -> {
       if (queryTimeout == 0) {
-        return function.apply(new Connection(this, pgConnection));
+        return function.apply(new Conn(this, pgConnection));
       }
 
       long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
@@ -3335,7 +3405,7 @@ public class PostgresClient {
         }
       }));
 
-      return function.apply(new Connection(this, pgConnection))
+      return function.apply(new Conn(this, pgConnection))
           .onComplete(done -> vertx.cancelTimer(timerId));
     });
   }
@@ -3351,7 +3421,7 @@ public class PostgresClient {
    * </ul>
    *
    * <p>Use {@link #withTrans(Function)} or {@link #withTrans(int, Function)} instead
-   * if you need the RMB specific methods that {@link Connection} provides.
+   * if you need the RMB specific methods that {@link Conn} provides.
    *
    * @param function code to execute
    */
@@ -3372,7 +3442,53 @@ public class PostgresClient {
   }
 
   /**
-   * Get a connection from the pool and execute the given function.
+   * Get a {@link PgConnection} from the pool and execute the given function.
+   * <p>Similar to {@link PgPool#withConnection(Function)} but with RMB specific {@link Conn}.
+   * <ul>
+   *   <li>The connection is automatically closed in all cases when the function exits.</li>
+   *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
+   *   thrown by the function.</li>
+   * </ul>
+   *
+   * @param function code to execute
+   */
+  public <T> Future<T> withConn(Function<Conn, Future<T>> function) {
+    return withConn(0, function);
+  }
+
+  /**
+   * Execute the given function on a {@link Conn} and with query timeout.
+   * <p>Similar to {@link #withConnection(Function)} but with RMB specific {@link Conn}.
+   * <ul>
+   *   <li>The connection is automatically closed in all cases when the function exits.</li>
+   *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
+   *   thrown by the function.</li>
+   * </ul>
+   *
+   * @param timeout in milliseconds, 0 for no timeout
+   * @param function code to execute
+   */
+  public <T> Future<T> withConn(int queryTimeout, Function<Conn, Future<T>> function) {
+    return withConnection(pgConnection -> {
+      if (queryTimeout == 0) {
+        return function.apply(new Conn(this, pgConnection));
+      }
+
+      long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
+        if (ar.succeeded()) {
+          log.warn("Cancelling request due to timeout after {} ms", queryTimeout);
+        } else {
+          log.warn("Failed to send cancelling request", ar.cause());
+        }
+      }));
+
+      return function.apply(new Conn(this, pgConnection))
+          .onComplete(done -> vertx.cancelTimer(timerId));
+    });
+  }
+
+  /**
+   * Get a {@link PgConnection} from the pool and execute the given function.
    * <p>Similar to {@link PgPool#withConnection(Function)}
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>

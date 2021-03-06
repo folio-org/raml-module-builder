@@ -1,5 +1,7 @@
 package org.folio.rest.persist;
 
+import static org.mockito.Mockito.*;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -7,8 +9,10 @@ import io.vertx.core.Vertx;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import io.vertx.pgclient.PgConnection;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
 import org.folio.postgres.testing.PostgresTesterContainer;
@@ -20,7 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(VertxExtension.class)
 @Timeout(value = 10, timeUnit = TimeUnit.SECONDS)
-public class ConnectionIT implements WithAssertions {
+public class ConnIT implements WithAssertions {
 
   static private PostgresClient postgresClient;
 
@@ -80,14 +84,75 @@ public class ConnectionIT implements WithAssertions {
     public String getId() {
       return id;
     }
+    @Override
+    public String toString() {
+      return "\"id\":\"" + id + "\", \"key\":\"" + key + "\"";
+    }
   }
 
   /**
    * Insert Pojo(Key, id) into table t and run PostgresClient#withTrans(function).
    */
-  private <T> Future<T> with(String id, String key, Function<Connection, Future<T>> function) {
+  private <T> Future<T> with(String id, String key, Function<Conn, Future<T>> function) {
     return postgresClient.save("t", id, new Pojo(id, key))
         .compose(x -> postgresClient.withTrans(function));
+  }
+
+  @Test
+  void getPgConnection() {
+    PgConnection pgConnection = mock(PgConnection.class);
+    assertThat(new Conn(null, pgConnection).getPgConnection()).isEqualTo(pgConnection);
+  }
+
+  @Test
+  void durationMsg() {
+    assertThat(Conn.durationMsg("desc", "sql", System.nanoTime())).matches("desc timer: sql took [0-9]+ ms");
+  }
+
+  @Test
+  void getByIdAsString(VertxTestContext vtc) {
+    String id = randomUuid();
+    with(id, "a", trans -> trans.getByIdAsString("t", id))
+    .onComplete(succeedingThenComplete(vtc, s -> assertThat(s).contains("\"key\":\"a\"")));
+  }
+
+  <T> void getByIdForUpdate(VertxTestContext vtc, BiFunction<Conn, String, Future<T>> forUpdate) {
+    String id = randomUuid();
+    with(id, "a", trans -> {
+      return forUpdate.apply(trans, id)
+      .compose(x -> {
+        // upsert to c is blocked until the transaction closes
+        postgresClient.upsert("t", id, new Pojo(id, "c"));
+        return trans.getByIdAsString("t", id)
+            .compose(s -> {
+              assertThat(s).contains("\"a\"");
+              return trans.upsert("t", id, new Pojo(id, "b"));
+            })
+            .compose(s -> trans.getByIdAsString("t", id))
+            .compose(s -> {
+              assertThat(s).contains("\"b\"");
+              return Future.succeededFuture();
+            });
+      });
+    })
+    .compose(x -> postgresClient.execute("SELECT 1"))  // give some time for upsert
+    .compose(x -> postgresClient.getByIdAsString("t", id))
+    .onComplete(succeedingThenComplete(vtc, s -> assertThat(s).contains("\"c\"")));
+  }
+
+  @Test
+  void getByIdForUpdate(VertxTestContext vtc) {
+    getByIdForUpdate(vtc, (conn, id) -> conn.getByIdForUpdate("t", id));
+  }
+
+  @Test
+  void getByIdClassForUpdate(VertxTestContext vtc) {
+    getByIdForUpdate(vtc, (conn, id) -> conn.getByIdForUpdate("t", id, Pojo.class));
+  }
+
+  @Test
+  void getByIdAsStringForUpdate(VertxTestContext vtc) {
+    getByIdForUpdate(vtc, (conn, id) -> conn.getByIdAsStringForUpdate("t", id));
   }
 
   @Test

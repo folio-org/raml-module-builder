@@ -1,8 +1,6 @@
 package org.folio.rest.persist;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
@@ -15,14 +13,14 @@ import org.folio.rest.persist.PostgresClient.FunctionWithException;
 /**
  * A connection of a PostgresClient.
  */
-public class Connection {
+public class Conn {
 
-  private static final Logger log = LogManager.getLogger(Connection.class);
+  private static final Logger log = LogManager.getLogger(Conn.class);
 
   private final PostgresClient postgresClient;
   private final PgConnection pgConnection;
 
-  public Connection(PostgresClient postgresClient, PgConnection conn) {
+  public Conn(PostgresClient postgresClient, PgConnection conn) {
     this.postgresClient = postgresClient;
     this.pgConnection = conn;
   }
@@ -37,7 +35,7 @@ public class Connection {
    * @param sql  additional text for the log entry
    * @param startNanoTime  start time as returned by System.nanoTime()
    */
-  private String durationMsg(String descriptionKey, String sql, long startNanoTime) {
+  static String durationMsg(String descriptionKey, String sql, long startNanoTime) {
     long milliseconds = (System.nanoTime() - startNanoTime) / 1000000;
     return descriptionKey + " timer: " + sql + " took " + milliseconds + " ms";
   }
@@ -50,7 +48,7 @@ public class Connection {
    * @param function  how to convert the (String encoded) JSON
    * @return the jsonb after applying the function
    */
-  private <R> Future<R> getById(boolean lock, String table, String id,
+  <R> Future<R> getById(boolean lock, String table, String id,
       FunctionWithException<String, R, Exception> function) {
 
     try {
@@ -111,8 +109,7 @@ public class Connection {
    * @param id  the value of the id field
    * @return the JSON encoded as a JsonObject
    */
-  public Future<JsonObject> getByIdForUpdate(AsyncResult<SQLConnection> conn,
-      String table, String id, Handler<AsyncResult<JsonObject>> replyHandler) {
+  public Future<JsonObject> getByIdForUpdate(String table, String id) {
     return getById(true, table, id, JsonObject::new);
   }
 
@@ -134,8 +131,7 @@ public class Connection {
    * @param clazz  the type of the pojo
    * @return the JSON converted into a T pojo.
    */
-  public <T> Future<T> getByIdForUpdate(AsyncResult<SQLConnection> conn,
-      String table, String id, Class<T> clazz, Handler<AsyncResult<T>> replyHandler) {
+  public <T> Future<T> getByIdForUpdate(String table, String id, Class<T> clazz) {
     return getById(true, table, id, json -> PostgresClient.MAPPER.readValue(json, clazz));
   }
 
