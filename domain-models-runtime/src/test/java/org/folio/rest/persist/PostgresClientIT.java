@@ -2528,7 +2528,7 @@ public class PostgresClientIT {
     postgresClient().execute(Future.failedFuture("failed"), "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
-  // see RunSQLIT.java for more tests
+  /** see {@link RunSQLIT} for more tests */
   @Test
   public void runSQLNull(TestContext context) throws Exception {
     postgresClient().runSQLFile(null, false).onComplete(context.asyncAssertFailure());
