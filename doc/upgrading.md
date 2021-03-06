@@ -54,7 +54,6 @@ enable generating clients:
 
 Add FOLIO Maven repository for plugins after existing `<repositories>` section:
 ```xml
-
   <pluginRepositories>
     <pluginRepository>
       <id>folio-nexus</id>
