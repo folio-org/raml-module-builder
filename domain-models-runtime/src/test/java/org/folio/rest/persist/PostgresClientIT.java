@@ -683,25 +683,43 @@ public class PostgresClientIT {
     }));
   }
 
-    @Test
-  public void selectWithTimeoutSuccess(TestContext context) {
-      PostgresClient client = postgresClient();
-      client.getSQLConnection(2000, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(1);",
-            client.closeAndHandleResult(conn, context.asyncAssertSuccess()));
-      }));
+  @Test
+  public void sqlConnectionWithTimeoutSuccess(TestContext context) {
+    PostgresClient client = postgresClient();
+    client.getSQLConnection(2000, asyncAssertTx(context, conn -> {
+      client.selectSingle(conn, "SELECT 1, pg_sleep(1);",
+          client.closeAndHandleResult(conn, context.asyncAssertSuccess()));
+    }));
   }
 
   @Test
-  public void selectWithTimeoutFailure(TestContext context) {
-      PostgresClient client = postgresClient();
-      client.getSQLConnection(500, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(3);",
-            client.closeAndHandleResult(conn, context.asyncAssertFailure(e -> {
-              String sqlState = new PgExceptionFacade(e).getSqlState();
-              assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
-        })));
-      }));
+  public void sqlConnectionWithTimeoutFailure(TestContext context) {
+    PostgresClient client = postgresClient();
+    client.getSQLConnection(500, asyncAssertTx(context, conn -> {
+      client.selectSingle(conn, "SELECT 1, pg_sleep(3);",
+          client.closeAndHandleResult(conn, context.asyncAssertFailure(e -> {
+            String sqlState = new PgExceptionFacade(e).getSqlState();
+            assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
+          })));
+    }));
+  }
+
+  @Test
+  public void transWithTimeoutSuccess(TestContext context) {
+    postgresClient().withTrans(3000, trans -> {
+      return trans.getPgConnection().query("SELECT 1, pg_sleep(0.1)").execute();
+    }).onComplete(context.asyncAssertSuccess(rowSet -> {
+      assertThat(rowSet.iterator().next().getInteger(0), is(1));
+    }));
+  }
+
+  @Test
+  public void transWithTimeoutFailure(TestContext context) {
+    postgresClient().withTrans(1, trans -> {
+      return trans.getPgConnection().query("SELECT 1, pg_sleep(3)").execute();
+    }).onComplete(context.asyncAssertFailure(e -> {
+      assertThat(e.getMessage(), containsString("57014"));  // query_canceled
+    }));
   }
 
   @Test

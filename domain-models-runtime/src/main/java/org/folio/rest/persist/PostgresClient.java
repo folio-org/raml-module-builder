@@ -3378,6 +3378,24 @@ public class PostgresClient {
     return withTrans(0, function);
   }
 
+  private <T> Future<T> withTimeout(PgConnection pgConnection, int queryTimeout,
+      Function<Conn, Future<T>> function) {
+    if (queryTimeout == 0) {
+      return function.apply(new Conn(this, pgConnection));
+    }
+
+    long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
+      if (ar.succeeded()) {
+        log.warn("Cancelling request due to timeout after {} ms", queryTimeout);
+      } else {
+        log.warn("Failed to send cancelling request", ar.cause());
+      }
+    }));
+
+    return function.apply(new Conn(this, pgConnection))
+        .onComplete(done -> vertx.cancelTimer(timerId));
+  }
+
   /**
    * Execute the given function within a transaction and with query timeout.
    * <p>Similar to {@link #withTransaction(Function)} but with RMB specific {@link Conn}.
@@ -3392,22 +3410,7 @@ public class PostgresClient {
    * @param function code to execute
    */
   public <T> Future<T> withTrans(int queryTimeout, Function<Conn, Future<T>> function) {
-    return withTransaction(pgConnection -> {
-      if (queryTimeout == 0) {
-        return function.apply(new Conn(this, pgConnection));
-      }
-
-      long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
-        if (ar.succeeded()) {
-          log.warn("Cancelling request due to timeout after {} ms", queryTimeout);
-        } else {
-          log.warn("Failed to send cancelling request", ar.cause());
-        }
-      }));
-
-      return function.apply(new Conn(this, pgConnection))
-          .onComplete(done -> vertx.cancelTimer(timerId));
-    });
+    return withTransaction(pgConnection -> withTimeout(pgConnection, queryTimeout, function));
   }
 
   /**
@@ -3469,22 +3472,7 @@ public class PostgresClient {
    * @param function code to execute
    */
   public <T> Future<T> withConn(int queryTimeout, Function<Conn, Future<T>> function) {
-    return withConnection(pgConnection -> {
-      if (queryTimeout == 0) {
-        return function.apply(new Conn(this, pgConnection));
-      }
-
-      long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
-        if (ar.succeeded()) {
-          log.warn("Cancelling request due to timeout after {} ms", queryTimeout);
-        } else {
-          log.warn("Failed to send cancelling request", ar.cause());
-        }
-      }));
-
-      return function.apply(new Conn(this, pgConnection))
-          .onComplete(done -> vertx.cancelTimer(timerId));
-    });
+    return withConnection(pgConnection -> withTimeout(pgConnection, queryTimeout, function));
   }
 
   /**
