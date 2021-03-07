@@ -177,7 +177,11 @@ For example, note the validation annotations generated based on the constraints 
 
 ### Set up your pom.xml
 
-- Add the `exec-maven-plugin`. This will generate the POJOs and interfaces based on
+- Add Maven repositories for FOLIO. There must be a section for regular
+  dependencies (`<repositories>`) and a section for plugins
+  (`<pluginRepositories>`).
+
+- Add the `domain-models-maven-plugin`. This will generate the POJOs and interfaces based on
   the RAML files.
 
 - Add the `aspectj-maven-plugin`. This is required if you
@@ -350,6 +354,13 @@ Adjust the POM file to match your project, e.g. artifactID, version, etc.
       <url>https://repository.folio.org/repository/maven-folio</url>
     </repository>
   </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </pluginRepository>
+  </pluginRepositories>
   <dependencies>
     <dependency>
       <groupId>org.folio</groupId>
