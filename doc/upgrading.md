@@ -52,6 +52,17 @@ enable generating clients:
             </configuration>
 ```
 
+Add FOLIO Maven repository for plugins after existing `<repositories>` section:
+```xml
+  <pluginRepositories>
+    <pluginRepository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </pluginRepository>
+  </pluginRepositories>
+```
+
 ## Version 32.0
 
 * [RMB-609](https://issues.folio.org/browse/RMB-609) Upgrade to Vert.x 4:
