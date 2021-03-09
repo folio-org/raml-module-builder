@@ -112,7 +112,6 @@ public class PostgresClient {
   private static final String    DATABASE  = "database";
 
   private static final String    GET_STAT_METHOD = "get";
-  private static final String    SAVE_STAT_METHOD = "save";
   private static final String    UPDATE_STAT_METHOD = "update";
   private static final String    DELETE_STAT_METHOD = "delete";
   private static final String    EXECUTE_STAT_METHOD = "execute";
