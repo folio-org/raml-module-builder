@@ -409,19 +409,25 @@ public class PostgresClient {
 
   /**
    * Close the SQL client of this PostgresClient instance.
-   * @param whenDone invoked with the close result; additional close invocations
-   *                 are always successful.
+   * This is idempotent: additional close invocations are always successful.
    */
-  public void closeClient(Handler<AsyncResult<Void>> whenDone) {
+  public Future<Void> closeClient() {
     if (client == null) {
-      whenDone.handle(Future.succeededFuture());
-      return;
+      return Future.succeededFuture();
     }
     PgPool clientToClose = client;
     client = null;
     connectionPool.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
-    clientToClose.close();
-    whenDone.handle(Future.succeededFuture());
+    return clientToClose.close();
+  }
+
+  /**
+   * Close the SQL client of this PostgresClient instance.
+   * This is idempotent: additional close invocations are always successful.
+   * @param whenDone invoked with the close result
+   */
+  public void closeClient(Handler<AsyncResult<Void>> whenDone) {
+    closeClient().onComplete(whenDone);
   }
 
   static int getConnectionPoolSize() {
@@ -439,7 +445,7 @@ public class PostgresClient {
         clients.add(postgresClient);
       }
     });
-    clients.forEach(client -> client.closeClient(ignore -> {}));
+    clients.forEach(client -> client.closeClient());
   }
 
   /**
@@ -448,7 +454,7 @@ public class PostgresClient {
   public static void closeAllClients() {
     // copy of values() because closeClient will delete them from connectionPool
     for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
-      client.closeClient(ignore -> {});
+      client.closeClient();
     }
   }
 
@@ -596,7 +602,7 @@ public class PostgresClient {
   }
 
   /**
-   * Start a SQL transaction.
+   * Start an SQL transaction.
    *
    * <p>Use the AsyncResult<SQLConnection> result to invoke any of the
    * functions that take that result as first parameter for the commands
@@ -608,7 +614,12 @@ public class PostgresClient {
    * decide what to do.
    *
    * @param done - the result is the current connection
+   * @deprecated use {@link #withTrans(Function)}, {@link #withTrans(int, Function)},
+   *             {@link #withConn(Function)}.{@link Conn#getPgConnection() getPgConnection()} or
+   *             {@link #withConn(int, Function)}.{@link Conn#getPgConnection() getPgConnection()}
+   *             instead
    */
+  @Deprecated
   public void startTx(Handler<AsyncResult<SQLConnection>> done) {
     getConnection(res -> {
       if (res.failed()) {
@@ -637,14 +648,19 @@ public class PostgresClient {
     }
     done.handle(Future.succeededFuture());
   }
+
   /**
-   * Rollback a SQL transaction started on the connection. This closes the connection.
+   * Rollback an SQL transaction started on the connection. This closes the connection.
    *
    * @see #startTx(Handler)
    * @param trans the connection with an open transaction
    * @param done  success or failure
+   * @deprecated use {@link #withTrans(Function)}, {@link #withTrans(int, Function)},
+   *             {@link #withConn(Function)}.{@link Conn#getPgConnection() getPgConnection()} or
+   *             {@link #withConn(int, Function)}.{@link Conn#getPgConnection() getPgConnection()}
+   *             instead
    */
-  //@Timer
+  @Deprecated
   public void rollbackTx(AsyncResult<SQLConnection> trans, Handler<AsyncResult<Void>> done) {
     try {
       if (trans.failed()) {
@@ -658,13 +674,17 @@ public class PostgresClient {
   }
 
   /**
-   * Ends a SQL transaction (commit) started on the connection. This closes the connection.
+   * Ends an SQL transaction (commit) started on the connection. This closes the connection.
    *
    * @see #startTx(Handler)
    * @param trans  the connection with an open transaction
    * @param done  success or failure
+   * @deprecated use {@link #withTrans(Function)}, {@link #withTrans(int, Function)},
+   *             {@link #withConn(Function)}.{@link Conn#getPgConnection() getPgConnection()} or
+   *             {@link #withConn(int, Function)}.{@link Conn#getPgConnection() getPgConnection()}
+   *             instead
    */
-  //@Timer
+  @Deprecated
   public void endTx(AsyncResult<SQLConnection> trans, Handler<AsyncResult<Void>> done) {
     try {
       if (trans.failed()) {
@@ -3302,6 +3322,9 @@ public class PostgresClient {
 
   /**
    * Get vertx-pg-client connection
+   *
+   * @see #withConnection(Function)
+   * @see #withConn(Function)
    */
   public Future<PgConnection> getConnection() {
     return getClient().getConnection().map(sqlConnection -> (PgConnection) sqlConnection);
@@ -3309,7 +3332,9 @@ public class PostgresClient {
 
   /**
    * Get Vert.x {@link PgConnection}.
-   * @param replyHandler
+
+   * @see #withConnection(Function)
+   * @see #withConn(Function)
    */
   public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
     getConnection().onComplete(replyHandler);
@@ -3321,6 +3346,8 @@ public class PostgresClient {
    * <p>Use closeAndHandleResult as replyHandler, for example:
    *
    * <pre>getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
+   *
+   * <p>Or avoid this method and use the preferred {@link #withConn(Function)}.
    */
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLConnection(0, handler);
@@ -3332,6 +3359,9 @@ public class PostgresClient {
    * <p>Use closeAndHandleResult as replyHandler, for example:
    *
    * <pre>getSQLConnection(timeout, conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
+   *
+   * <p>Or avoid this method and use the preferred {@link #withConn(int, Function)}.
+   *
    */
   void getSQLConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
     getConnection(res -> {
@@ -3483,6 +3513,9 @@ public class PostgresClient {
    *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
    *   thrown by the function.</li>
    * </ul>
+   *
+   * <p>Use {@link #withConn(Function)} or {@link #withConn(int, Function)} instead
+   * if you need the RMB specific methods that {@link Conn} provides.
    *
    * @param function code to execute
    */
@@ -3773,7 +3806,7 @@ public class PostgresClient {
    * @return if the identifier is a valid Postgres identifier and does not contain
    *          letters with diacritical marks or non-Latin letters
    */
-  public boolean isValidPostgresIdentifier(String identifier) {
+  public static boolean isValidPostgresIdentifier(String identifier) {
     return POSTGRES_IDENTIFIER.matcher(identifier).matches();
   }
 
