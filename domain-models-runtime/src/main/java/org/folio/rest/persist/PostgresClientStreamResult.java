@@ -9,7 +9,7 @@ import org.folio.rest.jaxrs.model.ResultInfo;
  *
  * @param <T> each item returned in stream is of this type
  */
-class PostgresClientStreamResult<T> implements ReadStream<T> {
+public class PostgresClientStreamResult<T> implements ReadStream<T> {
 
   private final ResultInfo resultInfo;
 
