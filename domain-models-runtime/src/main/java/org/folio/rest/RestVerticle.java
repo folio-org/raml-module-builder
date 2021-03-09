@@ -109,12 +109,6 @@ public class RestVerticle extends AbstractVerticle {
             log.error(e.getMessage(), e);
             return Future.failedFuture(e);
           }
-          //check if mock mode requested and set sys param so that http client factory
-          //can config itself accordingly
-          String mockMode = config().getString(HttpClientMock2.MOCK_MODE);
-          if (mockMode != null) {
-            System.setProperty(HttpClientMock2.MOCK_MODE, mockMode);
-          }
           runPostDeployHook(res2 -> {
             if (!res2.succeeded()) {
               log.error(res2.cause().getMessage(), res2.cause());
