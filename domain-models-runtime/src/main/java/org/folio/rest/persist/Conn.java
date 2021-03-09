@@ -97,7 +97,7 @@ public class Conn {
    * Get the jsonb by id and return it as a JsonObject.
    * @param table  the table to search in
    * @param id  the value of the id field
-   * @param the JSON encoded as a JsonObject
+   * @return the JSON encoded as a JsonObject
    */
   public Future<JsonObject> getById(String table, String id) {
     return getById(false, table, id, JsonObject::new);

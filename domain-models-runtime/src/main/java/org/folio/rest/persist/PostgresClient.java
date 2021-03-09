@@ -3406,7 +3406,7 @@ public class PostgresClient {
    *   <li>The method returns a succeeded Future if the commit is successful, otherwise a failed Future.</li>
    * </ul>
    *
-   * @param timeout in milliseconds, 0 for no timeout
+   * @param queryTimeout in milliseconds, 0 for no timeout
    * @param function code to execute
    */
   public <T> Future<T> withTrans(int queryTimeout, Function<Conn, Future<T>> function) {
@@ -3468,7 +3468,7 @@ public class PostgresClient {
    *   thrown by the function.</li>
    * </ul>
    *
-   * @param timeout in milliseconds, 0 for no timeout
+   * @param queryTimeout in milliseconds, 0 for no timeout
    * @param function code to execute
    */
   public <T> Future<T> withConn(int queryTimeout, Function<Conn, Future<T>> function) {
