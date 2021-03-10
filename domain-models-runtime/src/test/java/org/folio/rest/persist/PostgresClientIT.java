@@ -1302,6 +1302,36 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveBatchJsonFailedConnection(TestContext context) {
+    postgresClient().saveBatch(Future.failedFuture("f"), FOO, new JsonArray(),
+        context.asyncAssertFailure(e -> assertThat(e.getMessage(), is("f"))));
+  }
+
+  @Test
+  public void saveBatchJsonConnection(TestContext context) {
+    String id = randomUuid();
+    JsonArray update = new JsonArray().add(new JsonObject().put("id", id).put("key", "y").encode());
+    createFoo(context).save(FOO, id, new StringPojo("x"), context.asyncAssertSuccess(x -> {
+      postgresClient.getSQLConnection(sqlConnection -> {
+        postgresClient.saveBatch(sqlConnection, FOO, update, context.asyncAssertFailure(e -> {
+          postgresClient.upsertBatch(sqlConnection, FOO, update, context.asyncAssertSuccess(rowSet -> {
+            postgresClient.getById(FOO, id, context.asyncAssertSuccess(json -> {
+              assertThat(rowSet.iterator().next().getUUID(0).toString(), is(id));
+              assertThat(json.getString("key"), is("y"));
+            }));
+          }));
+        }));
+      });
+    }));
+  }
+
+  @Test
+  public void upsertBatchJsonConnectionException(TestContext context) {
+    postgresClient().upsertBatch(Future.succeededFuture(), FOO, new JsonArray(),
+        context.asyncAssertFailure(e -> assertThat(e, is(instanceOf(NullPointerException.class)))));
+  }
+
+  @Test
   public void saveTrans(TestContext context) {
     postgresClient = createFoo(context);
     String uuid = randomUuid();

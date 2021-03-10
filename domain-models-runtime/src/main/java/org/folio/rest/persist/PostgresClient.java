@@ -51,7 +51,6 @@ import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
-import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.messages.Messages;
@@ -1045,20 +1044,40 @@ public class PostgresClient {
    * Insert the entities into table using a single INSERT statement.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
+   * @return one result row per inserted row, containing the id field
+   */
+  public Future<RowSet<Row>> saveBatch(String table, JsonArray entities) {
+    return withConn(conn -> conn.saveBatch(table, entities));
+  }
+
+  /**
+   * Insert the entities into table using a single INSERT statement.
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @param replyHandler  result, containing the id field for each inserted element of entities
    */
   public void saveBatch(String table, JsonArray entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    getSQLConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
+    saveBatch(table, entities).onComplete(replyHandler);
   }
 
   /**
    * Upsert the entities into table using a single INSERT statement.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
-   * @param replyHandler  result, containing the id field for each inserted element of entities
+   * @return one result row per inserted row, containing the id field
+   */
+  public Future<RowSet<Row>> upsertBatch(String table, JsonArray entities) {
+    return withConn(conn -> conn.upsertBatch(table, entities));
+  }
+
+  /**
+   * Upsert the entities into table using a single INSERT statement.
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
+   * @param replyHandler  one result row per inserted row, containing the id field
    */
   public void upsertBatch(String table, JsonArray entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    getSQLConnection(conn -> upsertBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
+    upsertBatch(table, entities).onComplete(replyHandler);
   }
 
   /**
@@ -1097,67 +1116,33 @@ public class PostgresClient {
       JsonArray entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
     try {
-      List<Tuple> list = new ArrayList<>();
-      if (entities != null) {
-        for (int i = 0; i < entities.size(); i++) {
-          String json = entities.getString(i);
-          JsonObject jsonObject = new JsonObject(json);
-          String id = jsonObject.getString("id");
-          list.add(Tuple.of(id == null ? UUID.randomUUID() : UUID.fromString(id),
-              jsonObject));
-        }
-      }
-      saveBatchInternal(sqlConnection, upsert, table, list, replyHandler);
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
-  }
-
-  private void saveBatchInternal(AsyncResult<SQLConnection> sqlConnection, boolean upsert, String table,
-                                  List<Tuple> batch, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-
-    try {
-      if (batch.isEmpty()) {
-        // vertx-pg-client fails with "Can not execute batch query with 0 sets of batch parameters."
-        replyHandler.handle(Future.succeededFuture(new LocalRowSet(0)));
-        return;
-      }
-      long start = System.nanoTime();
-      log.info("starting: saveBatch size=" + batch.size());
-      String sql = INSERT_CLAUSE + schemaName + DOT + table + " (id, jsonb) VALUES ($1, $2)"
-          + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb = EXCLUDED.jsonb" : "")
-          + RETURNING_ID;
       if (sqlConnection.failed()) {
         replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
-      PgConnection connection = sqlConnection.result().conn;
-
-      connection.preparedQuery(sql).executeBatch(batch, queryRes -> {
-        if (queryRes.failed()) {
-          log.error("saveBatch size=" + batch.size()
-                  + SPACE
-                  + queryRes.cause().getMessage(),
-              queryRes.cause());
-          statsTracker("saveBatchFailed", table, start);
-          replyHandler.handle(Future.failedFuture(queryRes.cause()));
-          return;
-        }
-        statsTracker("saveBatch", table, start);
-        if (queryRes.result() != null) {
-          replyHandler.handle(Future.succeededFuture(queryRes.result()));
-        } else {
-          replyHandler.handle(Future.succeededFuture(new LocalRowSet(0)));
-        }
-      });
+      new Conn(this, sqlConnection.result().conn)
+      .saveBatch(upsert, table, entities)
+      .onComplete(replyHandler);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
   }
 
-  /***
+  /**
+   * Save a list of POJOs.
+   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * A random id is generated if POJO's id is null.
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @return one result row per inserted row, containing the id field
+   */
+  public <T> Future<RowSet<Row>> saveBatch(String table, List<T> entities) {
+    return withConn(conn -> conn.saveBatch(table, entities));
+  }
+
+  /**
    * Save a list of POJOs.
    * POJOs are converted to a JSON String and saved in a single INSERT call.
    * A random id is generated if POJO's id is null.
@@ -1169,7 +1154,21 @@ public class PostgresClient {
   public <T> void saveBatch(String table, List<T> entities,
       Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
-    getSQLConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
+    saveBatch(table, entities).onComplete(replyHandler);
+  }
+
+  /**
+   * Upsert a list of POJOs.
+   * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
+   * A random id is generated if POJO's id is null.
+   * If a record with the id already exists it is updated (upsert).
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @return one result row per inserted row, containing the id field
+   */
+  public <T> Future<RowSet<Row>> upsertBatch(String table, List<T> entities) {
+    return withConn(conn -> conn.upsertBatch(table, entities));
   }
 
   /***
@@ -1180,12 +1179,11 @@ public class PostgresClient {
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
-   * @param replyHandler result, containing the id field for each inserted POJO
+   * @param replyHandler one result row per inserted row, containing the id field
    */
   public <T> void upsertBatch(String table, List<T> entities,
       Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-
-    getSQLConnection(conn -> upsertBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
+    upsertBatch(table, entities).onComplete(replyHandler);
   }
 
   /***
@@ -1223,23 +1221,15 @@ public class PostgresClient {
       boolean upsert, String table, List<T> entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
     try {
-      List<Tuple> batch = new ArrayList<>();
-      if (entities == null || entities.isEmpty()) {
-
-        RowSet<Row> rowSet = new LocalRowSet(0).withColumns(Arrays.asList("id"));
-        replyHandler.handle(Future.succeededFuture(rowSet));
+      if (sqlConnection.failed()) {
+        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
         return;
       }
-      // We must use reflection, the POJOs don't have a interface/superclass in common.
-      Method getIdMethod = entities.get(0).getClass().getDeclaredMethod("getId");
-      for (Object entity : entities) {
-        Object obj = getIdMethod.invoke(entity);
-        UUID id = obj == null ? UUID.randomUUID() : UUID.fromString((String) obj);
-        batch.add(Tuple.of(id, pojo2JsonObject(entity)));
-      }
-      saveBatchInternal(sqlConnection, upsert, table, batch, replyHandler);
+      new Conn(this, sqlConnection.result().conn)
+      .saveBatch(upsert, table, entities)
+      .onComplete(replyHandler);
     } catch (Exception e) {
-      log.error("saveBatch error " + e.getMessage(), e);
+      log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
   }

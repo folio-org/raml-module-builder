@@ -5,12 +5,21 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
 import java.io.UncheckedIOException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.PostgresClient.FunctionWithException;
+import org.folio.rest.persist.helpers.LocalRowSet;
+import org.folio.rest.tools.utils.MetadataUtil;
 
 /**
  * A connection of a PostgresClient.
@@ -297,4 +306,133 @@ public class Conn {
     }
   }
 
+  /**
+   * Insert or upsert the entities into table using a single INSERT statement.
+   * @param sqlConnection  the connection to run on, may be on a transaction
+   * @param upsert  true for upsert, false for insert with fail on duplicate id
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
+   * @return one result row per inserted row, containing the id field
+   */
+  Future<RowSet<Row>> saveBatch(boolean upsert, String table, JsonArray entities) {
+
+    try {
+      List<Tuple> list = new ArrayList<>();
+      if (entities != null) {
+        for (int i = 0; i < entities.size(); i++) {
+          String json = entities.getString(i);
+          JsonObject jsonObject = new JsonObject(json);
+          String id = jsonObject.getString("id");
+          list.add(Tuple.of(
+              id == null ? UUID.randomUUID() : UUID.fromString(id),
+              jsonObject));
+        }
+      }
+      return saveBatchInternal(upsert, table, list);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  private RowSet<Row> emptyRowSetOfId() {
+    return new LocalRowSet(0).withColumns(Collections.singletonList("id"));
+  }
+
+  /**
+   * @throws Throwable the caller needs to catch and convert into a failed Future
+   */
+  private Future<RowSet<Row>> saveBatchInternal(boolean upsert, String table, List<Tuple> batch) {
+
+    if (batch.isEmpty()) {
+      // vertx-pg-client fails with "Can not execute batch query with 0 sets of batch parameters."
+      return Future.succeededFuture(emptyRowSetOfId());
+    }
+    long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+    log.info("starting: saveBatch size=" + batch.size());
+    String sql = "INSERT INTO " + postgresClient.getSchemaName() + "." + table
+        + " (id, jsonb) VALUES ($1, $2)"
+        + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb = EXCLUDED.jsonb" : "")
+        + " RETURNING id";
+    return pgConnection.preparedQuery(sql).executeBatch(batch)
+    .map(rowSet -> {
+      log.debug(() -> durationMsg("saveBatch", table, start));
+      if (rowSet == null) {
+        return emptyRowSetOfId();
+      }
+      return rowSet;
+    })
+    .onFailure(e -> {
+      log.error("saveBatch size=" + batch.size() + " " + e.getMessage(), e);
+      log.debug(() -> durationMsg("saveBatchFailed", table, start));
+    });
+  }
+
+  /**
+   * Insert the entities into table using a single INSERT statement.
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
+   * @return one result row per inserted row, containing the id field
+   */
+  public Future<RowSet<Row>> saveBatch(String table, JsonArray entities) {
+    return saveBatch(false, table, entities);
+  }
+
+  /**
+   * Upsert the entities into table using a single INSERT statement.
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
+   * @return one result row per inserted row, containing the id field
+   */
+  public Future<RowSet<Row>> upsertBatch(String table, JsonArray entities) {
+    return saveBatch(true, table, entities);
+  }
+
+  <T> Future<RowSet<Row>> saveBatch(boolean upsert, String table, List<T> entities) {
+
+    try {
+      List<Tuple> batch = new ArrayList<>();
+      if (entities == null || entities.isEmpty()) {
+        return Future.succeededFuture(emptyRowSetOfId());
+      }
+      // We must use reflection, the POJOs don't have a interface/superclass in common.
+      Method getIdMethod = entities.get(0).getClass().getDeclaredMethod("getId");
+      for (Object entity : entities) {
+        Object obj = getIdMethod.invoke(entity);
+        UUID id = obj == null ? UUID.randomUUID() : UUID.fromString((String) obj);
+        batch.add(Tuple.of(id, PostgresClient.pojo2JsonObject(entity)));
+      }
+      return saveBatchInternal(upsert, table, batch);
+    } catch (Exception e) {
+      log.error("saveBatch error " + e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Save a list of POJOs.
+   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * A random id is generated if POJO's id is null.
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @return one result row per inserted row, containing the id field
+   */
+  public <T> Future<RowSet<Row>> saveBatch(String table, List<T> entities) {
+    return saveBatch(false, table, entities);
+  }
+
+  /**
+   * Upsert a list of POJOs.
+   * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
+   * A random id is generated if POJO's id is null.
+   * If a record with the id already exists it is updated (upsert).
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @return one result row per inserted row, containing the id field
+   */
+  public <T> Future<RowSet<Row>> upsertBatch(String table, List<T> entities) {
+    return saveBatch(true, table, entities);
+  }
 }
