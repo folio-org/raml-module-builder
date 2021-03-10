@@ -12,7 +12,7 @@ import org.junit.Test;
 
 public class ClientGeneratorTest {
 
-  private static final Pattern TRAILING_SPACE_PATTERN = Pattern.compile("\\s+$", Pattern.MULTILINE);
+  private static final Pattern TRAILING_SPACE_PATTERN = Pattern.compile("\\s+", Pattern.MULTILINE);
 
   private static String sourceDir;
 
@@ -41,7 +41,7 @@ public class ClientGeneratorTest {
     // IDEs always removes trailing spaces from edited files, but java code generator adds then,
     // so we need to remove them before the comparison
 
-    String actual = removeTrailingSpaces(Files.readString(expectedClient.toPath()));
+    String actual = removeTrailingSpaces(Files.readString(expectedClient.toPath()).trim());
 
     String expected = removeTrailingSpaces(ResourceUtil.asString("/clients/TestClient.txt", this.getClass()));
 

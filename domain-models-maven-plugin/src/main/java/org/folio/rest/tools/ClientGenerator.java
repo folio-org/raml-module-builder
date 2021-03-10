@@ -337,8 +337,6 @@ public class ClientGenerator implements ClientGrabber {
 
     populateParams(params, jmCreateWithHandler, null);
 
-
-
     bodyWithHandler.directStatement(String.format("%s(%s).onComplete(responseHandler);",
         methodName, jmCreateWithHandler.params().stream().map(JVar::name)
             .collect(Collectors.joining(", "))));

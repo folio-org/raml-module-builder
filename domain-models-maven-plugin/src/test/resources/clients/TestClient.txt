@@ -1,5 +1,4 @@
-package org.folio.rest.tools;
-import io.vertx.core.Promise;
+package org.folio.rest.client;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
