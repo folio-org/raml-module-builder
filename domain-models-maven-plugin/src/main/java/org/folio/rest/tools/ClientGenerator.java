@@ -332,11 +332,7 @@ public class ClientGenerator implements ClientGrabber {
     handler = jcodeModel.ref(AsyncResult.class).narrow(handler);
     handler = jcodeModel.ref(Handler.class).narrow(handler);
 
-    /* create the query parameter string builder */
-    JVar queryParams1 = bodyWithHandler.decl(jcodeModel._ref(StringBuilder.class), "queryParams",
-            JExpr._new(jcodeModel.ref(StringBuilder.class)).arg("?"));
-
-    populateParams(params, jmCreateWithHandler, queryParams1);
+    populateParams(params, jmCreateWithHandler, null);
 
     jmCreateWithHandler.param(handler, "responseHandler");
 
@@ -446,6 +442,9 @@ public class ClientGenerator implements ClientGrabber {
   }
 
   private void addParameter(ParameterDetails details) {
+    if (details.queryParams == null) {
+      return;
+    }
     JBlock b = details.methodBody;
     if (Boolean.TRUE.equals(details.nullCheck)) {
       JConditional ifClause = details.methodBody._if(JExpr.ref(details.valueName).ne(JExpr._null()));
