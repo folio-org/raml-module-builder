@@ -99,7 +99,6 @@ public class PostgresClient {
   private static final String    FROM   = " FROM ";
   private static final String    SET    = " SET ";
   private static final String    WHERE  = " WHERE ";
-  private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
   @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
   // we use it as a key in the config. We use it as a default password only when testing
