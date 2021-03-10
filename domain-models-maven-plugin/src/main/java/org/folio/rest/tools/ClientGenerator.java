@@ -47,7 +47,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
-import javax.ws.rs.core.Response;
 
 /**
  *
@@ -338,15 +337,15 @@ public class ClientGenerator implements ClientGrabber {
 
     populateParams(params, jmCreateWithHandler, null);
 
-    jmCreateWithHandler.param(handler, "responseHandler");
 
 
     bodyWithHandler.directStatement(String.format("%s(%s).onComplete(responseHandler);",
         methodName, jmCreateWithHandler.params().stream().map(JVar::name)
             .collect(Collectors.joining(", "))));
 
+    jmCreateWithHandler.param(handler, "responseHandler");
 
-      ////////////////////////---- Handle place holders in the url  ----//////////////////
+    ////////////////////////---- Handle place holders in the url  ----//////////////////
     /* create request */
     /* Handle place holders in the URL
       * replace {varName} with "+varName+" so that it will be replaced
