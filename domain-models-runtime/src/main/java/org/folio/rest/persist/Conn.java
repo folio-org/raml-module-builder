@@ -1,10 +1,12 @@
 package org.folio.rest.persist;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import io.vertx.core.Future;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Tuple;
+import java.io.UncheckedIOException;
 import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -259,6 +261,40 @@ public class Conn {
    */
   public Future<String> upsert(String table, String id, Object entity, boolean convertEntity) {
     return save(table, id, entity, /* returnId */ true, /* upsert */ true, /* convertEntity */ convertEntity);
+  }
+
+  /**
+   * Save entity in table and return the updated entity.
+   *
+   * @param sqlConnection connection (for example with transaction)
+   * @param table where to insert the entity record
+   * @param id  the value for the id field (primary key); if null a new random UUID is created for it.
+   * @param entity  the record to insert, a POJO
+   * @return the entity after applying any database INSERT triggers
+   */
+  public <T> Future<T> saveAndReturnUpdatedEntity(String table, String id, T entity) {
+    try {
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      String sql = "INSERT INTO " + postgresClient.getSchemaName() + "." + table
+          + " (id, jsonb) VALUES ($1, $2) RETURNING jsonb";
+      return pgConnection.preparedQuery(sql).execute(Tuple.of(
+          id == null ? UUID.randomUUID() : UUID.fromString(id),
+          PostgresClient.pojo2JsonObject(entity)
+      )).map(rowSet -> {
+        log.debug(() -> durationMsg("save", table, start));
+        String updatedEntityString = rowSet.iterator().next().getValue(0).toString();
+        try {
+          @SuppressWarnings("unchecked")
+          T updatedEntity = (T) PostgresClient.MAPPER.readValue(updatedEntityString, entity.getClass());
+          return updatedEntity;
+        } catch (JsonProcessingException e) {
+          throw new UncheckedIOException(e);
+        }
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
   }
 
 }

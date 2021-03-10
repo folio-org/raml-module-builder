@@ -3,12 +3,14 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -1430,6 +1432,24 @@ public class PostgresClientIT {
   public void saveAndReturnUpdatedEntityQueryReturnBadResults(TestContext context) {
     String uuid = randomUuid();
     postgresClientQueryReturnBadResults().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveAndReturnUpdatedEntityCreatingPojoFails(TestContext context) {
+    class FailingPojo extends StringPojo {
+      public FailingPojo() {  // this constructor is called when deserialising the JSON returned from DB
+        throw new RuntimeException();
+      }
+      public FailingPojo(String key, String id) {
+        this.key = key;
+        this.id = id;
+      }
+    };
+    String uuid = randomUuid();
+    FailingPojo failingPojo = new FailingPojo("y", uuid);
+    postgresClient = createFoo(context);
+    postgresClient.saveAndReturnUpdatedEntity(FOO, uuid, failingPojo, context.asyncAssertFailure(e ->
+      assertThat(e, is(instanceOf(UncheckedIOException.class)))));
   }
 
   @Test
