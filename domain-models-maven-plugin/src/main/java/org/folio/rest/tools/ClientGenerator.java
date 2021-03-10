@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
+import javax.ws.rs.core.Response;
 
 /**
  *
@@ -324,8 +325,11 @@ public class ClientGenerator implements ClientGrabber {
     JMethod jmCreateWithHandler = method(JMod.PUBLIC, void.class, methodName);
     JBlock bodyWithHandler = jmCreateWithHandler.body();
 
-    jmCreateWithHandler.annotate(Deprecated.class);
+          /* Adding java doc for method */
+    jmCreateWithHandler.javadoc().add("Service endpoint " + url +"\n");
     jmCreateWithHandler.javadoc().add("@deprecated Use method, that returns Future");
+
+    jmCreateWithHandler.annotate(Deprecated.class);
 
     /* add response handler to each function */
     JClass handler = jcodeModel.ref(HttpResponse.class).narrow(Buffer.class);
@@ -340,6 +344,17 @@ public class ClientGenerator implements ClientGrabber {
     bodyWithHandler.directStatement(String.format("%s(%s).onComplete(responseHandler);",
         methodName, jmCreateWithHandler.params().stream().map(JVar::name)
             .collect(Collectors.joining(", "))));
+
+
+      ////////////////////////---- Handle place holders in the url  ----//////////////////
+    /* create request */
+    /* Handle place holders in the URL
+      * replace {varName} with "+varName+" so that it will be replaced
+      * in the url at runtime with the correct values */
+
+    url = "\"" +
+        Pattern.compile("\\{([^{}/]+)\\}").matcher(url).replaceAll("\"+$1+\"") +
+        "\"+queryParams.toString()";
 
     /* Adding method to the Class which is public and returns void */
 
@@ -356,20 +371,8 @@ public class ClientGenerator implements ClientGrabber {
     JVar queryParams = body.decl(jcodeModel._ref(StringBuilder.class), "queryParams",
             JExpr._new(jcodeModel.ref(StringBuilder.class)).arg("?"));
 
-
-    ////////////////////////---- Handle place holders in the url  ----//////////////////
-    /* create request */
-    /* Handle place holders in the URL
-      * replace {varName} with "+varName+" so that it will be replaced
-      * in the url at runtime with the correct values */
-
-    url = "\"" +
-        Pattern.compile("\\{([^{}/]+)\\}").matcher(url).replaceAll("\"+$1+\"") +
-        "\"+queryParams.toString()";
-
     /* Adding java doc for method */
     jmCreate.javadoc().add("Service endpoint " + url);
-
 
     /* iterate on function params and add the relevant ones
      * --> functionSpecificQueryParamsPrimitives is populated by query parameters that are primitives
@@ -383,7 +386,7 @@ public class ClientGenerator implements ClientGrabber {
     final String httpMethodName = httpVerb.substring(httpVerb.lastIndexOf('.') + 1).toUpperCase();
     body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = httpClient.requestAbs("+
         "io.vertx.core.http.HttpMethod."+ httpMethodName +", okapiUrl+"+url+");");
-
+    body.directStatement("Promise<HttpResponse<Buffer>> promise = Promise.promise();");
     /* add headers to request */
     functionSpecificHeaderParams.forEach(body::directStatement);
     //reset for next method usage
@@ -418,10 +421,12 @@ public class ClientGenerator implements ClientGrabber {
 
     /* if we need to pass data in the body */
     if(bodyContentExists){
-      body.directStatement("request.sendBuffer(buffer, responseHandler);");
+      body.directStatement("request.sendBuffer(buffer, promise);");
     } else {
-      body.directStatement("request.send(responseHandler);");
+      body.directStatement("request.send(promise);");
     }
+
+     body.directStatement("return promise.future();");
   }
 
   private boolean populateParams(JsonObject params, JMethod jmCreate, JVar queryParams) {
