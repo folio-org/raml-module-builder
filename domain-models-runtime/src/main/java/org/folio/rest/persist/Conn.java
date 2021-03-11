@@ -307,7 +307,7 @@ public class Conn {
 
   /**
    * Insert or upsert the entities into table using a single INSERT statement.
-   * @param sqlConnection  the connection to run on, may be on a transaction
+   *
    * @param upsert  true for upsert, false for insert with fail on duplicate id
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
