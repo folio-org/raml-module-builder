@@ -275,7 +275,6 @@ public class Conn {
   /**
    * Save entity in table and return the updated entity.
    *
-   * @param sqlConnection connection (for example with transaction)
    * @param table where to insert the entity record
    * @param id  the value for the id field (primary key); if null a new random UUID is created for it.
    * @param entity  the record to insert, a POJO
