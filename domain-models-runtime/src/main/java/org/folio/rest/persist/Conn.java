@@ -17,7 +17,11 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dbschema.util.SqlUtil;
+import org.folio.rest.persist.Criteria.Criterion;
+import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.PostgresClient.FunctionWithException;
+import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.MetadataUtil;
 
@@ -434,4 +438,175 @@ public class Conn {
   public <T> Future<RowSet<Row>> upsertBatch(String table, List<T> entities) {
     return saveBatch(true, table, entities);
   }
+
+  /**
+   * Update a specific record associated with the key passed in the id arg
+   * @param table - table to save to (must exist)
+   * @param entity - pojo to save
+   * @param id - key of the entity being updated
+   */
+  public Future<RowSet<Row>> update(String table, Object entity, String id) {
+    StringBuilder where = new StringBuilder("WHERE id=");
+    SqlUtil.Cql2PgUtil.appendQuoted(id, where);  // proper masking prevents SQL injection
+    return update(table, entity, PostgresClient.DEFAULT_JSONB_FIELD_NAME, where.toString(), false);
+  }
+
+  /**
+   * Update records selected by WHERE clause.
+   *
+   * <p>Danger: The {@code whereClause} is prone to SQL injection. Consider using
+   * an {@code update} method that takes {@link CQLWrapper} or {@link Criterion}.
+   *
+   * @param table - table to update
+   * @param entity - pojo to set for matching records
+   * @param whereClause - an SQL WHERE clause including the WHERE keyword,
+   *                      or empty string to update all records
+   * @param returnUpdatedIds - whether to return id of updated records
+   * @return one result row per updated row, containing the id field
+   */
+  public Future<RowSet<Row>> update(String table, Object entity, String jsonbField,
+      String whereClause, boolean returnUpdatedIds) {
+
+    try {
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      String sql = "UPDATE " + postgresClient.getSchemaName() + "." + table
+          + " SET " + jsonbField + " = $1::jsonb " + whereClause
+          + (returnUpdatedIds ? " RETURNING id" : "");
+      log.debug("update query = {}", sql);
+      return pgConnection.preparedQuery(sql).execute(Tuple.of(PostgresClient.pojo2JsonObject(entity)))
+      .onComplete(query -> log.debug(() -> durationMsg("update", table, start)))
+      .onFailure(e -> log.error(e.getMessage(), e));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Update 1...n records matching the filter
+   * <br>
+   * Criterion Examples:
+   * <br>
+   * 1. can be mapped from a string in the following format [{"field":"''","value":"","op":""}]
+   * <pre>
+   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"); //denotes funds_distribution is an array of objects
+   *    Criterion a = json2Criterion("[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]");
+   *    (see postgres query syntax for more examples in the read.me
+   * </pre>
+   * 2. Simple Criterion
+   * <pre>
+   *    Criteria b = new Criteria();
+   *    b.field.add("'note'");
+   *    b.operation = "=";
+   *    b.value = "a";
+   *    b.isArray = true; //denotes that the queried field is an array with multiple values
+   *    Criterion a = new Criterion(b);
+   * </pre>
+   * 3. For a boolean field called rush = false OR note[] contains 'a'
+   * <pre>
+   *    Criteria d = new Criteria();
+   *    d.field.add("'rush'");
+   *    d.operation = Criteria.OP_IS_FALSE;
+   *    d.value = null;
+   *    Criterion a = new Criterion();
+   *    a.addCriterion(d, Criteria.OP_OR, b);
+   * </pre>
+   * 4. for the following json:
+   * <pre>
+   *      "price": {
+   *        "sum": "150.0",
+   *         "po_currency": {
+   *           "value": "USD",
+   *           "desc": "US Dollar"
+   *         }
+   *       },
+   *
+   *    Criteria c = new Criteria();
+   *    c.addField("'price'").addField("'po_currency'").addField("'value'");
+   *    c.operation = Criteria.OP_LIKE;
+   *    c.value = "USD";
+   *
+   * </pre>
+   * @param table - table to update
+   * @param entity - pojo to set for matching records
+   * @param filter - see example below
+   * @param returnUpdatedIds - return ids of updated records
+   * @return ids of updated records if {@code returnUpdatedIds} is true
+   *
+   */
+  public Future<RowSet<Row>> update(String table, Object entity, Criterion filter, boolean returnUpdatedIds) {
+    String where = null;
+    if (filter != null) {
+      where = filter.toString();
+    }
+    return update(table, entity, PostgresClient.DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds);
+  }
+
+  /**
+   * Update all records in {@code table} that match the {@code CQLWrapper} query.
+   * @entity new content for the matched records
+   * @return one row with the id for each updated record if returnUpdatedIds is true
+   */
+  public Future<RowSet<Row>> update(String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds) {
+    String where = "";
+    if (filter != null) {
+      where = filter.toString();
+    }
+    return update(table, entity, PostgresClient.DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds);
+  }
+
+  /**
+   * update a section / field / object in the pojo -
+   * <br>
+   * for example:
+   * <br> if a json called po_line contains the following field
+   * <pre>
+   *     "po_line_status": {
+   *       "value": "SENT",
+   *       "desc": "sent to vendor"
+   *     },
+   * </pre>
+   *  this translates into a po_line_status object within the po_line object - to update the entire object / section
+   *  create an updateSection object pushing into the section the po line status as the field and the value (string / json / etc...) to replace it with
+   *  <pre>
+   *  a = new UpdateSection();
+   *  a.addField("po_line_status");
+   *  a.setValue(new JsonObject("{\"value\":\"SOMETHING_NEW4\",\"desc\":\"sent to vendor again\"}"));
+   *  </pre>
+   * Note that postgres does not update inplace the json but rather will create a new json with the
+   * updated section and then reference the id to that newly created json
+   * <br>
+   * Queries generated will look something like this:
+   * <pre>
+   *
+   * update test.po_line set jsonb = jsonb_set(jsonb, '{po_line_status}', '{"value":"SOMETHING_NEW4","desc":"sent to vendor"}') where _id = 19;
+   * update test.po_line set jsonb = jsonb_set(jsonb, '{po_line_status, value}', '"SOMETHING_NEW5"', false) where _id = 15;
+   * </pre>
+   *
+   * @param table - table to update
+   * @param section - the field within the JSONB and the new field value
+   * @param when - records to update
+   * @return one row with the id for each updated record if returnUpdatedIds is true
+   */
+  public Future<RowSet<Row>> update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIds) {
+    try {
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      String value = section.getValue().replace("'", "''");
+      String where = when == null ? "" : when.toString();
+      String returning = returnUpdatedIds ? " RETURNING id" : "";
+      String sql = "UPDATE " + postgresClient.getSchemaName() + "." + table
+          + " SET " + PostgresClient.DEFAULT_JSONB_FIELD_NAME
+          + " = jsonb_set(" + PostgresClient.DEFAULT_JSONB_FIELD_NAME + ","
+          + section.getFieldsString() + ", '" + value + "', false) "
+          + where + returning;
+      log.debug("update query = {}", sql);
+      return pgConnection.preparedQuery(sql).execute()
+      .onComplete(query -> log.debug(() -> durationMsg("update", table, start)))
+      .onFailure(e -> log.error(e.getMessage(), e));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
 }
