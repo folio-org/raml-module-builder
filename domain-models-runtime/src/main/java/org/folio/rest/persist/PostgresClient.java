@@ -52,7 +52,6 @@ import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
-import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
@@ -81,7 +80,6 @@ public class PostgresClient {
   static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
 
   private static final String    ID_FIELD                 = "id";
-  private static final String    RETURNING_ID             = " RETURNING id ";
 
   private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
   private static final String    MAX_POOL_SIZE = "maxPoolSize";
@@ -93,10 +91,8 @@ public class PostgresClient {
   private static PostgresTester postgresTester;
 
   private static final String    SELECT = "SELECT ";
-  private static final String    UPDATE = "UPDATE ";
   private static final String    DELETE = "DELETE ";
   private static final String    FROM   = " FROM ";
-  private static final String    SET    = " SET ";
   private static final String    WHERE  = " WHERE ";
 
   @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
@@ -109,7 +105,6 @@ public class PostgresClient {
   private static final String    DATABASE  = "database";
 
   private static final String    GET_STAT_METHOD = "get";
-  private static final String    UPDATE_STAT_METHOD = "update";
   private static final String    DELETE_STAT_METHOD = "delete";
   private static final String    EXECUTE_STAT_METHOD = "execute";
 
@@ -141,7 +136,6 @@ public class PostgresClient {
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
-  private final Messages messages           = Messages.getInstance();
   private PgPool client;
   private final String tenantId;
   private final String schemaName;
@@ -3507,6 +3501,8 @@ public class PostgresClient {
    *
    * @return the result from the function, the failure of sqlConnection or any thrown Throwable.
    */
+  @SuppressWarnings("squid:S1181")  // suppress "Throwable and Error should not be caught"
+  // because a Future also handles Throwable, this is required for asynchronous reporting
   public <T> Future<T> withConn(AsyncResult<SQLConnection> sqlConnection, Function<Conn, Future<T>> function) {
     try {
       if (sqlConnection.failed()) {
