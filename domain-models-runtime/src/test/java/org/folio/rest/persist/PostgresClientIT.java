@@ -26,7 +26,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
-
 import io.vertx.core.AsyncResult;
 import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
@@ -487,6 +486,13 @@ public class PostgresClientIT {
     }));
   }
 
+  @Test
+  public void deleteByIdException(TestContext context) {
+    postgresClientConnectionThrowsException().delete(FOO, randomUuid(), context.asyncAssertFailure(e -> {
+      assertThat(e, is(instanceOf(RuntimeException.class)));
+    }));
+  }
+
   private void deleteByCqlWrapper(TestContext context, String key) throws FieldException {
     Async async = context.async();
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
@@ -511,12 +517,15 @@ public class PostgresClientIT {
   @Test
   public void deleteByCqlWrapperThatThrowsException(TestContext context) {
     CQLWrapper cqlWrapper = new CQLWrapper() {
-      public String toString() {
+      @Override
+      public String getWhereClause() {
         throw new RuntimeException("ping pong");
       }
     };
-    createFoo(context).delete(FOO, cqlWrapper, context.asyncAssertFailure(fail -> {
-      context.assertTrue(fail.getMessage().contains("ping pong"));
+    createFoo(context).getSQLConnection(asyncAssertTx(context, sqlConnection  -> {
+      postgresClient.delete(sqlConnection,  FOO, cqlWrapper, context.asyncAssertFailure(fail -> {
+        context.assertTrue(fail.getMessage().contains("ping pong"));
+      }));
     }));
   }
 
@@ -2110,13 +2119,13 @@ public class PostgresClientIT {
 
       @Override
       public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-        handler.handle(Future.failedFuture("preparedFails"));
+        prepare(s).onComplete(handler);
         return null;
       }
 
       @Override
       public Future<PreparedStatement> prepare(String s) {
-        return null;
+        return Future.failedFuture("preparedFails");
       }
 
       @Override
@@ -2179,7 +2188,7 @@ public class PostgresClientIT {
 
       @Override
       public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        return null;
+        throw new RuntimeException("queryFails");
       }
 
       @Override
