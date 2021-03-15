@@ -5,14 +5,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.regex.Pattern;
 import org.folio.util.ResourceUtil;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
 public class ClientGeneratorTest {
 
-  private static final Pattern TRAILING_SPACE_PATTERN = Pattern.compile("\\s+", Pattern.MULTILINE);
-  private static final Pattern REVERT_IDE_AUTOMATIC_FORMAT_PATTERN = Pattern.compile("\\r\\n", Pattern.MULTILINE);
+  private static final Pattern TRAILING_SPACE_PATTERN = Pattern.compile("\\s+$", Pattern.MULTILINE);
 
   private static String sourceDir;
 
@@ -25,7 +25,7 @@ public class ClientGeneratorTest {
       + AnnotationGrabber.CLIENT_GEN_PACKAGE.replace('.', '/');
   }
 
-/*  @After*/
+  @After
   public void cleanUp() throws IOException {
     System.clearProperty("client.generate");
     System.clearProperty("project.basedir");
@@ -50,9 +50,8 @@ public class ClientGeneratorTest {
 
 
   private String removeTrailingSpaces(String str) {
-    return REVERT_IDE_AUTOMATIC_FORMAT_PATTERN
-        .matcher(TRAILING_SPACE_PATTERN.matcher(str).replaceAll(""))
-        .replaceAll("\n");
+    return TRAILING_SPACE_PATTERN.matcher(str).replaceAll("")
+        .replaceAll("\\r\\n", "\n"); // to revert ide automatic formatting
   }
 
 }

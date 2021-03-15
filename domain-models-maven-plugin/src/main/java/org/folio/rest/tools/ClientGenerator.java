@@ -385,12 +385,6 @@ public class ClientGenerator implements ClientGrabber {
     body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = httpClient.requestAbs("+
         "io.vertx.core.http.HttpMethod."+ httpMethodName +", okapiUrl+"+url+");");
 
-    body.decl(jcodeModel.ref(Promise.class)
-            .narrow(jcodeModel.ref(HttpResponse.class).narrow(Buffer.class)), "promise",
-          jcodeModel
-      .ref(Promise.class)
-      .staticInvoke("promise"));
-
     /* add headers to request */
     functionSpecificHeaderParams.forEach(body::directStatement);
     //reset for next method usage
@@ -425,12 +419,10 @@ public class ClientGenerator implements ClientGrabber {
 
     /* if we need to pass data in the body */
     if(bodyContentExists){
-      body.directStatement("request.sendBuffer(buffer, promise);");
+      body.directStatement("return request.sendBuffer(buffer);");
     } else {
-      body.directStatement("request.send(promise);");
+      body.directStatement("return request.send();");
     }
-
-     body.directStatement("return promise.future();");
   }
 
   private boolean populateParams(JsonObject params, JMethod jmCreate, JVar queryParams) {
