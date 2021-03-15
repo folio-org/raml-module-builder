@@ -150,8 +150,7 @@ public class TestResourceClient {
         if (okapiUrl!= null) {
             request.putHeader("X-Okapi-Url", okapiUrl);
         }
-        request.send(promise);
-        return promise.future();
+        return request.send();
     }
 
     /**
@@ -211,8 +210,7 @@ public class TestResourceClient {
         if (okapiUrl!= null) {
             request.putHeader("X-Okapi-Url", okapiUrl);
         }
-        request.send(promise);
-        return promise.future();
+        return request.send();
     }
 
 }
