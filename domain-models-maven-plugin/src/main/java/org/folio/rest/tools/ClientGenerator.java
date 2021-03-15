@@ -385,7 +385,7 @@ public class ClientGenerator implements ClientGrabber {
     body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = httpClient.requestAbs("+
         "io.vertx.core.http.HttpMethod."+ httpMethodName +", okapiUrl+"+url+");");
 
-    JVar promise = body.decl(jcodeModel.ref(Promise.class)
+    body.decl(jcodeModel.ref(Promise.class)
             .narrow(jcodeModel.ref(HttpResponse.class).narrow(Buffer.class)), "promise",
           jcodeModel
       .ref(Promise.class)
