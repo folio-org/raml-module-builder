@@ -50,7 +50,8 @@ public class ClientGeneratorTest {
 
 
   private String removeTrailingSpaces(String str) {
-    return TRAILING_SPACE_PATTERN.matcher(str).replaceAll("");
+    return TRAILING_SPACE_PATTERN.matcher(str).replaceAll("")
+        .replace("\r\n", "\n"); // to revert ide automatic formatting
   }
 
 }
