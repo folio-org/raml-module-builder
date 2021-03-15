@@ -326,10 +326,7 @@ public class ClientGenerator implements ClientGrabber {
     JBlock bodyWithHandler = jmCreateWithHandler.body();
 
           /* Adding java doc for method */
-    jmCreateWithHandler.javadoc().add("Service endpoint " + url +"\n");
-    jmCreateWithHandler.javadoc().add("@deprecated Use method, that returns Future");
-
-    jmCreateWithHandler.annotate(Deprecated.class);
+    jmCreateWithHandler.javadoc().add("Service endpoint " + url);
 
     /* add response handler to each function */
     JClass handler = jcodeModel.ref(HttpResponse.class).narrow(Buffer.class);
