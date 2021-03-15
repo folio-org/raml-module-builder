@@ -42,7 +42,6 @@ import org.apache.commons.collections4.map.HashedMap;
 import org.apache.commons.collections4.map.MultiKeyMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.Limit;
@@ -51,10 +50,8 @@ import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
-import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
-import org.folio.rest.tools.messages.Messages;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
@@ -83,7 +80,6 @@ public class PostgresClient {
   static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
 
   private static final String    ID_FIELD                 = "id";
-  private static final String    RETURNING_ID             = " RETURNING id ";
 
   private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
   private static final String    MAX_POOL_SIZE = "maxPoolSize";
@@ -95,12 +91,9 @@ public class PostgresClient {
   private static PostgresTester postgresTester;
 
   private static final String    SELECT = "SELECT ";
-  private static final String    UPDATE = "UPDATE ";
   private static final String    DELETE = "DELETE ";
   private static final String    FROM   = " FROM ";
-  private static final String    SET    = " SET ";
   private static final String    WHERE  = " WHERE ";
-  private static final String    INSERT_CLAUSE = "INSERT INTO ";
 
   @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
   // we use it as a key in the config. We use it as a default password only when testing
@@ -112,8 +105,6 @@ public class PostgresClient {
   private static final String    DATABASE  = "database";
 
   private static final String    GET_STAT_METHOD = "get";
-  private static final String    SAVE_STAT_METHOD = "save";
-  private static final String    UPDATE_STAT_METHOD = "update";
   private static final String    DELETE_STAT_METHOD = "delete";
   private static final String    EXECUTE_STAT_METHOD = "execute";
 
@@ -145,7 +136,6 @@ public class PostgresClient {
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
-  private final Messages messages           = Messages.getInstance();
   private PgPool client;
   private final String tenantId;
   private final String schemaName;
@@ -793,9 +783,21 @@ public class PostgresClient {
    * @param id primary key for the record
    * @param entity a POJO (plain old java object)
    * @param replyHandler returns any errors and the entity after applying any database INSERT triggers
+   * @return the entity after applying any database INSERT triggers
+   */
+  public <T> Future<T> saveAndReturnUpdatedEntity(String table, String id, T entity) {
+    return withConn(conn -> conn.saveAndReturnUpdatedEntity(table, id, entity));
+  }
+
+  /**
+   * Insert entity into table and return the updated entity.
+   * @param table database table (without schema)
+   * @param id primary key for the record
+   * @param entity a POJO (plain old java object)
+   * @param replyHandler returns any errors and the entity after applying any database INSERT triggers
    */
   <T> void saveAndReturnUpdatedEntity(String table, String id, T entity, Handler<AsyncResult<T>> replyHandler) {
-    getSQLConnection(conn -> saveAndReturnUpdatedEntity(conn, table, id, entity, closeAndHandleResult(conn, replyHandler)));
+    saveAndReturnUpdatedEntity(table, id, entity).onComplete(replyHandler);
   }
 
   /**
@@ -1016,69 +1018,18 @@ public class PostgresClient {
     if (log.isDebugEnabled()) {
       log.debug("save (with connection and id) called on " + table);
     }
-    try {
-      if (sqlConnection.failed()) {
-        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
-        return;
-      }
-      new Conn(this, sqlConnection.result().conn)
-      .save(table, id, entity, returnId, upsert, convertEntity)
-      .onComplete(replyHandler);
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+    withConn(sqlConnection, conn -> conn.save(table, id, entity, returnId, upsert, convertEntity))
+    .onComplete(replyHandler);
   }
 
   /**
-   * Save entity in table and return the updated entity.
-   *
-   * @param sqlConnection connection (for example with transaction)
-   * @param table where to insert the entity record
-   * @param id  the value for the id field (primary key); if null a new random UUID is created for it.
-   * @param entity  the record to insert, a POJO
-   * @param replyHandler  where to report success status and the entity after applying any database INSERT triggers
+   * Insert the entities into table using a single INSERT statement.
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
+   * @return one result row per inserted row, containing the id field
    */
-  private <T> void saveAndReturnUpdatedEntity(AsyncResult<SQLConnection> sqlConnection, String table, String id, T entity,
-      Handler<AsyncResult<T>> replyHandler) {
-
-    log.info("save (with connection and id) called on " + table);
-
-    if (sqlConnection.failed()) {
-      log.error(sqlConnection.cause().getMessage(), sqlConnection.cause());
-      replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
-      return;
-    }
-
-    try {
-      long start = System.nanoTime();
-      String sql = INSERT_CLAUSE + schemaName + DOT + table
-          + " (id, jsonb) VALUES ($1, $2) RETURNING jsonb";
-
-      sqlConnection.result().conn.preparedQuery(sql).execute(
-          Tuple.of(id == null ? UUID.randomUUID() : UUID.fromString(id),
-          pojo2JsonObject(entity)), query -> {
-        statsTracker(SAVE_STAT_METHOD, table, start);
-        if (query.failed()) {
-          log.error(query.cause().getMessage(), query.cause());
-          replyHandler.handle(Future.failedFuture(query.cause()));
-          return;
-        }
-        try {
-          RowSet<Row> result = query.result();
-          String updatedEntityString = result.iterator().next().getValue(0).toString();
-          @SuppressWarnings("unchecked")
-          T updatedEntity = (T) MAPPER.readValue(updatedEntityString, entity.getClass());
-          replyHandler.handle(Future.succeededFuture(updatedEntity));
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      });
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+  public Future<RowSet<Row>> saveBatch(String table, JsonArray entities) {
+    return withConn(conn -> conn.saveBatch(table, entities));
   }
 
   /**
@@ -1088,17 +1039,27 @@ public class PostgresClient {
    * @param replyHandler  result, containing the id field for each inserted element of entities
    */
   public void saveBatch(String table, JsonArray entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    getSQLConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
+    saveBatch(table, entities).onComplete(replyHandler);
   }
 
   /**
    * Upsert the entities into table using a single INSERT statement.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
-   * @param replyHandler  result, containing the id field for each inserted element of entities
+   * @return one result row per inserted row, containing the id field
+   */
+  public Future<RowSet<Row>> upsertBatch(String table, JsonArray entities) {
+    return withConn(conn -> conn.upsertBatch(table, entities));
+  }
+
+  /**
+   * Upsert the entities into table using a single INSERT statement.
+   * @param table  destination table to insert into
+   * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
+   * @param replyHandler  one result row per inserted row, containing the id field
    */
   public void upsertBatch(String table, JsonArray entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    getSQLConnection(conn -> upsertBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
+    upsertBatch(table, entities).onComplete(replyHandler);
   }
 
   /**
@@ -1136,68 +1097,24 @@ public class PostgresClient {
   private void saveBatch(AsyncResult<SQLConnection> sqlConnection, boolean upsert, String table,
       JsonArray entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
-    try {
-      List<Tuple> list = new ArrayList<>();
-      if (entities != null) {
-        for (int i = 0; i < entities.size(); i++) {
-          String json = entities.getString(i);
-          JsonObject jsonObject = new JsonObject(json);
-          String id = jsonObject.getString("id");
-          list.add(Tuple.of(id == null ? UUID.randomUUID() : UUID.fromString(id),
-              jsonObject));
-        }
-      }
-      saveBatchInternal(sqlConnection, upsert, table, list, replyHandler);
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+    withConn(sqlConnection, conn -> conn.saveBatch(upsert, table, entities))
+    .onComplete(replyHandler);
   }
 
-  private void saveBatchInternal(AsyncResult<SQLConnection> sqlConnection, boolean upsert, String table,
-                                  List<Tuple> batch, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-
-    try {
-      if (batch.isEmpty()) {
-        // vertx-pg-client fails with "Can not execute batch query with 0 sets of batch parameters."
-        replyHandler.handle(Future.succeededFuture(new LocalRowSet(0)));
-        return;
-      }
-      long start = System.nanoTime();
-      log.info("starting: saveBatch size=" + batch.size());
-      String sql = INSERT_CLAUSE + schemaName + DOT + table + " (id, jsonb) VALUES ($1, $2)"
-          + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb = EXCLUDED.jsonb" : "")
-          + RETURNING_ID;
-      if (sqlConnection.failed()) {
-        replyHandler.handle(Future.failedFuture(sqlConnection.cause()));
-        return;
-      }
-      PgConnection connection = sqlConnection.result().conn;
-
-      connection.preparedQuery(sql).executeBatch(batch, queryRes -> {
-        if (queryRes.failed()) {
-          log.error("saveBatch size=" + batch.size()
-                  + SPACE
-                  + queryRes.cause().getMessage(),
-              queryRes.cause());
-          statsTracker("saveBatchFailed", table, start);
-          replyHandler.handle(Future.failedFuture(queryRes.cause()));
-          return;
-        }
-        statsTracker("saveBatch", table, start);
-        if (queryRes.result() != null) {
-          replyHandler.handle(Future.succeededFuture(queryRes.result()));
-        } else {
-          replyHandler.handle(Future.succeededFuture(new LocalRowSet(0)));
-        }
-      });
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+  /**
+   * Save a list of POJOs.
+   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * A random id is generated if POJO's id is null.
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @return one result row per inserted row, containing the id field
+   */
+  public <T> Future<RowSet<Row>> saveBatch(String table, List<T> entities) {
+    return withConn(conn -> conn.saveBatch(table, entities));
   }
 
-  /***
+  /**
    * Save a list of POJOs.
    * POJOs are converted to a JSON String and saved in a single INSERT call.
    * A random id is generated if POJO's id is null.
@@ -1209,7 +1126,21 @@ public class PostgresClient {
   public <T> void saveBatch(String table, List<T> entities,
       Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
-    getSQLConnection(conn -> saveBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
+    saveBatch(table, entities).onComplete(replyHandler);
+  }
+
+  /**
+   * Upsert a list of POJOs.
+   * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
+   * A random id is generated if POJO's id is null.
+   * If a record with the id already exists it is updated (upsert).
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  destination table to insert into
+   * @param entities  each list element is a POJO
+   * @return one result row per inserted row, containing the id field
+   */
+  public <T> Future<RowSet<Row>> upsertBatch(String table, List<T> entities) {
+    return withConn(conn -> conn.upsertBatch(table, entities));
   }
 
   /***
@@ -1220,12 +1151,11 @@ public class PostgresClient {
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
-   * @param replyHandler result, containing the id field for each inserted POJO
+   * @param replyHandler one result row per inserted row, containing the id field
    */
   public <T> void upsertBatch(String table, List<T> entities,
       Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-
-    getSQLConnection(conn -> upsertBatch(conn, table, entities, closeAndHandleResult(conn, replyHandler)));
+    upsertBatch(table, entities).onComplete(replyHandler);
   }
 
   /***
@@ -1262,39 +1192,30 @@ public class PostgresClient {
   private <T> void saveBatch(AsyncResult<SQLConnection> sqlConnection,
       boolean upsert, String table, List<T> entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
 
-    try {
-      List<Tuple> batch = new ArrayList<>();
-      if (entities == null || entities.isEmpty()) {
-
-        RowSet<Row> rowSet = new LocalRowSet(0).withColumns(Arrays.asList("id"));
-        replyHandler.handle(Future.succeededFuture(rowSet));
-        return;
-      }
-      // We must use reflection, the POJOs don't have a interface/superclass in common.
-      Method getIdMethod = entities.get(0).getClass().getDeclaredMethod("getId");
-      for (Object entity : entities) {
-        Object obj = getIdMethod.invoke(entity);
-        UUID id = obj == null ? UUID.randomUUID() : UUID.fromString((String) obj);
-        batch.add(Tuple.of(id, pojo2JsonObject(entity)));
-      }
-      saveBatchInternal(sqlConnection, upsert, table, batch, replyHandler);
-    } catch (Exception e) {
-      log.error("saveBatch error " + e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+    withConn(sqlConnection, conn -> conn.saveBatch(upsert, table, entities))
+    .onComplete(replyHandler);
   }
 
   /**
-   * update a specific record associated with the key passed in the id arg
+   * Update a specific record associated with the key passed in the id arg
+   * @param table - table to save to (must exist)
+   * @param entity - pojo to save
+   * @param id - key of the entity being updated
+   * @return empty {@link RowSet} with {@link RowSet#rowCount()} information
+   */
+  public Future<RowSet<Row>> update(String table, Object entity, String id) {
+    return withConn(conn -> conn.update(table, entity, id));
+  }
+
+  /**
+   * Update a specific record associated with the key passed in the id arg
    * @param table - table to save to (must exist)
    * @param entity - pojo to save
    * @param id - key of the entity being updated
    * @param replyHandler
    */
   public void update(String table, Object entity, String id, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    StringBuilder where = new StringBuilder().append(WHERE).append(ID_FIELD).append('=');
-    SqlUtil.Cql2PgUtil.appendQuoted(id, where);  // proper masking prevents SQL injection
-    update(table, entity, DEFAULT_JSONB_FIELD_NAME, where.toString(), false, replyHandler);
+    update(table, entity, id).onComplete(replyHandler);
   }
 
   /**
@@ -1344,78 +1265,143 @@ public class PostgresClient {
    * </pre>
    * @param table - table to update
    * @param entity - pojo to set for matching records
-   * @param filter - see example below
+   * @param filter - determines which records to update
    * @param returnUpdatedIds - return ids of updated records
-   * @param replyHandler
+   * @return ids of updated records if {@code returnUpdatedIds} is true
    *
    */
+  public Future<RowSet<Row>> update(String table, Object entity, Criterion filter, boolean returnUpdatedIds) {
+    return withConn(conn -> conn.update(table, entity, filter, returnUpdatedIds));
+  }
+
+  /**
+   * Update 1...n records matching the filter
+   * <br>
+   * Criterion Examples:
+   * <br>
+   * 1. can be mapped from a string in the following format [{"field":"''","value":"","op":""}]
+   * <pre>
+   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"); //denotes funds_distribution is an array of objects
+   *    Criterion a = json2Criterion("[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]");
+   *    (see postgres query syntax for more examples in the read.me
+   * </pre>
+   * 2. Simple Criterion
+   * <pre>
+   *    Criteria b = new Criteria();
+   *    b.field.add("'note'");
+   *    b.operation = "=";
+   *    b.value = "a";
+   *    b.isArray = true; //denotes that the queried field is an array with multiple values
+   *    Criterion a = new Criterion(b);
+   * </pre>
+   * 3. For a boolean field called rush = false OR note[] contains 'a'
+   * <pre>
+   *    Criteria d = new Criteria();
+   *    d.field.add("'rush'");
+   *    d.operation = Criteria.OP_IS_FALSE;
+   *    d.value = null;
+   *    Criterion a = new Criterion();
+   *    a.addCriterion(d, Criteria.OP_OR, b);
+   * </pre>
+   * 4. for the following json:
+   * <pre>
+   *      "price": {
+   *        "sum": "150.0",
+   *         "po_currency": {
+   *           "value": "USD",
+   *           "desc": "US Dollar"
+   *         }
+   *       },
+   *
+   *    Criteria c = new Criteria();
+   *    c.addField("'price'").addField("'po_currency'").addField("'value'");
+   *    c.operation = Criteria.OP_LIKE;
+   *    c.value = "USD";
+   *
+   * </pre>
+   * @param table - table to update
+   * @param entity - pojo to set for matching records
+   * @param filter - determines which records to update
+   * @param returnUpdatedIds - return ids of updated records
+   */
   public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds,
-                     Handler<AsyncResult<RowSet<Row>>> replyHandler)
-  {
-    String where = null;
-    if(filter != null){
-      where = filter.toString();
-    }
-    update(table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
+                     Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+    update(table, entity, filter, returnUpdatedIds).onComplete(replyHandler);
   }
 
+  /**
+   * Update all records in {@code table} that match the {@code CQLWrapper} query.
+   * @param entity new content for the matched records
+   * @return one row with the id for each updated record if returnUpdatedIds is true
+   */
+  public Future<RowSet<Row>> update(String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds) {
+    return withConn(conn -> conn.update(table, entity, filter, returnUpdatedIds));
+  }
+
+  /**
+   * Update all records in {@code table} that match the {@code CQLWrapper} query.
+   * @param entity new content for the matched records
+   * @param replyHandler one row with the id for each updated record if returnUpdatedIds is true
+   */
   public void update(String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds,
-                     Handler<AsyncResult<RowSet<Row>>> replyHandler)
-  {
-    String where = "";
-    if(filter != null){
-      where = filter.toString();
-    }
-    update(table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
+      Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+    update(table, entity, filter, returnUpdatedIds).onComplete(replyHandler);
   }
 
-  public void update(AsyncResult<SQLConnection> conn, String table, Object entity, CQLWrapper filter,
+  /**
+   * Update all records in {@code table} that match the {@code CQLWrapper} query.
+   * @param entity new content for the matched records
+   * @param replyHandler one row with the id for each updated record if returnUpdatedIds is true
+   */
+  public void update(AsyncResult<SQLConnection> sqlConnection, String table, Object entity, CQLWrapper filter,
                      boolean returnUpdatedIds, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    String where = "";
-    try {
-      if (filter != null) {
-        where = filter.toString();
-      }
-      update(conn, table, entity, DEFAULT_JSONB_FIELD_NAME, where, returnUpdatedIds, replyHandler);
-    } catch (Exception e) {
-      replyHandler.handle(Future.failedFuture(e));
-    }
+
+    withConn(sqlConnection, conn -> conn.update(table, entity, filter, returnUpdatedIds))
+    .onComplete(replyHandler);
   }
 
-  public void update(AsyncResult<SQLConnection> conn, String table, Object entity, String jsonbField,
+  /**
+   * Update all records in {@code table} that match the SQL {@code whereClause}.
+   *
+   * <p>Danger: The {@code whereClause} is prone to SQL injection. Consider using
+   * an {@code update} method that takes {@link CQLWrapper} or {@link Criterion}.
+   *
+   * @param entity new content for the jsonbField of the matched records
+   * @param replyHandler one row with the id for each updated record if returnUpdatedIds is true
+   */
+  public void update(AsyncResult<SQLConnection> sqlConnection, String table, Object entity, String jsonbField,
                      String whereClause, boolean returnUpdatedIds, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    if (conn.failed()) {
-      replyHandler.handle(Future.failedFuture(conn.cause()));
-      return;
-    }
-    long start = System.nanoTime();
-    StringBuilder sb = new StringBuilder();
-    sb.append(whereClause);
-    StringBuilder returning = new StringBuilder();
-    if (returnUpdatedIds) {
-      returning.append(RETURNING_ID);
-    }
-    try {
-      String q = UPDATE + schemaName + DOT + table + SET + jsonbField + " = $1::jsonb " + whereClause
-          + SPACE + returning;
-      log.debug("update query = " + q);
-      conn.result().conn.preparedQuery(q).execute(Tuple.of(pojo2JsonObject(entity)), query -> {
-        if (query.failed()) {
-          log.error(query.cause().getMessage(), query.cause());
-        }
-        statsTracker(UPDATE_STAT_METHOD, table, start);
-        replyHandler.handle(query);
-      });
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+
+    withConn(sqlConnection, conn -> conn.update(table, entity, jsonbField, whereClause, returnUpdatedIds))
+    .onComplete(replyHandler);
   }
 
+  /**
+   * Update all records in {@code table} that match the SQL {@code whereClause} query.
+   *
+   * <p>Danger: The {@code whereClause} is prone to SQL injection. Consider using
+   * an {@code update} method that takes {@link CQLWrapper} or {@link Criterion}.
+   *
+   * @param entity new content for the jsonbField of the matched records
+   * @return one row with the id for each updated record if returnUpdatedIds is true
+   */
+  public Future<RowSet<Row>> update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds) {
+    return withConn(conn -> conn.update(table, entity, jsonbField, whereClause, returnUpdatedIds));
+  }
+
+  /**
+   * Update all records in {@code table} that match the SQL {@code whereClause} query.
+   *
+   * <p>Danger: The {@code whereClause} is prone to SQL injection. Consider using
+   * an {@code update} method that takes {@link CQLWrapper} or {@link Criterion}.
+   *
+   * @param entity new content for the jsonbField of the matched records
+   * @param replyHandler one row with the id for each updated record if returnUpdatedIds is true
+   */
   public void update(String table, Object entity, String jsonbField, String whereClause, boolean returnUpdatedIds,
                      Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    getSQLConnection(conn -> update(conn, table, entity, jsonbField, whereClause, returnUpdatedIds,
-        closeAndHandleResult(conn, replyHandler)));
+    update(table, entity, jsonbField, whereClause, returnUpdatedIds)
+    .onComplete(replyHandler);
   }
 
   /**
@@ -1452,42 +1438,48 @@ public class PostgresClient {
    * @param replyHandler
    *
    */
-  public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIdsCount,
+  public Future<RowSet<Row>> update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIds) {
+    return withConn(conn -> conn.update(table, section,  when, returnUpdatedIds));
+  }
+
+  /**
+   * update a section / field / object in the pojo -
+   * <br>
+   * for example:
+   * <br> if a json called po_line contains the following field
+   * <pre>
+   *     "po_line_status": {
+   *       "value": "SENT",
+   *       "desc": "sent to vendor"
+   *     },
+   * </pre>
+   *  this translates into a po_line_status object within the po_line object - to update the entire object / section
+   *  create an updateSection object pushing into the section the po line status as the field and the value (string / json / etc...) to replace it with
+   *  <pre>
+   *  a = new UpdateSection();
+   *  a.addField("po_line_status");
+   *  a.setValue(new JsonObject("{\"value\":\"SOMETHING_NEW4\",\"desc\":\"sent to vendor again\"}"));
+   *  </pre>
+   * Note that postgres does not update inplace the json but rather will create a new json with the
+   * updated section and then reference the id to that newly created json
+   * <br>
+   * Queries generated will look something like this:
+   * <pre>
+   *
+   * update test.po_line set jsonb = jsonb_set(jsonb, '{po_line_status}', '{"value":"SOMETHING_NEW4","desc":"sent to vendor"}') where _id = 19;
+   * update test.po_line set jsonb = jsonb_set(jsonb, '{po_line_status, value}', '"SOMETHING_NEW5"', false) where _id = 15;
+   * </pre>
+   *
+   * @param table - table to update
+   * @param section - see UpdateSection class
+   * @param when - Criterion object
+   * @param replyHandler
+   *
+   */
+  public void update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIds,
                      Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    long start = System.nanoTime();
-    getConnection(res -> {
-      if (res.succeeded()) {
-        PgConnection connection = res.result();
-        try {
-          String value = section.getValue().replace("'", "''");
-          String where = when == null ? "" : when.toString();
-          String returning = returnUpdatedIdsCount ? RETURNING_ID : "";
-          String q = UPDATE + schemaName + DOT + table + SET + DEFAULT_JSONB_FIELD_NAME
-              + " = jsonb_set(" + DEFAULT_JSONB_FIELD_NAME + ","
-              + section.getFieldsString() + ", '" + value + "', false) " + where + returning;
-          log.debug("update query = " + q);
-          connection.query(q).execute(query -> {
-            connection.close();
-            statsTracker(UPDATE_STAT_METHOD, table, start);
-            if (query.failed()) {
-              log.error(query.cause().getMessage(), query.cause());
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(query.result()));
-            }
-          });
-        } catch (Exception e) {
-          if (connection != null){
-            connection.close();
-          }
-          log.error(e.getMessage(), e);
-          replyHandler.handle(Future.failedFuture(e));
-        }
-      } else {
-        log.error(res.cause().getMessage(), res.cause());
-        replyHandler.handle(Future.failedFuture(res.cause()));
-      }
-    });
+    update(table, section, when, returnUpdatedIds)
+    .onComplete(replyHandler);
   }
 
   /**
@@ -3503,6 +3495,25 @@ public class PostgresClient {
    */
   public <T> Future<T> withConn(int queryTimeout, Function<Conn, Future<T>> function) {
     return withConnection(pgConnection -> withTimeout(pgConnection, queryTimeout, function));
+  }
+
+  /**
+   * Take the connection from the {@link SQLConnection}, wrap it into a {@link Conn} and execute the function.
+   *
+   * @return the result from the function, the failure of sqlConnection or any thrown Throwable.
+   */
+  @SuppressWarnings("squid:S1181")  // suppress "Throwable and Error should not be caught"
+  // because a Future also handles Throwable, this is required for asynchronous reporting
+  public <T> Future<T> withConn(AsyncResult<SQLConnection> sqlConnection, Function<Conn, Future<T>> function) {
+    try {
+      if (sqlConnection.failed()) {
+        return Future.failedFuture(sqlConnection.cause());
+      }
+      return function.apply(new Conn(this, sqlConnection.result().conn));
+    } catch (Throwable e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
   }
 
   /**
