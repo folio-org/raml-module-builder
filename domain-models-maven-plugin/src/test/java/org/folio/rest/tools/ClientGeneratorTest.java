@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.regex.Pattern;
 import org.folio.util.ResourceUtil;
-import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -13,6 +12,7 @@ import org.junit.Test;
 public class ClientGeneratorTest {
 
   private static final Pattern TRAILING_SPACE_PATTERN = Pattern.compile("\\s+", Pattern.MULTILINE);
+  private static final Pattern REVERT_IDE_AUTOMATIC_FORMAT_PATTERN = Pattern.compile("\\r\\n", Pattern.MULTILINE);
 
   private static String sourceDir;
 
@@ -25,7 +25,7 @@ public class ClientGeneratorTest {
       + AnnotationGrabber.CLIENT_GEN_PACKAGE.replace('.', '/');
   }
 
-  @After
+/*  @After*/
   public void cleanUp() throws IOException {
     System.clearProperty("client.generate");
     System.clearProperty("project.basedir");
@@ -41,7 +41,7 @@ public class ClientGeneratorTest {
     // IDEs always removes trailing spaces from edited files, but java code generator adds then,
     // so we need to remove them before the comparison
 
-    String actual = removeTrailingSpaces(Files.readString(expectedClient.toPath()).trim());
+    String actual = removeTrailingSpaces(Files.readString(expectedClient.toPath()));
 
     String expected = removeTrailingSpaces(ResourceUtil.asString("/clients/TestClient.txt", this.getClass()));
 
@@ -50,7 +50,9 @@ public class ClientGeneratorTest {
 
 
   private String removeTrailingSpaces(String str) {
-    return TRAILING_SPACE_PATTERN.matcher(str).replaceAll("");
+    return REVERT_IDE_AUTOMATIC_FORMAT_PATTERN
+        .matcher(TRAILING_SPACE_PATTERN.matcher(str).replaceAll(""))
+        .replaceAll("\n");
   }
 
 }

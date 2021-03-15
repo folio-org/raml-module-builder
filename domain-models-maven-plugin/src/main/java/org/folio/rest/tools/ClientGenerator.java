@@ -19,6 +19,7 @@ import com.sun.codemodel.JWhileLoop;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
@@ -383,7 +384,13 @@ public class ClientGenerator implements ClientGrabber {
     final String httpMethodName = httpVerb.substring(httpVerb.lastIndexOf('.') + 1).toUpperCase();
     body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = httpClient.requestAbs("+
         "io.vertx.core.http.HttpMethod."+ httpMethodName +", okapiUrl+"+url+");");
-    body.directStatement("Promise<HttpResponse<Buffer>> promise = Promise.promise();");
+
+    JVar promise = body.decl(jcodeModel.ref(Promise.class)
+            .narrow(jcodeModel.ref(HttpResponse.class).narrow(Buffer.class)), "promise",
+          jcodeModel
+      .ref(Promise.class)
+      .staticInvoke("promise"));
+
     /* add headers to request */
     functionSpecificHeaderParams.forEach(body::directStatement);
     //reset for next method usage
