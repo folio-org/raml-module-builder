@@ -3,12 +3,14 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -641,6 +643,61 @@ public class PostgresClientIT {
         assertThat(fail.getMessage(), containsString("syntax"));  // invalid input syntax for type uuid
         // we don't want SQL injection with 42601 syntax error
       }));
+  }
+
+  @Test
+  public void updateWithCriterion(TestContext context) {
+    Criterion criterion = new Criterion().addCriterion(new Criteria()
+        .addField("'key'").setOperation("=").setVal("x"));
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, criterion, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, criterion, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithCqlWrapper(TestContext context) throws Exception {
+    CQLWrapper cqlWrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "key=x");
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, cqlWrapper, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, cqlWrapper, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithWhereClause(TestContext context) throws Exception {
+    String where = "WHERE jsonb->>'key'='x'";
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithWhereClauseSqlConnection(TestContext context) throws Exception {
+    String where = "WHERE jsonb->>'key'='x'";
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.getSQLConnection(conn -> {
+        postgresClient.update(conn, FOO, singleQuotePojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet -> {
+          assertThat(rowSet.rowCount(), is(1));
+          postgresClient.update(conn, FOO, xPojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet2 -> {
+            assertThat(rowSet2.rowCount(), is(0));
+          }));
+        }));
+      });
+    }));
   }
 
   @Test
@@ -1300,6 +1357,36 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveBatchJsonFailedConnection(TestContext context) {
+    postgresClient().saveBatch(Future.failedFuture("f"), FOO, new JsonArray(),
+        context.asyncAssertFailure(e -> assertThat(e.getMessage(), is("f"))));
+  }
+
+  @Test
+  public void saveBatchJsonConnection(TestContext context) {
+    String id = randomUuid();
+    JsonArray update = new JsonArray().add(new JsonObject().put("id", id).put("key", "y").encode());
+    createFoo(context).save(FOO, id, new StringPojo("x"), context.asyncAssertSuccess(x -> {
+      postgresClient.getSQLConnection(sqlConnection -> {
+        postgresClient.saveBatch(sqlConnection, FOO, update, context.asyncAssertFailure(e -> {
+          postgresClient.upsertBatch(sqlConnection, FOO, update, context.asyncAssertSuccess(rowSet -> {
+            postgresClient.getById(FOO, id, context.asyncAssertSuccess(json -> {
+              assertThat(rowSet.iterator().next().getUUID(0).toString(), is(id));
+              assertThat(json.getString("key"), is("y"));
+            }));
+          }));
+        }));
+      });
+    }));
+  }
+
+  @Test
+  public void upsertBatchJsonConnectionException(TestContext context) {
+    postgresClient().upsertBatch(Future.succeededFuture(), FOO, new JsonArray(),
+        context.asyncAssertFailure(e -> assertThat(e, is(instanceOf(NullPointerException.class)))));
+  }
+
+  @Test
   public void saveTrans(TestContext context) {
     postgresClient = createFoo(context);
     String uuid = randomUuid();
@@ -1430,6 +1517,24 @@ public class PostgresClientIT {
   public void saveAndReturnUpdatedEntityQueryReturnBadResults(TestContext context) {
     String uuid = randomUuid();
     postgresClientQueryReturnBadResults().saveAndReturnUpdatedEntity(FOO, uuid, xPojo, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void saveAndReturnUpdatedEntityCreatingPojoFails(TestContext context) {
+    class FailingPojo extends StringPojo {
+      public FailingPojo() {  // this constructor is called when deserialising the JSON returned from DB
+        throw new RuntimeException();
+      }
+      public FailingPojo(String key, String id) {
+        this.key = key;
+        this.id = id;
+      }
+    };
+    String uuid = randomUuid();
+    FailingPojo failingPojo = new FailingPojo("y", uuid);
+    postgresClient = createFoo(context);
+    postgresClient.saveAndReturnUpdatedEntity(FOO, uuid, failingPojo, context.asyncAssertFailure(e ->
+      assertThat(e, is(instanceOf(UncheckedIOException.class)))));
   }
 
   @Test
