@@ -646,6 +646,61 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void updateWithCriterion(TestContext context) {
+    Criterion criterion = new Criterion().addCriterion(new Criteria()
+        .addField("'key'").setOperation("=").setVal("x"));
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, criterion, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, criterion, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithCqlWrapper(TestContext context) throws Exception {
+    CQLWrapper cqlWrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "key=x");
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, cqlWrapper, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, cqlWrapper, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithWhereClause(TestContext context) throws Exception {
+    String where = "WHERE jsonb->>'key'='x'";
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithWhereClauseSqlConnection(TestContext context) throws Exception {
+    String where = "WHERE jsonb->>'key'='x'";
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.getSQLConnection(conn -> {
+        postgresClient.update(conn, FOO, singleQuotePojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet -> {
+          assertThat(rowSet.rowCount(), is(1));
+          postgresClient.update(conn, FOO, xPojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet2 -> {
+            assertThat(rowSet2.rowCount(), is(0));
+          }));
+        }));
+      });
+    }));
+  }
+
+  @Test
   public void updateSectionX(TestContext context) {
     UpdateSection updateSection = new UpdateSection();
     updateSection.addField("key").setValue("x");
