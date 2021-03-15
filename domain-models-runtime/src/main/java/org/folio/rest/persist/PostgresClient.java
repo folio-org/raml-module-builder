@@ -1201,6 +1201,7 @@ public class PostgresClient {
    * @param table - table to save to (must exist)
    * @param entity - pojo to save
    * @param id - key of the entity being updated
+   * @return empty {@link RowSet} with {@link RowSet#rowCount()} information
    */
   public Future<RowSet<Row>> update(String table, Object entity, String id) {
     return withConn(conn -> conn.update(table, entity, id));
@@ -1264,7 +1265,7 @@ public class PostgresClient {
    * </pre>
    * @param table - table to update
    * @param entity - pojo to set for matching records
-   * @param filter - see example below
+   * @param filter - determines which records to update
    * @param returnUpdatedIds - return ids of updated records
    * @return ids of updated records if {@code returnUpdatedIds} is true
    *
@@ -1320,7 +1321,7 @@ public class PostgresClient {
    * </pre>
    * @param table - table to update
    * @param entity - pojo to set for matching records
-   * @param filter - see example below
+   * @param filter - determines which records to update
    * @param returnUpdatedIds - return ids of updated records
    */
   public void update(String table, Object entity, Criterion filter, boolean returnUpdatedIds,

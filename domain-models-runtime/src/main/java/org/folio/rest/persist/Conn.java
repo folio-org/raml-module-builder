@@ -444,6 +444,7 @@ public class Conn {
    * @param table - table to save to (must exist)
    * @param entity - pojo to save
    * @param id - key of the entity being updated
+   * @return empty {@link RowSet} with {@link RowSet#rowCount()} information
    */
   public Future<RowSet<Row>> update(String table, Object entity, String id) {
     StringBuilder where = new StringBuilder("WHERE id=");
@@ -483,7 +484,7 @@ public class Conn {
   }
 
   /**
-   * Update 1...n records matching the filter
+   * Update 1...n records matching the {@code Criterion filter}
    * <br>
    * Criterion Examples:
    * <br>
@@ -544,7 +545,7 @@ public class Conn {
 
   /**
    * Update all records in {@code table} that match the {@code CQLWrapper} query.
-   * @entity new content for the matched records
+   * @param entity new content for the matched records
    * @return one row with the id for each updated record if returnUpdatedIds is true
    */
   public Future<RowSet<Row>> update(String table, Object entity, CQLWrapper filter, boolean returnUpdatedIds) {
