@@ -615,6 +615,90 @@ public class Conn {
     }
   }
 
+  private Future<RowSet<Row>> doDelete(String table, String where) {
+    try {
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      String sql = "DELETE FROM " + postgresClient.getSchemaName() + "." + table + " " + where;
+      log.debug("doDelete query = {}", sql);
+      return pgConnection.preparedQuery(sql).execute()
+          .onFailure(e -> log.error(e.getMessage(), e))
+          .onComplete(done -> log.debug(() -> durationMsg("delete", table, start)));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Delete by id.
+   * @param table table name without schema
+   * @param id primary key value of the record to delete
+   * @return empty {@link RowSet} with {@link RowSet#rowCount()} information
+   */
+  public Future<RowSet<Row>> delete(String table, String id) {
+    try {
+      return pgConnection.preparedQuery(
+          "DELETE FROM " + postgresClient.getSchemaName() + "." + table + " WHERE id=$1")
+          .execute(Tuple.of(UUID.fromString(id)));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Delete by POJO.
+   * @param table table name without schema
+   * @param entity a POJO of the record to delete
+   * @return empty {@link RowSet} with {@link RowSet#rowCount()} information
+   */
+  public Future<RowSet<Row>> delete(String table, Object entity) {
+    try {
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      String sql = "DELETE FROM " + postgresClient.getSchemaName() + "." + table
+          + " WHERE jsonb @> $1";
+      log.debug("delete by entity, query = {}; $1 = {}", sql, entity);
+      return pgConnection.preparedQuery(sql).execute(Tuple.of(PostgresClient.pojo2JsonObject(entity)))
+          .onFailure(e -> log.error(e.getMessage(), e))
+          .onComplete(done -> log.debug(() -> durationMsg("delete", table, start)));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Delete by {@code CQLWrapper}.
+   * @param table table name without schema
+   * @param cql which records to delete
+   * @return empty {@link RowSet} with {@link RowSet#rowCount()} information
+   */
+  public Future<RowSet<Row>> delete(String table, CQLWrapper cql) {
+    try {
+      String where = cql == null ? "" : cql.getWhereClause();
+      return doDelete(table, where);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Delete by Criterion.
+   * @param table table name without schema
+   * @param filter which records to delete
+   * @return empty {@link RowSet} with {@link RowSet#rowCount()} information
+   */
+  public Future<RowSet<Row>> delete(String table, Criterion filter) {
+    try {
+      String where = filter == null ? "" : filter.toString();
+      return doDelete(table, where);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
   /**
    * Return records selected by {@link CQLWrapper} filter.
    *
@@ -628,13 +712,13 @@ public class Conn {
    * @param distinctOn - database column to calculate the number of distinct values for, null or empty string for none
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz,
-    String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField,
-    List<FacetField> facets, String distinctOn) {
+      String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField,
+      List<FacetField> facets, String distinctOn) {
 
     try {
       QueryHelper queryHelper = postgresClient.buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
       Function<TotaledResults, Results<T>> resultSetMapper = totaledResults ->
-        postgresClient.processResults(totaledResults.set, totaledResults.estimatedTotal, queryHelper.offset, queryHelper.limit, clazz);
+      postgresClient.processResults(totaledResults.set, totaledResults.estimatedTotal, queryHelper.offset, queryHelper.limit, clazz);
       if (returnCount) {
         return postgresClient.processQueryWithCount(pgConnection, queryHelper, "get", resultSetMapper);
       } else {
