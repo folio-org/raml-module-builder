@@ -1687,9 +1687,9 @@ public class PostgresClient {
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
     CQLWrapper wrapper = new CQLWrapper().setWhereClause(where);
-    getSQLConnection(conn
-      -> doGet(conn, table, clazz, fieldName, wrapper, returnCount, returnIdField, facets, distinctOn,
-        closeAndHandleResult(conn, replyHandler)));
+    withConn(conn
+      -> conn.get(table, clazz, fieldName, wrapper, returnCount, returnIdField, facets, distinctOn))
+    .onComplete(replyHandler);
   }
 
   static class QueryHelper {
@@ -1711,47 +1711,6 @@ public class PostgresClient {
     public TotaledResults(RowSet<Row> set, Integer estimatedTotal) {
       this.set = set;
       this.estimatedTotal = estimatedTotal;
-    }
-  }
-
-  /**
-   * low-level getter based on CQLWrapper
-   * @param <T>
-   * @param conn
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param wrapper
-   * @param returnCount
-   * @param returnIdField
-   * @param facets
-   * @param distinctOn
-   * @param replyHandler
-   */
-  private <T> void doGet(
-    AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
-    String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField,
-    List<FacetField> facets, String distinctOn, Handler<AsyncResult<Results<T>>> replyHandler
-  ) {
-
-    if (conn.failed()) {
-      log.error(conn.cause().getMessage(), conn.cause());
-      replyHandler.handle(Future.failedFuture(conn.cause()));
-      return;
-    }
-    PgConnection connection = conn.result().conn;
-    try {
-      QueryHelper queryHelper = buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
-      Function<TotaledResults, Results<T>> resultSetMapper = totaledResults ->
-        processResults(totaledResults.set, totaledResults.estimatedTotal, queryHelper.offset, queryHelper.limit, clazz);
-      if (returnCount) {
-        processQueryWithCount(connection, queryHelper, GET_STAT_METHOD, resultSetMapper, replyHandler);
-      } else {
-        processQuery(connection, queryHelper, null, GET_STAT_METHOD, resultSetMapper, replyHandler);
-      }
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
     }
   }
 
@@ -1878,6 +1837,28 @@ public class PostgresClient {
     getSQLConnection(0, conn ->
         streamGet(conn, table, clazz, fieldName, filter, returnIdField,
             distinctOn, facets, closeAtEnd(conn, replyHandler)));
+  }
+
+  /**
+   * Stream GET with CQLWrapper and facets {@link org.folio.rest.persist.PostgresClientStreamResult}
+   * @param <T>
+   * @param table
+   * @param clazz
+   * @param fieldName
+   * @param filter
+   * @param returnIdField must be true if facets are in passed
+   * @param distinctOn may be null
+   * @param facets for no facets: null or Collections.emptyList()
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
+   */
+  @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
+  public <T> Future<PostgresClientStreamResult<T>> streamGet(String table, Class<T> clazz, String fieldName,
+      CQLWrapper filter, boolean returnIdField, String distinctOn,
+      List<FacetField> facets, int queryTimeout) {
+
+    return Future.future(promise -> streamGet(table, clazz, fieldName, filter, returnIdField,
+            distinctOn, facets, queryTimeout, promise));
   }
 
   /**
@@ -2045,6 +2026,7 @@ public class PostgresClient {
           collectExternalColumnSetters(columnNames,
               resultsHelper.clazz, isAuditFlavored, externalColumnSetters);
         }
+        @SuppressWarnings("unchecked")
         T objRow = (T) deserializeRow(resultsHelper, externalColumnSetters, isAuditFlavored, r);
         if (!resultsHelper.facet) {
           resultCount.incrementAndGet();
@@ -2158,33 +2140,20 @@ public class PostgresClient {
     return queryHelper;
   }
 
-  <T> void processQueryWithCount(
-    PgConnection connection, QueryHelper queryHelper, String statMethod,
-    Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
-    long start = System.nanoTime();
+  <T> Future<T> processQueryWithCount(
+      PgConnection connection, QueryHelper queryHelper, String statMethod,
+      Function<TotaledResults, T> resultSetMapper) {
+    long start = log.isDebugEnabled() ? System.nanoTime() : 0;
 
     log.debug("Attempting count query: " + queryHelper.countQuery);
-    connection.query(queryHelper.countQuery).execute(countQueryResult -> {
-      try {
-        if (countQueryResult.failed()) {
-          log.error("query with count: " + countQueryResult.cause().getMessage()
-            + " - " + queryHelper.countQuery, countQueryResult.cause());
-          replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
-          return;
-        }
-
-        int estimatedTotal = countQueryResult.result().iterator().next().getInteger(0);
-
-        long countQueryTime = (System.nanoTime() - start);
-        log.debug("timer: get " + queryHelper.countQuery + " (ns) " + countQueryTime);
-
-        processQuery(connection, queryHelper, estimatedTotal, statMethod, resultSetMapper, replyHandler);
-      } catch (Exception e) {
-        log.error(e.getMessage(), e);
-        replyHandler.handle(Future.failedFuture(e));
-      }
-    });
-}
+    return connection.query(queryHelper.countQuery).execute()
+    .compose(countQueryResult -> {
+      log.debug(() -> "timer: get " + queryHelper.countQuery + " " + (System.nanoTime() - start) + " ns");
+      int estimatedTotal = countQueryResult.iterator().next().getInteger(0);
+      return Future.<T>future(promise -> processQuery(connection, queryHelper, estimatedTotal, statMethod, resultSetMapper, promise));
+    })
+    .onFailure(e -> log.error("query with count: {} - {}", e.getMessage(), queryHelper.countQuery, e));
+  }
 
   <T> void processQuery(
     PgConnection connection, QueryHelper queryHelper, Integer estimatedTotal, String statMethod,
@@ -2246,6 +2215,21 @@ public class PostgresClient {
     get(table, entity, fields, returnCount, returnIdField, -1, -1, replyHandler);
   }
 
+  /**
+   * pass in an entity that is fully / partially populated and the query will return all records matching the
+   * populated fields in the entity - note that this queries the jsonb object, so should not be used to query external
+   * fields
+   *
+   * @param <T>  type of the query entity and the result entity
+   * @param table  database table to query
+   * @param entity  contains the fields to use for filtering
+   * @param fields  the table columns to return, for example {@link #DEFAULT_JSONB_FIELD_NAME}
+   * @param returnCount  if totalRecords should be calculated
+   * @param returnIdField  if the id field should also be returned
+   * @param offset  number of records to skip, use -1 for no SQL {@code OFFSET}
+   * @param limit  number of records to return, use -1 for no SQL {@code LIMIT}
+   * @param replyHandler returns {@link Results} with the entities found
+   */
   public <T> void get(String table, T entity, String[] fields, boolean returnCount,
     boolean returnIdField, int offset, int limit,
     Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2258,9 +2242,37 @@ public class PostgresClient {
       criterion.setLimit(new Limit(limit));
     }
     String fieldsStr = Arrays.toString(fields);
+    @SuppressWarnings("unchecked")
     Class<T> clazz = (Class<T>) entity.getClass();
     get(null, table, clazz, fieldsStr.substring(1, fieldsStr.length() - 1),
       criterion, returnCount, returnIdField, null, replyHandler);
+  }
+
+  /**
+   * Returns records selected by {@link Criterion} filter.
+   *
+   * <p>Doesn't calculate totalRecords, the number of matching records when disabling OFFSET and LIMIT.
+   *
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to select
+   * @return {@link Results} with the entities found
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter) {
+    return withConn(conn -> conn.get(table, clazz, filter));
+  }
+
+  /**
+   * Returns records selected by {@link Criterion} filter.
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to select
+   * @param returnCount - whether to return totalRecords, the number of matching records
+   *         when disabling OFFSET and LIMIT
+   * @return {@link Results} with the entities found
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter, boolean returnCount) {
+    return withConn(conn -> conn.get(table, clazz, filter, returnCount));
   }
 
   /**
@@ -2270,11 +2282,10 @@ public class PostgresClient {
    * @param filter - see Criterion class
    * @param returnCount - whether to return the amount of records matching the query
    * @param replyHandler
-   * @throws Exception
    */
   public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, filter, returnCount, false /*setId*/, replyHandler);
+    get(table, clazz, filter, returnCount).onComplete(replyHandler);
   }
 
   /**
@@ -2284,6 +2295,23 @@ public class PostgresClient {
       boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, fields, filter, returnCount, setId, null /*facets*/, replyHandler);
+  }
+
+  /**
+   * Return records that match the {@link CQLWrapper} filter.
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to match
+   * @param returnCount - whether to calculate totalRecords
+   *            (the number of records that match when disabling offset and limit)
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   * @param factes - fields to calculate counts for
+   * @return {@link Results} with the entities found
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
+    boolean returnCount, boolean setId, List<FacetField> facets) {
+
+    return Future.future(promise -> get(table, clazz, fields, filter, returnCount, setId, facets, promise));
   }
 
   /**
@@ -2311,9 +2339,9 @@ public class PostgresClient {
     boolean returnCount, boolean returnIdField, List<FacetField> facets, String distinctOn,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    getSQLConnection(conn
-      -> doGet(conn, table, clazz, fieldName, filter, returnCount, returnIdField, facets, distinctOn,
-        closeAndHandleResult(conn, replyHandler)));
+    withConn(conn
+      -> conn.get(table, clazz, fieldName, filter, returnCount, returnIdField, facets, distinctOn))
+    .onComplete(replyHandler);
   }
 
   /**
@@ -2362,11 +2390,48 @@ public class PostgresClient {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, where, returnCount, setId, replyHandler);
   }
 
+  /**
+   * Return records that match the {@link CQLWrapper} filter.
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param fields - the fields to return, for example {@link #DEFAULT_JSONB_FIELD_NAME}
+   * @param filter - which records to match
+   * @param returnCount - whether to calculate totalRecords
+   *            (the number of records that match when disabling offset and limit)
+   * @return {@link Results} with the entities found
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
+      boolean returnCount) {
+    return Future.future(promise -> get(table, clazz, fields, filter, returnCount, promise));
+  }
+
   public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
       boolean returnCount, Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, fields, filter, returnCount, false /* setId */, replyHandler);
   }
 
+  /**
+   * Return records that match the {@link CQLWrapper} filter.
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to match
+   * @param returnCount - whether to calculate totalRecords
+   *            (the number of records that match when disabling offset and limit)
+   * @return {@link Results} with the entities found
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount) {
+    return withConn(conn -> conn.get(table, clazz, filter, returnCount));
+  }
+
+  /**
+   * Return records that match the {@link CQLWrapper} filter.
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to match
+   * @param returnCount - whether to calculate totalRecords
+   *            (the number of records that match when disabling offset and limit)
+   * @param replyHandler - returns {@link Results} with the entities found
+   */
   /* PGUTIL USED VERSION */
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount,
       Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2381,6 +2446,21 @@ public class PostgresClient {
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
     get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, filter, returnCount, setId, replyHandler);
+  }
+
+  /**
+   * Return records that match the {@link CQLWrapper} filter.
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to match
+   * @param returnCount - whether to calculate totalRecords
+   *            (the number of records that match when disabling offset and limit)
+   * @param factes - fields to calculate counts for
+   * @return {@link Results} with the entities found
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, CQLWrapper filter,
+      boolean returnCount, List<FacetField> facets) {
+    return Future.future(promise -> get(table, clazz, filter, returnCount, facets, promise));
   }
 
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter,
@@ -2405,16 +2485,39 @@ public class PostgresClient {
    */
   public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, filter, returnCount, setId, null, replyHandler);
+
+    withConn(conn -> conn.get(table, clazz, filter, returnCount))
+    .onComplete(replyHandler);
   }
 
   /**
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    */
-  public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz, Criterion filter,
+  public <T> void get(AsyncResult<SQLConnection> sqlConnection, String table, Class<T> clazz, Criterion filter,
     boolean returnCount, boolean setId,
       Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(conn, table, clazz, filter, returnCount, setId, null, replyHandler);
+
+    if (sqlConnection == null) {
+      get(table, clazz, filter, returnCount, replyHandler);
+      return;
+    }
+
+    withConn(sqlConnection, conn -> conn.get(table, clazz, filter, returnCount))
+    .onComplete(replyHandler);
+  }
+
+  /**
+   * Returns records selected by {@link Criterion} filter
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - see Criterion class
+   * @param returnCount - whether to return the amount of records matching the query
+   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
+   * @param factes - fields to calculate counts for
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
+      List<FacetField> facets) {
+    return Future.future(promise -> get(null, table, clazz, filter, returnCount, setId, facets, promise));
   }
 
   /**
@@ -2424,8 +2527,7 @@ public class PostgresClient {
    * @param filter - see Criterion class
    * @param returnCount - whether to return the amount of records matching the query
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param replyHandler
-   * @throws Exception
+   * @param facets - fields to calculate counts for
    */
   public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
       List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2437,26 +2539,33 @@ public class PostgresClient {
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    */
   @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
-  public <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
+  public <T> void get(AsyncResult<SQLConnection> sqlConnection, String table, Class<T> clazz,
     Criterion filter, boolean returnCount, boolean setId,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    get(conn, table, clazz, DEFAULT_JSONB_FIELD_NAME, filter, returnCount,
-      false, facets, replyHandler);
+    if (sqlConnection == null) {
+      withConn(conn -> conn.get(table, clazz, filter, returnCount, facets))
+      .onComplete(replyHandler);
+      return;
+    }
+
+    withConn(sqlConnection, conn -> conn.get(table, clazz, filter, returnCount, facets))
+    .onComplete(replyHandler);
   }
 
   @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
-  <T> void get(AsyncResult<SQLConnection> conn, String table, Class<T> clazz,
+  <T> void get(AsyncResult<SQLConnection> sqlConnection, String table, Class<T> clazz,
     String fieldName, Criterion filter, boolean returnCount, boolean returnIdField,
     List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
 
     CQLWrapper cqlWrapper = new CQLWrapper(filter);
-    if (conn == null) {
+    if (sqlConnection == null) {
       get(table, clazz, fieldName, cqlWrapper, returnCount,
         returnIdField, facets, null, replyHandler);
     } else {
-      doGet(conn, table, clazz, fieldName, cqlWrapper, returnCount,
-        returnIdField, facets, null, replyHandler);
+      withConn(sqlConnection, conn -> conn.get(table, clazz, fieldName, cqlWrapper, returnCount,
+        returnIdField, facets, null))
+      .onComplete(replyHandler);
     }
   }
 
