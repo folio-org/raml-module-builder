@@ -468,10 +468,6 @@ public class PostgresClient {
     if (database != null) {
       pgConnectOptions.setDatabase(database);
     }
-    Integer connectionReleaseDelay = sqlConfig.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
-    // TODO: enable when available in vertx-sql-client/vertx-pg-client
-    // https://issues.folio.org/browse/RMB-657
-    // pgConnectOptions.setConnectionReleaseDelay(connectionReleaseDelay);
     return pgConnectOptions;
   }
 
@@ -500,6 +496,8 @@ public class PostgresClient {
 
     PoolOptions poolOptions = new PoolOptions();
     poolOptions.setMaxSize(configuration.getInteger(MAX_POOL_SIZE, 4));
+    Integer connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
+    poolOptions.setConnectionReleaseDelay(connectionReleaseDelay);
 
     return PgPool.pool(vertx, connectOptions, poolOptions);
   }
