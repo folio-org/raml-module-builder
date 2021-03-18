@@ -57,6 +57,7 @@ import io.vertx.sqlclient.impl.RowDesc;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Facet;
@@ -79,6 +80,7 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -1833,7 +1835,33 @@ public class PostgresClientIT {
     PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
     Criterion criterion = new Criterion();
     criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setVal("x"));
+    postgresClient.get(FOO, StringPojo.class, criterion)
+    .onComplete(context.asyncAssertSuccess(res -> {
+      assertThat(res.getResults().size(), is(1));
+      assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
+    }));
+  }
+
+  @Test
+  public void getByCriterion2(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    Criterion criterion = new Criterion();
+    criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setVal("x"));
     postgresClient.get(FOO, StringPojo.class, criterion, false, context.asyncAssertSuccess(res -> {
+      assertThat(res.getResults().size(), is(1));
+      assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
+    }));
+  }
+
+  @Test
+  public void getByCriterionFacets(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    Criterion criterion = new Criterion();
+    criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setVal("x"));
+    postgresClient.get(FOO, StringPojo.class, criterion, false, false, (List<FacetField>)null)
+    .onComplete(context.asyncAssertSuccess(res -> {
       assertThat(res.getResults().size(), is(1));
       assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
     }));
@@ -1846,6 +1874,18 @@ public class PostgresClientIT {
     Criterion criterion = new Criterion();
     criterion.addCriterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setVal(ids.getString(0)));
     postgresClient.get(FOO, StringPojo.class, criterion, false, context.asyncAssertSuccess(res -> {
+      assertThat(res.getResults().size(), is(1));
+      assertThat(res.getResults().get(0).key, is("x"));
+    }));
+  }
+
+  // broken since this RMB-497 commit:
+  // https://github.com/folio-org/raml-module-builder/commit/51a67d3b81b372096c11ddcc8e7b0af6db48c744
+  @Ignore("broken since RMB-497, see RMB-817")
+  @Test
+  public void getByExamplePojo(TestContext context) {
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(randomUuid()));
+    postgresClient.get(FOO, new StringPojo("x"), false, context.asyncAssertSuccess(res -> {
       assertThat(res.getResults().size(), is(1));
       assertThat(res.getResults().get(0).key, is("x"));
     }));
@@ -3698,6 +3738,51 @@ public class PostgresClientIT {
     async2.awaitSuccess();
   }
 
+  private void assertCQLWrapper(TestContext context, Function<CQLWrapper,Future<Results<StringPojo>>> function) {
+    try {
+      JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+      insertXAndSingleQuotePojo(context, ids);
+      CQLWrapper cqlWrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "key = x");
+      function.apply(cqlWrapper)
+      .onComplete(context.asyncAssertSuccess(res -> {
+        assertThat(res.getResults().size(), is(1));
+        assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
+      }));
+    } catch (FieldException e) {
+      context.fail(e);
+    }
+  }
+
+  @Test
+  public void getCQLWrapper(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.get(FOO, StringPojo.class, new String [] { "jsonb" }, cqlWrapper, false, false, (List<FacetField>)null));
+  }
+
+  @Test
+  public void getCQLWrapper2(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.get(FOO, StringPojo.class, new String [] { "jsonb" }, cqlWrapper, false));
+  }
+
+  @Test
+  public void getCQLWrapper3(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.get(FOO, StringPojo.class, cqlWrapper, false, (List<FacetField>)null));
+  }
+
+  @Test
+  public void getCQLWrapper4(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.get(FOO, StringPojo.class, cqlWrapper, false));
+  }
+
+  @Test
+  public void getCQLWrapper5(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.withConn(conn -> conn.get(FOO, StringPojo.class, cqlWrapper)));
+  }
+
   @Test
   public void getCQLWrapperFailure(TestContext context) throws IOException, FieldException {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
@@ -3986,8 +4071,8 @@ public class PostgresClientIT {
         });
         return null;
       };
-      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", resultSetMapper,
-          context.asyncAssertSuccess());
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", resultSetMapper)
+      .onComplete(context.asyncAssertSuccess());
     }));
   }
 
@@ -3998,10 +4083,10 @@ public class PostgresClientIT {
       QueryHelper queryHelper = new QueryHelper("table");
       queryHelper.selectQuery = "'";
       queryHelper.countQuery = "'";
-      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", null,
-          context.asyncAssertFailure(fail -> {
-            assertThat(fail.getMessage(), containsString("unterminated quoted string"));
-          }));
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", null)
+      .onComplete(context.asyncAssertFailure(fail -> {
+        assertThat(fail.getMessage(), containsString("unterminated quoted string"));
+      }));
     }));
   }
 

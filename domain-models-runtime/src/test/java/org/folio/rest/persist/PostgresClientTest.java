@@ -421,14 +421,7 @@ public class PostgresClientTest {
       totaledResults -> {
         assertThat(totaledResults.estimatedTotal, is(total));
         return testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class);
-      },
-      reply -> {
-        List<TestPojo> results = reply.result().getResults();
-
-        assertTestPojoResults(results, total);
-      }
-    );
-
+      }).onSuccess(reply -> assertTestPojoResults(reply.getResults(), total));
   }
 
   @Test

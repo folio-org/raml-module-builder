@@ -15,14 +15,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.PostgresClient.FunctionWithException;
+import org.folio.rest.persist.PostgresClient.QueryHelper;
+import org.folio.rest.persist.PostgresClient.TotaledResults;
 import org.folio.rest.persist.cql.CQLWrapper;
+import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
+import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.tools.utils.MetadataUtil;
 
 /**
@@ -692,6 +697,122 @@ public class Conn {
       log.error(e.getMessage(), e);
       return Future.failedFuture(e);
     }
+  }
+
+  /**
+   * Return records selected by {@link CQLWrapper} filter.
+   *
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param fieldName - database column to return, for example  @link {@link PostgresClient#DEFAULT_JSONB_FIELD_NAME}
+   * @param wrapper - filter to select records
+   * @param returnCount - whether to return totalRecords, the number of matching records when disabling OFFSET and LIMIT
+   * @param returnIdField - if the id field should also be returned, must be true for facets
+   * @param factes - fields to calculate counts for
+   * @param distinctOn - database column to calculate the number of distinct values for, null or empty string for none
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz,
+      String fieldName, CQLWrapper wrapper, boolean returnCount, boolean returnIdField,
+      List<FacetField> facets, String distinctOn) {
+
+    try {
+      QueryHelper queryHelper = postgresClient.buildQueryHelper(table, fieldName, wrapper, returnIdField, facets, distinctOn);
+      Function<TotaledResults, Results<T>> resultSetMapper = totaledResults ->
+      postgresClient.processResults(totaledResults.set, totaledResults.estimatedTotal, queryHelper.offset, queryHelper.limit, clazz);
+      if (returnCount) {
+        return postgresClient.processQueryWithCount(pgConnection, queryHelper, "get", resultSetMapper);
+      } else {
+        return Future.future(promise -> postgresClient.processQuery(pgConnection, queryHelper, null, "get", resultSetMapper, promise));
+      }
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Returns records selected by {@link Criterion} filter
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param fieldName - database column to return, for example  @link {@link PostgresClient#DEFAULT_JSONB_FIELD_NAME}
+   * @param filter - records to select
+   * @param returnCount - whether to return totalRecords, the number of matching records
+   *         when disabling OFFSET and LIMIT
+   * @param factes - fields to calculate counts for
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, String fieldName, Criterion filter,
+      boolean returnCount, List<FacetField> facets) {
+
+    CQLWrapper cqlWrapper = new CQLWrapper(filter);
+    return get(table, clazz, fieldName, cqlWrapper, returnCount, true, facets, null);
+  }
+
+  /**
+   * Returns records selected by {@link Criterion} filter
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - records to select
+   * @param returnCount - whether to return totalRecords, the number of matching records
+   *         when disabling OFFSET and LIMIT
+   * @param factes - fields to calculate counts for
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter,
+      boolean returnCount, List<FacetField> facets) {
+
+    return get(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, filter, returnCount, facets);
+  }
+
+  /**
+   * Returns records selected by {@link Criterion} filter.
+   *
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to select
+   * @param returnCount - whether to return totalRecords, the number of matching records when disabling OFFSET and LIMIT
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter, boolean returnCount) {
+    return get(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, new CQLWrapper(filter),
+        returnCount, false, null, null);
+  }
+
+  /**
+   * Returns records selected by {@link Criterion} filter.
+   *
+   * <p>Doesn't calculate totalRecords, the number of matching records when disabling OFFSET and LIMIT.
+   *
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to select
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter) {
+    return get(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, new CQLWrapper(filter),
+        false, false, null, null);
+  }
+
+  /**
+   * Returns records selected by {@link CQLWrapper} filter.
+   *
+   * <p>Doesn't calculate totalRecords, the number of matching records when disabling OFFSET and LIMIT.
+   *
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to select
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, CQLWrapper filter) {
+    return get(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, filter, false, false, null, null);
+  }
+
+  /**
+   * Returns records selected by {@link CQLWrapper} filter.
+   *
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param filter - which records to select
+   * @param returnCount - whether to return totalRecords, the number of matching records
+   *         when disabling OFFSET and LIMIT
+   */
+  public <T> Future<Results<T>> get(String table, Class<T> clazz, CQLWrapper filter, boolean returnCount) {
+    return get(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, filter, returnCount, false, null, null);
   }
 
 }
