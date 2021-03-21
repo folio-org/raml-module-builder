@@ -21,10 +21,34 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 33.0
 
-* [RMB-785](https://issues.folio.org/browse/RMB-785) domain-models-maven-plugin:
-  In pom.xml replace the exec-maven-plugin sections that call
-  `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>` or
-  `<mainClass>org.folio.rest.tools.ClientGenerator</mainClass>` by
+#### [RMB-789](https://issues.folio.org/browse/RMB-789) Remove support of Embedded PostgreSQL Server
+
+Removed support for embedded Postgres for testing. Testing is now with
+[Testcontainers](https://testcontainers.org/).
+
+The following calls have been removed:
+
+  * `PostgresClient.setIsEmbedded`
+  * `PostgresClient.setEmbeddedPort`
+  * `PostgresClient.getEmbeddedPort`
+
+Enable testing with postgres by calling
+`PostgresClient.setPostgresTester(new PostgresTesterContainer())`
+before any calls to PostgresClient or the Verticle. It is also
+possible to provide own by implemeting the `PostgresTester` interface.
+
+Stopping the Postgres for testing is still done with
+`PostgresClient.stopEmbeddedPostgres` (although the name is kind of
+misleading).
+
+The following command-line options are no longer supported:
+`db_connection=` and `embedpostgres_true`.
+
+#### [RMB-785](https://issues.folio.org/browse/RMB-785) domain-models-maven-plugin
+
+In pom.xml replace the exec-maven-plugin sections that call
+`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>` or
+`<mainClass>org.folio.rest.tools.ClientGenerator</mainClass>` by
 
 ```xml
       <plugin>

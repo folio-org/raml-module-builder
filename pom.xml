@@ -30,7 +30,6 @@
     <aspectj.version>1.9.6</aspectj.version>
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
     <maven.version>3.6.3</maven.version>
-    <postgresql-embedded-version>2.10</postgresql-embedded-version>
     <vertx.version>4.0.2</vertx.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping

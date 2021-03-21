@@ -270,21 +270,6 @@ public class RestVerticle extends AbstractVerticle {
             LogUtil.updateLogConfiguration(debugPackage, "FINE");
           }
         }
-        else if (param.startsWith("db_connection=")) {
-          String dbconnection = param.split("=")[1];
-          PostgresClient.setConfigFilePath(dbconnection);
-          PostgresClient.setIsEmbedded(false);
-          log.info("Setting path to db config file....  " + dbconnection);
-        }
-        else if (param.startsWith("embed_postgres=true")) {
-          // allow setting config() from unit test mode which runs embedded
-
-          log.info("Using embedded postgres... starting... ");
-
-          // this blocks
-          PostgresClient.setIsEmbedded(true);
-          PostgresClient.setConfigFilePath(null);
-        }
         else{
           //assume module specific cmd line args with '=' separator
           String []arg = param.split("=");

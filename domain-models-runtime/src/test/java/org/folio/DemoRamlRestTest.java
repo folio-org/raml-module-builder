@@ -16,6 +16,7 @@ import java.util.Date;
 import java.util.Locale;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
 import org.folio.rest.client.TenantClient;
@@ -82,6 +83,7 @@ public class DemoRamlRestTest {
     Locale.setDefault(Locale.US); // only needed for embedded postgres
 
     // do not use PostgresClient.setPostgresTester here so we check that PostgresTesterEmbedded is working
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
 
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
