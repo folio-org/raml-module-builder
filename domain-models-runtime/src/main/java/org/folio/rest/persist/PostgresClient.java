@@ -112,8 +112,6 @@ public class PostgresClient {
   private static final String    COMMA = ",";
   private static final String    SEMI_COLON = ";";
 
-
-  private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
@@ -197,7 +195,6 @@ public class PostgresClient {
 
   public static void setPostgresTester(PostgresTester tester) {
     stopEmbeddedPostgres();
-    embeddedMode = true;
     postgresTester = tester;
   }
 
@@ -208,7 +205,7 @@ public class PostgresClient {
    * @return true for using embedded specific defaults
    */
   public static boolean isEmbedded(){
-    return embeddedMode;
+    return postgresTester != null;
   }
 
   /**
@@ -4034,7 +4031,6 @@ public class PostgresClient {
     if (postgresTester != null) {
       log.info("Stopping postgres tester");
       closeAllClients();
-      embeddedMode = false;
       postgresTester.close();
       postgresTester = null;
     }
