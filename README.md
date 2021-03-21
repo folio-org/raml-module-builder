@@ -259,21 +259,6 @@ we will get your local development server running and populated with test data.
 Or use `org.folio.rest.*` for all classes within a specific package,
 or `org.folio.rest.RestVerticle` for a specific class.
 
-- `embed_postgres=true` Optional -- enforces starting an embedded postgreSQL
-
-- `db_connection=[path]` Optional -- path to a JSON config file with
-  connection parameters to a PostgreSQL DB
-
-  - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
-    "username":"postgres","password":"mysecretpassword", "database":"postgres",
-    "charset":"windows-1252", "queryTimeout" : 10000}`
-
-  - path defaults to /postgres-conf.json
-
-  - tries to read a file at the path if the path is absolute
-
-  - if file not found or path is relative tries to read a class path resource with that path
-
 - Other module-specific arguments can be passed via the command line in the format key=value. These will be accessible to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
 
 - Optional JVM arguments can be passed before the `-jar` argument, e.g.
@@ -741,12 +726,6 @@ The PostgreSQL connection parameters locations are searched in this order:
 - org.folio.rest.tools.utils.Envs.setEnv, useful for https://www.testcontainers.org/modules/databases/postgres/
 - [DB_* environment variables](#environment-variables)
 - Configuration file, defaults to `resources/postgres-conf.json` but can be set via [command-line options](#command-line-options)
-- Embedded PostgreSQL using [default credentials](#credentials)
-
-By default an embedded PostgreSQL is included in the runtime, but it is only run if neither Envs nor DB_* environment variables
-nor a postgres configuration file are present. To start an embedded PostgreSQL using connection parameters from the
-Envs or environment variables or the configuration file add `embed_postgres=true` to the command line
-(`java -jar mod-notify-fat.jar embed_postgres=true`). Use PostgresClient.setEmbeddedPort(int) to overwrite the port.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
 operations in an ORM type fashion.
@@ -758,12 +737,6 @@ regular PostgreSQL tables but will need to implement their own data access
 layer.
 
 **Important Note:** For performance reasons the Postgres client will return accurate counts for result sets with less than 50,000 results. Queries with over 50,000 results will return an estimated count.
-
-**Important Note:** The embedded Postgres can not run as root.
-
-**Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
-
-**Important Note:** Currently we only support Postgres version 10. We cannot use version 11 because of reduced platform support of postgresql-embedded ([postgresql-embedded supported versions](https://github.com/yandex-qatools/postgresql-embedded/commit/15685611972bacd8ba61dd7f11d4dbdcb3ba8dc1), [PostgreSQL Database Download](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)).
 
 The PostgresClient expects tables in the following format:
 
@@ -785,17 +758,6 @@ JsonArray jsonArray = new JsonArray().add(data);
 client.upsert(TABLE_NAME, id, jsonArray, false, replyHandler -> {
 .....
 });
-```
-### Credentials
-
-When running in embedded mode, credentials are read from `resources/postgres-conf.json`. If a file is not found, then the following configuration will be used by default:
-
-```
-port: 6000
-host: 127.0.0.1
-username: username
-password: password
-database: postgres
 ```
 
 ### Securing DB Configuration file
