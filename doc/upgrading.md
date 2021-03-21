@@ -35,7 +35,7 @@ The following calls have been removed:
 Enable testing with postgres by calling
 `PostgresClient.setPostgresTester(new PostgresTesterContainer())`
 before any calls to PostgresClient or the Verticle. It is also
-possible to provide own by implemeting the `PostgresTester` interface.
+possible to provide your own by implemeting the `PostgresTester` interface.
 
 Stopping the Postgres for testing is still done with
 `PostgresClient.stopEmbeddedPostgres` (although the name is kind of
