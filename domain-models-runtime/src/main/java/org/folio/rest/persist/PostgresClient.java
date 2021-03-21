@@ -85,7 +85,6 @@ public class PostgresClient {
   /** default release delay in milliseconds; after this time an idle database connection is closed */
   private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
-  private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
   private static PostgresTester postgresTester;
 

@@ -73,7 +73,6 @@ public class PostgresClientTest {
 
   @Test
   public void configDefault() throws Exception {
-    assertThat("Port 6000 must be free for embedded postgres", NetworkUtils.isLocalPortFree(6000), is(true));
     PostgresClient.setConfigFilePath("nonexisting");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", null, empty);
     assertThat("embedded postgres", PostgresClient.isEmbedded(), is(false));
