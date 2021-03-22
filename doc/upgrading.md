@@ -44,6 +44,8 @@ misleading).
 The following command-line options are no longer supported:
 `db_connection=` and `embedpostgres_true`.
 
+Remove `<groupId>ru.yandex.qatools.embed</groupId>`
+`<artifactId>postgresql-embedded</artifactId>` from pom.xml.
 #### [RMB-785](https://issues.folio.org/browse/RMB-785) domain-models-maven-plugin
 
 In pom.xml replace the exec-maven-plugin sections that call
