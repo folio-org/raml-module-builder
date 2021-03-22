@@ -270,6 +270,11 @@ public class RestVerticle extends AbstractVerticle {
             LogUtil.updateLogConfiguration(debugPackage, "FINE");
           }
         }
+        else if (param.startsWith("db_connection=")) {
+          String dbconnection = param.split("=")[1];
+          PostgresClient.setConfigFilePath(dbconnection);
+          log.info("Setting path to db config file....  " + dbconnection);
+        }
         else{
           //assume module specific cmd line args with '=' separator
           String []arg = param.split("=");

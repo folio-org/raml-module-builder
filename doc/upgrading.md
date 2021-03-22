@@ -41,8 +41,7 @@ Stopping the Postgres for testing is still done with
 `PostgresClient.stopEmbeddedPostgres` (although the name is kind of
 misleading).
 
-The following command-line options are no longer supported:
-`db_connection=` and `embedpostgres_true`.
+Command-line option `embed_postgres=true` is no longer supported.
 
 Remove `<groupId>ru.yandex.qatools.embed</groupId>`
 `<artifactId>postgresql-embedded</artifactId>` from pom.xml.

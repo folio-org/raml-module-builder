@@ -37,7 +37,6 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Implementing uploads](#implementing-uploads)
 * [Implement chunked bulk download](#implement-chunked-bulk-download)
 * [PostgreSQL integration](#postgresql-integration)
-    * [Credentials](#credentials)
     * [Securing DB Configuration file](#securing-db-configuration-file)
     * [Foreign keys constraint](#foreign-keys-constraint)
 * [CQL (Contextual Query Language)](#cql-contextual-query-language)
@@ -258,6 +257,19 @@ we will get your local development server running and populated with test data.
 - `-Ddebug_log_package=*` Optional -- Set log level to debug for all packages.
 Or use `org.folio.rest.*` for all classes within a specific package,
 or `org.folio.rest.RestVerticle` for a specific class.
+
+- `db_connection=[path]` Optional -- path to a JSON config file with
+  connection parameters to a PostgreSQL DB
+
+  - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
+    "username":"postgres","password":"mysecretpassword", "database":"postgres",
+    "charset":"windows-1252", "queryTimeout" : 10000}`
+
+  - path defaults to /postgres-conf.json
+
+  - tries to read a file at the path if the path is absolute
+
+  - if file not found or path is relative tries to read a class path resource with that path
 
 - Other module-specific arguments can be passed via the command line in the format key=value. These will be accessible to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
 
