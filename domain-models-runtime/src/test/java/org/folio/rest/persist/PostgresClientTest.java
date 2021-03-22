@@ -53,7 +53,6 @@ public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
 
   private String oldConfigFilePath;
-  private boolean oldIsEmbedded;
   /** empty = no environment variables */
   private JsonObject empty = new JsonObject();
 
@@ -65,22 +64,18 @@ public class PostgresClientTest {
   public void initConfig() {
     oldConfigFilePath = PostgresClient.getConfigFilePath();
     PostgresClient.setConfigFilePath(null);
-    oldIsEmbedded = PostgresClient.isEmbedded();
-    PostgresClient.setIsEmbedded(false);
   }
 
   @After
   public void restoreConfig() {
     PostgresClient.setConfigFilePath(oldConfigFilePath);
-    PostgresClient.setIsEmbedded(oldIsEmbedded);
   }
 
   @Test
   public void configDefault() throws Exception {
-    assertThat("Port 6000 must be free for embedded postgres", NetworkUtils.isLocalPortFree(6000), is(true));
     PostgresClient.setConfigFilePath("nonexisting");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", null, empty);
-    assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
+    assertThat("embedded postgres", PostgresClient.isEmbedded(), is(false));
     assertThat(config.containsKey("host"), is(false));
     assertThat(config.containsKey("port"), is(false));
     assertThat(config.getString("username"), is("username"));
@@ -91,7 +86,7 @@ public class PostgresClientTest {
     int port = NetworkUtils.nextFreePort();
     PostgresClient.setConfigFilePath("nonexisting");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "barschema", empty);
-    assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
+    assertThat("embedded postgres", PostgresClient.isEmbedded(), is(false));
     assertThat(config.getString("username"), is("barschema"));
   }
 

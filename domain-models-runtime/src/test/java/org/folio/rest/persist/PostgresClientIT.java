@@ -125,7 +125,7 @@ public class PostgresClientIT {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    PostgresClient.stopEmbeddedPostgres();
+    PostgresClient.stopPostgresTester();
     PostgresClient.setExplainQueryThreshold(PostgresClient.EXPLAIN_QUERY_THRESHOLD_DEFAULT);
     if (vertx != null) {
       vertx.close(context.asyncAssertSuccess());

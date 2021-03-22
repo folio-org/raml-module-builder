@@ -4,18 +4,14 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import io.restassured.path.json.JsonPath;
-import io.restassured.response.Response;
-import io.restassured.response.ResponseBodyExtractionOptions;
 import io.vertx.core.AsyncResult;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
-import java.io.IOException;
 import java.util.Date;
-import java.util.Locale;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
 import org.folio.rest.client.TenantClient;
@@ -65,7 +61,6 @@ public class DemoRamlRestTest {
 
   private static Vertx vertx;
   private static int port;
-  private static Locale oldLocale = Locale.getDefault(); // only needed for embedded postgres
   private static String TENANT = "folio_shared";
   private static RequestSpecification tenant;
   private static TenantClient client;
@@ -77,11 +72,8 @@ public class DemoRamlRestTest {
    * @param context  the test context.
    */
   @BeforeClass
-  public static void setUp(TestContext context) throws IOException {
-    // some tests (withoutParameter, withoutYearParameter) fail under other locales like Locale.GERMANY
-    Locale.setDefault(Locale.US); // only needed for embedded postgres
-
-    // do not use PostgresClient.setPostgresTester here so we check that PostgresTesterEmbedded is working
+  public static void setUp(TestContext context) {
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
 
     vertx = VertxUtils.getVertxWithExceptionHandler();
     port = NetworkUtils.nextFreePort();
@@ -109,15 +101,14 @@ public class DemoRamlRestTest {
   }
 
   /**
-   * Cleanup: Delete temporary file, restore Locale, close the vert.x instance.
+   * Cleanup: Delete temporary file, close the vert.x instance.
    *
    * @param context  the test context
    */
   @AfterClass
   public static void tearDown(TestContext context) {
-    Locale.setDefault(oldLocale);
     TenantInit.purge(client, 60000).onComplete(context.asyncAssertSuccess(x -> {
-      PostgresClient.stopEmbeddedPostgres();
+      PostgresClient.stopPostgresTester();
       vertx.close(context.asyncAssertSuccess());
     }));
   }
