@@ -108,7 +108,7 @@ public class DemoRamlRestTest {
   @AfterClass
   public static void tearDown(TestContext context) {
     TenantInit.purge(client, 60000).onComplete(context.asyncAssertSuccess(x -> {
-      PostgresClient.stopEmbeddedPostgres();
+      PostgresClient.stopPostgresTester();
       vertx.close(context.asyncAssertSuccess());
     }));
   }

@@ -192,7 +192,7 @@ public class PostgresClient {
   }
 
   public static void setPostgresTester(PostgresTester tester) {
-    stopEmbeddedPostgres();
+    stopPostgresTester();
     postgresTester = tester;
   }
 
@@ -415,7 +415,7 @@ public class PostgresClient {
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
 
     if (isEmbedded()) {
-      startEmbeddedPostgres();
+      startPostgresTester();
     }
     logPostgresConfig();
 
@@ -3998,10 +3998,11 @@ public class PostgresClient {
   }
 
   /**
-   * Start an embedded PostgreSQL.
+   * Start a Postgres Tester,
+   * Assumes postgresTester is enabled.
    * Changes HOST and PORT oc configuration
    */
-  public void startEmbeddedPostgres() {
+  public void startPostgresTester() {
     // starting Postgres
     if (!postgresTester.isStarted()) {
       log.info("Starting postgres tester");
@@ -4010,13 +4011,17 @@ public class PostgresClient {
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       postgresTester.start(database, username, password);
-      Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
+      Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopPostgresTester));
     }
     postgreSQLClientConfig.put(PORT, postgresTester.getPort());
     postgreSQLClientConfig.put(HOST, postgresTester.getHost());
   }
 
-  public static void stopEmbeddedPostgres() {
+  /**
+   * Stop Postgres Tester.
+   * Does nothing, if postgresTester is not enabled.
+   */
+  public static void stopPostgresTester() {
     if (postgresTester != null) {
       log.info("Stopping postgres tester");
       closeAllClients();

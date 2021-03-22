@@ -37,9 +37,13 @@ Enable testing with postgres by calling
 before any calls to PostgresClient or the Verticle. It is also
 possible to provide your own by implemeting the `PostgresTester` interface.
 
-Stopping the Postgres for testing is still done with
-`PostgresClient.stopEmbeddedPostgres` (although the name is kind of
-misleading).
+`PostgresClient.stopEmbeddedPostgres` replaced with
+`PostgresClient.stopPostgresTester`.
+
+`PostgresClient.startEmbeddedPostgres` replaced with
+`PostgresClient.startPostgresTester`. It is usually not necessary to
+invoke  this as it is automatically called by PostgresClient when an
+instance is created.
 
 Command-line option `embed_postgres=true` is no longer supported.
 
