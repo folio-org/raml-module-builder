@@ -115,7 +115,6 @@ public class PostgresClient {
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
 
-  private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
       // \\B = a non-word boundary, the first $ must not be part of an identifier (foo$bar$baz)
       Pattern.compile("[^\\n\\r]*?\\B(\\$\\w*\\$).*?\\1[^\\n\\r]*", Pattern.DOTALL);
@@ -3833,15 +3832,6 @@ public class PostgresClient {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
     }
-  }
-
-  /**
-   * @param identifier  the identifier to check
-   * @return if the identifier is a valid Postgres identifier and does not contain
-   *          letters with diacritical marks or non-Latin letters
-   */
-  public static boolean isValidPostgresIdentifier(String identifier) {
-    return POSTGRES_IDENTIFIER.matcher(identifier).matches();
   }
 
   /**
