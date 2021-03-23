@@ -53,7 +53,7 @@ public class ConnIT implements WithAssertions {
 
   @AfterAll
   static void tearDown() {
-    PostgresClient.stopEmbeddedPostgres();
+    PostgresClient.stopPostgresTester();
   }
 
   @BeforeEach

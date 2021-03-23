@@ -53,7 +53,6 @@ import org.folio.rest.persist.facets.FacetManager;
 import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.Envs;
-import org.folio.rest.tools.utils.LogUtil;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
@@ -86,7 +85,6 @@ public class PostgresClient {
   /** default release delay in milliseconds; after this time an idle database connection is closed */
   private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
-  private static final int       EMBEDDED_POSTGRES_PORT   = 6000;
 
   private static PostgresTester postgresTester;
 
@@ -113,21 +111,16 @@ public class PostgresClient {
   private static final String    COMMA = ",";
   private static final String    SEMI_COLON = ";";
 
-
-  private static boolean         embeddedMode             = false;
   private static String          configPath               = null;
 
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
 
-  private static final Pattern POSTGRES_IDENTIFIER = Pattern.compile("^[a-zA-Z_][0-9a-zA-Z_]{0,62}$");
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
       // \\B = a non-word boundary, the first $ must not be part of an identifier (foo$bar$baz)
       Pattern.compile("[^\\n\\r]*?\\B(\\$\\w*\\$).*?\\1[^\\n\\r]*", Pattern.DOTALL);
   private static final Pattern POSTGRES_COPY_FROM_STDIN =
       // \\b = a word boundary
       Pattern.compile("^\\s*COPY\\b.*\\bFROM\\s+STDIN\\b.*", Pattern.CASE_INSENSITIVE);
-
-  private static int embeddedPort            = -1;
 
   /** analyze threshold value in milliseconds */
   private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
@@ -198,70 +191,9 @@ public class PostgresClient {
     }
   }
 
-  /**
-   * Enable or disable using embedded specific defaults for the
-   * PostgreSQL configuration. They are used if there is no
-   * postgres json config file.
-   * <p>
-   * This function must be invoked before calling the constructor.
-   * <p>
-   * The embedded specific defaults are:
-   * <ul>
-   * <li><code>username = "username"</code></li>
-   * <li><code>password = "password"</code></li>
-   * <li><code>host = "127.0.0.1"</code></li>
-   * <li><code>port = 6000</code></li>
-   * <li><code>database = "postgres"</code></li>
-   * </ul>
-   *
-   * @param embed - whether to use embedded specific defaults
-   */
-  public static void setIsEmbedded(boolean embed) {
-    if (embed) {
-      if (postgresTester == null) {
-        postgresTester = new PostgresTesterEmbedded(embeddedPort != -1 ? embeddedPort : EMBEDDED_POSTGRES_PORT);
-      }
-    }
-    embeddedMode = embed;
-  }
-
   public static void setPostgresTester(PostgresTester tester) {
-    stopEmbeddedPostgres();
-    embeddedMode = true;
+    stopPostgresTester();
     postgresTester = tester;
-  }
-
-  /**
-   * Set the port that overwrites to port of the embedded PostgreSQL.
-   * This port overwrites any default port and any port set in the
-   * DB_PORT environment variable or the
-   * PostgreSQL configuration file. It is only used when <code>isEmbedded() == true</code>
-   * when invoking the constructor.
-   * <p>
-   * This function must be invoked before calling the constructor.
-   * <p>
-   * Use -1 to not overwrite the port.
-   *
-   * <p>-1 is the default.
-   *
-   * @param port  the port for embedded PostgreSQL, or -1 to not overwrite the port.
-   * @deprecated will be removed in a future release, use {@link #setPostgresTester(PostgresTester)} and {@link org.folio.postgres.testing.PostgresTesterContainer} instead that picks a free port.
-   *
-   */
-  @Deprecated
-  public static void setEmbeddedPort(int port){
-    embeddedPort = port;
-  }
-
-  /**
-   * @return the port number to use for embedded PostgreSQL, or -1 for not overwriting the
-   *         port number of the configuration.
-   * @see #setEmbeddedPort(int)
-   * @deprecated will be removed in a future release, use {@link #setPostgresTester(PostgresTester)} and {@link org.folio.postgres.testing.PostgresTesterContainer} instead that picks a free port.
-   */
-  @Deprecated
-  public static int getEmbeddedPort() {
-    return embeddedPort;
   }
 
   /**
@@ -269,10 +201,9 @@ public class PostgresClient {
    * PostgreSQL configuration should be used if there is no
    * postgres json config file.
    * @return true for using embedded specific defaults
-   * @see #setIsEmbedded(boolean)
    */
   public static boolean isEmbedded(){
-    return embeddedMode;
+    return postgresTester != null;
   }
 
   /**
@@ -484,7 +415,7 @@ public class PostgresClient {
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
 
     if (isEmbedded()) {
-      startEmbeddedPostgres();
+      startPostgresTester();
     }
     logPostgresConfig();
 
@@ -524,8 +455,7 @@ public class PostgresClient {
       // LoadConfs.loadConfig writes its own log message
     }
     if (config == null) {
-      log.info("No DB configuration found, switching to embedded mode");
-      setIsEmbedded(true);
+      log.info("No DB configuration found, setting username, password and database for testing");
       config = new JsonObject();
       config.put(USERNAME, USERNAME);
       config.put(PASSWORD, PASSWORD);
@@ -3940,15 +3870,6 @@ public class PostgresClient {
   }
 
   /**
-   * @param identifier  the identifier to check
-   * @return if the identifier is a valid Postgres identifier and does not contain
-   *          letters with diacritical marks or non-Latin letters
-   */
-  public static boolean isValidPostgresIdentifier(String identifier) {
-    return POSTGRES_IDENTIFIER.matcher(identifier).matches();
-  }
-
-  /**
    * Split string into lines.
    */
   private static List<String> lines(String string) {
@@ -4112,30 +4033,33 @@ public class PostgresClient {
   }
 
   /**
-   * Start an embedded PostgreSQL.
+   * Start a Postgres Tester,
+   * Assumes postgresTester is enabled.
    * Changes HOST and PORT oc configuration
    */
-  public void startEmbeddedPostgres() throws IOException {
+  public void startPostgresTester() {
     // starting Postgres
-    setIsEmbedded(true);
-
     if (!postgresTester.isStarted()) {
+      log.info("Starting postgres tester");
       String username = postgreSQLClientConfig.getString(USERNAME);
       String password = postgreSQLClientConfig.getString(PASSWORD);
       String database = postgreSQLClientConfig.getString(DATABASE);
 
       postgresTester.start(database, username, password);
-      Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopEmbeddedPostgres));
+      Runtime.getRuntime().addShutdownHook(new Thread(PostgresClient::stopPostgresTester));
     }
     postgreSQLClientConfig.put(PORT, postgresTester.getPort());
     postgreSQLClientConfig.put(HOST, postgresTester.getHost());
   }
 
-  public static void stopEmbeddedPostgres() {
+  /**
+   * Stop Postgres Tester.
+   * Does nothing, if postgresTester is not enabled.
+   */
+  public static void stopPostgresTester() {
     if (postgresTester != null) {
+      log.info("Stopping postgres tester");
       closeAllClients();
-      LogUtil.formatLogMessage(PostgresClient.class.getName(), "stopEmbeddedPostgres", "called stop on embedded postgress ...");
-      embeddedMode = false;
       postgresTester.close();
       postgresTester = null;
     }

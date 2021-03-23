@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +29,6 @@ import org.hamcrest.CoreMatchers;
 import org.junit.*;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
-import de.flapdoodle.embed.process.collections.Collections;
 import freemarker.template.TemplateException;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
@@ -311,7 +311,7 @@ public class TenantAPIIT {
   @Test
   public void postWithSqlFailure(TestContext context) {
     PostgresClient postgresClient = mock(PostgresClient.class);
-    List<String> failureList = Collections.newArrayList("first failure");
+    List<String> failureList = Collections.singletonList("first failure");
     when(postgresClient.runSQLFile(anyString(), anyBoolean())).thenReturn(Future.succeededFuture(failureList));
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
