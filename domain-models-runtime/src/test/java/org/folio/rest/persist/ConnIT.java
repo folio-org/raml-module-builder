@@ -12,15 +12,22 @@ import io.vertx.junit5.VertxTestContext;
 import io.vertx.pgclient.PgConnection;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import org.assertj.core.api.WithAssertions;
+import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.rest.persist.cql.CQLWrapper;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 @ExtendWith(VertxExtension.class)
 @Timeout(value = 10, timeUnit = TimeUnit.SECONDS)
@@ -37,8 +44,10 @@ public class ConnIT implements WithAssertions {
         "GRANT ALL PRIVILEGES ON SCHEMA tenant_raml_module_builder TO tenant_raml_module_builder;\n" +
         "CREATE TABLE tenant_raml_module_builder.t (id UUID PRIMARY KEY , jsonb JSONB NOT NULL);\n" +
         "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA tenant_raml_module_builder TO tenant_raml_module_builder;\n";
-    PostgresClient.getInstance(vertx).execute(sql)
-    .onSuccess(success -> postgresClient = PostgresClient.getInstance(vertx, "tenant"))
+    PostgresClient admin = PostgresClient.getInstance(vertx);
+    admin.execute(sql)
+    .compose(x -> LoadGeneralFunctions.loadFuncs(admin, "tenant_raml_module_builder"))
+    .onSuccess(x -> postgresClient = PostgresClient.getInstance(vertx, "tenant"))
     .onComplete(vtc.succeedingThenComplete());
   }
 
@@ -91,10 +100,22 @@ public class ConnIT implements WithAssertions {
   }
 
   /**
-   * Insert Pojo(Key, id) into table t and run PostgresClient#withTrans(function).
+   * Insert Pojo(id, key) into table t and run PostgresClient#withTrans(function).
    */
   private <T> Future<T> with(String id, String key, Function<Conn, Future<T>> function) {
     return postgresClient.save("t", id, new Pojo(id, key))
+        .compose(x -> postgresClient.withTrans(function));
+  }
+
+  /**
+   * Insert Pojo(id1, key1) and Pojo(id2, key2) into table t and run
+   * PostgresClient#withTrans(function).
+   */
+  private <T> Future<T> with(String id1, String key1, String id2, String key2,
+      Function<Conn, Future<T>> function) {
+
+    return            postgresClient.save("t", id1, new Pojo(id1, key1))
+        .compose(x -> postgresClient.save("t", id2, new Pojo(id2, key2)))
         .compose(x -> postgresClient.withTrans(function));
   }
 
@@ -179,4 +200,47 @@ public class ConnIT implements WithAssertions {
       assertThat(t).hasMessageContainingAll("foo", "does not exist");
     }));
   }
+
+  @ParameterizedTest
+  @CsvSource({
+    "key=*, 2",
+    "key=b, 1",
+    "key=x, 0",
+  })
+  void streamGet(String cql, int total, VertxTestContext vtc) throws CQL2PgJSONException {
+    AtomicInteger count = new AtomicInteger();
+    AtomicBoolean end = new AtomicBoolean();
+    CQLWrapper cqlWrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), cql);
+    with(randomUuid(), "a", randomUuid(), "b", trans -> {
+      return trans.streamGet("t", Pojo.class, cqlWrapper, as -> {
+        PostgresClientStreamResult<Pojo> r = as.result();
+        assertThat(r.resultInfo().getTotalRecords()).isEqualTo(total);
+        r.handler(x -> count.incrementAndGet());
+        r.exceptionHandler(t -> vtc.failNow(t));
+        r.endHandler(x -> end.set(true));
+      });
+    })
+    .onComplete(succeedingThenComplete(vtc, x -> {
+      assertThat(count.get()).isEqualTo(total);
+      assertThat(end.get()).isTrue();
+    }));
+  }
+
+  @Test
+  void streamGetPgConnectionNull(VertxTestContext vtc) throws CQL2PgJSONException {
+    Conn conn = new Conn(postgresClient, null);
+    conn.streamGet("t", Pojo.class, new CQLWrapper(), i -> {})
+    .onComplete(failingThenComplete(vtc, t -> assertThat(t).isInstanceOf(NullPointerException.class)));
+  }
+
+  @Test
+  void streamGetDoneHandlerWithThrowable(VertxTestContext vtc) throws CQL2PgJSONException {
+    CQLWrapper cqlWrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "key=b");
+    with(randomUuid(), "a", randomUuid(), "b", trans -> {
+      return trans.streamGet("t", Pojo.class, cqlWrapper,
+          info -> info.result().handler(x -> { throw new RuntimeException("foo"); } ));
+    })
+    .onComplete(failingThenComplete(vtc, t -> assertThat(t).hasMessage("foo")));
+  }
+
 }

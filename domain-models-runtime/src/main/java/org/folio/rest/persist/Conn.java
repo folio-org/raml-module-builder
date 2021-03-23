@@ -1,7 +1,10 @@
 package org.folio.rest.persist;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
@@ -708,7 +711,7 @@ public class Conn {
    * @param wrapper - filter to select records
    * @param returnCount - whether to return totalRecords, the number of matching records when disabling OFFSET and LIMIT
    * @param returnIdField - if the id field should also be returned, must be true for facets
-   * @param factes - fields to calculate counts for
+   * @param facets - fields to calculate counts for
    * @param distinctOn - database column to calculate the number of distinct values for, null or empty string for none
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz,
@@ -738,7 +741,7 @@ public class Conn {
    * @param filter - records to select
    * @param returnCount - whether to return totalRecords, the number of matching records
    *         when disabling OFFSET and LIMIT
-   * @param factes - fields to calculate counts for
+   * @param facets - fields to calculate counts for
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, String fieldName, Criterion filter,
       boolean returnCount, List<FacetField> facets) {
@@ -754,7 +757,7 @@ public class Conn {
    * @param filter - records to select
    * @param returnCount - whether to return totalRecords, the number of matching records
    *         when disabling OFFSET and LIMIT
-   * @param factes - fields to calculate counts for
+   * @param facets - fields to calculate counts for
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter,
       boolean returnCount, List<FacetField> facets) {
@@ -815,4 +818,52 @@ public class Conn {
     return get(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, filter, returnCount, false, null, null);
   }
 
+  /**
+   * Stream records selected by CQLWrapper.
+   *
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param fieldName - database column to return, for example {@link PostgresClient#DEFAULT_JSONB_FIELD_NAME}
+   * @param wrapper - filter to select records
+   * @param returnIdField - if the id field should also be returned, must be true for facets
+   * @param distinctOn - database column to calculate the number of distinct values for, null or empty string for none
+   * @param facets - fields to calculate counts for
+   * @param streamHandler contains {@link ResultInfo} and handlers to process the stream
+   */
+  public <T> Future<Void> streamGet(String table, Class<T> clazz, String fieldName, CQLWrapper wrapper,
+      boolean returnIdField, String distinctOn, List<FacetField> facets,
+      Handler<AsyncResult<PostgresClientStreamResult<T>>> streamHandler) {
+
+    Promise<Void> promise = Promise.promise();
+    postgresClient.doStreamGetCount(pgConnection, false, table, clazz, fieldName, wrapper,
+        returnIdField, distinctOn, facets, handler -> {
+          if (handler.failed()) {
+            promise.tryFail(handler.cause());
+            return;
+          }
+          handler.result().setDoneHandler(throwable -> {
+            if (throwable != null) {
+              promise.tryFail(throwable);
+              return;
+            }
+            promise.tryComplete();
+          });
+          streamHandler.handle(handler);
+        });
+    return promise.future();
+  }
+
+  /**
+   * Stream records selected by CQLWrapper.
+   *
+   * @param table - table to query
+   * @param clazz - class of objects to be returned
+   * @param wrapper - filter to select records
+   * @param streamHandler contains {@link ResultInfo} and handlers to process the stream
+   */
+  public <T> Future<Void> streamGet(String table, Class<T> clazz, CQLWrapper wrapper,
+      Handler<AsyncResult<PostgresClientStreamResult<T>>> streamHandler) {
+
+    return streamGet(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, wrapper, false, null, null, streamHandler);
+  }
 }
