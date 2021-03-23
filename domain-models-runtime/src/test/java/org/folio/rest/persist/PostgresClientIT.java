@@ -2913,6 +2913,12 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectStreamNullConnection(TestContext context) {
+    new Conn(null, null).selectStream("sql", Tuple.tuple(), 1)
+    .onComplete(context.asyncAssertFailure(e -> assertThat(e, is(instanceOf(NullPointerException.class)))));
+  }
+
+  @Test
   public void selectStreamTxException(TestContext context) {
     postgresClient().selectStream(null, "SELECT 1", context.asyncAssertFailure());
   }
@@ -4140,7 +4146,7 @@ public class PostgresClientIT {
         context.asyncAssertFailure());
   }
 
-  private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
+  private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     String polines = getMockData("mockdata/poLines.json");
     postgresClient = createTable(context, TENANT, tableName, tableDefiniton);
@@ -4151,7 +4157,7 @@ public class PostgresClientIT {
     }
   }
 
-  private void createTableWithPoLines(TestContext context) throws IOException {
+  private void createTableWithPoLines(TestContext context) {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
   }
@@ -4167,7 +4173,7 @@ public class PostgresClientIT {
     }
   }
 
-  public static String getMockData(String path) throws IOException {
+  public static String getMockData(String path) {
     try (InputStream resourceAsStream = PostgresClientIT.class.getClassLoader().getResourceAsStream(path)) {
       if (resourceAsStream != null) {
         return IOUtils.toString(resourceAsStream, StandardCharsets.UTF_8);
@@ -4178,6 +4184,8 @@ public class PostgresClientIT {
         }
         return sb.toString();
       }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 

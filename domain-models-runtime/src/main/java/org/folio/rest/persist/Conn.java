@@ -10,6 +10,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Tuple;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
@@ -866,4 +867,21 @@ public class Conn {
 
     return streamGet(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, wrapper, false, null, null, streamHandler);
   }
+
+  /**
+   * Get a stream of the results of the {@code sql} query.
+   *
+   * @param params arguments for {@code $} placeholders in {@code sql}
+   * @param chunkSize cursor fetch size
+   */
+  public Future<RowStream<Row>> selectStream(String sql, Tuple params, int chunkSize) {
+    try {
+      return pgConnection.prepare(sql)
+      .map(preparedStatement -> new PreparedRowStream(preparedStatement, chunkSize, params));
+    } catch (Throwable e) {
+      log.error(e.getMessage() + " - " + sql, e);
+      return Future.failedFuture(e);
+    }
+  }
+
 }
