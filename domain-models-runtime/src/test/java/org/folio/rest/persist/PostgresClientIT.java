@@ -1,12 +1,16 @@
 package org.folio.rest.persist;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
@@ -2409,26 +2414,6 @@ public class PostgresClientIT {
     }
   }
 
-  /**
-   * @return a PostgresClient that fails when closing the connection.
-   */
-  private PostgresClient postgresClientEndTxFailure() {
-    class PostgresClientEndTxFailure extends PostgresClient {
-      public PostgresClientEndTxFailure(Vertx vertx, String tenant) throws Exception {
-        super(vertx, tenant);
-      }
-      @Override
-      public void endTx(AsyncResult<SQLConnection> trans, Handler<AsyncResult<Void>> done) {
-        done.handle(Future.failedFuture(new RuntimeException()));
-      }
-    };
-    try {
-      return new PostgresClientEndTxFailure(vertx, TENANT);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @Test
   public void executeOK(TestContext context) {
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
@@ -2667,14 +2652,42 @@ public class PostgresClientIT {
     postgresClientConnectionThrowsException().execute("SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
-  @Test
-  public void executeListEndTxFailure(TestContext context) {
-    postgresClientEndTxFailure().execute("SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  private Future<List<RowSet<Row>>> executeListFailure(String msg, List<Tuple> params) {
+    PgConnection pgConnection = mock(PgConnection.class);
+    @SuppressWarnings("unchecked")
+    PreparedQuery<RowSet<Row>> preparedQuery = mock(PreparedQuery.class);
+    when(pgConnection.preparedQuery(any())).thenReturn(preparedQuery);
+    if (params.size() == 1) {
+      when(preparedQuery.execute(any(Tuple.class)))
+      .thenThrow(new RuntimeException(msg));
+    } else {
+      when(preparedQuery.execute(any(Tuple.class)))
+      .thenReturn(Future.succeededFuture())
+      .thenThrow(new RuntimeException(msg));
+    }
+    return new Conn(null, pgConnection)
+    .execute("SELECT $1", params);
   }
 
   @Test
-  public void executeListTransNull(TestContext context) throws Exception {
-    postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  public void executeListFailure1(TestContext context) {
+    executeListFailure("foo", Arrays.asList(Tuple.of(1)))
+    .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage(), is("foo"))));
+  }
+
+  @Test
+  public void executeListFailure2(TestContext context) {
+    executeListFailure("bar", Arrays.asList(Tuple.of(1), Tuple.of(2)))
+    .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage(), is("bar"))));
+  }
+
+  @Test
+  public void executeListTrans(TestContext context) throws Exception {
+    postgresClient().getSQLConnection(sqlConnection ->
+      postgresClient.execute(sqlConnection, "SELECT 5", list1JsonArray(), context.asyncAssertSuccess(r -> {
+        assertThat(r.size(), is(1));
+        assertThat(r.get(0).iterator().next().getInteger(0), is(5));
+      })));
   }
 
   @Test
