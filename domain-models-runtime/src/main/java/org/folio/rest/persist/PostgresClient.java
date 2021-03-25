@@ -56,7 +56,6 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.util.PostgresTester;
 
 /**
@@ -357,29 +356,25 @@ public class PostgresClient {
   /**
    * Closes all SQL clients of the tenant.
    */
-  public static Future<Void> closeAllClients(String tenantId) {
-    // A for or forEach loop does not allow closeClient to do a concurrent delete
+  public static void closeAllClients(String tenantId) {
+    // A for or forEach loop does not allow concurrent delete
     List<PostgresClient> clients = new ArrayList<>();
     connectionPool.forEach((multiKey, postgresClient) -> {
       if (tenantId.equals(multiKey.getKey(1))) {
         clients.add(postgresClient);
       }
     });
-    List<Future<Void>> futures = new ArrayList<>();
-    clients.forEach(client -> futures.add(client.closeClient()));
-    return GenericCompositeFuture.join(futures).otherwiseEmpty().mapEmpty();
+    clients.forEach(client -> client.closeClient());
   }
 
   /**
    * Close all SQL clients stored in the connection pool.
    */
-  public static Future<Void> closeAllClients() {
-    List<Future<Void>> futures = new ArrayList<>();
+  public static void closeAllClients() {
     // copy of values() because closeClient will delete them from connectionPool
     for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
-      futures.add(client.closeClient());
+      client.closeClient();
     }
-    return GenericCompositeFuture.join(futures).otherwiseEmpty().mapEmpty();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig) {
