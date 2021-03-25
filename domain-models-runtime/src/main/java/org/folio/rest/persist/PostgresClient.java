@@ -367,7 +367,7 @@ public class PostgresClient {
     });
     List<Future<Void>> futures = new ArrayList<>();
     clients.forEach(client -> futures.add(client.closeClient()));
-    return GenericCompositeFuture.all(futures).mapEmpty();
+    return GenericCompositeFuture.join(futures).otherwiseEmpty().mapEmpty();
   }
 
   /**
@@ -379,7 +379,7 @@ public class PostgresClient {
     for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
       futures.add(client.closeClient());
     }
-    return GenericCompositeFuture.all(futures).mapEmpty();
+    return GenericCompositeFuture.join(futures).otherwiseEmpty().mapEmpty();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig) {
