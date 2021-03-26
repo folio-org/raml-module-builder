@@ -4,12 +4,9 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
-import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -2637,6 +2634,18 @@ public class PostgresClientIT {
     });
   }
 
+  @Test
+  public void executeListEmpty(TestContext context) {
+    postgresClient().execute("SELECT $1", Collections.emptyList())
+    .onComplete(context.asyncAssertSuccess(res -> assertThat(res, is(nullValue()))));
+  }
+
+  @Test
+  public void executeListNullParams(TestContext context) {
+    postgresClient().execute("SELECT $1", (List<Tuple>) null)
+    .onComplete(context.asyncAssertFailure(t -> assertThat(t, is(instanceOf(NullPointerException.class)))));
+  }
+
   /** @return List containing one empty Tuple */
   private List<Tuple> list1JsonArray() {
     return Collections.singletonList(Tuple.tuple());
@@ -2652,42 +2661,21 @@ public class PostgresClientIT {
     postgresClientConnectionThrowsException().execute("SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
-  private Future<List<RowSet<Row>>> executeListFailure(String msg, List<Tuple> params) {
-    PgConnection pgConnection = mock(PgConnection.class);
-    @SuppressWarnings("unchecked")
-    PreparedQuery<RowSet<Row>> preparedQuery = mock(PreparedQuery.class);
-    when(pgConnection.preparedQuery(any())).thenReturn(preparedQuery);
-    if (params.size() == 1) {
-      when(preparedQuery.execute(any(Tuple.class)))
-      .thenThrow(new RuntimeException(msg));
-    } else {
-      when(preparedQuery.execute(any(Tuple.class)))
-      .thenReturn(Future.succeededFuture())
-      .thenThrow(new RuntimeException(msg));
-    }
-    return new Conn(null, pgConnection)
-    .execute("SELECT $1", params);
-  }
-
   @Test
-  public void executeListFailure1(TestContext context) {
-    executeListFailure("foo", Arrays.asList(Tuple.of(1)))
-    .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage(), is("foo"))));
-  }
-
-  @Test
-  public void executeListFailure2(TestContext context) {
-    executeListFailure("bar", Arrays.asList(Tuple.of(1), Tuple.of(2)))
-    .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage(), is("bar"))));
+  public void executeListFailure(TestContext context) {
+    postgresClient().execute("SELECT foobar", Arrays.asList(Tuple.of("a")))
+    .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage(), containsString("foobar"))));
   }
 
   @Test
   public void executeListTrans(TestContext context) throws Exception {
-    postgresClient().getSQLConnection(sqlConnection ->
+    postgresClient().getSQLConnection(context.asyncAssertSuccess(conn -> {
+      AsyncResult<SQLConnection> sqlConnection = Future.succeededFuture(conn);
       postgresClient.execute(sqlConnection, "SELECT 5", list1JsonArray(), context.asyncAssertSuccess(r -> {
         assertThat(r.size(), is(1));
         assertThat(r.get(0).iterator().next().getInteger(0), is(5));
-      })));
+      }));
+    }));
   }
 
   @Test
