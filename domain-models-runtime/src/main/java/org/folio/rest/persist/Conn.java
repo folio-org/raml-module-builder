@@ -8,6 +8,7 @@ import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
+import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
@@ -15,6 +16,7 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -866,4 +868,88 @@ public class Conn {
 
     return streamGet(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, wrapper, false, null, null, streamHandler);
   }
+
+  /**
+   * Send a parameterized/prepared statement.
+   *
+   * @param sql - the SQL command to run
+   * @param params - the values for the {@code $} placeholders, empty if none
+   * @return the reply from the database
+   */
+  public Future<RowSet<Row>> execute(String sql, Tuple params) {
+    try {
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      // more than optimization.. preparedQuery does not work for multiple SQL statements
+      if (params.size() == 0) {
+        return pgConnection.query(sql).execute()
+            .onComplete(x -> log.debug(() -> durationMsg("execute", sql, start)));
+      }
+      return pgConnection.preparedQuery(sql).execute(params)
+          .onComplete(x -> log.debug(() -> durationMsg("execute", sql, start)));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Send an SQL statement.
+   *
+   * <p>Use {@link #execute(String, Tuple)} with {@code $1, $2, ...} parameters to
+   * avoid SQL injection.
+   *
+   * @param sql - the SQL command to run
+   * @return the reply from the database
+   */
+  public Future<RowSet<Row>> execute(String sql) {
+    return execute(sql, Tuple.tuple());
+  }
+
+  /**
+   * Run a parameterized/prepared statement and
+   * run it with a list of sets of parameters.
+   *
+   * @param sql - the SQL command to run
+   * @param params - there is one list entry for each SQL invocation containing the parameters
+   *                    {@code $} placeholders.
+   * @return the reply from the database
+   */
+  public Future<List<RowSet<Row>>> execute(String sql, List<Tuple> params) {
+
+    try {
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      Promise<List<RowSet<Row>>> promise = Promise.promise();
+      List<RowSet<Row>> results = new ArrayList<>(params.size());
+      Iterator<Tuple> iterator = params.iterator();
+      PreparedQuery<RowSet<Row>> preparedQuery = pgConnection.preparedQuery(sql);
+      Runnable task = new Runnable() {
+        @Override
+        public void run() {
+          if (! iterator.hasNext()) {
+            log.debug(() -> durationMsg("execute", sql, start));
+            promise.complete(results);
+            return;
+          }
+          Tuple tuple = iterator.next();
+          preparedQuery.execute(tuple)
+          .onFailure(promise::fail)
+          .onSuccess(result -> {
+            try {
+              results.add(result);
+              this.run();
+            } catch (Throwable t) {
+              log.error(t.getMessage(), t);
+              promise.fail(t);
+            }
+          });
+        }
+      };
+      task.run();
+      return promise.future();
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
 }
