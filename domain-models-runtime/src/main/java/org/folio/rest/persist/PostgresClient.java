@@ -3680,7 +3680,8 @@ public class PostgresClient {
    * </pre>
    * @param sqlConnection - connection, see {@link #startTx(Handler)}
    * @param sql - the sql to run
-   * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
+   * @param params - there is one list entry for each SQL invocation containing the parameters for the placeholders.
+   *                    If params is empty no SQL is run and an empty list is returned.
    * @param replyHandler - reply handler with one list element for each list element of params.
    */
   public void execute(AsyncResult<SQLConnection> sqlConnection, String sql, List<Tuple> params,
@@ -3697,7 +3698,8 @@ public class PostgresClient {
    * @param sql - the SQL command to run
    * @param params - there is one list entry for each SQL invocation containing the
    *                    parameters for the {@code $} placeholders.
-   * @return the reply from the database, one RowSet per params Tuple.
+   *                    If params is empty no SQL is run and null is returned.
+   * @return the reply from the database, one RowSet per params Tuple
    */
   public Future<RowSet<Row>> execute(String sql, List<Tuple> params) {
     return withConn(conn -> conn.execute(sql, params));
@@ -3709,7 +3711,8 @@ public class PostgresClient {
    *
    * @param sql - the sql to run
    * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
-   * @param replyHandler - reply handler with one list element for each list element of params.
+   *                    If params is empty no SQL is run and an empty list is returned.
+   * @param replyHandler - reply handler with one list element for each list element of params
    */
   public void execute(String sql, List<Tuple> params, Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
     execute(sql, params)

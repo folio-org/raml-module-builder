@@ -4,7 +4,6 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
-import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -2634,10 +2633,61 @@ public class PostgresClientIT {
     });
   }
 
+  private void assertNRowSets(RowSet<Row> rowSet, int n) {
+    int actual = 0;
+    while (rowSet != null) {
+      RowIterator<Row> iterator = rowSet.iterator();
+      assertThat(iterator.next().getString(0), is("x"));
+      assertThat(iterator.hasNext(), is(false));
+      rowSet = rowSet.next();
+      actual++;
+    }
+    assertThat(actual, is(n));
+  }
+
   @Test
-  public void executeListEmpty(TestContext context) {
-    postgresClient().execute("SELECT $1", Collections.emptyList())
-    .onComplete(context.asyncAssertSuccess(res -> assertThat(res, is(nullValue()))));
+  public void executeList0EmptyTuples(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList())
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 0)));
+  }
+
+  @Test
+  public void executeList1EmptyTuple(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList(Tuple.tuple()))
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 1)));
+  }
+
+  @Test
+  public void executeList2EmptyTuples(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList(Tuple.tuple(), Tuple.tuple()))
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 2)));
+  }
+
+  private void assertNRowSets(List<RowSet<Row>> list, int n) {
+    assertThat(list.size(), is(n));
+    list.forEach(rowSet -> {
+      RowIterator<Row> iterator = rowSet.iterator();
+      assertThat(iterator.next().getString(0), is("y"));
+      assertThat(iterator.hasNext(), is(false));
+    });
+  }
+
+  @Test
+  public void executeList0EmptyTuplesHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 0)));
+  }
+
+  @Test
+  public void executeList1EmptyTupleHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(Tuple.tuple()), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 1)));
+  }
+
+  @Test
+  public void executeList2EmptyTuplesHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(Tuple.tuple(), Tuple.tuple()), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 2)));
   }
 
   @Test
