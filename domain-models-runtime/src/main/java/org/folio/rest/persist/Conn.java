@@ -8,7 +8,6 @@ import io.vertx.core.Promise;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.Tuple;
@@ -16,7 +15,6 @@ import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -893,7 +891,7 @@ public class Conn {
   }
 
   /**
-   * Send an SQL statement.
+   * Run an SQL statement.
    *
    * <p>Use {@link #execute(String, Tuple)} with {@code $1, $2, ...} parameters to
    * avoid SQL injection.
@@ -906,46 +904,25 @@ public class Conn {
   }
 
   /**
-   * Run a parameterized/prepared statement and
-   * run it with a list of sets of parameters.
+   * Run a parameterized/prepared statement with a list of tuples as parameters.
+   * This is atomic, if one Tuple fails the complete list fails: all or nothing.
    *
    * @param sql - the SQL command to run
-   * @param params - there is one list entry for each SQL invocation containing the parameters
-   *                    {@code $} placeholders.
-   * @return the reply from the database
+   * @param params - there is one list entry for each SQL invocation containing the
+   *                    parameters for the {@code $} placeholders.
+   * @return the reply from the database, one RowSet per params Tuple. null if params.size() == 0.
    */
-  public Future<List<RowSet<Row>>> execute(String sql, List<Tuple> params) {
+  public Future<RowSet<Row>> execute(String sql, List<Tuple> params) {
 
     try {
+      if (params.size() == 0) {
+        return Future.succeededFuture();
+      }
       long start = log.isDebugEnabled() ? System.nanoTime() : 0;
-      Promise<List<RowSet<Row>>> promise = Promise.promise();
-      List<RowSet<Row>> results = new ArrayList<>(params.size());
-      Iterator<Tuple> iterator = params.iterator();
-      PreparedQuery<RowSet<Row>> preparedQuery = pgConnection.preparedQuery(sql);
-      Runnable task = new Runnable() {
-        @Override
-        public void run() {
-          if (! iterator.hasNext()) {
-            log.debug(() -> durationMsg("execute", sql, start));
-            promise.complete(results);
-            return;
-          }
-          Tuple tuple = iterator.next();
-          preparedQuery.execute(tuple)
-          .onFailure(promise::fail)
-          .onSuccess(result -> {
-            try {
-              results.add(result);
-              this.run();
-            } catch (Throwable t) {
-              log.error(t.getMessage(), t);
-              promise.fail(t);
-            }
-          });
-        }
-      };
-      task.run();
-      return promise.future();
+      return pgConnection.prepare(sql)
+          .compose(preparedStatement -> preparedStatement.query().executeBatch(params)
+              .eventually(x -> preparedStatement.close()))
+          .onComplete(x -> log.debug(() -> durationMsg("execute", sql, start)));
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       return Future.failedFuture(e);

@@ -3333,7 +3333,6 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      final Transaction tx = conn.result().tx;
       final PgConnection pgConnection = conn.result().conn;
       pgConnection.prepare(sql, res -> {
         if (res.failed()) {
@@ -3651,6 +3650,24 @@ public class PostgresClient {
     .onComplete(replyHandler);
   }
 
+  private static Handler<AsyncResult<RowSet<Row>>> rowSet2listRowSet(
+      Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
+
+    return handler -> {
+      if (handler.failed()) {
+        replyHandler.handle(Future.failedFuture(handler.cause()));
+        return;
+      }
+      RowSet<Row> rowSet = handler.result();
+      List<RowSet<Row>> list = new ArrayList<>();
+      while (rowSet != null) {
+        list.add(rowSet);
+        rowSet = rowSet.next();
+      }
+      replyHandler.handle(Future.succeededFuture(list));
+    };
+  }
+
   /**
    * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
    * run it for each {@link Tuple} of {@code params}.
@@ -3663,27 +3680,29 @@ public class PostgresClient {
    * </pre>
    * @param sqlConnection - connection, see {@link #startTx(Handler)}
    * @param sql - the sql to run
-   * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
-   * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
+   * @param params - there is one list entry for each SQL invocation containing the parameters for the placeholders.
+   *                    If params is empty no SQL is run and an empty list is returned.
+   * @param replyHandler - reply handler with one list element for each list element of params.
    */
   public void execute(AsyncResult<SQLConnection> sqlConnection, String sql, List<Tuple> params,
                       Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
 
     withConn(sqlConnection, conn -> conn.execute(sql, params))
-    .onComplete(replyHandler);
+    .onComplete(rowSet2listRowSet(replyHandler));
   }
 
   /**
-   * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
-   * run it for each {@link Tuple} of {@code params}. Wrap all in a transaction.
+   * Run a parameterized/prepared SQL statement with a list of sets of parameters.
+   * This is atomic, if one Tuple fails the complete list fails: all or nothing.
    *
-   * @param sql - the SQL statement to run
-   * @param params - there is one list entry for each SQL invocation containing the parameters
-   *                    for the {@code $} placeholders.
-   * @return one {@link RowSet} for each {@link Tuple} in the {@code params} list
+   * @param sql - the SQL command to run
+   * @param params - there is one list entry for each SQL invocation containing the
+   *                    parameters for the {@code $} placeholders.
+   *                    If params is empty no SQL is run and null is returned.
+   * @return the reply from the database, one RowSet per params Tuple
    */
-  public Future<List<RowSet<Row>>> execute(String sql, List<Tuple> params) {
-    return withTrans(trans -> trans.execute(sql, params));
+  public Future<RowSet<Row>> execute(String sql, List<Tuple> params) {
+    return withConn(conn -> conn.execute(sql, params));
   }
 
   /**
@@ -3692,11 +3711,12 @@ public class PostgresClient {
    *
    * @param sql - the sql to run
    * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
-   * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
+   *                    If params is empty no SQL is run and an empty list is returned.
+   * @param replyHandler - reply handler with one list element for each list element of params
    */
   public void execute(String sql, List<Tuple> params, Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
     execute(sql, params)
-    .onComplete(replyHandler);
+    .onComplete(rowSet2listRowSet(replyHandler));
   }
 
   /**
