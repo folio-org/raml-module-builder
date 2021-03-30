@@ -1,12 +1,12 @@
 package org.folio.rest.persist;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
@@ -2409,26 +2410,6 @@ public class PostgresClientIT {
     }
   }
 
-  /**
-   * @return a PostgresClient that fails when closing the connection.
-   */
-  private PostgresClient postgresClientEndTxFailure() {
-    class PostgresClientEndTxFailure extends PostgresClient {
-      public PostgresClientEndTxFailure(Vertx vertx, String tenant) throws Exception {
-        super(vertx, tenant);
-      }
-      @Override
-      public void endTx(AsyncResult<SQLConnection> trans, Handler<AsyncResult<Void>> done) {
-        done.handle(Future.failedFuture(new RuntimeException()));
-      }
-    };
-    try {
-      return new PostgresClientEndTxFailure(vertx, TENANT);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @Test
   public void executeOK(TestContext context) {
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
@@ -2652,6 +2633,69 @@ public class PostgresClientIT {
     });
   }
 
+  private void assertNRowSets(RowSet<Row> rowSet, int n) {
+    int actual = 0;
+    while (rowSet != null) {
+      RowIterator<Row> iterator = rowSet.iterator();
+      assertThat(iterator.next().getString(0), is("x"));
+      assertThat(iterator.hasNext(), is(false));
+      rowSet = rowSet.next();
+      actual++;
+    }
+    assertThat(actual, is(n));
+  }
+
+  @Test
+  public void executeList0EmptyTuples(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList())
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 0)));
+  }
+
+  @Test
+  public void executeList1EmptyTuple(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList(Tuple.tuple()))
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 1)));
+  }
+
+  @Test
+  public void executeList2EmptyTuples(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList(Tuple.tuple(), Tuple.tuple()))
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 2)));
+  }
+
+  private void assertNRowSets(List<RowSet<Row>> list, int n) {
+    assertThat(list.size(), is(n));
+    list.forEach(rowSet -> {
+      RowIterator<Row> iterator = rowSet.iterator();
+      assertThat(iterator.next().getString(0), is("y"));
+      assertThat(iterator.hasNext(), is(false));
+    });
+  }
+
+  @Test
+  public void executeList0EmptyTuplesHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 0)));
+  }
+
+  @Test
+  public void executeList1EmptyTupleHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(Tuple.tuple()), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 1)));
+  }
+
+  @Test
+  public void executeList2EmptyTuplesHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(Tuple.tuple(), Tuple.tuple()), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 2)));
+  }
+
+  @Test
+  public void executeListNullParams(TestContext context) {
+    postgresClient().execute("SELECT $1", (List<Tuple>) null)
+    .onComplete(context.asyncAssertFailure(t -> assertThat(t, is(instanceOf(NullPointerException.class)))));
+  }
+
   /** @return List containing one empty Tuple */
   private List<Tuple> list1JsonArray() {
     return Collections.singletonList(Tuple.tuple());
@@ -2668,13 +2712,20 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void executeListEndTxFailure(TestContext context) {
-    postgresClientEndTxFailure().execute("SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  public void executeListFailure(TestContext context) {
+    postgresClient().execute("SELECT foobar", Arrays.asList(Tuple.of("a")))
+    .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage(), containsString("foobar"))));
   }
 
   @Test
-  public void executeListTransNull(TestContext context) throws Exception {
-    postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  public void executeListTrans(TestContext context) throws Exception {
+    postgresClient().getSQLConnection(context.asyncAssertSuccess(conn -> {
+      AsyncResult<SQLConnection> sqlConnection = Future.succeededFuture(conn);
+      postgresClient.execute(sqlConnection, "SELECT 5", list1JsonArray(), context.asyncAssertSuccess(r -> {
+        assertThat(r.size(), is(1));
+        assertThat(r.get(0).iterator().next().getInteger(0), is(5));
+      }));
+    }));
   }
 
   @Test

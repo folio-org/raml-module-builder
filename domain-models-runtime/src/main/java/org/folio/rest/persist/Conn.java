@@ -884,4 +884,66 @@ public class Conn {
     }
   }
 
+  /**
+   * Send a parameterized/prepared statement.
+   *
+   * @param sql - the SQL command to run
+   * @param params - the values for the {@code $} placeholders, empty if none
+   * @return the reply from the database
+   */
+  public Future<RowSet<Row>> execute(String sql, Tuple params) {
+    try {
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      // more than optimization.. preparedQuery does not work for multiple SQL statements
+      if (params.size() == 0) {
+        return pgConnection.query(sql).execute()
+            .onComplete(x -> log.debug(() -> durationMsg("execute", sql, start)));
+      }
+      return pgConnection.preparedQuery(sql).execute(params)
+          .onComplete(x -> log.debug(() -> durationMsg("execute", sql, start)));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Run an SQL statement.
+   *
+   * <p>Use {@link #execute(String, Tuple)} with {@code $1, $2, ...} parameters to
+   * avoid SQL injection.
+   *
+   * @param sql - the SQL command to run
+   * @return the reply from the database
+   */
+  public Future<RowSet<Row>> execute(String sql) {
+    return execute(sql, Tuple.tuple());
+  }
+
+  /**
+   * Run a parameterized/prepared statement with a list of tuples as parameters.
+   * This is atomic, if one Tuple fails the complete list fails: all or nothing.
+   *
+   * @param sql - the SQL command to run
+   * @param params - there is one list entry for each SQL invocation containing the
+   *                    parameters for the {@code $} placeholders.
+   * @return the reply from the database, one RowSet per params Tuple. null if params.size() == 0.
+   */
+  public Future<RowSet<Row>> execute(String sql, List<Tuple> params) {
+
+    try {
+      if (params.size() == 0) {
+        return Future.succeededFuture();
+      }
+      long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+      return pgConnection.prepare(sql)
+          .compose(preparedStatement -> preparedStatement.query().executeBatch(params)
+              .eventually(x -> preparedStatement.close()))
+          .onComplete(x -> log.debug(() -> durationMsg("execute", sql, start)));
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
+  }
+
 }

@@ -3577,20 +3577,21 @@ public class PostgresClient {
    * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
    * @param sql  The SQL statement to run.
    * @param params The parameters for the placeholders in sql.
-   * @param replyHandler
+   * @return async result.
    */
-  public void execute(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
-    getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  public Future<RowSet<Row>> execute(String sql, Tuple params) {
+    return withConn(conn -> conn.execute(sql, params));
   }
 
   /**
    * Execute a parameterized/prepared INSERT, UPDATE or DELETE statement.
    * @param sql  The SQL statement to run.
    * @param params The parameters for the placeholders in sql.
-   * @return async result.
+   * @param replyHandler
    */
-  public Future<RowSet<Row>> execute(String sql, Tuple params) {
-    return Future.future(promise -> execute(sql, params, promise));
+  public void execute(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler)  {
+    execute(sql, params)
+    .onComplete(replyHandler);
   }
 
   /**
@@ -3602,13 +3603,14 @@ public class PostgresClient {
    *        try {
    *          postgresClient.execute(beginTx, sql, reply -> {...
    * </pre>
-   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sqlConnection - connection, see {@link #startTx(Handler)}
    * @param sql - the sql to run
    * @param replyHandler - reply handler with UpdateResult
    */
-  public void execute(AsyncResult<SQLConnection> conn, String sql,
+  public void execute(AsyncResult<SQLConnection> sqlConnection, String sql,
                       Handler<AsyncResult<RowSet<Row>>> replyHandler){
-    execute(conn, sql, Tuple.tuple(), replyHandler);
+    withConn(sqlConnection, conn -> conn.execute(sql))
+    .onComplete(replyHandler);
   }
 
   /**
@@ -3620,40 +3622,38 @@ public class PostgresClient {
    *        try {
    *          postgresClient.execute(beginTx, sql, params, reply -> {...
    * </pre>
-   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sqlConnection - connection, see {@link #startTx(Handler)}
    * @param sql - the sql to run
    * @param replyHandler - reply handler with UpdateResult
    */
-  public void execute(AsyncResult<SQLConnection> conn, String sql, Tuple params,
+  public void execute(AsyncResult<SQLConnection> sqlConnection, String sql, Tuple params,
                       Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    try {
-      if (conn.failed()) {
-        replyHandler.handle(Future.failedFuture(conn.cause()));
+
+    withConn(sqlConnection, conn -> conn.execute(sql, params))
+    .onComplete(replyHandler);
+  }
+
+  private static Handler<AsyncResult<RowSet<Row>>> rowSet2listRowSet(
+      Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
+
+    return handler -> {
+      if (handler.failed()) {
+        replyHandler.handle(Future.failedFuture(handler.cause()));
         return;
       }
-      PgConnection connection = conn.result().conn;
-      long start = System.nanoTime();
-      // more than optimization.. preparedQuery does not work for multiple SQL statements
-      if (params.size() == 0) {
-        connection.query(sql).execute(query -> {
-          statsTracker(EXECUTE_STAT_METHOD, sql, start);
-          replyHandler.handle(query);
-        });
-      } else {
-        connection.preparedQuery(sql).execute(params, query -> {
-          statsTracker(EXECUTE_STAT_METHOD, sql, start);
-          replyHandler.handle(query);
-        });
+      RowSet<Row> rowSet = handler.result();
+      List<RowSet<Row>> list = new ArrayList<>();
+      while (rowSet != null) {
+        list.add(rowSet);
+        rowSet = rowSet.next();
       }
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+      replyHandler.handle(Future.succeededFuture(list));
+    };
   }
 
   /**
    * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
-   * run it with a list of sets of parameters.
+   * run it for each {@link Tuple} of {@code params}.
    *
    * <p>Example:
    * <pre>
@@ -3661,75 +3661,45 @@ public class PostgresClient {
    *        try {
    *          postgresClient.execute(beginTx, sql, params, reply -> {...
    * </pre>
-   * @param conn - connection - see {@link #startTx(Handler)}
+   * @param sqlConnection - connection, see {@link #startTx(Handler)}
    * @param sql - the sql to run
-   * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
-   * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
+   * @param params - there is one list entry for each SQL invocation containing the parameters for the placeholders.
+   *                    If params is empty no SQL is run and an empty list is returned.
+   * @param replyHandler - reply handler with one list element for each list element of params.
    */
-  public void execute(AsyncResult<SQLConnection> conn, String sql, List<Tuple> params,
+  public void execute(AsyncResult<SQLConnection> sqlConnection, String sql, List<Tuple> params,
                       Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
-    try {
-      if (conn.failed()) {
-        replyHandler.handle(Future.failedFuture(conn.cause()));
-        return;
-      }
-      PgConnection sqlConnection = conn.result().conn;
-      List<RowSet<Row>> results = new ArrayList<>(params.size());
-      Iterator<Tuple> iterator = params.iterator();
-      Runnable task = new Runnable() {
-        @Override
-        public void run() {
-          if (! iterator.hasNext()) {
-            replyHandler.handle(Future.succeededFuture(results));
-            return;
-          }
-          Tuple params1 = iterator.next();
-          sqlConnection.preparedQuery(sql).execute(params1, query -> {
-            if (query.failed()) {
-              replyHandler.handle(Future.failedFuture(query.cause()));
-              return;
-            }
-            results.add(query.result());
-            this.run();
-          });
-        }
-      };
-      task.run();
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+
+    withConn(sqlConnection, conn -> conn.execute(sql, params))
+    .onComplete(rowSet2listRowSet(replyHandler));
+  }
+
+  /**
+   * Run a parameterized/prepared SQL statement with a list of sets of parameters.
+   * This is atomic, if one Tuple fails the complete list fails: all or nothing.
+   *
+   * @param sql - the SQL command to run
+   * @param params - there is one list entry for each SQL invocation containing the
+   *                    parameters for the {@code $} placeholders.
+   *                    If params is empty no SQL is run and null is returned.
+   * @return the reply from the database, one RowSet per params Tuple
+   */
+  public Future<RowSet<Row>> execute(String sql, List<Tuple> params) {
+    return withConn(conn -> conn.execute(sql, params));
   }
 
   /**
    * Create a parameterized/prepared INSERT, UPDATE or DELETE statement and
-   * run it with a list of sets of parameters. Wrap all in a transaction.
+   * run it for each {@link Tuple} of {@code params}. Wrap all in a transaction.
    *
    * @param sql - the sql to run
    * @param params - there is one list entry for each sql invocation containing the parameters for the placeholders.
-   * @param replyHandler - reply handler with one UpdateResult for each list entry of params.
+   *                    If params is empty no SQL is run and an empty list is returned.
+   * @param replyHandler - reply handler with one list element for each list element of params
    */
   public void execute(String sql, List<Tuple> params, Handler<AsyncResult<List<RowSet<Row>>>> replyHandler) {
-
-    startTx(res -> {
-      if (res.failed()) {
-        replyHandler.handle(Future.failedFuture(res.cause()));
-        return;
-      }
-      execute(res, sql, params, result -> {
-        if (result.failed()) {
-          rollbackTx(res, rollback -> replyHandler.handle(result));
-          return;
-        }
-        endTx(res, end -> {
-          if (end.failed()) {
-            replyHandler.handle(Future.failedFuture(end.cause()));
-            return;
-          }
-          replyHandler.handle(result);
-        });
-      });
-    });
+    execute(sql, params)
+    .onComplete(rowSet2listRowSet(replyHandler));
   }
 
   /**
