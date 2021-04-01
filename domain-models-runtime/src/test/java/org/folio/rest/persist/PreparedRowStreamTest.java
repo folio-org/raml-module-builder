@@ -28,14 +28,14 @@ class PreparedRowStreamTest {
 
   @Test
   void fetch() {
-    PreparedRowStream preparedRowStream = new PreparedRowStream(null, mockedRowStream);
+    PreparedRowStream preparedRowStream = new PreparedRowStream(mockedRowStream);
     preparedRowStream.fetch(234);
     verify(mockedRowStream).fetch(234);
   }
 
   @Test
   void pauseResume() {
-    PreparedRowStream preparedRowStream = new PreparedRowStream(null, mockedRowStream);
+    PreparedRowStream preparedRowStream = new PreparedRowStream(mockedRowStream);
     preparedRowStream.pause();
     verify(mockedRowStream, times(1)).pause();
     verify(mockedRowStream, never()).resume();
@@ -52,7 +52,7 @@ class PreparedRowStreamTest {
     doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<Void>> handler)
         -> handler.handle(Future.failedFuture("fail"))))
         .when(mockedRowStream).close(any());
-    PreparedRowStream preparedRowStream = new PreparedRowStream(mockedPreparedStatement, mockedRowStream);
+    PreparedRowStream preparedRowStream = new PreparedRowStream(mockedRowStream);
     StringBuilder s = new StringBuilder();
     preparedRowStream.close(handler -> s.append(handler.cause().getMessage()));
     assertThat(s.toString(), is("fail"));
@@ -67,7 +67,7 @@ class PreparedRowStreamTest {
     doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<Void>> handler)
         -> handler.handle(Future.failedFuture("fail2"))))
         .when(mockedRowStream).close(any());
-    PreparedRowStream preparedRowStream = new PreparedRowStream(mockedPreparedStatement, mockedRowStream);
+    PreparedRowStream preparedRowStream = new PreparedRowStream(mockedRowStream);
     StringBuilder s = new StringBuilder();
     preparedRowStream.close(handler -> s.append(handler.cause().getMessage()));
     assertThat(s.toString(), is("fail2"));

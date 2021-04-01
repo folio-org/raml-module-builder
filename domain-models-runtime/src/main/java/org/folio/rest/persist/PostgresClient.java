@@ -3288,6 +3288,43 @@ public class PostgresClient {
   }
 
   /**
+   * Get a stream of the results of the {@code sql} query.
+   *
+   * Sample usage:
+   *
+   * <pre>
+   * postgresClient.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5), 100,
+   *         rowStream -> rowStream.handler(row -> task.process(row))))
+   * .compose(x -> ...
+   * </pre>
+   *
+   * @param params arguments for {@code $} placeholders in {@code sql}
+   * @param chunkSize cursor fetch size
+   */
+  public Future<Void> selectStream(String sql, Tuple params, int chunkSize, Handler<RowStream<Row>> rowStreamHandler) {
+    return withTrans(trans -> trans.selectStream(sql, params, chunkSize, rowStreamHandler));
+  }
+
+  /**
+   * Get a stream of the results of the {@code sql} query.
+   *
+   * The chunk size is {@link PostgresClient#STREAM_GET_DEFAULT_CHUNK_SIZE}.
+   *
+   * Sample usage:
+   *
+   * <pre>
+   * postgresClient.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5),
+   *         rowStream -> rowStream.handler(row -> task.process(row))))
+   * .compose(x -> ...
+   * </pre>
+   *
+   * @param params arguments for {@code $} placeholders in {@code sql}
+   */
+  public Future<Void> selectStream(String sql, Tuple params, Handler<RowStream<Row>> rowStreamHandler) {
+    return withTrans(trans -> trans.selectStream(sql, params, rowStreamHandler));
+  }
+
+  /**
    * Run a parameterized/prepared select query returning with a {@link RowStream<Row>}.
    *
    * <p>This never closes the connection conn.
@@ -3329,8 +3366,9 @@ public class PostgresClient {
   void selectStream(AsyncResult<SQLConnection> sqlConnection, String sql, Tuple params, int chunkSize,
       Handler<AsyncResult<RowStream<Row>>> replyHandler) {
 
-    withConn(sqlConnection, conn -> conn.selectStream(sql, params, chunkSize))
-    .onComplete(replyHandler);
+    withConn(sqlConnection, conn -> conn.selectStream(sql, params, chunkSize, rowStream -> {
+      replyHandler.handle(Future.succeededFuture(rowStream));
+    })).onFailure(t -> replyHandler.handle(Future.failedFuture(t)));
   }
 
   /**

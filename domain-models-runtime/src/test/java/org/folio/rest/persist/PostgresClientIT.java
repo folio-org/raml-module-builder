@@ -2821,6 +2821,36 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectStream(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    createNumbers(context, 21, 22, 23)
+    .selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(),
+        rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23]"))));
+  }
+
+  @Test
+  public void selectStreamChunkSize(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    createNumbers(context, 21, 22, 23)
+    .selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(), 2,
+        rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23]"))));
+  }
+
+  @Test
+  public void selectStreamTwoConnQueries(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    postgresClient = createNumbers(context, 21, 22, 23, 31, 32, 33);
+    postgresClient.withTrans(
+        conn -> conn.selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(),
+            rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+        .compose(x -> conn.selectStream("SELECT i FROM numbers WHERE i IN (31, 33, 35) ORDER BY i", Tuple.tuple(),
+            rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23, 31, 33]"))));
+  }
+
+  @Test
   public void selectStreamTrans(TestContext context) {
     postgresClient = createNumbers(context, 21, 22, 23);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2965,7 +2995,7 @@ public class PostgresClientIT {
 
   @Test
   public void selectStreamNullConnection(TestContext context) {
-    new Conn(null, null).selectStream("sql", Tuple.tuple(), 1)
+    new Conn(null, null).selectStream("sql", Tuple.tuple(), 1, rowStreamHandler -> {})
     .onComplete(context.asyncAssertFailure(e -> assertThat(e, is(instanceOf(NullPointerException.class)))));
   }
 
