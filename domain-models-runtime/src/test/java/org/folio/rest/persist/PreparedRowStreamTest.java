@@ -4,15 +4,13 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.*;
 
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowStream;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.AdditionalAnswers;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
@@ -45,32 +43,47 @@ class PreparedRowStreamTest {
   }
 
   @Test
-  void closeHandlerOneFailure() {
-    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<Void>> handler)
-        -> handler.handle(Future.succeededFuture())))
-        .when(mockedPreparedStatement).close(any());
-    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<Void>> handler)
-        -> handler.handle(Future.failedFuture("fail"))))
-        .when(mockedRowStream).close(any());
+  void exceptionHandlerOneFailure() {
+    AtomicReference<Handler<Throwable>> exceptionHandler = new AtomicReference<>();
+    when(mockedRowStream.exceptionHandler(any())).thenAnswer(i -> {
+      exceptionHandler.set(i.getArgument(0));
+      return mockedRowStream;
+    });
     PreparedRowStream preparedRowStream = new PreparedRowStream(mockedRowStream);
-    StringBuilder s = new StringBuilder();
-    preparedRowStream.close(handler -> s.append(handler.cause().getMessage()));
-    assertThat(s.toString(), is("fail"));
-    verify(mockedPreparedStatement).close(any());
+    exceptionHandler.get().handle(new RuntimeException("foo"));
+    assertThat(preparedRowStream.getResult().failed(), is(true));
+    assertThat(preparedRowStream.getResult().cause().getMessage(), is("foo"));
   }
 
   @Test
-  void closeHandlerTwoFailures() {
-    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<Void>> handler)
-        -> handler.handle(Future.failedFuture("fail1"))))
-        .when(mockedPreparedStatement).close(any());
-    doAnswer(AdditionalAnswers.answerVoid((Handler<AsyncResult<Void>> handler)
-        -> handler.handle(Future.failedFuture("fail2"))))
-        .when(mockedRowStream).close(any());
+  void exceptionHandlerTwoFailures() {
+    AtomicReference<Handler<Throwable>> exceptionHandler = new AtomicReference<>();
+    when(mockedRowStream.exceptionHandler(any())).thenAnswer(i -> {
+      exceptionHandler.set(i.getArgument(0));
+      return mockedRowStream;
+    });
     PreparedRowStream preparedRowStream = new PreparedRowStream(mockedRowStream);
-    StringBuilder s = new StringBuilder();
-    preparedRowStream.close(handler -> s.append(handler.cause().getMessage()));
-    assertThat(s.toString(), is("fail2"));
-    verify(mockedPreparedStatement).close(any());
+    exceptionHandler.get().handle(new RuntimeException("bar"));
+    exceptionHandler.get().handle(new RuntimeException("baz"));
+    assertThat(preparedRowStream.getResult().failed(), is(true));
+    assertThat(preparedRowStream.getResult().cause().getMessage(), is("bar"));
+  }
+
+  @Test
+  void exceptionAfterEnd() {
+    AtomicReference<Handler<Void>> endHandler = new AtomicReference<>();
+    when(mockedRowStream.endHandler(any())).thenAnswer(i -> {
+      endHandler.set(i.getArgument(0));
+      return mockedRowStream;
+    });
+    AtomicReference<Handler<Throwable>> exceptionHandler = new AtomicReference<>();
+    when(mockedRowStream.exceptionHandler(any())).thenAnswer(i -> {
+      exceptionHandler.set(i.getArgument(0));
+      return mockedRowStream;
+    });
+    PreparedRowStream preparedRowStream = new PreparedRowStream(mockedRowStream);
+    endHandler.get().handle(null);
+    exceptionHandler.get().handle(new RuntimeException("foo"));
+    assertThat(preparedRowStream.getResult().succeeded(), is(true));
   }
 }
