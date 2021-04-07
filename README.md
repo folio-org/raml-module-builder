@@ -1660,26 +1660,22 @@ Saving a POJO within a transaction:
 
 ```java
 PoLine poline = new PoLine();
-
 ...
-
-postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...
+postgresClient.withTrans(conn -> {
+  return conn.getByIdForUpdate(SOME_OTHER_TABLE, id)
+  .compose(x -> ...)
+  .compose(x -> conn.save(TABLE_NAME_POLINE, poline)
+  .compose(x -> ...);
+}).compose(res -> ...
 ```
-Remember to call beginTx and endTx
 
 Querying for similar POJOs in the DB (with or without additional criteria):
 
 ```java
-Criterion c = new Criterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setValue("'"+entryId+"'"));
+Criterion c = new Criterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setVal(entryId));
 
-postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
-              reply -> {...
-```
-
-The `Criteria` object which generates `where` clauses can also receive a JSON Schema so that it can cast values to the correct type within the `where` clause.
-
-```java
-Criteria idCrit = new Criteria("ramls/schemas/userdata.json");
+postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c)
+.compose(x -> ...
 ```
 
 ## RAMLs API
@@ -2343,43 +2339,12 @@ See the `JsonPathParser` class for more info.
 
 #### An example HTTP request
 
-    //create a client
-    HttpClientInterface client = HttpClientFactory.getHttpClient(okapiURL, tenant);
-    //make a request
-    CompletableFuture<Response> response1 = client.request(url, okapiHeaders);
-    //chain a request to the previous request, the placeholder {users[0].username}
-    //means that the value appearing in the first user[0]'s username in the json returned
-    //in response1 will be injected here
-    //the handlePreviousResponse() is a function you code and will receive the response
-    //object (containing headers / body / etc,,,) of response1 so that you can decide what to do
-    //before the chainedRequest is issued - see example below
-    //the chained request will not be sent if the previous response (response1) has completed with
-    //an error
-    response1.thenCompose(client.chainedRequest("/authn/credentials/{users[0].username}",
-        okapiHeaders, null, handlePreviousResponse());
+Use [Vert.x WebClient](https://vertx.io/docs/vertx-web-client/java/) or `org.folio.okapi.common.OkapiClient`
+or [Vert.x HttpClient](https://vertx.io/docs/vertx-core/java/#_creating_an_http_client)
+for HTTP requests.
 
-        Consumer<Response> handlePreviousResponse(){
-            return (response) -> {
-                int statusCode = response.getCode();
-                boolean ok = Response.isSuccess(statusCode);
-                //if not ok, return error
-            };
-        }
-
-    //if you send multiple chained Requests based on response1 you can use the
-    //CompletableFuture.allOf() to wait till they are all complete
-    //or you can chain one request to another in a pipeline manner as well
-
-    //you can also generate a cql query param as part of the chained request based on the
-    //response of the previous response. the below will create a username=<value> cql clause for
-    //every value appearing in the response1 json's users array -> username
-    response1.thenCompose(client.chainedRequest("/authn/credentials", okapiHeaders, new BuildCQL(null, "users[*].username", "username")),...
-
-    //join the values within 2 responses - injecting the value from a field in one json into the field of another json when a constraint between the two jsons exists (like field a from json 1 equals field c from json 2)
-    //compare all users->patron_groups in response1 to all usergroups->id in groupResponse, when there is a match, push the group field in the specific entry of groupResonse into the patron_group field in the specific entry in the response1 json
-    response1.joinOn("users[*].patron_group", groupResponse, "usergroups[*].id", "group", "patron_group", false);
-    //close the http client
-    hClient.closeClient();
+Note that a Verticle should create a single WebClient or HttpClient and reuse it for all requests to
+allow for pooling and pipe-lining. When creating an OkapiClient instance pass in that WebClient or HttpClient.
 
 ## A Little More on Validation
 
@@ -2391,56 +2356,43 @@ Query parameters and header validation
 ![](images/object_validation.png)
 
 #### function example
+
+org.folio.rest.persist.PgUtil has default implementations that should be used if possible.
+
+This example shows how to use advanced features that go beyond that.
+
 ```java
   @Validate
   @Override
-  public void getConfigurationsEntries(String query, int offset, int limit,
-      String lang,java.util.Map<String, String>okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context context) throws Exception {
+  public void postConfigurationsEntries(
+      Config entity, RoutingContext routingContext, Map<String, String>okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context context) {
 
-    CQLWrapper cql = getCQL(query,limit, offset);
-    /**
-    * http://host:port/configurations/entries
-    */
-    context.runOnContext(v -> {
-      try {
-        System.out.println("sending... getConfigurationsTables");
-        String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT) );
-
-        PostgresClient.getInstance(context.owner(), tenantId).get(CONFIG_TABLE, Config.class,
-          new String[]{"*"}, cql, true,
-            reply -> {
-              try {
-                if(reply.succeeded()){
-                  Configs configs = new Configs();
-                  List<Config> config = (List<Config>) reply.result()[0];
-                  configs.setConfigs(config);
-                  configs.setTotalRecords((Integer)reply.result()[1]);
-                  asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetConfigurationsEntriesResponse.withJsonOK(
-                    configs)));
-                }
-                else{
-                  log.error(reply.cause().getMessage(), reply.cause());
-                  asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetConfigurationsEntriesResponse
-                    .withPlainBadRequest(reply.cause().getMessage())));
-                }
-              } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetConfigurationsEntriesResponse
-                  .withPlainInternalServerError(messages.getMessage(
-                    lang, MessageConsts.InternalServerError))));
-              }
-            });
-      } catch (Exception e) {
+    try {
+      log.debug("sending... postConfigurationsTables");
+      defaultToEnabled(entity);
+      String tenantId = TenantTool.tenantId(okapiHeaders);
+      PostgresClient.getInstance(context.owner(), tenantId)
+      .save(CONFIG_TABLE, entity.getId(), entity)
+      .onSuccess(ret -> {
+        entity.setId(ret);
+        asyncResultHandler.handle(Future.succeededFuture(
+            PostConfigurationsEntriesResponse.respond201WithApplicationJson(entity,
+                PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret))));
+      }).onFailure(e -> {
         log.error(e.getMessage(), e);
-        String message = messages.getMessage(lang, MessageConsts.InternalServerError);
-        if(e.getCause() != null && e.getCause().getClass().getSimpleName().endsWith("CQLParseException")){
-          message = " CQL parse error " + e.getLocalizedMessage();
+        if (isNotUniqueModuleConfigAndCode(e)) {
+          asyncResultHandler.handle(Future.succeededFuture(
+              PostConfigurationsEntriesResponse
+              .respond422WithApplicationJson(uniqueModuleConfigAndCodeError(entity))));
+          return;
         }
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetConfigurationsEntriesResponse
-          .withPlainInternalServerError(message)));
-      }
-    });
+        ValidationHelper.handleError(e, asyncResultHandler);
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      ValidationHelper.handleError(e, asyncResultHandler);
+    }
   }
 ```
 
@@ -2482,14 +2434,20 @@ public class UserDeserializer extends JsonDeserializer<User> {
 
 Making async calls to the PostgresClient requires handling failures of different kinds. RMB exposes a tool that can handle the basic error cases, and return them as a 422 validation error status falling back to a 500 error status when the error is not one of the standard DB errors.
 
-Usage:
+Usage with Future:
 
 ```
-if(reply.succeeded()){
-  ..........
-}
-else{
-   ValidationHelper.handleError(reply.cause(), asyncResultHandler);
+...
+.onFailure(exception -> ValidationHelper.handleError(exception, asyncResultHandler))
+.onSuccess(result -> ...);
+```
+
+Usage with AsyncResult:
+
+```
+if (asyncResult.failed()) {
+  ValidationHelper.handleError(asyncResult.cause(), asyncResultHandler);
+  return;
 }
 ```
 RMB will return a response to the client as follows:
