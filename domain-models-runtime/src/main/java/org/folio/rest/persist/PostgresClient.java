@@ -3072,13 +3072,13 @@ public class PostgresClient {
    * <p>To update see {@link #execute(String, Handler)}.
    *  @param sql - the sql query to run
    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
-     * @param replyHandler the query result or the failure
-     */
-    public void select(String sql, int queryTimeout, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-      getSQLConnection(queryTimeout,
-          conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler))
-      );
-    }
+   * @param replyHandler the query result or the failure
+   */
+  public void select(String sql, int queryTimeout, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+    getSQLConnection(queryTimeout,
+        conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler))
+        );
+  }
 
   static void queryAndAnalyze(PgConnection conn, String sql, String statMethod,
     Handler<AsyncResult<RowSet<Row>>> replyHandler) {
@@ -3288,6 +3288,43 @@ public class PostgresClient {
   }
 
   /**
+   * Get a stream of the results of the {@code sql} query.
+   *
+   * Sample usage:
+   *
+   * <pre>
+   * postgresClient.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5), 100,
+   *         rowStream -> rowStream.handler(row -> task.process(row))))
+   * .compose(x -> ...
+   * </pre>
+   *
+   * @param params arguments for {@code $} placeholders in {@code sql}
+   * @param chunkSize cursor fetch size
+   */
+  public Future<Void> selectStream(String sql, Tuple params, int chunkSize, Handler<RowStream<Row>> rowStreamHandler) {
+    return withTrans(trans -> trans.selectStream(sql, params, chunkSize, rowStreamHandler));
+  }
+
+  /**
+   * Get a stream of the results of the {@code sql} query.
+   *
+   * The chunk size is {@link PostgresClient#STREAM_GET_DEFAULT_CHUNK_SIZE}.
+   *
+   * Sample usage:
+   *
+   * <pre>
+   * postgresClient.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5),
+   *         rowStream -> rowStream.handler(row -> task.process(row))))
+   * .compose(x -> ...
+   * </pre>
+   *
+   * @param params arguments for {@code $} placeholders in {@code sql}
+   */
+  public Future<Void> selectStream(String sql, Tuple params, Handler<RowStream<Row>> rowStreamHandler) {
+    return withTrans(trans -> trans.selectStream(sql, params, rowStreamHandler));
+  }
+
+  /**
    * Run a parameterized/prepared select query returning with a {@link RowStream<Row>}.
    *
    * <p>This never closes the connection conn.
@@ -3326,28 +3363,12 @@ public class PostgresClient {
    * Always call {@link RowStream#close()} or {@link RowStream#close(Handler)}
    * to release the underlying prepared statement.
    */
-  void selectStream(AsyncResult<SQLConnection> conn, String sql, Tuple params, int chunkSize,
+  void selectStream(AsyncResult<SQLConnection> sqlConnection, String sql, Tuple params, int chunkSize,
       Handler<AsyncResult<RowStream<Row>>> replyHandler) {
-    try {
-      if (conn.failed()) {
-        replyHandler.handle(Future.failedFuture(conn.cause()));
-        return;
-      }
-      final PgConnection pgConnection = conn.result().conn;
-      pgConnection.prepare(sql, res -> {
-        if (res.failed()) {
-          log.error(res.cause().getMessage(), res.cause());
-          replyHandler.handle(Future.failedFuture(res.cause()));
-          return;
-        }
-        PreparedStatement preparedStatement = res.result();
-        RowStream<Row> rowStream = new PreparedRowStream(preparedStatement, chunkSize, params);
-        replyHandler.handle(Future.succeededFuture(rowStream));
-      });
-    } catch (Exception e) {
-      log.error("select stream sql: " + e.getMessage() + " - " + sql, e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+
+    withConn(sqlConnection, conn -> conn.selectStream(sql, params, chunkSize, rowStream -> {
+      replyHandler.handle(Future.succeededFuture(rowStream));
+    })).onFailure(t -> replyHandler.handle(Future.failedFuture(t)));
   }
 
   /**

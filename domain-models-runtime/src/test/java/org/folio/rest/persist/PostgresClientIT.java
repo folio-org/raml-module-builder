@@ -2821,6 +2821,36 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectStream(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    createNumbers(context, 21, 22, 23)
+    .selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(),
+        rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23]"))));
+  }
+
+  @Test
+  public void selectStreamChunkSize(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    createNumbers(context, 21, 22, 23)
+    .selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(), 2,
+        rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23]"))));
+  }
+
+  @Test
+  public void selectStreamTwoConnQueries(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    postgresClient = createNumbers(context, 21, 22, 23, 31, 32, 33);
+    postgresClient.withTrans(
+        conn -> conn.selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(),
+            rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+        .compose(x -> conn.selectStream("SELECT i FROM numbers WHERE i IN (31, 33, 35) ORDER BY i", Tuple.tuple(),
+            rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23, 31, 33]"))));
+  }
+
+  @Test
   public void selectStreamTrans(TestContext context) {
     postgresClient = createNumbers(context, 21, 22, 23);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2961,6 +2991,12 @@ public class PostgresClientIT {
   @Test
   public void selectSingleParamTxException(TestContext context) {
     postgresClient().selectSingle(null, "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectStreamNullConnection(TestContext context) {
+    new Conn(null, null).selectStream("sql", Tuple.tuple(), 1, rowStreamHandler -> {})
+    .onComplete(context.asyncAssertFailure(e -> assertThat(e, is(instanceOf(NullPointerException.class)))));
   }
 
   @Test
@@ -4191,7 +4227,7 @@ public class PostgresClientIT {
         context.asyncAssertFailure());
   }
 
-  private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
+  private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     String polines = getMockData("mockdata/poLines.json");
     postgresClient = createTable(context, TENANT, tableName, tableDefiniton);
@@ -4202,7 +4238,7 @@ public class PostgresClientIT {
     }
   }
 
-  private void createTableWithPoLines(TestContext context) throws IOException {
+  private void createTableWithPoLines(TestContext context) {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
   }
@@ -4218,7 +4254,7 @@ public class PostgresClientIT {
     }
   }
 
-  public static String getMockData(String path) throws IOException {
+  public static String getMockData(String path) {
     try (InputStream resourceAsStream = PostgresClientIT.class.getClassLoader().getResourceAsStream(path)) {
       if (resourceAsStream != null) {
         return IOUtils.toString(resourceAsStream, StandardCharsets.UTF_8);
@@ -4229,6 +4265,8 @@ public class PostgresClientIT {
         }
         return sb.toString();
       }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 

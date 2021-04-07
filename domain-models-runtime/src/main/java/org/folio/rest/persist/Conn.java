@@ -10,6 +10,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Tuple;
 import java.io.UncheckedIOException;
 import java.lang.reflect.Method;
@@ -865,6 +866,55 @@ public class Conn {
       Handler<AsyncResult<PostgresClientStreamResult<T>>> streamHandler) {
 
     return streamGet(table, clazz, PostgresClient.DEFAULT_JSONB_FIELD_NAME, wrapper, false, null, null, streamHandler);
+  }
+
+  /**
+   * Get a stream of the results of the {@code sql} query.
+   *
+   * Sample usage:
+   *
+   * <pre>
+   * postgresClient.withTrans(conn -> step1()
+   *     .compose(x -> conn.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5), 100,
+   *         rowStream -> rowStream.handler(row -> task.process(row))))
+   *     .compose(x -> ...
+   * </pre>
+   *
+   * @param params arguments for {@code $} placeholders in {@code sql}
+   * @param chunkSize cursor fetch size
+   */
+  public Future<Void> selectStream(String sql, Tuple params, int chunkSize, Handler<RowStream<Row>> rowStreamHandler) {
+    try {
+      return pgConnection.prepare(sql)
+      .compose(preparedStatement -> {
+        PreparedRowStream rowStream = new PreparedRowStream(preparedStatement, chunkSize, params);
+        rowStreamHandler.handle(rowStream);
+        return rowStream.getResult().eventually(x -> preparedStatement.close());
+      });
+    } catch (Throwable e) {
+      log.error(e.getMessage() + " - " + sql, e);
+      return Future.failedFuture(e);
+    }
+  }
+
+  /**
+   * Get a stream of the results of the {@code sql} query.
+   *
+   * The chunk size is {@link PostgresClient#STREAM_GET_DEFAULT_CHUNK_SIZE}.
+   *
+   * Sample usage:
+   *
+   * <pre>
+   * postgresClient.withTrans(conn -> step1()
+   *     .compose(x -> conn.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5),
+   *         rowStream -> rowStream.handler(row -> task.process(row))))
+   *     .compose(x -> ...
+   * </pre>
+   *
+   * @param params arguments for {@code $} placeholders in {@code sql}
+   */
+  public Future<Void> selectStream(String sql, Tuple params, Handler<RowStream<Row>> rowStreamHandler) {
+    return selectStream(sql, params, PostgresClient.STREAM_GET_DEFAULT_CHUNK_SIZE, rowStreamHandler);
   }
 
   /**
