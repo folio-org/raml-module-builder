@@ -16,6 +16,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import org.assertj.core.api.WithAssertions;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.CQL2PgJSONException;
@@ -137,6 +138,10 @@ public class ConnIT implements WithAssertions {
     .onComplete(succeedingThenComplete(vtc, s -> assertThat(s).contains("\"key\":\"a\"")));
   }
 
+  <T> Future<T> repeatUntilSuccess(Supplier<Future<T>> task) {
+    return task.get().recover(e -> repeatUntilSuccess(task));
+  }
+
   <T> void getByIdForUpdate(VertxTestContext vtc, BiFunction<Conn, String, Future<T>> forUpdate) {
     String id = randomUuid();
     with(id, "a", trans -> {
@@ -155,10 +160,13 @@ public class ConnIT implements WithAssertions {
               return Future.succeededFuture();
             });
       });
+    });
+
+    repeatUntilSuccess(() -> {
+      return postgresClient.getByIdAsString("t", id)
+      .map(s -> assertThat(s).contains("\"c\""));
     })
-    .compose(x -> postgresClient.execute("SELECT 1"))  // give some time for upsert
-    .compose(x -> postgresClient.getByIdAsString("t", id))
-    .onComplete(succeedingThenComplete(vtc, s -> assertThat(s).contains("\"c\"")));
+    .onComplete(vtc.succeedingThenComplete());
   }
 
   @Test
