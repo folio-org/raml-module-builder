@@ -318,16 +318,6 @@ public class ClientGenerator implements ClientGrabber {
 
   }
 
-  public void generateCloseClient(){
-    JMethod jmCreate = method(JMod.PUBLIC, void.class, "close");
-    jmCreate.javadoc().add("Close the client. Closing will close the WebClient and the HttpClient. "
-        + "Only close if WebClient and HttpClient will not be re-used.");
-    jmCreate.javadoc().addDeprecated().append("A Verticle should keep the WebClient/HttpClient and reuse it.");
-    jmCreate.annotate(Deprecated.class);
-    JBlock body = jmCreate.body();
-    body.directStatement("webClient.close();");
-  }
-
   public static void makeCleanDir(String dirPath) throws IOException {
     File dir = new File(dirPath);
     if (! dir.exists()) {
