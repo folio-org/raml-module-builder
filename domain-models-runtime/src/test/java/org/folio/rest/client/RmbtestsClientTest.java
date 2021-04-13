@@ -4,9 +4,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClient;
+import io.vertx.ext.web.client.WebClient;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import java.io.UnsupportedEncodingException;
 import java.time.ZoneId;
 import java.util.Date;
 import java.util.TimeZone;
@@ -31,6 +32,32 @@ class RmbtestsClientTest {
   }
 
   @Test
+  void webClient(Vertx vertx, VertxTestContext vtc) {
+    WebClient webClient = WebClient.create(vertx);
+    vertx.createHttpServer()
+    .requestHandler(req -> req.response().end("Pong"))
+    .listen(8888)
+    .compose(x -> new RmbtestsClient("http://localhost:8888", "tenant", "token", webClient).getRmbtestsTest(null))
+    .onComplete(vtc.succeeding(result -> assertThat(result.bodyAsString(), is("Pong"))))
+    .compose(x -> new RmbtestsClient("http://localhost:8888", "tenant", "token", webClient).getRmbtestsTest(null))
+    .onComplete(vtc.succeeding(result -> assertThat(result.bodyAsString(), is("Pong"))))
+    .onComplete(x -> vtc.completeNow());
+  }
+
+  @Test
+  void httpClient(Vertx vertx, VertxTestContext vtc) {
+    HttpClient httpClient = vertx.createHttpClient();
+    vertx.createHttpServer()
+    .requestHandler(req -> req.response().end("Pong"))
+    .listen(8888)
+    .compose(x -> new RmbtestsClient("http://localhost:8888", "tenant", "token", httpClient).getRmbtestsTest(null))
+    .onComplete(vtc.succeeding(result -> assertThat(result.bodyAsString(), is("Pong"))))
+    .compose(x -> new RmbtestsClient("http://localhost:8888", "tenant", "token", httpClient).getRmbtestsTest(null))
+    .onComplete(vtc.succeeding(result -> assertThat(result.bodyAsString(), is("Pong"))))
+    .onComplete(x -> vtc.completeNow());
+  }
+
+  @Test
   void timeZone(Vertx vertx, VertxTestContext vtc) {
     // the server default time zone must not change the UTC based date-time string
     TimeZone.setDefault(TimeZone.getTimeZone(ZoneId.of("-0600")));
@@ -43,4 +70,5 @@ class RmbtestsClientTest {
           .getRmbtestsBooks("author", date,  0,1, 1, "isbn", false, null, response -> {});
     });
   }
+
 }

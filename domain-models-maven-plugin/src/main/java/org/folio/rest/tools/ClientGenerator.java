@@ -20,6 +20,7 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.buffer.Buffer;
+import io.vertx.core.http.HttpClient;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
@@ -62,6 +63,8 @@ public class ClientGenerator implements ClientGrabber {
   public static final String  TOKEN                  = "token";
   private static final String KEEP_ALIVE             = "keepAlive";
   private static final String OKAPI_URL              = "okapiUrl";
+  private static final String WEB_CLIENT             = "webClient";
+  private static final String HTTP_CLIENT            = "httpClient";
 
   private static final Logger log = Logger.getLogger(ClientGenerator.class.getName());
 
@@ -80,7 +83,9 @@ public class ClientGenerator implements ClientGrabber {
 
 
   private JFieldVar tenantId;
+  private JFieldVar token;
   private JFieldVar okapiUrl;
+  private JFieldVar webClient;
 
   public static void main(String[] args) throws Exception {
     boolean generateClient = System.getProperty("client.generate") != null;
@@ -126,7 +131,9 @@ public class ClientGenerator implements ClientGrabber {
 
   private void deprecate(JMethod method) {
     method.annotate(Deprecated.class);
-    method.javadoc().add("@deprecated  use a constructor that takes a full okapiUrl instead");
+    method.javadoc().add("@deprecated Use a constructor that takes a WebClient or an HttpClient\n" +
+        "        to allow for pooling and pipelining. Best practice is one WebClient (or HttpClient) that\n" +
+        "        is reused until the Verticle closes.");
   }
 
   private void addConstructor0Args() {
@@ -134,7 +141,8 @@ public class ClientGenerator implements ClientGrabber {
     JBlock conBody = constructor.body();
     conBody.invoke("this").arg("localhost").arg(JExpr.lit(8081)).arg("folio_demo").arg("folio_demo").arg(JExpr.FALSE)
       .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
-    constructor.javadoc().add("Convenience constructor for tests ONLY!<br>Connect to localhost on 8081 as folio_demo tenant.");
+    constructor.javadoc().add("Convenience constructor for tests ONLY!\n\n" +
+      "Connect to localhost on 8081 as folio_demo tenant.\n\n");
     deprecate(constructor);
   }
 
@@ -169,7 +177,6 @@ public class ClientGenerator implements ClientGrabber {
   }
 
   private void addConstructor7Args() {
-    /* constructor, init the httpClient - allow to pass keep alive option */
     JMethod constructor = constructor();
     JVar host = constructor.param(String.class, "host");
     JVar port = constructor.param(int.class, "port");
@@ -193,6 +200,7 @@ public class ClientGenerator implements ClientGrabber {
     JBlock conBody = constructor.body();
     conBody.invoke("this").arg(okapiUrlVar).arg(tenantIdVar).arg(tokenVar).arg(JExpr.TRUE)
       .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
+    deprecate(constructor);
   }
 
   private void addConstructorOkapi4Args() {
@@ -204,13 +212,14 @@ public class ClientGenerator implements ClientGrabber {
     JBlock conBody = constructor.body();
     conBody.invoke("this").arg(okapiUrlVar).arg(tenantIdVar).arg(tokenVar).arg(keepAlive)
       .arg(JExpr.lit(2000)).arg(JExpr.lit(5000));
+    deprecate(constructor);
   }
-  private void addConstructorOkapi6Args(JFieldVar tokenVar, JFieldVar options, JFieldVar webClient) {
-    /* constructor, init the httpClient - allow to pass keep alive option */
+
+  private void addConstructorOkapi6Args() {
     JMethod constructor = constructor();
     JVar okapiUrlVar = constructor.param(String.class, OKAPI_URL);
     JVar tenantIdVar = constructor.param(String.class, TENANT_ID);
-    JVar token = constructor.param(String.class, TOKEN);
+    JVar tokenVar = constructor.param(String.class, TOKEN);
     JVar keepAlive = constructor.param(boolean.class, KEEP_ALIVE);
     JVar connTimeout = constructor.param(int.class, "connTO");
     JVar idleTimeout = constructor.param(int.class, "idleTO");
@@ -218,9 +227,10 @@ public class ClientGenerator implements ClientGrabber {
     /* populate constructor */
     JBlock conBody = constructor.body();
     conBody.assign(JExpr._this().ref(tenantId), tenantIdVar);
-    conBody.assign(JExpr._this().ref(tokenVar), token);
+    conBody.assign(JExpr._this().ref(token), tokenVar);
     conBody.assign(JExpr._this().ref(okapiUrl), okapiUrlVar);
-    conBody.assign(options, JExpr._new(jcodeModel.ref(WebClientOptions.class)));
+    JVar options = conBody.decl(jcodeModel._ref(WebClientOptions.class), "options",
+        JExpr._new(jcodeModel.ref(WebClientOptions.class)));
     conBody.invoke(options, "setLogActivity").arg(JExpr.TRUE);
     conBody.invoke(options, "setKeepAlive").arg(keepAlive);
     conBody.invoke(options, "setConnectTimeout").arg(connTimeout);
@@ -231,6 +241,30 @@ public class ClientGenerator implements ClientGrabber {
         .staticInvoke("create").arg(jcodeModel
         .ref("org.folio.rest.tools.utils.VertxUtils").staticInvoke("getVertxFromContextOrNew")).arg(options);
     conBody.assign(webClient, client);
+
+    deprecate(constructor);
+  }
+
+  private void addConstructorWebClient() {
+    JMethod constructor = constructor();
+    constructor.javadoc().add("Reuse a WebClient.");
+    JBlock conBody = constructor.body();
+    conBody.assign(JExpr._this().ref(okapiUrl), constructor.param(String.class, OKAPI_URL));
+    conBody.assign(JExpr._this().ref(tenantId), constructor.param(String.class, TENANT_ID));
+    conBody.assign(JExpr._this().ref(token), constructor.param(String.class, TOKEN));
+    conBody.assign(JExpr._this().ref(webClient), constructor.param(WebClient.class, WEB_CLIENT));
+  }
+
+  /** this(okapiUrl, tenantId, token, WebClient.wrap(httpClient)) */
+  private void addConstructorHttpClient() {
+    JMethod constructor = constructor();
+    constructor.javadoc().add("Reuse an HttpClient.");
+    constructor.body().invoke("this")
+      .arg(constructor.param(String.class, OKAPI_URL))
+      .arg(constructor.param(String.class, TENANT_ID))
+      .arg(constructor.param(String.class, TOKEN))
+      .arg(jcodeModel.ref(WebClient.class)
+          .staticInvoke("wrap").arg(constructor.param(HttpClient.class, HTTP_CLIENT)));
   }
 
   /**
@@ -261,20 +295,15 @@ public class ClientGenerator implements ClientGrabber {
       JDocComment com = jc.javadoc();
       com.add("Auto-generated code - based on class " + className);
 
-      /* class variable tenant id */
-      tenantId = jc.field(JMod.PRIVATE, String.class, TENANT_ID);
+      tenantId = jc.field(JMod.PRIVATE | JMod.FINAL, String.class, TENANT_ID);
+      token = jc.field(JMod.PRIVATE | JMod.FINAL, String.class, TOKEN);
+      okapiUrl = jc.field(JMod.PRIVATE | JMod.FINAL, String.class, OKAPI_URL);
+      webClient = jc.field(JMod.PRIVATE | JMod.FINAL, WebClient.class, WEB_CLIENT);
 
-      JFieldVar tokenVar = jc.field(JMod.PRIVATE, String.class, TOKEN);
+      addConstructorWebClient();
+      addConstructorHttpClient();
 
-      okapiUrl = jc.field(JMod.PRIVATE, String.class, OKAPI_URL);
-
-      /* class variable to http options */
-      JFieldVar options = jc.field(JMod.PRIVATE, WebClientOptions.class, "options");
-
-      /* class variable to http client */
-      JFieldVar webClient = jc.field(JMod.PRIVATE, WebClient.class, "httpClient");
-
-      addConstructorOkapi6Args(tokenVar, options, webClient);
+      addConstructorOkapi6Args();
       addConstructorOkapi4Args();
       addConstructorOkapi3Args();
 
@@ -287,15 +316,6 @@ public class ClientGenerator implements ClientGrabber {
       log.log(Level.SEVERE, e.getMessage(), e);
     }
 
-  }
-
-  public void generateCloseClient(){
-    JMethod jmCreate = method(JMod.PUBLIC, void.class, "close");
-    jmCreate.javadoc().add("Close the client. Closing will close down any "
-        + "pooled connections. Clients should always be closed after use.");
-    JBlock body = jmCreate.body();
-
-    body.directStatement("httpClient.close();");
   }
 
   public static void makeCleanDir(String dirPath) throws IOException {
@@ -378,7 +398,7 @@ public class ClientGenerator implements ClientGrabber {
 
     /* create the http client request object */
     final String httpMethodName = httpVerb.substring(httpVerb.lastIndexOf('.') + 1).toUpperCase();
-    body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = httpClient.requestAbs("+
+    body.directStatement("io.vertx.ext.web.client.HttpRequest<Buffer> request = webClient.requestAbs("+
         "io.vertx.core.http.HttpMethod."+ httpMethodName +", okapiUrl+"+url+");");
 
     /* add headers to request */
