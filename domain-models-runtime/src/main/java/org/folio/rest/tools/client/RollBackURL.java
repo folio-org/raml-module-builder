@@ -3,9 +3,10 @@ package org.folio.rest.tools.client;
 import io.vertx.core.http.HttpMethod;
 
 /**
- * @author shale
- *
+ * Implementation incomplete.
+ * @deprecated All material in org.folio.rest.tools.client is deprecated.
  */
+@Deprecated
 public class RollBackURL {
 
   String endpoint;

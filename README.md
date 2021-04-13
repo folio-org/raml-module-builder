@@ -74,7 +74,6 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Instrumentation](#instrumentation)
 * [Overriding Out of The Box RMB APIs](#overriding-out-of-the-box-rmb-apis)
 * [Client Generator](#client-generator)
-* [Querying multiple modules via HTTP](#querying-multiple-modules-via-http)
 * [A Little More on Validation](#a-little-more-on-validation)
 * [Advanced Features](#advanced-features)
 * [Additional Tools](#additional-tools)
@@ -2228,123 +2227,6 @@ Requesting a stack trace would look like this:
       });
     });
 ```
-
-## Querying multiple modules via HTTP
-
-The RMB has some tools available to help:
- - Make HTTP requests to other modules
- - Parse JSON responses received (as well as any JSON for that matter)
- - Merge together / Join JSON responses from multiple modules
- - Build simple CQL query strings based on values in a JSON
-
-#### HTTP Requests
-
-The `HttpModuleClient2` class exposes a basic HTTP Client.
-The full constructor takes the following parameters
- - host
- - port
- - tenantId
- - keepAlive - of connections (default: true)
- - connTO - connection timeout (default: 2 seconds)
- - idleTO - idle timeout (default: 5 seconds)
- - autoCloseConnections - close connection when request completes (default: true)
- - cacheTO - cache of endpoint results timeout (in minutes, default: 30)
-
-```
-    HttpModuleClient2 hc = new HttpModuleClient2("localhost", 8083, "myuniversity_new2", false);
-    Response response = hc.request("/groups").get(5, TimeUNIT.SECONDS);
-```
-
-It is recommended to use the `HttpClientFactory` to get an instance of the `HttpModuleClient2`.
-The factory will then return either the actual `HttpModuleClient2` class or an instance of the `HttpClientMock2`. To return an instance of the mock client, set the mock mode flag in the vertx config. One way to do this:
-`new DeploymentOptions().setConfig(new JsonObject().put(HttpClientMock2.MOCK_MODE, "true"));`
-See [mock_content.json](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/resources/mock_content.json) for an example of how to associate a url with mocked data and headers
-
-The client returns a `Response` object. The `Response` class has the following members:
-  - endpoint - url the response came from
-  - code - http returned status code for request
-  - (JsonObject) body - the response data
-  - (JsonObject) error -  in case of an error - The `error` member will be populated. The
-  error object will contain the `endpoint`, the `statusCode`, and the `errorMessage`
-  - (Throwable) exception - if an exception was thrown during the API call
-
-
-The `HttpModuleClient2 request` function can receive the following parameters:
- - `HttpMethod` - (default: GET)
- - `endpoint` - API endpoint
- - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
- - `RollBackURL` - NOT SUPPORTED - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
- - `cachable` - Whether to cache the response
- - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
-`
-CompletableFuture<Response> cf =
-hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
-Response userResponse = cf.get(5, TimeUnit.SECONDS);
-`
-This will create a query string with all values from the JSON found in the path `usergroups[*].id` and will generate a CQL query string which will look something like this:
-`?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
-See `BuildCQL` for configuration options.
-
-The `Response` class also exposes a joinOn function that allow you to join / merge the received JSON objects from multiple requests.
-
-`public Response joinOn(String withField, Response response, String onField, String insertField,
-      String intoField, boolean allowNulls)`
-
-
-The Join occurs with the response initiating the joinOn call:
-
- - `withField` - the field within the response whose value / values will be used to join
- - `response` - the response to join this response with
- - `onField` - the field in the passed in response whose value / values will be used to join
- - `insertField` - the field in the passed in `response` to push into the current response (defaults to the `onField` value if this is not passed in)
- - `intoField` - the field to populate within this response
- - `allowNulls` - whether to populate with `null` if the field requested to push into the current response is `null` - if set to false - then the field will not be populated with a null value.
-
-Example:
-
-join:
-
-(response1) `{"a": "1","b": "2"}`
-
-with:
-
-(response2) `{"arr2":[{"id":"1","a31":"1"},{"id":"1","a31":"2"},{"id":"1","a32":"4"},{"id":"2","a31":"4"}]}`
-
-returns:
-`{"a":"1","b":["1","2"]}`
-
-with the following call:
-`response1.joinOn("a", response2, "arr2[*].id", "a31", "b", false)`
-
-Explanation:
-Join response1 on field "a" with response2 on field "arr2[*].id" (this means all IDs in the arr2 array. If a match is found take the value found in field "a31" and place it in field "b".
-Since in this case a single entry (response1) matches multiple entries from response2 - an array is created and populated. If this was a one-to-one match, then only the single value (whether a JSON object, JSON array, any value) would have been inserted.
-
-#### Parsing
-
-The RMB exposes a simple JSON parser for the vert.x JSONObject. The parser allows getting and setting nested JSON values. The parser allows retrieving values / nested values in a simpler manner.
-For example:
-
-`a.b` -- Get value of field 'b' which is nested within a JSONObject called 'a'
-
-`a.c[1].d` -- Get 'd' which appears in array 'c[1]'
-
-`a.'bb.cc'` -- Get field called 'bb.cc' (use '' when '.' in name)
-
-`a.c[*].a2` -- Get all 'a2' values as a List for each entry in the 'c' array
-
-
-See the `JsonPathParser` class for more info.
-
-
-#### An example HTTP request
-
-Use [Vert.x WebClient](https://vertx.io/docs/vertx-web-client/java/) or `org.folio.okapi.common.OkapiClient`
-or [Vert.x HttpClient](https://vertx.io/docs/vertx-core/java/#_creating_an_http_client)
-for HTTP requests.
-
-Note that a Verticle should create a single WebClient or HttpClient and reuse it for all requests to
-allow for pooling and pipe-lining. When creating an OkapiClient instance pass in that WebClient or HttpClient.
 
 ## A Little More on Validation
 

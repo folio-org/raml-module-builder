@@ -36,9 +36,10 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 
 /**
- * @author shale
- *
+ * Http Module client.
+ * @deprecated Use {@link io.vertx.ext.web.client.WebClient} for generic HTTP client or generated client.
  */
+@Deprecated
 public class HttpModuleClient2 implements HttpClientInterface {
 
   static LoadingCache<String, Response> cache = null;

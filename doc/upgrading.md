@@ -21,6 +21,14 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 33.0
 
+#### [RMB-717](https://issues.folio.org/browse/RMB-717) Deprecate HttpClientInterface, HttpModuleClient2, HttpClientMock2
+
+All classes in org.folio.rest.tools.client are deprecated. HTTP client
+functionality should use WebClient or HttpClient as factory of clients
+and combine with generated client(s) or use WebClient directly. Tests
+can create HTTP servers with Vertx.createHttpServer or use other mocking
+facility.
+
 #### [RMB-789](https://issues.folio.org/browse/RMB-789) Remove support of Embedded PostgreSQL Server
 
 Removed support for embedded Postgres for testing. Testing is now with

@@ -7,9 +7,10 @@ import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.util.StringUtil;
 
 /**
- * @author shale
- *
+ * Build CQL string by parsing response JSON
+ * @deprecated All material in org.folio.rest.tools.client is deprecated
  */
+@Deprecated
 public class BuildCQL {
 
   private Response r;
