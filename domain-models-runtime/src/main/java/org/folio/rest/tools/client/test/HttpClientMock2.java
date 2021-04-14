@@ -23,6 +23,11 @@ import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+/**
+ * Mock HTTP client.
+ * @deprecated Use {@link io.vertx.core.Vertx#createHttpServer()} for mocking a server or use mocking utility.
+ */
+@Deprecated
 public class HttpClientMock2 implements HttpClientInterface {
 
   public static final String MOCK_MODE = "mock.httpclient";

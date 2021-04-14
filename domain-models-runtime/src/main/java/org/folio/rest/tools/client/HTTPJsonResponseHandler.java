@@ -11,8 +11,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 /**
- * @author shale
+ * HTTP JSON response handling.
+ * @deprecated All material in org.folio.rest.tools.client is deprecated
  */
+@Deprecated
 class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer>>> {
 
   private static final Logger log = LogManager.getLogger(HTTPJsonResponseHandler.class);

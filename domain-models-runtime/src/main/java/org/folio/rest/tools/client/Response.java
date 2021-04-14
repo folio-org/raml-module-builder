@@ -17,9 +17,10 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
- * @author shale
- *
+ * Http client response handling.
+ * @deprecated All material in org.folio.rest.tools.client is deprecated.
  */
+@Deprecated
 public class Response {
 
   private static final ObjectMapper MAPPER = ObjectMapperTool.getMapper();
