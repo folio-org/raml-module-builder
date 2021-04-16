@@ -202,20 +202,4 @@ public class CQLWrapperTest {
     assertThat(wrapperCriterion.toString(), is("WHERE ((jsonb->>id) = '42') or true"));
   }
 
-  @Test
-  public void testForeignKeySubField() throws FieldException {
-    CQLWrapper wrapperCql = new CQLWrapper().setField(cql2pgJson)
-        .setQuery("copyrightStatus.name==cc");
-    Criterion criterion = new Criterion()
-        .addCriterion(new Criteria().addField("id").setOperation("=").setVal("42"));
-    CQLWrapper wrapperCriterion = new CQLWrapper(criterion);
-    CQLWrapper wrapperWhere = new CQLWrapper().setWhereClause("where false");
-
-
-    assertThat(wrapperCql.toString(),
-        is("WHERE true ORDER BY left(lower(f_unaccent(field->>'name')),600), lower(f_unaccent(field->>'name'))"));
-    assertThat(wrapperCriterion.toString(), is("WHERE (jsonb->>id) = '42'"));
-    assertThat(wrapperWhere.toString(), is("where false"));
-  }
-
 }
