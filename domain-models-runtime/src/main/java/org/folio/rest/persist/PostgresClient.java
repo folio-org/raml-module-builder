@@ -414,7 +414,7 @@ public class PostgresClient {
 
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
 
-    if (isEmbedded()) {
+    if (isEmbedded() && postgreSQLClientConfig.containsKey("testing")) {
       startPostgresTester();
     }
     logPostgresConfig();
@@ -457,6 +457,7 @@ public class PostgresClient {
     if (config == null) {
       log.info("No DB configuration found, setting username, password and database for testing");
       config = new JsonObject();
+      config.put("testing", true);
       config.put(USERNAME, USERNAME);
       config.put(PASSWORD, PASSWORD);
       config.put(DATABASE, "postgres");
