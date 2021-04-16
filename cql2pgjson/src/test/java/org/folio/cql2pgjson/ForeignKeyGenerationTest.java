@@ -212,4 +212,16 @@ public class ForeignKeyGenerationTest  {
         + "WHERE permanentLocationId='53cf956f-c1df-410b-8bea-27f712cca7c0')";
     assertEquals(expected, sql);
   }
+
+
+    @Test
+  public void searchItemByHoldingsPermanentLocationName() throws Exception {
+      CQL2PgJSON cql2PgJSON = cql2pgJson("coursereserves_reserves", "courseReservesSchema.json");
+      String sql = cql2PgJSON
+        .toSql("(courseListingId = 1bd04c24-8f8c-4e33-b69c-359146e43808) AND copyrightStatus.name==cc").toString();
+    String expected = "WHERE (courseListingId='1bd04c24-8f8c-4e33-b69c-359146e43808') AND (coursereserves_reserves.copyrightTracking_copyrightStatusId IN  "
+        + "( SELECT id FROM coursereserves_copyrightstates WHERE lower(f_unaccent(coursereserves_copyrightstates.jsonb->>'name')) "
+        + "LIKE lower(f_unaccent('cc'))))";
+    assertEquals(expected, sql);
+  }
 }
