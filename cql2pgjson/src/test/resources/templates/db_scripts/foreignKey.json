@@ -81,11 +81,29 @@
         {
           "fieldName": "tablecId",
           "targetTable": "tablec"
+        },
+        {
+          "fieldName": "copyrightTracking.copyrightStatusId",
+          "tableAlias": "copyrightStatus",
+          "targetTable": "tablej",
+          "targetTableAlias": "copyrightStatus",
+          "tOps": "ADD"
         }
       ]
     },
     {
       "tableName": "tablef"
+    },
+    {
+      "tableName": "tablej",
+      "withMetadata": true,
+      "withAuditing": false,
+      "index": [
+          {
+              "fieldName": "id",
+              "tOps": "ADD"
+          }
+      ]
     }
   ]
 }

@@ -215,13 +215,13 @@ public class ForeignKeyGenerationTest  {
 
 
     @Test
-  public void searchItemByHoldingsPermanentLocationName() throws Exception {
-      CQL2PgJSON cql2PgJSON = cql2pgJson("coursereserves_reserves", "courseReservesSchema.json");
+  public void fieldNameContainsDot() throws Exception {
+      CQL2PgJSON cql2PgJSON = cql2pgJson("tabled", "foreignKey.json");
       String sql = cql2PgJSON
-        .toSql("(courseListingId = 1bd04c24-8f8c-4e33-b69c-359146e43808) AND copyrightStatus.name==cc").toString();
-    String expected = "WHERE (courseListingId='1bd04c24-8f8c-4e33-b69c-359146e43808') AND (coursereserves_reserves.copyrightTracking_copyrightStatusId IN  "
-        + "( SELECT id FROM coursereserves_copyrightstates WHERE lower(f_unaccent(coursereserves_copyrightstates.jsonb->>'name')) "
-        + "LIKE lower(f_unaccent('cc'))))";
+        .toSql("copyrightStatus.name==cc").toString();
+    String expected = "WHERE tabled.copyrightTracking_copyrightStatusId"
+        + " IN  ( SELECT id FROM tablej WHERE lower(f_unaccent(tablej.jsonb->>'name'))"
+        + " LIKE lower(f_unaccent('cc')))";
     assertEquals(expected, sql);
   }
 }
