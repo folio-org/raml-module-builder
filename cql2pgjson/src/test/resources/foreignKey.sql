@@ -1,13 +1,13 @@
-DROP TABLE IF EXISTS tablea, tableb, tablec, tablef;
+DROP TABLE IF EXISTS tablea, tableb, tablec, tablef, tablej;
 CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA public;
 CREATE OR REPLACE FUNCTION f_unaccent(text) RETURNS text AS $$
   SELECT public.unaccent('public.unaccent', $1);
 $$ LANGUAGE sql IMMUTABLE;
 CREATE TABLE tablef (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
+CREATE TABLE tablej (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE TABLE tablea (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 CREATE TABLE tableb (id UUID PRIMARY KEY, jsonb JSONB NOT NULL, tableaId UUID references tablea, tablefId UUID references tablef, tablejId UUID references tablej);
 CREATE TABLE tablec (id UUID PRIMARY KEY, jsonb JSONB NOT NULL, tablebId UUID references tableb);
-CREATE TABLE tablej (id UUID PRIMARY KEY, jsonb JSONB NOT NULL);
 
 CREATE OR REPLACE FUNCTION update_id() RETURNS TRIGGER AS $$
 BEGIN
@@ -17,6 +17,8 @@ END; $$ language 'plpgsql';
 CREATE TRIGGER update_tablea_references BEFORE INSERT OR UPDATE ON tablea
   FOR EACH ROW EXECUTE PROCEDURE update_id();
 CREATE TRIGGER update_tablef_references BEFORE INSERT OR UPDATE ON tablef
+  FOR EACH ROW EXECUTE PROCEDURE update_id();
+CREATE TRIGGER update_tablej_references BEFORE INSERT OR UPDATE ON tablej
   FOR EACH ROW EXECUTE PROCEDURE update_id();
 
 CREATE OR REPLACE FUNCTION update_tableb_references() RETURNS TRIGGER AS $$
@@ -45,6 +47,11 @@ CREATE TRIGGER update_tablec_references BEFORE INSERT OR UPDATE ON tablec
 INSERT INTO tablef (jsonb) VALUES
 ('{"id": "F1111111-1111-4000-8000-000000000000"}');
 
+
+INSERT INTO tablej (jsonb) VALUES
+('{"id": "A1111111-1111-1111-1111-111111111111", "copyrightTracking_copyrightStatusId": "x1"}'),
+('{"id": "A2222222-2222-2222-2222-222222222222", "copyrightTracking_copyrightStatusId": "x2"}');
+
 INSERT INTO tablea (jsonb) VALUES
 ('{"id": "A0000000-0000-0000-0000-000000000000", "name": "test0"}'),
 ('{"id": "A1111111-1111-1111-1111-111111111111", "name": "test1"}'),
@@ -61,7 +68,7 @@ INSERT INTO tableb (jsonb) VALUES
 ('{"id": "B4444444-4444-4444-4444-444444444444", "prefix": "x0'')));(((''DROP tableb","otherindex": "y4", "tableaId": "A3333333-3333-3333-3333-333333333333"}'),
 ('{"id": "B5555555-5555-4000-8000-000000000000", "prefix": "x5", "tableaId": "A3333333-3333-3333-3333-333333333333"}'),
 ('{"id": "B6666666-6666-4000-8000-000000000000", "prefix": "x6", "tableaId": "A4444444-4444-4444-4444-444444444444", "tablefId": "F1111111-1111-4000-8000-000000000000"}'),
-('{"id": "B7777777-7777-4000-8000-000000000000", "prefix": "x7", "tablejId": "J1111111-1111-1111-1111-111111111111"}');
+('{"id": "B7777777-7777-4000-8000-000000000000", "prefix": "x7", "tablejId": "A1111111-1111-1111-1111-111111111111"}');
 INSERT INTO tableb (jsonb) VALUES (jsonb_build_object('id', md5('b' || generate_series(1, 2000)::text)));
 
 INSERT INTO tablec (jsonb) VALUES
@@ -70,8 +77,3 @@ INSERT INTO tablec (jsonb) VALUES
 ('{"id": "C3333333-3333-3333-3333-333333333333", "cprefix": "x2", "cindex": "z3", "tablebId": "B2222222-2222-2222-2222-222222222222"}'),
 ('{"id": "C4444444-4444-4444-4444-444444444444", "cprefix": "x4", "cindex": "z4", "tablebId": "B3333333-3333-3333-3333-333333333333"}');
 INSERT INTO tablec (jsonb) VALUES (jsonb_build_object('id', md5('c' || generate_series(1, 2000)::text)));
-
-
-INSERT INTO tablej (jsonb) VALUES
-('{"id": "J1111111-1111-1111-1111-111111111111", "copyrightTracking_copyrightStatusId": "x1"}'),
-('{"id": "J2222222-2222-2222-2222-222222222222", "name": "x2"}')
