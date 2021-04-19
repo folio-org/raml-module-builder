@@ -155,7 +155,8 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     assertThat(cqla("tableb.prefix == \"x0')  or 1=1)--\""), is(empty()) );
   }
 
+   @Test
    public void fieldNameContainsDot() throws Exception {
-     assertThat(cqlb("copyrightStatus.name==cc"), is(empty()) );
+     assertThat(cqlb("copyrightStatus.name==cc"), containsInAnyOrder("x1"));
    }
 }
