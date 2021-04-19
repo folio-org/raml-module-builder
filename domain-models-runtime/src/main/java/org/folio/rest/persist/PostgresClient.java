@@ -415,7 +415,7 @@ public class PostgresClient {
 
     postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs(), isEmbedded());
 
-    if (postgreSQLClientConfig.getBoolean(POSTGRES_TESTER)) {
+    if (Boolean.TRUE.equals(postgreSQLClientConfig.getBoolean(POSTGRES_TESTER))) {
       startPostgresTester();
     }
     logPostgresConfig();
