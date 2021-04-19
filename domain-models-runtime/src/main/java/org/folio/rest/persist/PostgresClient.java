@@ -192,6 +192,13 @@ public class PostgresClient {
     }
   }
 
+  /**
+   * Set test instance to use for testing.
+   * If database configuration is already provided, this call is ignored and testing
+   * is performed against the database instance given by configuration.
+   * See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()} }
+   * @param tester instance to use for testing.
+   */
   public static void setPostgresTester(PostgresTester tester) {
     stopPostgresTester();
     postgresTester = tester;
