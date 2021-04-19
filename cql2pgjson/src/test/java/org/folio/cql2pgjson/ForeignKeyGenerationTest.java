@@ -216,10 +216,10 @@ public class ForeignKeyGenerationTest  {
 
     @Test
   public void fieldNameContainsDot() throws Exception {
-      CQL2PgJSON cql2PgJSON = cql2pgJson("tabled", "foreignKey.json");
+      CQL2PgJSON cql2PgJSON = cql2pgJson("tableb", "foreignKey.json");
       String sql = cql2PgJSON
         .toSql("copyrightStatus.name==cc").toString();
-    String expected = "WHERE tabled.copyrightTracking_copyrightStatusId"
+    String expected = "WHERE tableb.copyrightTracking_copyrightStatusId"
         + " IN  ( SELECT id FROM tablej WHERE lower(f_unaccent(tablej.jsonb->>'name'))"
         + " LIKE lower(f_unaccent('cc')))";
     assertEquals(expected, sql);

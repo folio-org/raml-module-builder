@@ -55,6 +55,13 @@
           "targetTable":      "tablef",
           "targetTableAlias": "tablef",
           "tableAlias": "tableb"
+        },
+        {
+          "fieldName": "copyrightTracking.copyrightStatusId",
+          "tableAlias": "copyrightStatus",
+          "targetTable": "tablej",
+          "targetTableAlias": "copyrightStatus",
+          "tOps": "ADD"
         }
       ]
     },
@@ -81,13 +88,6 @@
         {
           "fieldName": "tablecId",
           "targetTable": "tablec"
-        },
-        {
-          "fieldName": "copyrightTracking.copyrightStatusId",
-          "tableAlias": "copyrightStatus",
-          "targetTable": "tablej",
-          "targetTableAlias": "copyrightStatus",
-          "tOps": "ADD"
         }
       ]
     },

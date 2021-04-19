@@ -154,4 +154,8 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
     //if the test passes it means it was not successful
     assertThat(cqla("tableb.prefix == \"x0')  or 1=1)--\""), is(empty()) );
   }
+
+   public void fieldNameContainsDot() throws Exception {
+     assertThat(cqlb("copyrightStatus.name==cc"), is(empty()) );
+   }
 }
