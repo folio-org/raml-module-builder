@@ -213,8 +213,7 @@ public class ForeignKeyGenerationTest  {
     assertEquals(expected, sql);
   }
 
-
-    @Test
+  @Test
   public void fieldNameContainsDot() throws Exception {
       CQL2PgJSON cql2PgJSON = cql2pgJson("tableb", "foreignKey.json");
       String sql = cql2PgJSON
