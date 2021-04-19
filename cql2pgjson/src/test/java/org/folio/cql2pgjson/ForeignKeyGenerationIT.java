@@ -157,6 +157,6 @@ public class ForeignKeyGenerationIT extends DatabaseTestBase {
 
    @Test
    public void fieldNameContainsDot() throws Exception {
-     assertThat(cqlb("copyrightStatus.name==cc"), containsInAnyOrder("x1"));
+     assertThat(cqlb("copyrightStatus.name==cc1"), containsInAnyOrder("x1"));
    }
 }
