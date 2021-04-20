@@ -196,7 +196,6 @@ public class CQL2PgJSON {
     // ".user_data" etc.
     String tname = this.jsonField.replaceAll("\\.[^.]+$", "");
     for (Table table : dbSchema.getTables()) {
-      System.out.println(table.getTableName() + " " + table.getMode());
       if ("DELETE".equalsIgnoreCase(table.getMode())) {
         continue;
       }
