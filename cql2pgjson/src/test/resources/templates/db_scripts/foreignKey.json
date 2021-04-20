@@ -59,7 +59,7 @@
         {
           "fieldName": "copyrightTracking.copyrightStatusId",
           "tableAlias": "copyrightStatus",
-          "targetTable": "tablej",
+          "targetTable": "tabled",
           "targetTableAlias": "copyrightStatus",
           "tOps": "ADD"
         }
