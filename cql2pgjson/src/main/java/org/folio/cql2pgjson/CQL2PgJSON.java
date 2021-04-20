@@ -183,35 +183,25 @@ public class CQL2PgJSON {
   enum InitDbTableResult {
     TABLE_FOUND,
     AUDIT_TABLE_FOUND,
-    NO_TABLES_SECTION,
-    NO_PRIMARY_TABLE_NAME,
     NOT_FOUND,
   };
 
   InitDbTableResult initDbTable() {
-    if (dbSchema.getTables() == null) {
-      logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): No 'tables' section found");
-      return InitDbTableResult.NO_TABLES_SECTION;
-    }
-    if (jsonField == null) {
-      logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
-      return InitDbTableResult.NO_PRIMARY_TABLE_NAME;
-    }
     // Remove the json blob field name, usually ".jsonb", but in tests also
     // ".user_data" etc.
     String tname = this.jsonField.replaceAll("\\.[^.]+$", "");
-    boolean isAuditTable = false;
     for (Table table : dbSchema.getTables()) {
+      System.out.println(table.getTableName() + " " + table.getMode());
+      if ("DELETE".equalsIgnoreCase(table.getMode())) {
+        continue;
+      }
       if (tname.equalsIgnoreCase(table.getTableName())) {
         dbTable = table;
         return InitDbTableResult.TABLE_FOUND;
       }
-      if (tname.equalsIgnoreCase(table.getAuditingTableName())) {
-        isAuditTable = true;
+      if (table.isWithAuditing() && tname.equalsIgnoreCase(table.getAuditingTableName())) {
+        return InitDbTableResult.AUDIT_TABLE_FOUND;
       }
-    }
-    if (isAuditTable) {
-      return InitDbTableResult.AUDIT_TABLE_FOUND;
     }
     logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): Table {0} NOT FOUND", tname);
     return InitDbTableResult.NOT_FOUND;

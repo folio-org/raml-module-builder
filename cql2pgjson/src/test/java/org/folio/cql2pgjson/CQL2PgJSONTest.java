@@ -1177,6 +1177,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   @Test
   public void initDbTable() throws Throwable {
     assertThat(new CQL2PgJSON("x").initDbTable(), is(CQL2PgJSON.InitDbTableResult.NOT_FOUND));
+    assertThat(new CQL2PgJSON("deleted").initDbTable(), is(CQL2PgJSON.InitDbTableResult.NOT_FOUND));
     assertThat(new CQL2PgJSON("loan").initDbTable(), is(CQL2PgJSON.InitDbTableResult.TABLE_FOUND));
     assertThat(new CQL2PgJSON("audit_loan").initDbTable(), is(CQL2PgJSON.InitDbTableResult.AUDIT_TABLE_FOUND));
   }
