@@ -219,7 +219,7 @@ public class ForeignKeyGenerationTest  {
       String sql = cql2PgJSON
         .toSql("copyrightStatus.name==cc").toString();
     String expected = "WHERE tableb.copyrightTracking_copyrightStatusId"
-        + " IN  ( SELECT id FROM tablej WHERE lower(f_unaccent(tablej.jsonb->>'name'))"
+        + " IN  ( SELECT id FROM tabled WHERE lower(f_unaccent(tabled.jsonb->>'name'))"
         + " LIKE lower(f_unaccent('cc')))";
     assertEquals(expected, sql);
   }
