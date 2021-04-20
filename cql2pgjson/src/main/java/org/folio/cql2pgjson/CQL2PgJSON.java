@@ -524,7 +524,7 @@ public class CQL2PgJSON {
       // child to parent
       targetTable = DbSchemaUtils.getTable(dbSchema, fks.get(fks.size() -1).getTargetTable());
       for (DbFkInfo fk : fks) {
-        sb.append(currentTableName).append('.').append(fk.getField())
+        sb.append(currentTableName).append('.').append(fk.getField().replace(".","_"))
           .append(" IN  ( SELECT id FROM ").append(fk.getTargetTable()).append(" WHERE ");
         currentTableName = fk.getTargetTable();
       }
