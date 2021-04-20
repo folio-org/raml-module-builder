@@ -183,10 +183,15 @@ public class CQL2PgJSON {
   enum InitDbTableResult {
     TABLE_FOUND,
     AUDIT_TABLE_FOUND,
+    NO_PRIMARY_TABLE_NAME,
     NOT_FOUND,
   };
 
   InitDbTableResult initDbTable() {
+    if (jsonField == null) {
+      logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
+      return InitDbTableResult.NO_PRIMARY_TABLE_NAME;
+    }
     // Remove the json blob field name, usually ".jsonb", but in tests also
     // ".user_data" etc.
     String tname = this.jsonField.replaceAll("\\.[^.]+$", "");
