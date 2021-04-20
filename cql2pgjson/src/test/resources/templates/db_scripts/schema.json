@@ -131,6 +131,30 @@
           "targetTable": "holdings"
         }
       ]
+    },
+    {
+      "tableName": "loan",
+      "fromModuleVersion": "10.1.0",
+      "withMetadata": true,
+      "withAuditing": true,
+      "auditingTableName": "audit_loan",
+      "auditingFieldName": "loan",
+      "auditingSnippet": {
+        "delete": {
+          "statement": "jsonb = jsonb_set(jsonb, '{loan,action}', '\"deleted\"', false);"
+        }
+      }
+    },
+    {
+      "tableName": "deleted",
+      "mode": "DELETE",
+      "withAuditing": true,
+      "auditingTableName": "deleted"
+    },
+    {
+      "tableName": "deleted_auditing",
+      "withAuditing": false,
+      "auditingTableName": "deleted"
     }
   ]
 }
