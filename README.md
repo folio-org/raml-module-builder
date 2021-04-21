@@ -734,9 +734,15 @@ for chunks of 10000 records each.
 
 The PostgreSQL connection parameters locations are searched in this order:
 
-- org.folio.rest.tools.utils.Envs.setEnv, useful for https://www.testcontainers.org/modules/databases/postgres/
+- org.folio.rest.tools.utils.Envs.setEnv
 - [DB_* environment variables](#environment-variables)
 - Configuration file, defaults to `resources/postgres-conf.json` but can be set via [command-line options](#command-line-options)
+
+With `PostgresClient.setPostgresTester`, testing may be performed against
+an instance implementing `postgresTester` interface, for example
+[TestContainers Postgres Module](https://www.testcontainers.org/modules/databases/postgres/).
+If database configuration is already provided, this call is ignored and testing
+is performed against the database instance given by configuration.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
 operations in an ORM type fashion.

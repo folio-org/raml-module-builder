@@ -100,6 +100,7 @@ public class PostgresClient {
   private static final String    HOST      = "host";
   private static final String    PORT      = "port";
   private static final String    DATABASE  = "database";
+  private static final String    POSTGRES_TESTER = "postgres_tester";
 
   private static final String    GET_STAT_METHOD = "get";
   private static final String    EXECUTE_STAT_METHOD = "execute";
@@ -191,6 +192,13 @@ public class PostgresClient {
     }
   }
 
+  /**
+   * Set test instance to use for testing.
+   * If database configuration is already provided, this call is ignored and testing
+   * is performed against the database instance given by configuration.
+   * See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()} }
+   * @param tester instance to use for testing.
+   */
   public static void setPostgresTester(PostgresTester tester) {
     stopPostgresTester();
     postgresTester = tester;
@@ -412,9 +420,9 @@ public class PostgresClient {
       AES.setSecretKey(secretKey);
     }
 
-    postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs());
+    postgreSQLClientConfig = getPostgreSQLClientConfig(tenantId, schemaName, Envs.allDBConfs(), isEmbedded());
 
-    if (isEmbedded()) {
+    if (Boolean.TRUE.equals(postgreSQLClientConfig.getBoolean(POSTGRES_TESTER))) {
       startPostgresTester();
     }
     logPostgresConfig();
@@ -442,7 +450,8 @@ public class PostgresClient {
     The docker container does not expose the embedded postges port.
     Moving the hard-coded credentials into some default config file
     doesn't remove them from the build. */
-  static JsonObject getPostgreSQLClientConfig(String tenantId, String schemaName, JsonObject environmentVariables)
+  static JsonObject getPostgreSQLClientConfig(String tenantId, String schemaName, JsonObject environmentVariables,
+                                              boolean postgresTesterEnabled)
       throws Exception {
     // static function for easy unit testing
     JsonObject config = environmentVariables;
@@ -457,9 +466,12 @@ public class PostgresClient {
     if (config == null) {
       log.info("No DB configuration found, setting username, password and database for testing");
       config = new JsonObject();
+      config.put(POSTGRES_TESTER, postgresTesterEnabled);
       config.put(USERNAME, USERNAME);
       config.put(PASSWORD, PASSWORD);
       config.put(DATABASE, "postgres");
+    } else {
+      config.put(POSTGRES_TESTER, false);
     }
     Object v = config.remove(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name());
     if (v instanceof Long) {
