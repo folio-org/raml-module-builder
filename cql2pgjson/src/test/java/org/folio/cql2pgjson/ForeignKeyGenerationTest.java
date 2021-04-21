@@ -212,4 +212,15 @@ public class ForeignKeyGenerationTest  {
         + "WHERE permanentLocationId='53cf956f-c1df-410b-8bea-27f712cca7c0')";
     assertEquals(expected, sql);
   }
+
+  @Test
+  public void fieldNameContainsDot() throws Exception {
+      CQL2PgJSON cql2PgJSON = cql2pgJson("tableb", "foreignKey.json");
+      String sql = cql2PgJSON
+        .toSql("copyrightStatus.name==cc").toString();
+    String expected = "WHERE tableb.copyrightTracking_copyrightStatusId"
+        + " IN  ( SELECT id FROM tabled WHERE lower(f_unaccent(tabled.jsonb->>'name'))"
+        + " LIKE lower(f_unaccent('cc')))";
+    assertEquals(expected, sql);
+  }
 }
