@@ -1,3 +1,24 @@
+## 33.0.0-pre2 2021-04-21
+
+Changes and improvements:
+ * [RMB-826](https://issues.folio.org/browse/RMB-826) Only use postgresTester (testContainers) on "empty" db configuration
+ * [RMB-602](https://issues.folio.org/browse/RMB-602) PostgresClient futurisation for Vert.x 4, Part 1
+ * [RMB-814](https://issues.folio.org/browse/RMB-814) PostgresClient futurisation for Vert.x 4, Part 2
+ * [RMB-783](https://issues.folio.org/browse/RMB-783) ClientGenerator futurisation for Vert.x 4
+ * [RMB-789](https://issues.folio.org/browse/RMB-789) Remove support of EmbeddedPostgres
+ * [RMB-796](https://issues.folio.org/browse/RMB-796) ClientGenerator: add new HttpClient constructor, explain "close"
+ * [RMB-717](https://issues.folio.org/browse/RMB-717) Deprecate HttpClientInterface, HttpModuleClient2, HttpClientMock2
+ * [RMB-812](https://issues.folio.org/browse/RMB-812) Make PostgresClientStreamResult public
+
+Fixes:
+ * [RMB-829](https://issues.folio.org/browse/RMB-829) Suppress "Table audit_... NOT FOUND" in loadDbSchema()
+ * [RMB-823](https://issues.folio.org/browse/RMB-823) Update maven.indexdata.com url
+ * [RMB-819](https://issues.folio.org/browse/RMB-819) Atomic batch PostgresClient.execute with List<Tuple>
+ * [RMB-810](https://issues.folio.org/browse/RMB-810) domain-models-maven-plugin can not be resolved
+ * [RMB-808](https://issues.folio.org/browse/RMB-808) METHOD_URL of AnnotationGrabber should not be a "half" regular expression
+ * [RMB-784](https://issues.folio.org/browse/RMB-784) Reenable DB_CONNECTIONRELEASEDELAY
+ * [RMB-586](https://issues.folio.org/browse/RMB-586) == foreign key sub-field query causes "missing FROM-clause" error
+
 ## 33.0.0-pre1 2021-03-05
 
 Changes and improvements:
