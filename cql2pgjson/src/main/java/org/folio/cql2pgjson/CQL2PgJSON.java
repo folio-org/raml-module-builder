@@ -624,7 +624,7 @@ public class CQL2PgJSON {
             ? "false /* " + columnName + " == invalid UUID */"
             : "true /* "  + columnName + " <> invalid UUID */";
       }
-      return columnName + comparator + "'" + term + "'";
+      return columnName.replace('.', '_') + comparator + "'" + term + "'";
     }
     String truncTerm = term;
     while (truncTerm.endsWith("*")) {  // remove trailing stars
