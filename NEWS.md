@@ -1,9 +1,16 @@
+## 32.2.2 2021-04-23
+
+Bug fixes:
+
+ * [RMB-823](https://issues.folio.org/browse/RMB-823) Update maven.indexdata.com URL to use https
+ * [RMB-830](https://issues.folio.org/browse/RMB-830) foreign key non-alias sub-field query causes "missing FROM-clause" error
+
 ## 32.2.1 2021-04-21
 
 Bug fixes:
 
  * [RMB-586](https://issues.folio.org/browse/RMB-586) == foreign key sub-field query causes "missing FROM-clause" error
- * [RMB-829](https://issues.folio.org/browse/RMB-829) Suppress "Table audit_... NOT FOUND" in loadDbSchema()
+ * [RMB-829](https://issues.folio.org/browse/RMB-829) Suppress "Table audit\_... NOT FOUND" in loadDbSchema()
 
 Documentation updates:
 
