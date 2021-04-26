@@ -100,10 +100,14 @@ public class DomainModelsMojo extends AbstractMojo {
     setRootLogLevel(Level.WARNING);
     try {
       if (generateInterfaces) {
+        System.err.println("generate interfaces");
         generateInterfaces();
         ModuleNameWriter.writeModuleNameClass(project);
       }
+      System.err.println("generate clients " + generateClients);
       ClientGenerator.generate(project.getBasedir().getAbsolutePath(), generateClients);
+      System.err.println("generate clients done");
+
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
@@ -127,7 +131,7 @@ public class DomainModelsMojo extends AbstractMojo {
       ramlDirs = new File[] { file };
     }
 
-    Path inputPath = ramlDirs[0].toPath().toAbsolutePath();
+    Path inputPath = GenerateRunner.rebase(ramlDirs[0]).toPath();
     Path outputPath = project.getBasedir().toPath()
         .resolve(GenerateRunner.RESOURCE_DEFAULT)
         .resolve(GenerateRunner.SOURCES_DEFAULT)
