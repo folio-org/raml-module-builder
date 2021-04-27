@@ -100,14 +100,13 @@ public class DomainModelsMojo extends AbstractMojo {
     setRootLogLevel(Level.WARNING);
     try {
       if (generateInterfaces) {
-        System.err.println("generate interfaces");
         generateInterfaces();
         ModuleNameWriter.writeModuleNameClass(project);
       }
-      System.err.println("generate clients " + generateClients);
-      ClientGenerator.generate(project.getBasedir().getAbsolutePath(), generateClients);
-      System.err.println("generate clients done");
-
+      if (generateClients) {
+        int sz = ClientGenerator.generate(project.getBasedir().getAbsolutePath());
+        System.err.println("Client classes generated: " + sz);
+      }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }

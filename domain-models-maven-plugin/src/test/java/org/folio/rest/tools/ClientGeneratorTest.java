@@ -34,7 +34,8 @@ public class ClientGeneratorTest {
 
   @Test
   public void doesGenerateTestResourceClient() throws Exception {
-    ClientGenerator.main(null);
+    int sz = ClientGenerator.generate(System.getProperty("project.basedir"));
+    Assert.assertTrue(sz > 0);
     File expectedClient = new File(sourceDir + "/TestResourceClient.java");
     Assert.assertTrue(expectedClient.exists());
 
