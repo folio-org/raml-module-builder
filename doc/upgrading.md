@@ -63,8 +63,7 @@ Remove `<groupId>ru.yandex.qatools.embed</groupId>`
 #### [RMB-785](https://issues.folio.org/browse/RMB-785) domain-models-maven-plugin
 
 In pom.xml replace the exec-maven-plugin sections that call
-`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>` or
-`<mainClass>org.folio.rest.tools.ClientGenerator</mainClass>` by
+`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>` by :
 
 ```xml
       <plugin>
@@ -82,14 +81,35 @@ In pom.xml replace the exec-maven-plugin sections that call
       </plugin>
 ```
 
-Add configuration if you need to disable generating interfaces or to
-enable generating clients:
+Replace `<mainClass>org.folio.rest.tools.ClientGenerator</mainClass>` by
+a call to the same plugin. It must be used in a separate project depending
+on the artifact with generated interfaces.
 
 ```xml
+      <plugin>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${raml-module-builder-version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.folio</groupId>
+            <artifactId>mod-my-server</artifactId>
+            <version>${project.parent.version}</version>
+          </dependency>
+        </dependencies>
+        <executions>
+          <execution>
+            <id>generate_interfaces</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
             <configuration>
-              <generateInterfaces>false</generateInterfaces>
               <generateClients>true</generateClients>
             </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
 ```
 
 Add FOLIO Maven repository for plugins after existing `<repositories>` section:
