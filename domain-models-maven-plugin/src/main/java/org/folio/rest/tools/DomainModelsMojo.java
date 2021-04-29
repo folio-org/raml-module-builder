@@ -77,17 +77,15 @@ public class DomainModelsMojo extends AbstractMojo {
     System.out.println("DomainModelsMojo.execute()");
     System.out.println("generateInterfaces=" + generateInterfaces);
     System.out.println("generateClients=" + generateClients);
-    System.out.println("project.baseDir = " + (project == null ? "" : project.getBasedir()));
-    System.out.println("project.name = " + (project == null ? "" : project.getName()));
-    System.out.println("project.actifactId = " + (project == null ? "" : project.getArtifactId()));
+    System.out.println("project.baseDir = " + project.getBasedir());
+    System.out.println("project.name = " + project.getName());
+    System.out.println("project.actifactId = " + project.getArtifactId());
     System.out.println("Artifacts: " + project.getArtifacts());
-    System.out.println("Artifacts: " + project.getArtifactMap());
+    System.out.println("ArtifactMap: " + project.getArtifactMap());
 
-    if (ramlDirs != null) {
-      System.out.println("ramlDirs.size=" + ramlDirs.length);
-      for (File ramlDir : ramlDirs) {
-        System.out.println("ramlDir = " + ramlDir);
-      }
+    System.out.println("ramlDirs.size=" + ramlDirs.length);
+    for (File ramlDir : ramlDirs) {
+      System.out.println("ramlDir = " + ramlDir);
     }
 
     if (schemaPaths != null) {
