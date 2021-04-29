@@ -74,26 +74,26 @@ public class DomainModelsMojo extends AbstractMojo {
 
   @Override
   public void execute() {
-    System.err.println("DomainModelsMojo.execute()");
-    System.err.println("generateInterfaces=" + generateInterfaces);
-    System.err.println("generateClients=" + generateClients);
-    System.err.println("project.baseDir = " + (project == null ? "" : project.getBasedir()));
-    System.err.println("project.name = " + (project == null ? "" : project.getName()));
-    System.err.println("project.actifactId = " + (project == null ? "" : project.getArtifactId()));
-    System.err.println("Artifacts: " + project.getArtifacts());
-    System.err.println("Artifacts: " + project.getArtifactMap());
+    System.out.println("DomainModelsMojo.execute()");
+    System.out.println("generateInterfaces=" + generateInterfaces);
+    System.out.println("generateClients=" + generateClients);
+    System.out.println("project.baseDir = " + (project == null ? "" : project.getBasedir()));
+    System.out.println("project.name = " + (project == null ? "" : project.getName()));
+    System.out.println("project.actifactId = " + (project == null ? "" : project.getArtifactId()));
+    System.out.println("Artifacts: " + project.getArtifacts());
+    System.out.println("Artifacts: " + project.getArtifactMap());
 
     if (ramlDirs != null) {
       System.out.println("ramlDirs.size=" + ramlDirs.length);
       for (File ramlDir : ramlDirs) {
-        System.err.println("ramlDir = " + ramlDir);
+        System.out.println("ramlDir = " + ramlDir);
       }
     }
 
     if (schemaPaths != null) {
       System.out.println("schemaPaths.size=" + schemaPaths.length);
       for (File schemaPath : schemaPaths) {
-        System.err.println("schemaPath = " + schemaPath);
+        System.out.println("schemaPath = " + schemaPath);
       }
     }
 
@@ -105,7 +105,7 @@ public class DomainModelsMojo extends AbstractMojo {
       }
       if (generateClients) {
         int sz = ClientGenerator.generate(project.getBasedir().getAbsolutePath());
-        System.err.println("Client classes generated: " + sz);
+        System.out.println("Client classes generated: " + sz);
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);
