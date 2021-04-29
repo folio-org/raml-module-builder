@@ -65,6 +65,27 @@ END;
 $$ LANGUAGE plpgsql STABLE STRICT;
 
 
+-- upsert(table, id, value)
+-- This properly works with optimistic locking triggers.
+-- Using "INSERT INTO table ... ON CONFLICT (id) DO UPDATE" with optimistic locking
+-- fails because the INSERT trigger overwrites the _version property that the
+-- UPDATE trigger uses to detect an optimistic locking conflict.
+CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.upsert(text, uuid, anyelement) RETURNS uuid AS $$
+DECLARE
+  ret uuid;
+BEGIN
+  EXECUTE format('UPDATE ${myuniversity}_${mymodule}.%I SET jsonb=$3 WHERE id=$2 RETURNING id', $1)
+          USING $1, $2, $3 INTO ret;
+  IF ret IS NOT NULL THEN
+    RETURN ret;
+  END IF;
+  EXECUTE format('INSERT INTO ${myuniversity}_${mymodule}.%I (id, jsonb) VALUES ($2, $3) RETURNING id', $1)
+          USING $1, $2, $3 INTO STRICT ret;
+  RETURN ret;
+END;
+$$ LANGUAGE plpgsql;
+
+
 -- f_unaccent(text)
 --
 -- Convert accented string into unaccented string.

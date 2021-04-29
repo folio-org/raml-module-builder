@@ -1783,11 +1783,11 @@ RMB adds a `totalRecords` field to result sets. For `limit = 0` it contains the 
 For estimation it uses this algorithm:
 
 1. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
-2. If this is greater than 4*1000 return it and stop.
-3. Run "SELECT COUNT(*) FROM query LIMIT 1000".
+2. If this is greater than `4\*1000 return it and stop.
+3. Run "SELECT COUNT(\*) FROM query LIMIT 1000".
 4. If this is less than 1000 return it (this is the exact number) and stop.
 5. If the result from 1. is less than 1000 return 1000 and stop.
-6. Return result from 1. (this is a value between 1000 and 4*1000).
+6. Return result from 1. (this is a value between 1000 and 4\*1000).
 
 Step 2. contains the factor 4 that should be adjusted when there is empirical data for a better number.
 Step 3. may take long for full text queries with many hits, therefore we need steps 1.-2.
@@ -1823,6 +1823,8 @@ RMB supports optimistic locking. By default it is disabled. Module developer can
 * `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
 * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction with a customized SQL error code 23F09.
 * `logOnConflict` Optimistic Locking is enabled but the conflicting update succeeds, the version conflict info is logged with a customized SQL error code 23F09. Consult [Vertx logging](https://vertx.io/docs/vertx-core/java/#_logging) and [PostgreSQL Errors and Messages](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html) if `logOnConflict` doesn't log.
+
+Upsert fails when using `INSERT ... ON CONFLICT (id) DO UPDATE` because the `INSERT` trigger overwrites the `\_version` property that the `UPDATE` trigger uses to detect optimistic locking conflicts. Instead use [RMB's `upsert` plpgsql function](domain-models-runtime/src/main/resources/templates/db_scripts/general_functions.ftl) or implement upsert using a transaction and `UPDATE ...; IF NOT FOUND THEN INSERT ...`
 
 _Sample log entries:_
 

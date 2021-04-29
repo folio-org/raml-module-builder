@@ -18,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 @JsonPropertyOrder({
     "username",
     "id",
+    "_version",
     "metadata",
     "dummy"
 })
@@ -39,6 +40,14 @@ public class User {
     @JsonPropertyDescription("A globally unique (UUID) identifier for the user")
     @NotNull
     private String id;
+
+    /**
+     * Record version for optimistic locking
+     *
+     */
+    @JsonProperty("_version")
+    @JsonPropertyDescription("Record version for optimistic locking")
+    private Integer version;
 
     /**
      * Metadata Schema
@@ -105,6 +114,29 @@ public class User {
 
     public User withId(String id) {
         this.id = id;
+        return this;
+    }
+
+    /**
+     * Record version for optimistic locking
+     *
+     */
+    @JsonProperty("_version")
+    public Integer getVersion() {
+        return version;
+    }
+
+    /**
+     * Record version for optimistic locking
+     *
+     */
+    @JsonProperty("_version")
+    public void setVersion(Integer version) {
+        this.version = version;
+    }
+
+    public User withVersion(Integer version) {
+        this.version = version;
         return this;
     }
 
