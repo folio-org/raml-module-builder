@@ -124,10 +124,10 @@ public class SchemaMaker {
       Table table = new Table();
       table.setTableName(tablename);
       table.setWithOptimisticLocking(OptimisticLockingMode.FAIL);
-      Map<String, Object> parameters = Map.of(
-          "myuniversity", tenant,
-          "mymodule", module,
-          "table", table);
+      Map<String, Object> parameters = new HashMap<>(3);
+      parameters.put("myuniversity", tenant);
+      parameters.put("mymodule", module);
+      parameters.put("table", table);
       Template tableTemplate = cfg.getTemplate("optimistic_locking.ftl");
       Writer writer = new StringWriter();
       tableTemplate.process(parameters, writer);
