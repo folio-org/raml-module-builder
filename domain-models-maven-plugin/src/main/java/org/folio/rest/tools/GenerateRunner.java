@@ -243,8 +243,11 @@ public class GenerateRunner {
       .getPathMatcher("glob:" + relativePath + fileExpression);
   }
 
-  private static File rebase(String path) {
-    File input = new File(path);
+  static File rebase(String path) {
+    return rebase(new File(path));
+  }
+
+  static File rebase(File input) {
     File temp = input;
     while (true) {
       temp = temp.getParentFile();

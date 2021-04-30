@@ -87,24 +87,14 @@ public class ClientGenerator implements ClientGrabber {
   private JFieldVar okapiUrl;
   private JFieldVar webClient;
 
-  public static void main(String[] args) throws Exception {
-    boolean generateClient = System.getProperty("client.generate") != null;
-
-    if ("mongo".equals(System.getProperty("json.type"))) {
-      mappingType = "mongo";
-    }
-
-    generate(System.getProperty("project.basedir"), generateClient);
-  }
-
-  public static void generate(String basedir, boolean generateClient) throws IOException {
+  public static int generate(String basedir) throws IOException {
     ClientGenerator.basedir = basedir;
     String packageDir = basedir
         + ClientGenerator.PATH_TO_GENERATE_TO
         + AnnotationGrabber.CLIENT_GEN_PACKAGE.replace('.', '/');
     makeCleanDir(packageDir);
     ClientGrabber clientGrabber = new ClientGenerator();
-    AnnotationGrabber.generateMappings(clientGrabber);
+    return AnnotationGrabber.generateMappings(clientGrabber).size();
   }
 
   /**

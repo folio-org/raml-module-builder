@@ -2195,13 +2195,22 @@ public class CustomHealthCheck extends AdminAPI {
 
 The framework can generate a Client class for every RAML file with a function for every API endpoint in the RAML.
 
-To generate a client API from your RAML use the `generateClients` option of the domain-models-maven-plugin in your pom.xml:
+To generate a client API from your RAML use the `generateClients` option of
+the domain-models-maven-plugin in your pom.xml as well as depend on the
+artifact that includes interfaces.
 
 ```xml
       <plugin>
         <groupId>org.folio</groupId>
         <artifactId>domain-models-maven-plugin</artifactId>
         <version>${raml-module-builder-version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.folio</groupId>
+            <artifactId>mod-my-server</artifactId>
+            <version>${project.parent.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <id>generate_interfaces</id>
