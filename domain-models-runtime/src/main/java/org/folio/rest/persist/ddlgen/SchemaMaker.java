@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.OptimisticLockingMode;
 import org.folio.dbschema.Schema;
 import org.folio.dbschema.Table;
 import org.folio.dbschema.TableOperation;
@@ -28,7 +29,7 @@ import freemarker.template.Version;
  */
 public class SchemaMaker {
 
-  private static Configuration cfg;
+  private static Configuration cfg = getConfiguration();
   private Map<String, Object> templateInput = new HashMap<>();
   private String tenant;
   private String module;
@@ -42,21 +43,22 @@ public class SchemaMaker {
 
   public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion,
                      String newVersion) {
-    if(SchemaMaker.cfg == null) {
-      //do this ONLY ONCE
-      SchemaMaker.cfg = new Configuration(new Version(2, 3, 26));
-      // Where do we load the templates from:
-      cfg.setClassForTemplateLoading(SchemaMaker.class, "/templates/db_scripts");
-      cfg.setDefaultEncoding("UTF-8");
-      cfg.setLocale(Locale.US);
-      cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
-    }
     this.tenant = tenant;
     this.module = module;
     this.mode = mode;
     this.previousVersion = previousVersion;
     this.newVersion = newVersion;
     this.rmbVersion = RmbVersion.getRmbVersion();
+  }
+
+  private static Configuration getConfiguration() {
+    Configuration configuration = new Configuration(new Version(2, 3, 26));
+    // Where do we load the templates from:
+    configuration.setClassForTemplateLoading(SchemaMaker.class, "/templates/db_scripts");
+    configuration.setDefaultEncoding("UTF-8");
+    configuration.setLocale(Locale.US);
+    configuration.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+    return configuration;
   }
 
   public String generatePurge() throws IOException, TemplateException {
@@ -115,6 +117,24 @@ public class SchemaMaker {
 
   public String generateIndexesOnly() throws IOException, TemplateException {
     return generateDDL("indexes_only.ftl");
+  }
+
+  public static String generateOptimisticLocking(String tenant, String module, String tablename) {
+    try {
+      Table table = new Table();
+      table.setTableName(tablename);
+      table.setWithOptimisticLocking(OptimisticLockingMode.FAIL);
+      Map<String, Object> parameters = new HashMap<>(3);
+      parameters.put("myuniversity", tenant);
+      parameters.put("mymodule", module);
+      parameters.put("table", table);
+      Template tableTemplate = cfg.getTemplate("optimistic_locking.ftl");
+      Writer writer = new StringWriter();
+      tableTemplate.process(parameters, writer);
+      return writer.toString();
+    } catch (IOException | TemplateException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
