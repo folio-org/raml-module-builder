@@ -57,6 +57,11 @@ public class SchemaMakerTest {
   }
 
   @Test
+  void failGenerateOptimisticLocking() {
+    assertThrows(RuntimeException.class, () -> SchemaMaker.generateOptimisticLocking("tenant", null, "table"));
+  }
+
+  @Test
   public void testCreateCreate() throws IOException, TemplateException {
     SchemaMaker schemaMaker = schemaMaker("harvard", "circ", TenantOperation.CREATE,
         "mod-foo-18.2.3", null, "templates/db_scripts/schemaWithAudit.json");
@@ -428,7 +433,7 @@ public class SchemaMakerTest {
     }
     assertThat(SchemaMaker.sameForeignKey(a, b), is(expected));
   }
-  
+
   @Test
   public void optimisticLocking() throws Exception {
     String tenant = "olTenant";

@@ -961,7 +961,7 @@ public class PostgresClient {
   }
 
   /**
-   * Insert the entities into table using a single INSERT statement.
+   * Insert the entities into table using a single transaction.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @return one result row per inserted row, containing the id field
@@ -971,7 +971,7 @@ public class PostgresClient {
   }
 
   /**
-   * Insert the entities into table using a single INSERT statement.
+   * Insert the entities into table using a single transaction.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @param replyHandler  result, containing the id field for each inserted element of entities
@@ -981,7 +981,27 @@ public class PostgresClient {
   }
 
   /**
-   * Upsert the entities into table using a single INSERT statement.
+   * Update the entities using a single transaction, the id property is used for matching.
+   * @param table  table to update
+   * @param entities  each array element is a String with the content for the JSONB field of table
+   * @return one {@link RowSet} per array element with {@link RowSet#rowCount()} information
+   */
+  public Future<RowSet<Row>> updateBatch(String table, JsonArray entities) {
+    return withConn(conn -> conn.updateBatch(table, entities));
+  }
+
+  /**
+   * Update the entities using a single transaction, the id property is used for matching.
+   * @param table  table to update
+   * @param entities  each array element is a String with the content for the JSONB field of table
+   * @param repylHandler  one {@link RowSet} per array element with {@link RowSet#rowCount()} information
+   */
+  public void updateBatch(String table, JsonArray entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+    updateBatch(table, entities).onComplete(replyHandler);
+  }
+
+  /**
+   * Upsert the entities into table using a single transaction.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @return one result row per inserted row, containing the id field
@@ -991,7 +1011,7 @@ public class PostgresClient {
   }
 
   /**
-   * Upsert the entities into table using a single INSERT statement.
+   * Upsert the entities into table using a single transaction.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @param replyHandler  one result row per inserted row, containing the id field
@@ -1001,7 +1021,7 @@ public class PostgresClient {
   }
 
   /**
-   * Insert the entities into table using a single INSERT statement.
+   * Insert the entities into table using a single transaction.
    * @param sqlConnection  the connection to run on, may be on a transaction
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
@@ -1013,7 +1033,7 @@ public class PostgresClient {
   }
 
   /**
-   * Upsert the entities into table using a single INSERT statement.
+   * Upsert the entities into table using a single transaction.
    * @param sqlConnection  the connection to run on, may be on a transaction
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
@@ -1025,7 +1045,7 @@ public class PostgresClient {
   }
 
   /**
-   * Insert or upsert the entities into table using a single INSERT statement.
+   * Insert or upsert the entities into table using a single transaction.
    * @param sqlConnection  the connection to run on, may be on a transaction
    * @param upsert  true for upsert, false for insert with fail on duplicate id
    * @param table  destination table to insert into
@@ -1041,7 +1061,7 @@ public class PostgresClient {
 
   /**
    * Save a list of POJOs.
-   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * POJOs are converted to a JSON String and saved in a single transaction.
    * A random id is generated if POJO's id is null.
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param table  destination table to insert into
@@ -1054,7 +1074,7 @@ public class PostgresClient {
 
   /**
    * Save a list of POJOs.
-   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * POJOs are converted to a JSON String and saved in a single transaction.
    * A random id is generated if POJO's id is null.
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param table  destination table to insert into
@@ -1068,8 +1088,32 @@ public class PostgresClient {
   }
 
   /**
-   * Upsert a list of POJOs.
-   * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
+   * Update a list of POJOs in a single transaction.
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  destination table to update
+   * @param entities  each list element is a POJO
+   * @return one {@link RowSet} per list element with {@link RowSet#rowCount()} information
+   */
+  public <T> Future<RowSet<Row>> updateBatch(String table, List<T> entities) {
+    return withConn(conn -> conn.updateBatch(table, entities));
+  }
+
+  /**
+   * Update a list of POJOs in a single transaction.
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  destination table to update
+   * @param entities  each list element is a POJO
+   * @param replyHandler one {@link RowSet} per list element with {@link RowSet#rowCount()} information
+   */
+  public <T> void updateBatch(String table, List<T> entities,
+      Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+
+    updateBatch(table, entities).onComplete(replyHandler);
+  }
+
+  /**
+   * Upsert a list of POJOs in a single transaction.
+   * POJOs are converted to a JSON String.
    * A random id is generated if POJO's id is null.
    * If a record with the id already exists it is updated (upsert).
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
@@ -1082,8 +1126,8 @@ public class PostgresClient {
   }
 
   /***
-   * Upsert a list of POJOs.
-   * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
+   * Upsert a list of POJOs in a single transaction.
+   * POJOs are converted to a JSON String.
    * A random id is generated if POJO's id is null.
    * If a record with the id already exists it is updated (upsert).
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
@@ -1098,7 +1142,7 @@ public class PostgresClient {
 
   /***
    * Save a list of POJOs.
-   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * POJOs are converted to a JSON String.
    * A random id is generated if POJO's id is null.
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param sqlConnection  the connection to run on, may be on a transaction
@@ -1113,7 +1157,7 @@ public class PostgresClient {
 
   /***
    * Upsert a list of POJOs.
-   * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
+   * POJOs are converted to a JSON String.
    * A random id is generated if POJO's id is null.
    * If a record with the id already exists it is updated (upsert).
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
