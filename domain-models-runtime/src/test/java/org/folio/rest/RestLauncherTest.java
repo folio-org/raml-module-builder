@@ -24,6 +24,7 @@ public class RestLauncherTest {
       "java:" + TestVerticle.class.getCanonicalName();
   private static final String DISABLE_METRICS = "-Dvertx.metrics.options.enabled=false";
   private static final String ENABLE_METRICS = "-Dvertx.metrics.options.enabled=true";
+  private static final String ENABLE_JMX = "-DjmxMetricsOptions={\"domain\":\"org.folio\"}";
 
   private Vertx vertx;
 
@@ -44,7 +45,7 @@ public class RestLauncherTest {
   @Order(2)
   public void canEnableMetrics() {
     DummyLauncher launcher = new DummyLauncher();
-    launcher.dispatch(new String[] { "run", JAVA_TEST_VERTICLE, ENABLE_METRICS });
+    launcher.dispatch(new String[] { "run", JAVA_TEST_VERTICLE, ENABLE_METRICS, ENABLE_JMX});
     assertTrue(launcher.enabled);
   }
 

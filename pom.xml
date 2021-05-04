@@ -30,7 +30,8 @@
     <aspectj.version>1.9.6</aspectj.version>
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
     <maven.version>3.6.3</maven.version>
-    <vertx.version>4.0.2</vertx.version>
+    <vertx.version>4.0.3</vertx.version>
+    <vertx.version.folio>4.0.2-FOLIO</vertx.version.folio>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -61,7 +62,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.59.Final</version>
+        <version>4.1.60.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -75,12 +76,12 @@
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-sql-client</artifactId>
-        <version>${vertx.version}-FOLIO</version>
+        <version>${vertx.version.folio}</version>
       </dependency>
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-pg-client</artifactId>
-        <version>${vertx.version}-FOLIO</version>
+        <version>${vertx.version.folio}</version>
       </dependency>
       <dependency>
         <groupId>io.rest-assured</groupId>
@@ -202,7 +203,7 @@
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-common</artifactId>
-        <version>4.5.0</version>
+        <version>4.7.2</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
