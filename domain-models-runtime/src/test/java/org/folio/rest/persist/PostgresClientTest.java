@@ -42,6 +42,7 @@ import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.ResourceUtil;
+import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.junit.After;
 import org.junit.Assert;
@@ -661,6 +662,14 @@ public class PostgresClientTest {
     String sqlFile = ResourceUtil.asString("import.sql");
     assertThat(PostgresClient.preprocessSqlStatements(sqlFile), hasItemInArray(stringContainsInOrder(
         "COPY test.po_line", "24\t")));
+  }
+
+  @Test
+  public void pojo2JsonObject() throws Exception {
+    String id = UUID.randomUUID().toString();
+    User user = new User().withId(id).withUsername("name").withVersion(5);
+    JsonObject json = PostgresClient.pojo2JsonObject(user);
+    assertThat(json.getMap(), is(Map.of("id", id, "username", "name", "_version", 5)));
   }
 
   @Test(expected = IllegalArgumentException.class)

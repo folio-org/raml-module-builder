@@ -23,7 +23,8 @@ public class LoadGeneralFunctions {
   static void loadFuncs(TestContext context, PostgresClient postgresClient, String schema) {
     Async async = context.async();
     loadFuncs(postgresClient, schema)
-    .onComplete(x -> async.complete());
-    async.awaitSuccess(1000);
+    .onSuccess(x -> async.complete())
+    .onFailure(e -> context.fail(e));
+    async.await(1000);
   }
 }

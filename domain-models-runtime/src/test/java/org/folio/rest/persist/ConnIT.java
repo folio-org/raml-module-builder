@@ -6,10 +6,13 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonArray;
+import io.vertx.core.json.JsonObject;
 import io.vertx.junit5.Timeout;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.pgclient.PgConnection;
+import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -40,7 +43,12 @@ public class ConnIT implements WithAssertions {
   static void setUp(Vertx vertx, VertxTestContext vtc) {
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
     String sql =
-        "CREATE ROLE tenant_raml_module_builder PASSWORD 'tenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;\n" +
+        "DROP SCHEMA IF EXISTS tenant_raml_module_builder CASCADE;\n" +
+        "DO $$\n" +
+        "  BEGIN\n" +
+        "    CREATE ROLE tenant_raml_module_builder PASSWORD 'tenant' NOSUPERUSER NOCREATEDB INHERIT LOGIN;\n" +
+        "  EXCEPTION WHEN OTHERS THEN NULL;\n" +
+        "  END $$;\n" +
         "CREATE SCHEMA tenant_raml_module_builder AUTHORIZATION tenant_raml_module_builder;\n" +
         "GRANT ALL PRIVILEGES ON SCHEMA tenant_raml_module_builder TO tenant_raml_module_builder;\n" +
         "CREATE TABLE tenant_raml_module_builder.t (id UUID PRIMARY KEY , jsonb JSONB NOT NULL);\n" +
@@ -207,6 +215,40 @@ public class ConnIT implements WithAssertions {
     .onComplete(failingThenComplete(vtc, t -> {
       assertThat(t).hasMessageContainingAll("foo", "does not exist");
     }));
+  }
+
+  @Test
+  void updateBatchEmptyArray(VertxTestContext vtc) {
+    postgresClient.withTrans(trans -> trans.updateBatch("foo", new JsonArray()))
+    .onComplete(succeedingThenComplete(vtc, t-> {
+      assertThat(t).isNull();
+    }));
+  }
+
+  @Test
+  void updateBatchEmptyList(VertxTestContext vtc) {
+    postgresClient.withTrans(trans -> trans.updateBatch("foo", Collections.emptyList()))
+    .onComplete(succeedingThenComplete(vtc, t-> {
+      assertThat(t).isNull();
+    }));
+  }
+
+  @Test
+  void updateBatchInternalException(VertxTestContext vtc) {
+    postgresClient.withTrans(trans -> trans.updateBatch("foo", new JsonArray().add(new JsonObject().putNull("id"))))
+    .onComplete(vtc.failingThenComplete());
+  }
+
+  @Test
+  void updateBatchArrayException(VertxTestContext vtc) {
+    postgresClient.withTrans(trans -> trans.updateBatch("foo", new JsonArray().add(null)))
+    .onComplete(vtc.failingThenComplete());
+  }
+
+  @Test
+  void updateBatchListException(VertxTestContext vtc) {
+    postgresClient.withTrans(trans -> trans.updateBatch("foo", Collections.singletonList("{")))
+    .onComplete(vtc.failingThenComplete());
   }
 
   @ParameterizedTest

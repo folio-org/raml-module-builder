@@ -177,10 +177,16 @@ public class Conn {
 
     try {
       long start = log.isDebugEnabled() ? System.nanoTime() : 0;
-      String sql = "INSERT INTO " + postgresClient.getSchemaName() + "." + table
-          + " (id, jsonb) VALUES ($1, " + (convertEntity ? "$2" : "$2::text") + ")"
-          + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb=EXCLUDED.jsonb" : "")
-          + " RETURNING " + (returnId ? "id" : "''");
+      String sql;
+      if (upsert) {
+        sql = (returnId ? "" : "SELECT '' FROM (")
+            + "SELECT upsert('" + table + "', $1::uuid, " + (convertEntity ? "$2::jsonb" : "$2::text") + ")"
+            + (returnId ? "" : ") x");
+      } else {
+        sql = "INSERT INTO " + postgresClient.getSchemaName() + "." + table
+            + " (id, jsonb) VALUES ($1, " + (convertEntity ? "$2" : "$2::text") + ")"
+            + " RETURNING " + (returnId ? "id" : "''");
+      }
       return pgConnection.preparedQuery(sql).execute(Tuple.of(
           id == null ? UUID.randomUUID() : UUID.fromString(id),
           convertEntity ? PostgresClient.pojo2JsonObject(entity) : ((JsonArray)entity).getString(0)
@@ -319,7 +325,7 @@ public class Conn {
   }
 
   /**
-   * Insert or upsert the entities into table using a single INSERT statement.
+   * Insert or upsert the entities into table.
    *
    * @param upsert  true for upsert, false for insert with fail on duplicate id
    * @param table  destination table to insert into
@@ -362,10 +368,13 @@ public class Conn {
     }
     long start = log.isDebugEnabled() ? System.nanoTime() : 0;
     log.info("starting: saveBatch size=" + batch.size());
-    String sql = "INSERT INTO " + postgresClient.getSchemaName() + "." + table
-        + " (id, jsonb) VALUES ($1, $2)"
-        + (upsert ? " ON CONFLICT (id) DO UPDATE SET jsonb = EXCLUDED.jsonb" : "")
+    String sql;
+    if (upsert) {
+      sql = "SELECT upsert('" + table + "', $1, $2)";
+    } else {
+      sql = "INSERT INTO " + postgresClient.getSchemaName() + "." + table + " (id, jsonb) VALUES ($1, $2)"
         + " RETURNING id";
+    }
     return pgConnection.preparedQuery(sql).executeBatch(batch)
     .map(rowSet -> {
       log.debug(() -> durationMsg("saveBatch", table, start));
@@ -381,7 +390,7 @@ public class Conn {
   }
 
   /**
-   * Insert the entities into table using a single INSERT statement.
+   * Insert the entities into table.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @return one result row per inserted row, containing the id field
@@ -391,7 +400,7 @@ public class Conn {
   }
 
   /**
-   * Upsert the entities into table using a single INSERT statement.
+   * Upsert the entities into table.
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @return one result row per inserted row, containing the id field
@@ -407,7 +416,7 @@ public class Conn {
       if (entities == null || entities.isEmpty()) {
         return Future.succeededFuture(emptyRowSetOfId());
       }
-      // We must use reflection, the POJOs don't have a interface/superclass in common.
+      // We must use reflection, the POJOs don't have an interface/superclass in common.
       Method getIdMethod = entities.get(0).getClass().getDeclaredMethod("getId");
       for (Object entity : entities) {
         Object obj = getIdMethod.invoke(entity);
@@ -423,7 +432,7 @@ public class Conn {
 
   /**
    * Save a list of POJOs.
-   * POJOs are converted to a JSON String and saved in a single INSERT call.
+   * POJOs are converted to a JSON String.
    * A random id is generated if POJO's id is null.
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
    * @param table  destination table to insert into
@@ -436,7 +445,7 @@ public class Conn {
 
   /**
    * Upsert a list of POJOs.
-   * POJOs are converted to a JSON String and saved or updated in a single INSERT call.
+   * POJOs are converted to a JSON String.
    * A random id is generated if POJO's id is null.
    * If a record with the id already exists it is updated (upsert).
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
@@ -448,10 +457,69 @@ public class Conn {
     return saveBatch(true, table, entities);
   }
 
+  private Future<RowSet<Row>> updateBatchInternal(String table, List<Tuple> batch) {
+    long start = log.isDebugEnabled() ? System.nanoTime() : 0;
+    log.info("starting: updateBatchInternal size=" + batch.size());
+    String sql = "UPDATE " + postgresClient.getSchemaName() + "." + table
+        + " SET jsonb = $1 WHERE id = ($1::jsonb->>'id')::uuid";
+    return pgConnection.preparedQuery(sql).executeBatch(batch)
+    .onSuccess(x -> log.debug(() -> durationMsg("updateBatch", table, start)))
+    .onFailure(e -> {
+      log.error("updateBatch size=" + batch.size() + ", " + e.getMessage(), e);
+      log.debug(() -> durationMsg("updateBatchFailed", table, start));
+    });
+  }
+
+  /**
+   * Update the entities in the table , match using the id property.
+   * @param entities  each array element is a String with the content for the JSONB field of table
+   * @return one {@link RowSet} per array element with {@link RowSet#rowCount()} information
+   */
+  public Future<RowSet<Row>> updateBatch(String table, JsonArray entities) {
+    try {
+      if (entities == null || entities.size() == 0) {
+        return Future.succeededFuture();
+      }
+      List<Tuple> list = new ArrayList<>(entities.size());
+      for (int i = 0; i < entities.size(); i++) {
+        Object o = entities.getValue(i);
+        list.add(Tuple.of(o instanceof JsonObject ? o : new JsonObject(o.toString())));
+      }
+      return updateBatchInternal(table, list);
+    } catch (Throwable t) {
+      log.error("updateBatch error " + t.getMessage(), t);
+      return Future.failedFuture(t);
+    }
+  }
+
+  /**
+   * Update a list of POJOs.
+   * POJOs are converted to a JSON String and matched using the id property.
+   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   * @param table  table to update
+   * @param entities  each list element is a POJO
+   * @return one {@link RowSet} per array element with {@link RowSet#rowCount()} information
+   */
+  public <T> Future<RowSet<Row>> updateBatch(String table, List<T> entities) {
+    try {
+      if (entities == null || entities.size() == 0) {
+        return Future.succeededFuture();
+      }
+      List<Tuple> list = new ArrayList<>(entities.size());
+      for (T entity : entities) {
+        list.add(Tuple.of(PostgresClient.pojo2JsonObject(entity)));
+      }
+      return updateBatchInternal(table, list);
+    } catch (Throwable t) {
+      log.error("updateBatch error " + t.getMessage(), t);
+      return Future.failedFuture(t);
+    }
+  }
+
   /**
    * Update a specific record associated with the key passed in the id arg
-   * @param table - table to save to (must exist)
-   * @param entity - pojo to save
+   * @param table - table to update
+   * @param entity - new pojo to save
    * @param id - key of the entity being updated
    * @return empty {@link RowSet} with {@link RowSet#rowCount()} information
    */

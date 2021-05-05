@@ -1,13 +1,13 @@
 package org.folio.rest.persist;
 
 import static org.junit.Assert.assertTrue;
+
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +28,7 @@ import org.folio.rest.jaxrs.model.UserdataCollection;
 import org.folio.rest.jaxrs.model.Users;
 import org.folio.rest.jaxrs.model.Users.PostUsersResponse;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
@@ -103,16 +104,9 @@ public class PgUtilIT {
                      + "$$ BEGIN NEW.jsonb = NEW.jsonb || '{\"dummy\" : \"" + DUMMY_VAL + "\"}'; RETURN NEW; END; $$ language 'plpgsql';");
     execute(context, "CREATE TRIGGER idusername BEFORE INSERT OR UPDATE ON " + schema + ".users "
                      + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".dummy();");
+    execute(context, SchemaMaker.generateOptimisticLocking("testtenant", "raml_module_builder", "users"));
+
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
-
-    // when user_409 is updated, raise exception and test 409 response
-    execute(context, "CREATE FUNCTION " + schema + ".raise_409() RETURNS TRIGGER AS "
-        + "$$ BEGIN IF NEW.jsonb->>'username' = '" + USER_409
-        + "' THEN RAISE EXCEPTION 'version conflict' USING ERRCODE = '" + PgExceptionUtil.VERSION_CONFLICT + "'; END IF; RETURN NEW; "
-        + "END; $$ language 'plpgsql';");
-    execute(context, "CREATE TRIGGER trigger_409 BEFORE UPDATE ON " + schema + ".users "
-            + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".raise_409();");
-
     LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
   }
 
@@ -140,6 +134,11 @@ public class PgUtilIT {
 
   private static String randomUuid() {
     return UUID.randomUUID().toString();
+  }
+
+  private Future<User> getUser(String id) {
+    PostgresClient postgresClient = PgUtil.postgresClient(vertx.getOrCreateContext(), okapiHeaders);
+    return postgresClient.getById("users", id, User.class);
   }
 
   /**
@@ -661,20 +660,20 @@ public class PgUtilIT {
   public void put(TestContext testContext) {
     String uuid = randomUuid();
     post(testContext, "Pippilotta", uuid, 201);
-    PgUtil.put("users", new User().withUsername("Momo").withId(randomUuid()), uuid,
-        okapiHeaders, vertx.getOrCreateContext(),
-        Users.PutUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 204, put -> assertGetById(testContext, uuid, "Momo")));
+    getUser(uuid)
+    .compose(user -> PgUtil.put("users", user.withUsername("Momo").withId(randomUuid()),
+        uuid, okapiHeaders, vertx.getOrCreateContext(), Users.PutUsersByUserIdResponse.class))
+    .onComplete(asyncAssertSuccess(testContext, 204, put -> assertGetById(testContext, uuid, "Momo")));
   }
 
   @Test
-  public void put409(TestContext testContext) {
+  public void put409WhenOptimisticLockingVersionIsWrong(TestContext testContext) {
     String uuid = randomUuid();
-    post(testContext, "user_" + uuid, uuid, 201);
-    PgUtil.put("users", new User().withUsername(USER_409).withId(uuid), uuid,
-        okapiHeaders, vertx.getOrCreateContext(),
-        Users.PutUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 409));
+    post(testContext, "Pippilotta", uuid, 201);
+    getUser(uuid)
+    .compose(user -> PgUtil.put("users", user.withUsername("Momo").withVersion(5),
+        uuid, okapiHeaders, vertx.getOrCreateContext(), Users.PutUsersByUserIdResponse.class))
+    .onComplete(asyncAssertSuccess(testContext, 409, put -> assertGetById(testContext, uuid, "Pippilotta")));
   }
 
   @Test
@@ -751,30 +750,39 @@ public class PgUtilIT {
         asyncAssertFail(testContext, "respond500WithTextPlain"));
   }
 
-  @Test
-  public void postSync(TestContext testContext) {
-    String id1 = UUID.randomUUID().toString();
-    String id2 = UUID.randomUUID().toString();
+  private Future<Response> postSync(List<User> entities, boolean upsert) {
     Map<String,String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     headers.putAll(okapiHeaders);
     headers.put(RestVerticle.OKAPI_USERID_HEADER, "okapiUser");
+    return PgUtil.postSync("users", entities, 1000, upsert, headers,
+        vertx.getOrCreateContext(), PostUsersResponse.class);
+  }
+
+  @Test
+  public void postSync(TestContext testContext) {
+    String id1 = randomUuid();
+    String id2 = randomUuid();
     List<User> entities = Arrays.asList(new User().withId(id1), new User().withId(id2));
+    List<User> entities1 = Arrays.asList(new User().withId(id1).withVersion(1), new User().withId(id2).withVersion(1));
+    List<User> entities2 = Arrays.asList(new User().withId(id1).withVersion(2), new User().withId(id2).withVersion(2));
     boolean upsert = true;
-    PgUtil.postSync("users", entities, 1000, upsert, headers, vertx.getOrCreateContext(),
-        PostUsersResponse.class, asyncAssertSuccess(testContext, 201, post -> {
-          PgUtil.getById("users", User.class, id2,
-              okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
-              asyncAssertSuccess(testContext, 200, get -> {
-                User user = (User) get.result().getEntity();
-                assertThat(user.getMetadata().getCreatedByUserId(), is("okapiUser"));
-                PgUtil.postSync("users", entities, 1000, upsert, headers, vertx.getOrCreateContext(),
-                    PostUsersResponse.class, asyncAssertSuccess(testContext, 201, post2 -> {
-                      boolean noUpsert = false;
-                      PgUtil.postSync("users", entities, 1000, noUpsert, headers, vertx.getOrCreateContext(),
-                          PostUsersResponse.class, asyncAssertSuccess(testContext, 422));
-                    }));
-              }));
-        }));
+    boolean noUpsert = false;
+    postSync(entities, upsert)
+    .onComplete(asyncAssertSuccess(testContext, 201))
+    .compose(x -> getUser(id2))
+    .onComplete(testContext.asyncAssertSuccess(user -> {
+      assertThat(user.getMetadata().getCreatedByUserId(), is("okapiUser"));
+    }))
+    .compose(x -> postSync(entities, upsert))
+    .onComplete(asyncAssertSuccess(testContext, 409))
+    .compose(x -> postSync(entities1, upsert))
+    .onComplete(asyncAssertSuccess(testContext, 201))
+    .compose(x -> postSync(entities1, upsert))
+    .onComplete(asyncAssertSuccess(testContext, 409))
+    .compose(x -> postSync(entities2, noUpsert))
+    .onComplete(asyncAssertSuccess(testContext, 422))
+    .compose(x -> postSync(entities2, upsert))
+    .onComplete(asyncAssertSuccess(testContext, 201));
   }
 
   @Test
@@ -792,12 +800,11 @@ public class PgUtilIT {
 
   @Test
   public void postSync409(TestContext testContext) {
-    List<User> users = new ArrayList<>();
     String uuid = randomUuid();
-    users.add(new User().withUsername("user_" + randomUuid()).withId(uuid));
-    users.add(new User().withUsername(USER_409).withId(uuid));
-    PgUtil.postSync("users", users, 10, true, okapiHeaders, vertx.getOrCreateContext(),
-        PostUsersResponse.class, asyncAssertSuccess(testContext, 409));
+    post(testContext, "abc", uuid, 201);
+    List<User> users = Arrays.asList(new User(), new User().withId(uuid).withUsername("xyz"));
+    postSync(users, true)
+    .onComplete(result -> assertStatusAndUser(testContext, result, 409, "abc", uuid));
   }
 
   @Test
