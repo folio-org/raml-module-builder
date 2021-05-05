@@ -341,14 +341,17 @@ public class DemoRamlRestTest {
 
   @Test
   public void testForm(TestContext context) {
+    String v = "x".repeat(1025); // 1024 is max size for Vert.x 4.0.2
     given().spec(tenant)
+        .log().everything()
         .formParam("form1name", "form1value")
-        .formParam("form2name", "form2value")
+        .formParam("form2name", v)
         .post("/rmbtests/testForm")
         .then()
         .statusCode(200)
+        .log().everything()
         .body("[0].form1name", is("form1value"))
-        .body("[1].form2name", is("form2value"));
+        .body("[1].form2name", is(v));
   }
 
   @Test
