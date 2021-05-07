@@ -54,6 +54,7 @@ import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.TransactionRollbackException;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
@@ -771,6 +772,15 @@ public class PostgresClientIT {
             String sqlState = new PgExceptionFacade(e).getSqlState();
             assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
           })));
+    }));
+  }
+
+  @Test
+  public void transWithError(TestContext context) {
+    postgresClient().withTrans(trans -> {
+      return trans.getPgConnection().query("SELECT (").execute();
+    }).onComplete(context.asyncAssertFailure(select -> {
+      assertThat(new PgExceptionFacade(select).getSqlState(), is("42601")); // syntax error
     }));
   }
 
@@ -2958,7 +2968,10 @@ public class PostgresClientIT {
     postgresClient.startTx(asyncAssertTx(context, trans -> {
       postgresClient.selectStream(trans, "SELECT (", Tuple.tuple(),
           context.asyncAssertFailure(select -> {
-            postgresClient.endTx(trans, context.asyncAssertSuccess());
+            assertThat(new PgExceptionFacade(select).getSqlState(), is("42601")); // syntax error
+            postgresClient.endTx(trans, context.asyncAssertFailure(endTx -> {
+              assertThat(endTx, is(instanceOf(TransactionRollbackException.class)));
+            }));
           }));
     }));
   }

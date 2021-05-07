@@ -30,7 +30,7 @@
     <aspectj.version>1.9.6</aspectj.version>
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
     <maven.version>3.6.3</maven.version>
-    <vertx.version>4.0.3</vertx.version>
+    <vertx.version>4.1.0.Beta1</vertx.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
