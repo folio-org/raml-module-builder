@@ -33,6 +33,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -436,7 +437,8 @@ public class PostgresClient {
     PoolOptions poolOptions = new PoolOptions();
     poolOptions.setMaxSize(configuration.getInteger(MAX_POOL_SIZE, 4));
     Integer connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
-    poolOptions.setConnectionReleaseDelay(connectionReleaseDelay);
+    poolOptions.setIdleTimeout(connectionReleaseDelay);
+    poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
 
     return PgPool.pool(vertx, connectOptions, poolOptions);
   }
