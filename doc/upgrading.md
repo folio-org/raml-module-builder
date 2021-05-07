@@ -44,7 +44,8 @@ Enable testing with postgres by calling
 before any calls to PostgresClient or the Verticle. It is also
 possible to provide your own by implemeting the `PostgresTester` interface.
 
-If database configuration is provided, the PostgresTester instance is
+If [DB\_\* environment variable database configuration](../README.md#environment-variables)
+(or JSON DB config) is provided, the PostgresTester instance is
 *not* used for testing. This allows testing to be performed on local
 Postgres instance. See [RMB-826](https://issues.folio.org/browse/RMB-826).
 
