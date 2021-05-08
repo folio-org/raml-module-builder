@@ -31,7 +31,6 @@
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
     <maven.version>3.6.3</maven.version>
     <vertx.version>4.0.3</vertx.version>
-    <vertx.version.folio>4.0.2-FOLIO</vertx.version.folio>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -76,12 +75,12 @@
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-sql-client</artifactId>
-        <version>${vertx.version.folio}</version>
+        <version>${vertx.version}-FOLIO</version>
       </dependency>
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-pg-client</artifactId>
-        <version>${vertx.version.folio}</version>
+        <version>${vertx.version}-FOLIO</version>
       </dependency>
       <dependency>
         <groupId>io.rest-assured</groupId>
