@@ -1,3 +1,21 @@
+## 33.0.0-pre3 2021-05-11
+
+This release fixes a serious problem with pre2 release ([RMB-840](https://issues.folio.org/browse/RMB-840)).
+RMB is using Vert.x 4.0.3. Use same Vert.x version in module.
+
+New feature:
+ * [RMB-832](https://issues.folio.org/browse/RMB-832) Implement upsert, updateBatch for optimistic locking
+
+Fixes:
+ * [RMB-840](https://issues.folio.org/browse/RMB-840) IllegalStateException in handleClosed (ConnectionPool)
+ * [RMB-838](https://issues.folio.org/browse/RMB-838) Publish source jar and javadoc jar on repository.folio.org
+ * Bump jersey-media-json-jackson from 2.29.1 to 2.34 (CVE-2021-28168)
+ * [RMB-837](https://issues.folio.org/browse/RMB-837) Upgrade vertx-sql-client to v4.0.3-FOLIO
+ * [RMB-834](https://issues.folio.org/browse/RMB-834) Fix form key is lost for large value
+ * [RMB-833](https://issues.folio.org/browse/RMB-833) Update commons-io from 2.6 to 2.8.0
+ * [RMB-831](https://issues.folio.org/browse/RMB-831) raml plugin no generated clients
+ * [RMB-830](https://issues.folio.org/browse/RMB-830) foreign key non-alias sub-field - "missing FROM-clause"
+
 ## 33.0.0-pre2 2021-04-21
 
 Changes and improvements:
