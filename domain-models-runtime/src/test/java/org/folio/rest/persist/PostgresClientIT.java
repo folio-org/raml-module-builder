@@ -1231,6 +1231,23 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void upsertBatchXTrans(TestContext context) {
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.upsertBatch(trans, FOO, list, context.asyncAssertSuccess(save -> {
+        final String id = save.iterator().next().getValue(0).toString();
+        postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+            context.assertEquals("x", get.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+
+  @Test
   public void endTxTransFailed(TestContext context) {
     postgresClient = postgresClient(TENANT);
     Promise<SQLConnection> promise = Promise.promise();
