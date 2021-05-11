@@ -370,7 +370,7 @@ public class Conn {
     log.info("starting: saveBatch size=" + batch.size());
     String sql;
     if (upsert) {
-      sql = "SELECT upsert('" + table + "', $1, $2)";
+      sql = "SELECT upsert('" + table + "', $1::uuid, $2::jsonb)";
     } else {
       sql = "INSERT INTO " + postgresClient.getSchemaName() + "." + table + " (id, jsonb) VALUES ($1, $2)"
         + " RETURNING id";
