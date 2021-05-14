@@ -1,3 +1,13 @@
+## 33.0.0-pre4 2021-05-12
+
+This is a bug fix release. Module *must* use Vert.x 4.1.0.Beta1.
+
+Fixes:
+  * [RMB-842](https://issues.folio.org/browse/RMB-842) 33.0.0-pre3 leaks SQL connections
+
+Other:
+  * [RMB-839](https://issues.folio.org/browse/RMB-839) Upgrade to Vert.x 4.1.0.Beta1
+
 ## 33.0.0-pre3 2021-05-11
 
 This release fixes a serious problem with pre2 release ([RMB-840](https://issues.folio.org/browse/RMB-840)).
