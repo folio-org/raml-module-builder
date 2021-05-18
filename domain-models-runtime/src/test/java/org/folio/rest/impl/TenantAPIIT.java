@@ -3,7 +3,6 @@ package org.folio.rest.impl;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
-import static org.hamcrest.Matchers.in;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -93,7 +92,7 @@ public class TenantAPIIT {
     TenantAPI tenantAPI = new TenantAPI();
     tenantAPI.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
       context.assertEquals(204, res1.getStatus());
-      tenantAPI.tenantExists(Vertx.currentContext(), tenantId)
+      tenantAPI.tenantExists(vertx.getOrCreateContext(), tenantId)
           .onComplete(context.asyncAssertSuccess(bool -> {
             context.assertFalse(bool, "tenant exists after purge");
             async.complete();
