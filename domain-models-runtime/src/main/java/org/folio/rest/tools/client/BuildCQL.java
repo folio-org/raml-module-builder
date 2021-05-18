@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.folio.rest.tools.parser.JsonPathParser;
-import org.folio.util.StringUtil;
+import org.folio.util.PercentCodec;
 
 /**
  * Build CQL string by parsing response JSON
@@ -177,10 +177,10 @@ public class BuildCQL {
         sb.append(" ").append(operatorBetweenArgs).append(" ");
       }
     }
-    if(sb.length() > 0){
-      return prefix.append(StringUtil.urlEncode(sb.toString())).toString();
+    if (sb.length() == 0) {
+      return "";
     }
-    return "";
+    return prefix.append(PercentCodec.encode(sb)).toString();
   }
 
 }

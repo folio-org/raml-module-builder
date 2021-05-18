@@ -93,6 +93,10 @@ public final class StringUtil {
   /**
    * Encode source using www-form-urlencoded scheme and charset.
    *
+   * <p>This is for web forms only.
+   *
+   * <p>Otherwise use {@link PercentCodec}, for example for HTTP requests.
+   *
    * @param source  String to encode
    * @param charset  name of the charset to use
    * @return the encoded String, "" if source is null, or null if charset is not supported or null
@@ -110,8 +114,8 @@ public final class StringUtil {
 
   /**
    * Encode source using www-form-urlencoded scheme and UTF-8 charset.
-   * <p>
-   * Note that <a href="https://tools.ietf.org/html/rfc3986#section-2.5">RFC3986 Section 2.5</a>
+   *
+   * <p>Note that <a href="https://tools.ietf.org/html/rfc3986#section-2.5">RFC3986 Section 2.5</a>
    * requires UTF-8 encoding and that {@link java.net.URLEncoder#encode(String)} is deprecated
    * because it uses the platform's default encoding. See also
    * <a href="https://en.wikipedia.org/wiki/Percent-encoding">https://en.wikipedia.org/wiki/Percent-encoding</a>.
@@ -145,8 +149,8 @@ public final class StringUtil {
 
   /**
    * Decode source using www-form-urlencoded scheme and UTF-8 charset.
-   * <p>
-   * Note that <a href="https://tools.ietf.org/html/rfc3986#section-2.5">RFC3986 Section 2.5</a>
+   *
+   * <p>Note that <a href="https://tools.ietf.org/html/rfc3986#section-2.5">RFC3986 Section 2.5</a>
    * requires UTF-8 encoding and that {@link java.net.URLDecoder#decode(String)} is deprecated
    * because it uses the platform's default encoding. See also
    * <a href="https://en.wikipedia.org/wiki/Percent-encoding">https://en.wikipedia.org/wiki/Percent-encoding</a>.

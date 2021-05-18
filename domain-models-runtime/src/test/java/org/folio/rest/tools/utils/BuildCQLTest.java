@@ -3,7 +3,7 @@ package org.folio.rest.tools.utils;
 import static org.junit.Assert.assertEquals;
 import org.folio.rest.tools.client.BuildCQL;
 import org.folio.rest.tools.client.Response;
-import org.folio.util.StringUtil;
+import org.folio.util.PercentCodec;
 import org.junit.Test;
 
 import io.vertx.core.json.JsonArray;
@@ -35,22 +35,22 @@ public class BuildCQLTest {
       r.setBody(j);
 
       String g = new BuildCQL(r, "arr2[0]", "group").buildCQL();
-      assertEquals("?query=" + StringUtil.urlEncode("group=={\"o\":{\"bbb\":\"aaa\"}}"), g);
+      assertEquals("?query=" + PercentCodec.encode("group=={\"o\":{\"bbb\":\"aaa\"}}"), g);
       g = new BuildCQL(r, "arr", "group").buildCQL();
-      assertEquals("?query=" + StringUtil.urlEncode("group==[\"librarian3\",\"librarian2\"]"), g);
+      assertEquals("?query=" + PercentCodec.encode("group==[\"librarian3\",\"librarian2\"]"), g);
       g = new BuildCQL(r, "arr[0]", "group").buildCQL();
-      assertEquals("?query=" + StringUtil.urlEncode("group==librarian3"), g);
+      assertEquals("?query=" + PercentCodec.encode("group==librarian3"), g);
       g = new BuildCQL(r, "arr[*]", "group").buildCQL();
-      assertEquals("?query=" + StringUtil.urlEncode("group==librarian3 or group==librarian2"), g);
+      assertEquals("?query=" + PercentCodec.encode("group==librarian3 or group==librarian2"), g);
       g = new BuildCQL(r, "arr[*]", "group", "query1").buildCQL();
-      assertEquals("?query1=" + StringUtil.urlEncode("group==librarian3 or group==librarian2"), g);
+      assertEquals("?query1=" + PercentCodec.encode("group==librarian3 or group==librarian2"), g);
       g = new BuildCQL(r, "arr[*]", "group", "query1", false, "and").buildCQL();
-      assertEquals("&query1=" + StringUtil.urlEncode("group==librarian3 and group==librarian2"), g);
+      assertEquals("&query1=" + PercentCodec.encode("group==librarian3 and group==librarian2"), g);
       //build cql by requesting values from a non existent field in the json, should be an emptry string ""
       g = new BuildCQL(r, "arr3", "group").buildCQL();
       assertEquals("", g);
       g = new BuildCQL(r, "arr[*]", "group", "query1", false, "and", "=").buildCQL();
-      assertEquals("&query1=" + StringUtil.urlEncode("group=librarian3 and group=librarian2"), g);
+      assertEquals("&query1=" + PercentCodec.encode("group=librarian3 and group=librarian2"), g);
   }
 
 }
