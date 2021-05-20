@@ -283,10 +283,12 @@ public class TenantAPI implements Tenant {
           }
           return loadData(tenantAttributes, job.getTenant(), headers, context);
         })
-        .onComplete(res -> {
-          if (res.failed()) {
-            job.setError(res.cause().getMessage());
+        .onFailure(cause -> {
+          String message = cause.getMessage();
+          if (message == null) {
+            message = cause.getClass().getName();
           }
+          job.setError(message);
         }).mapEmpty();
   }
 
