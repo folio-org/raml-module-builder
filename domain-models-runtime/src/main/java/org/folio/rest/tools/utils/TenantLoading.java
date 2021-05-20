@@ -32,7 +32,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
-import org.folio.util.StringUtil;
+import org.folio.util.PercentCodec;
 
 /**
  * TenantLoading is utility for loading data into modules during the Tenant Init service.
@@ -207,7 +207,7 @@ public class TenantLoading {
           log.warn(msg);
           return Future.failedFuture(msg);
         }
-        return Future.succeededFuture(StringUtil.urlEncode(id));
+        return Future.succeededFuture(PercentCodec.encodeAsString(id));
       case RAW_PUT:
       case RAW_POST:
         break;

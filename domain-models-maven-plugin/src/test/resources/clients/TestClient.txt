@@ -2,8 +2,6 @@
 package org.folio.rest.client;
 
 import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -17,6 +15,7 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.folio.util.PercentCodec;
 
 
 /**
@@ -187,7 +186,7 @@ public class TestResourceClient {
         StringBuilder queryParams = new StringBuilder("?");
         if (name!= null) {
             queryParams.append("name=");
-            queryParams.append(URLEncoder.encode(name, StandardCharsets.UTF_8));
+            queryParams.append(PercentCodec.encode(name));
             queryParams.append("&");
         }
         if (success!= null) {
@@ -229,7 +228,7 @@ public class TestResourceClient {
         StringBuilder queryParams = new StringBuilder("?");
         if (author!= null) {
             queryParams.append("author=");
-            queryParams.append(URLEncoder.encode(author, StandardCharsets.UTF_8));
+            queryParams.append(PercentCodec.encode(author));
             queryParams.append("&");
         }
         if (publicationDate!= null) {
@@ -244,7 +243,7 @@ public class TestResourceClient {
         }
         if (isbn!= null) {
             queryParams.append("isbn=");
-            queryParams.append(URLEncoder.encode(isbn, StandardCharsets.UTF_8));
+            queryParams.append(PercentCodec.encode(isbn));
             queryParams.append("&");
         }
         if (facets!= null) {

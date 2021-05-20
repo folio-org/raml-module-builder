@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -48,6 +47,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMultipart;
+
+import org.folio.util.PercentCodec;
 
 /**
  *
@@ -476,10 +477,9 @@ public class ClientGenerator implements ClientGrabber {
   }
 
   private void encodeParameter(JBlock b, ParameterDetails details) {
-    JExpression expr = jcodeModel.ref(java.net.URLEncoder.class)
+    JExpression expr = jcodeModel.ref(PercentCodec.class)
       .staticInvoke("encode")
-        .arg(JExpr.ref(details.valueName))
-        .arg(jcodeModel.ref(StandardCharsets.class).staticRef("UTF_8"));
+        .arg(JExpr.ref(details.valueName));
     b.invoke(details.queryParams, APPEND).arg(expr);
   }
 
