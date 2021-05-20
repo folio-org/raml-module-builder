@@ -20,7 +20,9 @@ import java.nio.charset.StandardCharsets;
  * but RFC 1630's category is "Informational" only, whereas RFC 3986's category is "Standards Track".
  *
  * <p>The only encoding difference between {@link java.net.URLEncoder} and this class is the space character:
- * URLEncoder encodes it as {@code +} and this class encodes it as {@code %20}.
+ * URLEncoder encodes it as {@code +} and this class encodes it as {@code %20}. In addition this class
+ * supports Appendable and CharSequence for ease of use and performance, and it doesn't require a charset
+ * parameter because it always uses UTF8 regardless of the locale.
  */
 public final class PercentCodec {
   private static final char [] UNRESERVED = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~".toCharArray();
@@ -37,7 +39,7 @@ public final class PercentCodec {
       char [] cc = { c };
       encode[c] = cc;
     }
-    for (int i=0; i<256; i++) {
+    for (int i = 0; i < 256; i++) {
       if (encode[i] != null) {
         continue;
       }
@@ -64,7 +66,7 @@ public final class PercentCodec {
    * // yields "https://example.com/users?query=status%20%3D%3D%20open"
    * </pre>
    *
-   * @param charSequence the input in UTF8 encoding; if null or empty the appendable is unchanged
+   * @param charSequence in UTF8 encoding; if null or empty the appendable is unchanged
    * @return appendable
    */
   public static Appendable encode(Appendable appendable, CharSequence charSequence) {
@@ -101,7 +103,7 @@ public final class PercentCodec {
    * // yields "https://example.com/users?query=status%20%3D%3D%20open"
    * </pre>
    *
-   * @param charSequence the input in UTF8 encoding; if null or empty then "" is returned
+   * @param charSequence in UTF8 encoding; if null or empty then "" is returned
    */
   public static CharSequence encode(CharSequence in) {
     if (in == null || in.length() == 0) {
@@ -126,7 +128,7 @@ public final class PercentCodec {
    * <p>All characters except these get percent encoded: The letters a-z and A-Z and the digits 0-9, and the
    * {@code -._~} characters.
    *
-   * @param charSequence the input in UTF8 encoding; if null or empty then "" is returned
+   * @param charSequence in UTF8 encoding; if null or empty then "" is returned
    */
   public static String encodeAsString(CharSequence in) {
     return encode(in).toString();

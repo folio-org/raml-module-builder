@@ -25,7 +25,7 @@ public final class StringUtil {
    * <pre>
    * StringBuilder query = new StringBuilder("username==");
    * StringUtil.appendCqlEncoded(query, username).append(" AND x=y";
-   * String url = "https://example.com/users?query=" + StringUtil.urlEncode(query.toString());
+   * String url = "https://example.com/users?query=" + PercentCodec.encode(query);
    * </pre>
    *
    * <p>query is {@code username=="" AND x=y} if username is null
@@ -71,7 +71,7 @@ public final class StringUtil {
    *
    * <pre>
    * String query = "username==" + StringUtil.cqlEncode(username);
-   * String url = "https://example.com/users?query=" + StringUtil.urlEncode(query);
+   * String url = "https://example.com/users?query=" + PercentCodec.encode(query);
    * </pre>
    *
    * <p>query is {@code username==""} if s is null
@@ -114,6 +114,10 @@ public final class StringUtil {
 
   /**
    * Encode source using www-form-urlencoded scheme and UTF-8 charset.
+   *
+   * <p>This is for web forms only.
+   *
+   * <p>Otherwise use {@link PercentCodec}, for example for HTTP requests.
    *
    * <p>Note that <a href="https://tools.ietf.org/html/rfc3986#section-2.5">RFC3986 Section 2.5</a>
    * requires UTF-8 encoding and that {@link java.net.URLEncoder#encode(String)} is deprecated
