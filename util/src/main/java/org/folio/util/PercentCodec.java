@@ -105,11 +105,11 @@ public final class PercentCodec {
    *
    * @param charSequence in UTF8 encoding; if null or empty then "" is returned
    */
-  public static CharSequence encode(CharSequence in) {
-    if (in == null || in.length() == 0) {
+  public static CharSequence encode(CharSequence charSequence) {
+    if (charSequence == null || charSequence.length() == 0) {
       return "";
     }
-    ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode(CharBuffer.wrap(in));
+    ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode(CharBuffer.wrap(charSequence));
     CharBuffer out = CharBuffer.allocate(3 * byteBuffer.limit());
 
     while (byteBuffer.hasRemaining()) {
@@ -130,7 +130,7 @@ public final class PercentCodec {
    *
    * @param charSequence in UTF8 encoding; if null or empty then "" is returned
    */
-  public static String encodeAsString(CharSequence in) {
-    return encode(in).toString();
+  public static String encodeAsString(CharSequence charSequence) {
+    return encode(charSequence).toString();
   }
 }
