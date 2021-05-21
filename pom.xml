@@ -192,7 +192,7 @@
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-common</artifactId>
-        <version>4.7.2</version>
+        <version>4.8.0</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
