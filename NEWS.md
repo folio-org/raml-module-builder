@@ -1,3 +1,16 @@
+## 33.0.0 2021-05-22
+
+Unlike pre4, this is using Vert.x 4.1.0.CR1. Use that version in your
+project or later veresion in 4.1.0-series.
+
+Fixes:
+ * [RMB-843](https://issues.folio.org/browse/RMB-843) Use percent encoding, not url encoding, for HTTP requests
+ * [RMB-844](https://issues.folio.org/browse/RMB-844) Properly report POST tenant with null exception message
+
+Other:
+ * [RMB-847](https://issues.folio.org/browse/RMB-847) Update to Vert.x 4.1.0CR1
+ * Use okapi-common 4.8.0
+
 ## 33.0.0-pre4 2021-05-12
 
 This is a bug fix release. Module *must* use Vert.x 4.1.0.Beta1.
