@@ -21,6 +21,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 33.0
 
+
+#### [RMB-845](https://issues.folio.org/browse/RMB-845) Upgrade to Vert.x 4.1.0.CR1
+
+Module should depend on that version or a later version in 4.1.0 series.
+
 #### [RMB-717](https://issues.folio.org/browse/RMB-717) Deprecate HttpClientInterface, HttpModuleClient2, HttpClientMock2
 
 All classes in org.folio.rest.tools.client are deprecated. Instead
