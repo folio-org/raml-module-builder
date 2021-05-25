@@ -55,7 +55,9 @@ If [DB\_\* environment variable database configuration](../README.md#environment
 Postgres instance. See [RMB-826](https://issues.folio.org/browse/RMB-826).
 
 `PostgresClient.stopEmbeddedPostgres` replaced with
-`PostgresClient.stopPostgresTester`.
+`PostgresClient.stopPostgresTester`. The invocation is usually *not* needed
+and should be removed because PostgresClient and Testcontainers core will automatically
+close and remove the container.
 
 `PostgresClient.startEmbeddedPostgres` replaced with
 `PostgresClient.startPostgresTester`. It is usually not necessary to

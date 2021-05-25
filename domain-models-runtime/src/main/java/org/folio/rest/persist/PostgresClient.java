@@ -55,7 +55,6 @@ import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.MetadataUtil;
-import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
 
@@ -194,13 +193,27 @@ public class PostgresClient {
   }
 
   /**
-   * Set test instance to use for testing.
-   * If database configuration is already provided, this call is ignored and testing
-   * is performed against the database instance given by configuration.
-   * See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()} }
+   * Set PostgresTester instance to use for testing.
+   *
+   * <p>If database configuration is already provided (DB_* env variables or JSON config file),
+   * this call is ignored and testing is performed against the database instance given by configuration.
+   *
+   * <p>Setting the same PostgresTester instance that is already set does nothing. This allows to reuse
+   * a database that some other test has already created, for example to copy a database with sample
+   * data using the <a href="https://stackoverflow.com/a/876565">TEMPLATE method</a>. See also
+   * <a href="https://www.testcontainers.org/test_framework_integration/manual_lifecycle_control/#singleton-containers">
+   * singleton testcontainers</a>.
+   *
+   * <p>Setting a different PostgresTester instance closes the old PostgresTester instance.
+   *
+   * <p>See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()}
+   *
    * @param tester instance to use for testing.
    */
   public static void setPostgresTester(PostgresTester tester) {
+    if (tester == postgresTester) {
+      return;
+    }
     stopPostgresTester();
     postgresTester = tester;
   }
@@ -4101,8 +4114,16 @@ public class PostgresClient {
   }
 
   /**
-   * Stop Postgres Tester.
-   * Does nothing, if postgresTester is not enabled.
+   * Stop the PostgresTester instance.
+   *
+   * <p>Does nothing, if postgresTester is not enabled or stopPostgresTester() has already been called.
+   *
+   * <p>After running this method a {@link #setPostgresTester(PostgresTester)} call with the same or a different
+   * PostgresTester instance is needed if PostgresClient should continue using a PostgresTester.
+   *
+   * <p>Clients usually don't need to call this method because {@link #setPostgresTester(PostgresTester)}
+   * automatically calls it if needed and both PostgresClient and Testcontainers core will take care of stopping
+   * the container at the end of the test suite.
    */
   public static void stopPostgresTester() {
     if (postgresTester != null) {
