@@ -195,8 +195,8 @@ public class PostgresClientTest {
 
   @Test
   public void closePostgresTester() {
-    var postgresTester1 = mock(PostgresTester.class);
-    var postgresTester2 = mock(PostgresTester.class);
+    PostgresTester postgresTester1 = mock(PostgresTester.class);
+    PostgresTester postgresTester2 = mock(PostgresTester.class);
     PostgresClient.setPostgresTester(postgresTester1);
     PostgresClient.setPostgresTester(postgresTester1);
     verify(postgresTester1, times(1)).close();
