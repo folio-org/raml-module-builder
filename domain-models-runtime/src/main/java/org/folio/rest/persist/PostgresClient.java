@@ -199,22 +199,14 @@ public class PostgresClient {
    * <p>If database configuration is already provided (DB_* env variables or JSON config file),
    * this call is ignored and testing is performed against the database instance given by configuration.
    *
-   * <p>Setting the same PostgresTester instance that is already set does nothing. This allows to reuse
-   * a database that some other test has already created, for example to copy a database with sample
-   * data using the <a href="https://stackoverflow.com/a/876565">TEMPLATE method</a>. See also
-   * <a href="https://www.testcontainers.org/test_framework_integration/manual_lifecycle_control/#singleton-containers">
-   * singleton testcontainers</a>.
-   *
-   * <p>Setting a different PostgresTester instance closes the old PostgresTester instance.
+   * <p>Setting the same or a different PostgresTester instance invokes the close method of the
+   * old PostgresTester instance.
    *
    * <p>See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()}
    *
    * @param tester instance to use for testing.
    */
   public static void setPostgresTester(PostgresTester tester) {
-    if (tester == postgresTester) {
-      return;
-    }
     stopPostgresTester();
     postgresTester = tester;
   }
