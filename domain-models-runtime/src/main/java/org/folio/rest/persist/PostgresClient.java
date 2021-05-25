@@ -55,6 +55,7 @@ import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.MetadataUtil;
+import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
 
