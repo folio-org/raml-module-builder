@@ -68,6 +68,7 @@ Command-line option `embed_postgres=true` is no longer supported.
 
 Remove `<groupId>ru.yandex.qatools.embed</groupId>`
 `<artifactId>postgresql-embedded</artifactId>` from pom.xml.
+
 #### [RMB-785](https://issues.folio.org/browse/RMB-785) domain-models-maven-plugin
 
 In pom.xml replace the exec-maven-plugin sections that call
@@ -130,6 +131,13 @@ Add FOLIO Maven repository for plugins after existing `<repositories>` section:
     </pluginRepository>
   </pluginRepositories>
 ```
+
+Replace any joda class usage by a java.time class usage. RMB no longer ships with
+joda-time that is deprecated because the replacement java.time has been in JDK core
+since Java 8.
+
+Add org.assertj test dependency to pom.xml if Assertj is used. RMB no longer ships
+with Assertj.
 
 ## Version 32.0
 
