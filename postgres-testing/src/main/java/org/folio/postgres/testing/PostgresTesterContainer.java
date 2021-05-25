@@ -2,11 +2,14 @@ package org.folio.postgres.testing;
 
 import java.time.Duration;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.util.PostgresTester;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 public class PostgresTesterContainer implements PostgresTester {
 
+  private static final Logger LOGGER = LogManager.getLogger(PostgreSQLContainer.class);
   private PostgreSQLContainer<?> postgreSQLContainer;
   private String dockerImageName;
 
@@ -42,6 +45,7 @@ public class PostgresTesterContainer implements PostgresTester {
         .withPassword(password)
         .withStartupTimeout(Duration.ofSeconds(60));
     postgreSQLContainer.start();
+    LOGGER.debug("new container {}", postgreSQLContainer);
   }
 
   @Override
@@ -68,6 +72,7 @@ public class PostgresTesterContainer implements PostgresTester {
   @Override
   public void close() {
     if (postgreSQLContainer != null) {
+      LOGGER.debug("close container {}", postgreSQLContainer);
       postgreSQLContainer.close();
       postgreSQLContainer = null;
     }
