@@ -119,6 +119,9 @@ on the artifact with generated interfaces.
 
 ```
 
+Use `properties-maven-plugin` to set system properties needed by
+`domain-models-maven-plugin` if any.
+
 Add FOLIO Maven repository for plugins after existing `<repositories>` section:
 ```xml
   <pluginRepositories>
@@ -133,6 +136,9 @@ Add FOLIO Maven repository for plugins after existing `<repositories>` section:
 Replace any joda class usage by a java.time class usage. RMB no longer ships with
 joda-time that is deprecated because the replacement java.time has been in JDK core
 since Java 8.
+
+Add commons-lang:commons-lang:2.6 dependency to pom.xml if commons-lang is used.
+RMB no longer ships with commons-lang.
 
 Add org.assertj test dependency to pom.xml if Assertj is used. RMB no longer ships
 with Assertj.
