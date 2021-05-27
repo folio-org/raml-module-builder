@@ -119,8 +119,9 @@ on the artifact with generated interfaces.
 
 ```
 
-Use `properties-maven-plugin` to set system properties needed by
-`domain-models-maven-plugin` if any.
+If you need to set system properties for `domain-models-maven-plugin` run
+`properties-maven-plugin` with goal `set-system-properties` before:
+https://www.mojohaus.org/properties-maven-plugin/usage.html#set-system-properties
 
 Add FOLIO Maven repository for plugins after existing `<repositories>` section:
 ```xml
