@@ -7,6 +7,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -41,6 +42,7 @@ import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.util.PostgresTester;
 import org.folio.util.ResourceUtil;
 import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
@@ -189,6 +191,20 @@ public class PostgresClientTest {
     // TODO: enable when available in vertx-sql-client/vertx-pg-client
     // https://issues.folio.org/browse/RMB-657
     // assertThat(1000, is(options.getConnectionReleaseDelay()));
+  }
+
+  @Test
+  public void closePostgresTester() {
+    PostgresTester postgresTester1 = mock(PostgresTester.class);
+    PostgresTester postgresTester2 = mock(PostgresTester.class);
+    PostgresClient.setPostgresTester(postgresTester1);
+    PostgresClient.setPostgresTester(postgresTester1);
+    verify(postgresTester1, times(1)).close();
+    PostgresClient.setPostgresTester(postgresTester2);
+    verify(postgresTester1, times(2)).close();
+    PostgresClient.stopPostgresTester();
+    verify(postgresTester1, times(2)).close();
+    verify(postgresTester2, times(1)).close();
   }
 
   @Test
