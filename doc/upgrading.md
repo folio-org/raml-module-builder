@@ -134,6 +134,8 @@ Add FOLIO Maven repository for plugins after existing `<repositories>` section:
   </pluginRepositories>
 ```
 
+Replace `PomReader.INSTANCE.getModuleName()` by `ModuleName.getModuleName()`.
+
 Replace any joda class usage by a java.time class usage. RMB no longer ships with
 joda-time that is deprecated because the replacement java.time has been in JDK core
 since Java 8.
