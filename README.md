@@ -180,7 +180,11 @@ For example, note the validation annotations generated based on the constraints 
   (`<pluginRepositories>`).
 
 - Add the `domain-models-maven-plugin`. This will generate the POJOs and interfaces based on
-  the RAML files.
+  the RAML files. Use `domain-models-maven-plugin` as a plugin in the `<plugins>` pom.xml
+  section only. Please do not add it to the `<dependencies>` section, it is based on
+  old libraries with security vulnerabilities. The vulnerabilities do not affect us when
+  running `domain-models-maven-plugin` as a plugin but they may affect a module if those
+  old dependencies are included as explicit dependencies.
 
 - Add the `aspectj-maven-plugin`. This is required if you
   would like the runtime framework to validate all URLs.
