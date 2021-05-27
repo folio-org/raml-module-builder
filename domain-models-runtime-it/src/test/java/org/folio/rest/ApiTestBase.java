@@ -3,6 +3,7 @@ package org.folio.rest;
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -10,18 +11,20 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import org.folio.rest.RestVerticle;
-import org.folio.rest.tools.utils.VertxUtils;
-import org.junit.jupiter.api.BeforeAll;
-
 import io.restassured.RestAssured;
 import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.jaxrs.model.TenantAttributes;
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.tools.utils.VertxUtils;
+import org.junit.jupiter.api.BeforeAll;
 
 public class ApiTestBase {
   static Vertx vertx;
@@ -43,6 +46,7 @@ public class ApiTestBase {
       return;
     }
 
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     DeploymentOptions deploymentOptions = new DeploymentOptions()
         .setConfig(new JsonObject().put("http.port", RestAssured.port));
 
@@ -64,17 +68,33 @@ public class ApiTestBase {
         header("x-okapi-tenant", "testlib").
         contentType(ContentType.JSON);
 
-    // delete tenant (schema, tables, ...) if it exists from previous tests, ignore errors.
-    given(r).
-    when().delete("/_/tenant").
-    then();
+    // delete tenant (schema, tables, ...) if it exists from previous tests
+    TenantAttributes ta = new TenantAttributes().withPurge(true);
+    given(r).header("x-okapi-url-to", "http://localhost:" + port).
+        contentType(ContentType.JSON)
+        .body(Json.encode(ta))
+        .when().post("/_/tenant")
+        .then().statusCode(204);
+
+    List<Parameter> list = new LinkedList<>();
+    list.add(new Parameter().withKey("loadReference").withValue("true"));
+    ta = new TenantAttributes().withModuleTo("mod-api-1.0.0").withParameters(list);
 
     // create tenant (schema, tables, ...)
-    given(r).header("x-okapi-url-to", "http://localhost:" + RestAssured.port).
-    contentType(ContentType.JSON).
-    body("{\"module_to\":\"mod-api-1.0.0\"}").
-    when().post("/_/tenant").
-    then().statusCode(201);
+    String location = given(r)
+        .header("x-okapi-url-to", "http://localhost:" + port)
+        .contentType(ContentType.JSON)
+        .body(Json.encode(ta))
+        .when().post("/_/tenant")
+        .then().statusCode(201)
+        .extract().header("Location");
+
+    given(r)
+        .header("x-okapi-url-to", "http://localhost:" + port)
+        .when().get(location + "?wait=5000")
+        .then()
+        .statusCode(200)
+        .body("error", is(nullValue()));
   }
 
   /**

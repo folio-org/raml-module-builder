@@ -14,6 +14,8 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
 import org.folio.HttpStatus;
+import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
@@ -25,7 +27,6 @@ import org.junit.runner.RunWith;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
@@ -35,17 +36,13 @@ public class AdminAPIIT {
   protected static Vertx vertx;
   private static Map<String,String> okapiHeaders = new HashMap<>();
 
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-    okapiHeaders.put("TenantId", tenantId);
-  }
-
   @Rule
   public Timeout rule = Timeout.seconds(20);
 
   @BeforeClass
   public static void setUpClass() {
     vertx = VertxUtils.getVertxWithExceptionHandler();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
   }
 
   @AfterClass

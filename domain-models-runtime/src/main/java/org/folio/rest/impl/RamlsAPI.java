@@ -9,32 +9,31 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.ws.rs.core.Response;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.Ramls;
-import org.folio.rest.tools.GenerateRunner;
+import org.folio.rest.resource.DomainModelConsts;
 import org.folio.util.ResourceUtil;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 public class RamlsAPI implements Ramls {
 
-  private static final Logger log = LoggerFactory.getLogger(RamlsAPI.class);
+  private static final Logger log = LogManager.getLogger(RamlsAPI.class);
 
   private static final Pattern INCLUDE_MATCH_PATTERN = Pattern.compile("(?<=!include ).*");
 
   private static final String OKAPI_URL_HEADER = "x-okapi-url";
   /** resource path (jar, classes), not a file system path */
   private static final String RAMLS_PATH =
-    (System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + '/').replace('\\', '/');
+    (System.getProperty("raml_files", DomainModelConsts.SOURCES_DEFAULT) + '/').replace('\\', '/');
   private static final String RAML_EXT = ".raml";
 
-  private static final List<String> RAMLS = getRamlsList(RAMLS_PATH + GenerateRunner.RAML_LIST);
+  private static final List<String> RAMLS = getRamlsList(RAMLS_PATH + DomainModelConsts.RAML_LIST);
 
   @Validate
   @Override

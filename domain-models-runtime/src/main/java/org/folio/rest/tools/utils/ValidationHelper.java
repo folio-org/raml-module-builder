@@ -10,7 +10,7 @@ import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.persist.PgExceptionUtil;
-import org.folio.rest.tools.RTFConsts;
+import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
 
@@ -34,7 +34,7 @@ public class ValidationHelper {
     error.getParameters().add(p);
     error.setMessage(message);
     error.setCode("-1");
-    error.setType(RTFConsts.VALIDATION_FIELD_ERROR);
+    error.setType(DomainModelConsts.VALIDATION_FIELD_ERROR);
     List<Error> l = new ArrayList<>();
     l.add(error);
     e.setErrors(l);

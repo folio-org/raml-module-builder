@@ -201,4 +201,5 @@ public class CQLWrapperTest {
     wrapperCriterion.addWrapper(wrapperCql, "or");
     assertThat(wrapperCriterion.toString(), is("WHERE ((jsonb->>id) = '42') or true"));
   }
+
 }

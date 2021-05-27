@@ -4,9 +4,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import org.folio.dbschema.Schema;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.dbschema.TenantOperation;
 import org.folio.dbschema.ObjectMapperTool;
@@ -25,7 +24,6 @@ public class PostgresClientITBase {
   protected static Map<String,String> okapiHeaders;
   protected static String schema;
   protected static Vertx vertx;
-  static Logger log = LoggerFactory.getLogger(PostgresClientITBase.class);
 
   static {
     setTenant("sometenant");
@@ -39,6 +37,7 @@ public class PostgresClientITBase {
 
   protected static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     dropSchemaAndRole(context);
     executeSuperuser(context,
         "CREATE ROLE " + schema + " PASSWORD '" + tenant + "' NOSUPERUSER NOCREATEDB INHERIT LOGIN",
@@ -169,7 +168,8 @@ public class PostgresClientITBase {
     String json = ResourceUtil.asString(schemaJsonFilename);
     try {
       schemaMaker.setSchema(ObjectMapperTool.getMapper().readValue(json, Schema.class));
-      runSqlFileAsSuperuser(context, schemaMaker.generateDDL());
+      runSqlFileAsSuperuser(context, schemaMaker.generateCreate());
+      runSqlFileAsSuperuser(context, schemaMaker.generateSchemas());
     } catch (IOException|TemplateException e) {
       context.fail(e);
     }

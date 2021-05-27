@@ -10,12 +10,11 @@ import javax.mail.MessagingException;
 import javax.mail.internet.InternetHeaders;
 import javax.mail.internet.MimeBodyPart;
 import javax.mail.internet.MimeMultipart;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import com.google.common.primitives.Bytes;
 
 import io.vertx.core.buffer.Buffer;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
@@ -29,7 +28,7 @@ public class FileUploadsUtil {
   //need encoding for this - if "charset" is passed in the header request then it should be used instead
   private static final String DEFAULT_ENCODING = "ISO-8859-1";
 
-  private static final Logger log = LoggerFactory.getLogger(FileUploadsUtil.class);
+  private static final Logger log = LogManager.getLogger(FileUploadsUtil.class);
 
   public static MimeMultipart MultiPartFormData(Buffer buffer) throws IOException {
 

@@ -2,17 +2,18 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>31.2.0-SNAPSHOT</version>
+  <version>33.1.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
     <module>testing</module>
     <module>util</module>
+    <module>postgres-testing</module>
     <module>dbschema</module>
     <module>cql2pgjson</module>
     <module>cql2pgjson-cli</module>
     <module>domain-models-api-aspects</module>
-    <module>domain-models-interface-extensions</module>
+    <module>domain-models-maven-plugin</module>
     <module>domain-models-api-interfaces</module>
     <module>domain-models-runtime</module>
     <module>domain-models-runtime-it</module>
@@ -28,8 +29,8 @@
   <properties>
     <aspectj.version>1.9.6</aspectj.version>
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
-    <postgresql-embedded-version>2.10</postgresql-embedded-version>
-    <vertx.version>3.9.4</vertx.version>
+    <maven.version>3.6.3</maven.version>
+    <vertx.version>4.1.0.CR1</vertx.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -44,11 +45,16 @@
     <generated_files_path>${basedir}/target/generated-sources/raml-jaxrs</generated_files_path>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    <generate_routing_context>/rmbtests/test</generate_routing_context>
+    <generate_routing_context>/rmbtests/test,/rmbtests/testForm</generate_routing_context>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>30.1.1-jre</version>
+      </dependency>
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
@@ -82,9 +88,19 @@
         <version>2.0.1</version>
       </dependency>
       <dependency>
+        <groupId>commons-io</groupId>
+        <artifactId>commons-io</artifactId>
+        <version>2.8.0</version>
+      </dependency>
+      <dependency>
         <groupId>junit</groupId>
         <artifactId>junit</artifactId>
         <version>4.13.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.commons</groupId>
+        <artifactId>commons-lang3</artifactId>
+        <version>3.11</version>
       </dependency>
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
@@ -108,7 +124,7 @@
         <artifactId>hamcrest</artifactId>
         <version>2.2</version>
       </dependency>
-      <dependency>
+      <dependency>  <!-- http://hamcrest.org/JavaHamcrest/distributables#upgrading-from-hamcrest-1x -->
         <groupId>org.hamcrest</groupId>
         <artifactId>hamcrest-library</artifactId>
         <version>2.2</version>
@@ -156,7 +172,7 @@
       <dependency>
         <groupId>org.glassfish.jersey.media</groupId>
         <artifactId>jersey-media-json-jackson</artifactId>
-        <version>2.29.1</version>
+        <version>2.34</version>
       </dependency>
       <dependency>
         <groupId>javax.validation</groupId>
@@ -176,14 +192,20 @@
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-common</artifactId>
-        <version>4.3.0</version>
+        <version>4.8.0</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-collections4</artifactId>
         <version>4.1</version>
       </dependency>
-
+      <dependency>
+        <groupId>org.testcontainers</groupId>
+        <artifactId>testcontainers-bom</artifactId>
+        <version>1.15.1</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -373,6 +395,48 @@
             </configuration>
             <goals>
               <goal>exec</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>3.2.1</version>
+        <executions>
+          <execution>
+            <id>attach-sources</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>jar-no-fork</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <version>3.2.0</version>
+        <executions>
+          <execution>
+            <id>attach-javadocs</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>jar</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+
+      <plugin>
+        <artifactId>maven-deploy-plugin</artifactId>
+        <version>3.0.0-M1</version>
+        <executions>
+          <execution>
+            <id>deploy</id>
+            <phase>deploy</phase>
+            <goals>
+              <goal>deploy</goal>
             </goals>
           </execution>
         </executions>

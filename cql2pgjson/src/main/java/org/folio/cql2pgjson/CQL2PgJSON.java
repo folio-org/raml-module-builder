@@ -180,27 +180,35 @@ public class CQL2PgJSON {
     }
   }
 
-  private void initDbTable() {
-    if (dbSchema.getTables() != null) {
-      if (jsonField == null) {
-        logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
-        return;
-      }
-      // Remove the json blob field name, usually ".jsonb", but in tests also
-      // ".user_data" etc.
-      String tname = this.jsonField.replaceAll("\\.[^.]+$", "");
-      for (Table table : dbSchema.getTables()) {
-        if (tname.equalsIgnoreCase(table.getTableName())) {
-          dbTable = table;
-          break;
-        }
-      }
-      if (dbTable == null) {
-        logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): Table {0} NOT FOUND", tname);
-      }
-    } else {
-      logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): No 'tables' section found");
+  enum InitDbTableResult {
+    TABLE_FOUND,
+    AUDIT_TABLE_FOUND,
+    NO_PRIMARY_TABLE_NAME,
+    NOT_FOUND,
+  };
+
+  InitDbTableResult initDbTable() {
+    if (jsonField == null) {
+      logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
+      return InitDbTableResult.NO_PRIMARY_TABLE_NAME;
     }
+    // Remove the json blob field name, usually ".jsonb", but in tests also
+    // ".user_data" etc.
+    String tname = this.jsonField.replaceAll("\\.[^.]+$", "");
+    for (Table table : dbSchema.getTables()) {
+      if ("DELETE".equalsIgnoreCase(table.getMode())) {
+        continue;
+      }
+      if (tname.equalsIgnoreCase(table.getTableName())) {
+        dbTable = table;
+        return InitDbTableResult.TABLE_FOUND;
+      }
+      if (table.isWithAuditing() && tname.equalsIgnoreCase(table.getAuditingTableName())) {
+        return InitDbTableResult.AUDIT_TABLE_FOUND;
+      }
+    }
+    logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): Table {0} NOT FOUND", tname);
+    return InitDbTableResult.NOT_FOUND;
   }
 
   private void doInit(String field, String dbSchemaPath) throws FieldException {
@@ -524,7 +532,7 @@ public class CQL2PgJSON {
       // child to parent
       targetTable = DbSchemaUtils.getTable(dbSchema, fks.get(fks.size() -1).getTargetTable());
       for (DbFkInfo fk : fks) {
-        sb.append(currentTableName).append('.').append(fk.getField())
+        sb.append(currentTableName).append('.').append(fk.getField().replace(".","_"))
           .append(" IN  ( SELECT id FROM ").append(fk.getTargetTable()).append(" WHERE ");
         currentTableName = fk.getTargetTable();
       }
@@ -616,7 +624,7 @@ public class CQL2PgJSON {
             ? "false /* " + columnName + " == invalid UUID */"
             : "true /* "  + columnName + " <> invalid UUID */";
       }
-      return columnName + comparator + "'" + term + "'";
+      return columnName.replace('.', '_') + comparator + "'" + term + "'";
     }
     String truncTerm = term;
     while (truncTerm.endsWith("*")) {  // remove trailing stars

@@ -6,8 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
-import org.folio.rest.tools.GenerateRunner;
+import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.folio.util.ResourceUtil;
 import org.junit.AfterClass;
@@ -18,7 +17,6 @@ import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 
 import io.vertx.core.Vertx;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -27,10 +25,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class RamlsAPIIT {
 
   private static Vertx vertx;
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
 
   @Rule
   public Timeout rule = Timeout.seconds(20);
@@ -109,7 +103,7 @@ public class RamlsAPIIT {
   @Test
   public void testReplaceReferences(TestContext context) throws IOException {
     RamlsAPI ramlsAPI = new RamlsAPI();
-    String raml = ResourceUtil.asString(System.getProperty("raml_files", GenerateRunner.SOURCES_DEFAULT) + "/test.raml");
+    String raml = ResourceUtil.asString(System.getProperty("raml_files", DomainModelConsts.SOURCES_DEFAULT) + "/test.raml");
     raml = ramlsAPI.replaceReferences(raml, "http://localhost:9130");
     assertTrue(raml.contains("test: !include http://localhost:9130/_/jsonSchemas?path=test.schema"));
     assertFalse(raml.contains("test: !include test.schema"));

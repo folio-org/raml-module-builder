@@ -1,16 +1,16 @@
 package org.folio.rest.tools.client;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.folio.rest.tools.parser.JsonPathParser;
+import org.folio.util.PercentCodec;
 
 /**
- * @author shale
- *
+ * Build CQL string by parsing response JSON
+ * @deprecated All material in org.folio.rest.tools.client is deprecated
  */
+@Deprecated
 public class BuildCQL {
 
   private Response r;
@@ -140,7 +140,7 @@ public class BuildCQL {
   }
 
   @SuppressWarnings("unchecked")
-  public String buildCQL() throws UnsupportedEncodingException {
+  public String buildCQL() {
     StringBuilder sb = new StringBuilder();
     StringBuilder prefix = new StringBuilder();
 
@@ -172,15 +172,15 @@ public class BuildCQL {
       if(paths.get(i) == null){
         continue;
       }
-      sb.append(cqlPath).append(cqlStatementOperator).append(URLEncoder.encode(paths.get(i).toString(), "UTF-8"));
+      sb.append(cqlPath).append(cqlStatementOperator).append(paths.get(i).toString());
       if(i<size-1){
-        sb.append("+").append(operatorBetweenArgs).append("+");
+        sb.append(" ").append(operatorBetweenArgs).append(" ");
       }
     }
-    if(sb.length() > 0){
-      return prefix.append(sb.toString()).toString();
+    if (sb.length() == 0) {
+      return "";
     }
-    return "";
+    return prefix.append(PercentCodec.encode(sb)).toString();
   }
 
 }

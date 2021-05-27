@@ -17,6 +17,7 @@ public class Table extends Versioned {
   private String tableName;
   private boolean withMetadata;
   private boolean withAuditing;
+  private OptimisticLockingMode withOptimisticLocking;
   /**
    * indexes using text_pattern_ops
    * @see <a href="https://www.postgresql.org/docs/current/indexes-opclass.html">https://www.postgresql.org/docs/current/indexes-opclass.html</a>
@@ -237,5 +238,13 @@ public class Table extends Versioned {
             "auditingFieldName missing for table " + getTableName() + " having \"withAuditing\": true");
       }
     }
+  }
+
+  public OptimisticLockingMode getWithOptimisticLocking() {
+    return withOptimisticLocking;
+  }
+
+  public void setWithOptimisticLocking(OptimisticLockingMode withOptimisticLocking) {
+    this.withOptimisticLocking = withOptimisticLocking;
   }
 }

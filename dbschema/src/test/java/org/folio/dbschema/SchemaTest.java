@@ -8,16 +8,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 
-import org.folio.dbschema.Schema;
-import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.ResourceUtil;
 import org.junit.jupiter.api.Test;
 
 class SchemaTest {
 
   private Schema getSchema() {
+    return getSchema("schema.json");
+  }
+
+  private Schema getSchema(String filename) {
     try {
-      String dbJson = ResourceUtil.asString("schema.json");
+      String dbJson = ResourceUtil.asString(filename);
       return ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
     } catch (IOException e) {
       System.out.println("XXXX");
@@ -57,5 +59,14 @@ class SchemaTest {
     schema.getTables().get(0).getFullTextIndex().get(0).setCaseSensitive(true);
     Exception e = assertThrows(IllegalArgumentException.class, () -> schema.setup());
     assertThat(e.getMessage(), is("full text index does not support case sensitive: title"));
+  }
+  
+  @Test 
+  public void testOptimisticLockingMode() {
+    Schema schema = getSchema("schemaWithOptimisticLocking.json");
+    assertThat(schema.getTables().get(0).getWithOptimisticLocking(), is(OptimisticLockingMode.OFF));
+    assertThat(schema.getTables().get(1).getWithOptimisticLocking(), is(OptimisticLockingMode.LOG));
+    assertThat(schema.getTables().get(2).getWithOptimisticLocking(), is(OptimisticLockingMode.FAIL));
+    assertThat(schema.getTables().get(3).getWithOptimisticLocking(), nullValue());
   }
 }

@@ -3,12 +3,11 @@ package org.folio.rest.tools.utils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Set;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
+import com.google.common.reflect.ClassPath;
 
 
 public class InterfaceToImpl {
@@ -17,7 +16,7 @@ public class InterfaceToImpl {
   //since we try to load via reflection an implementation of the class at runtime - better to load once and cache
   //for subsequent calls
   private static Table<String, String, ArrayList<Class<?>>> clazzCache  = HashBasedTable.create();
-  private static final Logger log                                       = LoggerFactory.getLogger(InterfaceToImpl.class);
+  private static final Logger log = LogManager.getLogger(InterfaceToImpl.class);
 
   /**
    * Return the implementing class.
@@ -36,13 +35,13 @@ public class InterfaceToImpl {
     ArrayList<Class<?>> impl = new ArrayList<>();
     ArrayList<Class<?>> cachedClazz = clazzCache.get(implDir, interface2check);
     if(cachedClazz != null){
-      log.debug("returned " +cachedClazz.size()+" class/es from cache");
+      log.debug("returned {} class/es from cache", cachedClazz.size());
       return cachedClazz;
     }
 
     ClassPath classPath = ClassPath.from(Thread.currentThread().getContextClassLoader());
     Set<ClassPath.ClassInfo> classes = classPath.getTopLevelClasses(implDir);
-    
+
     Class<?> userImpl = null;
     /** iterate over all classes in the org.folio.rest.impl package to find the one implementing the
      * requested interface */

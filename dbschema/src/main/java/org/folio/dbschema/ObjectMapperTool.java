@@ -5,6 +5,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+
 /**
  * @author shale
  *
@@ -37,4 +40,19 @@ public final class ObjectMapperTool {
     MAPPER.registerModule(module);
   }
 
+  /**
+   * Map JSON to type.
+   *
+   * @param content JSON content
+   * @param valueType Resulting type.
+   * @param <T> Type
+   * @return instance of type.
+   */
+  public static <T> T readValue(String content, Class<T> valueType) {
+    try {
+      return getMapper().readValue(content, valueType);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
 }

@@ -4,14 +4,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.regex.Pattern;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
 /**
  * @author shale
@@ -19,7 +18,7 @@ import io.vertx.core.logging.LoggerFactory;
  */
 public class JsonUtils {
   private static final ObjectMapper MAPPER = new ObjectMapper();
-  private static final Logger log = LoggerFactory.getLogger(JsonUtils.class);
+  private static final Logger log = LogManager.getLogger(JsonUtils.class);
 
 
   public static String entity2String(Object entity){

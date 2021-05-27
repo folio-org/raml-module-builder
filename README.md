@@ -1,7 +1,7 @@
 
 # Raml-Module-Builder
 
-Copyright (C) 2016-2020 The Open Library Foundation
+Copyright (C) 2016-2021 The Open Library Foundation
 
 [ClassPath.java](domain-models-interface-extensions/src/main/java/org/folio/rest/tools/utils/ClassPath.java) and
 [ClassPathTest.java](domain-models-interface-extensions/src/test/java/org/folio/rest/tools/utils/ClassPathTest.java)
@@ -29,14 +29,14 @@ See the file ["LICENSE"](LICENSE) for more information.
     * [Step 4: Build your project](#step-4-build-your-project)
     * [Step 5: Implement the generated interfaces](#step-5-implement-the-generated-interfaces)
     * [Step 6: Design the RAML files](#step-6-design-the-raml-files)
+* [RestVerticle](#restverticle)
 * [Adding an init() implementation](#adding-an-init-implementation)
 * [Adding code to run periodically](#adding-code-to-run-periodically)
 * [Adding a hook to run immediately after verticle deployment](#adding-a-hook-to-run-immediately-after-verticle-deployment)
 * [Adding a shutdown hook](#adding-a-shutdown-hook)
-* [Implementing file uploads](#implementing-file-uploads)
+* [Implementing uploads](#implementing-uploads)
 * [Implement chunked bulk download](#implement-chunked-bulk-download)
 * [PostgreSQL integration](#postgresql-integration)
-    * [Credentials](#credentials)
     * [Securing DB Configuration file](#securing-db-configuration-file)
     * [Foreign keys constraint](#foreign-keys-constraint)
 * [CQL (Contextual Query Language)](#cql-contextual-query-language)
@@ -62,6 +62,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Query Syntax](#query-syntax)
 * [Estimated totalRecords](#estimated-totalrecords)
 * [Metadata](#metadata)
+* [Optimistic Locking](#optimistic-locking)
 * [Facet Support](#facet-support)
 * [JSON Schema fields](#json-schema-fields)
 * [Overriding RAML (traits) / query parameters](#overriding-raml-traits--query-parameters)
@@ -73,7 +74,6 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Instrumentation](#instrumentation)
 * [Overriding Out of The Box RMB APIs](#overriding-out-of-the-box-rmb-apis)
 * [Client Generator](#client-generator)
-* [Querying multiple modules via HTTP](#querying-multiple-modules-via-http)
 * [A Little More on Validation](#a-little-more-on-validation)
 * [Advanced Features](#advanced-features)
 * [Additional Tools](#additional-tools)
@@ -175,7 +175,11 @@ For example, note the validation annotations generated based on the constraints 
 
 ### Set up your pom.xml
 
-- Add the `exec-maven-plugin`. This will generate the POJOs and interfaces based on
+- Add Maven repositories for FOLIO. There must be a section for regular
+  dependencies (`<repositories>`) and a section for plugins
+  (`<pluginRepositories>`).
+
+- Add the `domain-models-maven-plugin`. This will generate the POJOs and interfaces based on
   the RAML files.
 
 - Add the `aspectj-maven-plugin`. This is required if you
@@ -236,7 +240,7 @@ These are also displayed as local [API documentation](#documentation-of-the-apis
 Now run the module in standalone mode:
 
 ```
-$ java -jar target/mod-notify-fat.jar embed_postgres=true
+$ java -jar target/mod-notify-fat.jar
 ```
 
 Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
@@ -247,20 +251,24 @@ we will get your local development server running and populated with test data.
 
 ## Command-line options
 
-- `-Dhttp.port=8080` (Optional -- defaults to 8081)
+- `-Dhttp.port=8080` Optional -- defaults to 8081
 
-- `-Ddebug_log_package=*` (Optional -- Set log level to debug for all packages.
+- `-Ddebug_log_package=*` Optional -- Set log level to debug for all packages.
 Or use `org.folio.rest.*` for all classes within a specific package,
-or `org.folio.rest.RestVerticle` for a specific class.)
+or `org.folio.rest.RestVerticle` for a specific class.
 
-- `embed_postgres=true` (Optional -- enforces starting an embedded postgreSQL, defaults to false)
-
-- `db_connection=[path]` (Optional -- path to an external JSON config file with
-  connection parameters to a PostgreSQL DB)
+- `db_connection=[path]` Optional -- path to a JSON config file with
+  connection parameters to a PostgreSQL DB
 
   - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
     "username":"postgres","password":"mysecretpassword", "database":"postgres",
     "charset":"windows-1252", "queryTimeout" : 10000}`
+
+  - path defaults to /postgres-conf.json
+
+  - tries to read a file at the path if the path is absolute
+
+  - if file not found or path is relative tries to read a class path resource with that path
 
 - Other module-specific arguments can be passed via the command line in the format key=value. These will be accessible to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
 
@@ -291,7 +299,9 @@ Environment variables with periods/dots in their names are deprecated in RMB bec
 
 See the [Vert.x Async PostgreSQL Client Configuration documentation](https://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration) for the details.
 
-The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
+The environment variable `DB_MAXPOOLSIZE` sets the maximum number of concurrent connections for a tenant that one module instance opens. They are only opened if needed. If all connections for a tenant are in use further requests for that tenant will wait until one connnection becomes free. Other tenants and other instances of a module are unaffected. The default is 4.
+
+The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. A connection becomes idle if the query ends, it is not idle if it is waiting for a response. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
 
 The environment variable `DB_EXPLAIN_QUERY_THRESHOLD` is not observed by
 Postgres itself, but is a value - in milliseconds - that triggers query
@@ -340,16 +350,31 @@ Adjust the POM file to match your project, e.g. artifactID, version, etc.
       <url>https://repository.folio.org/repository/maven-folio</url>
     </repository>
   </repositories>
+  <pluginRepositories>
+    <pluginRepository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </pluginRepository>
+  </pluginRepositories>
   <dependencies>
     <dependency>
       <groupId>org.folio</groupId>
       <artifactId>domain-models-runtime</artifactId>
-      <version>29.0.0</version>
+      <version>32.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>postgres-testing</artifactId>
+      <version>32.2.0</version>
+      <scope>test</scope>
     </dependency>
     ...
     ...
   </dependencies>
 ```
+
+(postgres-testing is available in version 32.2.0 and later)
 
 ### Step 3: Add the plugins to your pom.xml
 
@@ -483,6 +508,21 @@ RAML-aware text editors are very helpful, such as
 Remember that the POM configuration enables viewing your RAML and interacting
 with your application via the local [API documentation](#documentation-of-the-apis).
 
+## RestVerticle
+
+RestVerticle is implemented using the reactor pattern and Vert.x HttpServer and
+must be started on the Vert.x event loop. Don't start it on a Vert.x worker context, this
+[may fail because of unsupported concurrency](https://issues.folio.org/browse/MODINVSTOR-635).
+
+Use VertxOptions
+[setMaxEventLoopExecuteTime](https://vertx.io/docs/apidocs/io/vertx/core/VertxOptions.html#setMaxEventLoopExecuteTime-long-)
+and
+[setWarningExceptionTime](https://vertx.io/docs/apidocs/io/vertx/core/VertxOptions.html#setWarningExceptionTime-long-)
+to adjust warnings like
+`Thread vertx-eventloop-thread-3 has been blocked for 20458 ms`
+and fix these violations of the [Golden Rule](https://vertx.io/docs/vertx-core/java/#golden_rule)
+that make the module unresponsive. For details see [Running blocking code](https://vertx.io/docs/vertx-core/java/#blocking_code).
+
 ## Adding an init() implementation
 
 It is possible to add custom code that will run once before the application is deployed
@@ -513,8 +553,17 @@ public class InitAPIs implements InitAPI {
 
 ## Adding code to run periodically
 
+This API can be used if your module *instance* needs to perform ongoing tasks.
+Consider using Okapi's
+[timer facility](https://github.com/folio-org/okapi/blob/master/doc/guide.md#timer-interface)
+if the task to be performed is "per-tenant"
+and only needs to be executed on one instance and not all instances of the module.
+If the task performs operations on persistent storage, that is typically a sign
+that it should be using the Okapi timer facility (not what is presented in this section).
+
 It is possible to add custom code that will run periodically. For example,
 to ongoingly check status of something in the system and act upon that.
+
 Need to implement the PeriodicAPI interface:
 
 ```java
@@ -553,7 +602,6 @@ public class PeriodicAPIImpl implements PeriodicAPI {
 ```
 
 There can be multiple implementations of the periodic hook, all will be called by the RMB framework.
-
 
 ## Adding a hook to run immediately after verticle deployment
 
@@ -638,61 +686,15 @@ public class ShutdownImpl implements ShutdownAPI {
 Note that when implementing the generated interfaces it is possible to add a constructor to the implementing class. This constructor will be called for every API call. This is another way you can implement custom code that will run per request.
 
 
-## Implementing file uploads
+## Implementing uploads
 
-The RMB supports several methods to upload files and data. The implementing module can use the `multipart/form-data` header or the `application/octet-stream` header to indicate that the HTTP request is an upload content request.
+The RMB allows for content to be streamed to a specific implemented interface.
+For example, to upload a large file without having to save it all in memory:
 
-#### File uploads Option 1
+ - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
+ - Declare the RAML as receiving `application/octet-stream`.
 
-A multipart RAML declaration may look something like this:
-
-```raml
-/uploadmultipart:
-    description: Uploads a file
-    post:
-      description: |
-          Uploads a file
-      body:
-        multipart/form-data:
-          formParameters:
-            file:
-              description: The file to be uploaded
-              required: true
-              type: file
-```
-
-The body content would look something like this:
-
-```sh
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-Content-Disposition: form-data; name="config.json"; filename="kv_configuration.sample"
-Content-Type: application/octet-stream
-
-<file content 1>
-
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-Content-Disposition: form-data; name="sample.drl"; filename="Sample.drl"
-Content-Type: application/octet-stream
-
-<file content 2>
-
-------WebKitFormBoundaryNKJKWHABrxY1AdmG
-```
-
-There will be a `MimeMultipart` parameter passed into the generated interfaces. An implementing
-module can access its content in the following manner:
-
-```sh
-int parts = entity.getCount();
-for (int i = 0; i < parts; i++) {
-        BodyPart part = entity.getBodyPart(i);
-        Object o = part.getContent();
-}
-```
-
-where each section in the body (separated by the boundary) is a "part".
-
-An octet/stream can look something like this:
+Example RAML:
 
 ```raml
  /uploadOctet:
@@ -704,17 +706,6 @@ An octet/stream can look something like this:
         application/octet-stream:
 ```
 
-The interfaces generated from the above will contain a parameter of type `java.io.InputStream`
-representing the uploaded file.
-
-
-#### File uploads Option 2
-
-The RMB allows for content to be streamed to a specific implemented interface.
-For example, to upload a large file without having to save it all in memory:
-
- - Mark the function to handle the upload with the `org.folio.rest.annotations.Stream` annotation `@Stream`.
- - Declare the RAML as receiving `application/octet-stream` (see Option 1 above)
 
 The RMB will then call the function every time a chunk of data is received.
 This means that a new Object is instantiated by the RMB for each chunk of
@@ -743,15 +734,15 @@ for chunks of 10000 records each.
 
 The PostgreSQL connection parameters locations are searched in this order:
 
-- org.folio.rest.tools.utils.Envs.setEnv, useful for https://www.testcontainers.org/modules/databases/postgres/
+- org.folio.rest.tools.utils.Envs.setEnv
 - [DB_* environment variables](#environment-variables)
 - Configuration file, defaults to `resources/postgres-conf.json` but can be set via [command-line options](#command-line-options)
-- Embedded PostgreSQL using [default credentials](#credentials)
 
-By default an embedded PostgreSQL is included in the runtime, but it is only run if neither Envs nor DB_* environment variables
-nor a postgres configuration file are present. To start an embedded PostgreSQL using connection parameters from the
-Envs or environment variables or the configuration file add `embed_postgres=true` to the command line
-(`java -jar mod-notify-fat.jar embed_postgres=true`). Use PostgresClient.setEmbeddedPort(int) to overwrite the port.
+With `PostgresClient.setPostgresTester`, testing may be performed against
+an instance implementing `postgresTester` interface, for example
+[TestContainers Postgres Module](https://www.testcontainers.org/modules/databases/postgres/).
+If database configuration is already provided, this call is ignored and testing
+is performed against the database instance given by configuration.
 
 The runtime framework exposes a PostgreSQL async client which offers CRUD
 operations in an ORM type fashion.
@@ -763,12 +754,6 @@ regular PostgreSQL tables but will need to implement their own data access
 layer.
 
 **Important Note:** For performance reasons the Postgres client will return accurate counts for result sets with less than 50,000 results. Queries with over 50,000 results will return an estimated count.
-
-**Important Note:** The embedded Postgres can not run as root.
-
-**Important Note:** The embedded Postgres relies on the `en_US.UTF-8` (*nix) / `american_usa` (win) locale. If this locale is not installed the Postgres will not start up properly.
-
-**Important Note:** Currently we only support Postgres version 10. We cannot use version 11 because of reduced platform support of postgresql-embedded ([postgresql-embedded supported versions](https://github.com/yandex-qatools/postgresql-embedded/commit/15685611972bacd8ba61dd7f11d4dbdcb3ba8dc1), [PostgreSQL Database Download](https://www.enterprisedb.com/downloads/postgres-postgresql-downloads)).
 
 The PostgresClient expects tables in the following format:
 
@@ -790,17 +775,6 @@ JsonArray jsonArray = new JsonArray().add(data);
 client.upsert(TABLE_NAME, id, jsonArray, false, replyHandler -> {
 .....
 });
-```
-### Credentials
-
-When running in embedded mode, credentials are read from `resources/postgres-conf.json`. If a file is not found, then the following configuration will be used by default:
-
-```
-port: 6000
-host: 127.0.0.1
-username: username
-password: password
-database: postgres
 ```
 
 ### Securing DB Configuration file
@@ -1056,12 +1030,12 @@ not defined or if it is defined but doesn't match.
 
 For matching the elements of an array use these queries (assuming that lang is either an array or not defined, and assuming
 an array element value does not contain double quotes):
-* `lang == []` for matching records where lang is defined and an empty array
-* `cql.allRecords=1 NOT lang <> []` for matching records where lang is not defined or an empty array
-* `lang = \"en\"` for matching records where lang is defined and contains the value en
-* `cql.allRecords=1 NOT lang = \"en\"` for matching records where lang does not
+* `lang == "[]"` for matching records where lang is defined and an empty array
+* `cql.allRecords=1 NOT lang <> "[]"` for matching records where lang is not defined or an empty array
+* `lang == "*\"en\"*"` for matching records where lang is defined and contains the value en
+* `cql.allRecords=1 NOT lang == "*\"en\"*"` for matching records where lang does not
   contain the value en (including records where lang is not defined)
-* `lang = "" NOT lang = \"en\"` for matching records where lang is defined and
+* `lang = "" NOT lang == "*\"en\"*"` for matching records where lang is defined and
   and does not contain the value en
 * `lang = ""` for matching records where lang is defined
 * `cql.allRecords=1 NOT lang = ""` for matching records where lang is not defined
@@ -1084,12 +1058,12 @@ An example of this kind of structure is `contributors ` (property) from
 mod-inventory-storage . `contributorTypeId` is the type of contributor
 (type1).
 
-With CQL you can limit searches to `property1` with regular match in
-`subfield`, with type1=value2 with
+With CQL you can limit searches to `property` with regular match in
+`subfield`, with type1=value1 with
 
     property =/@type1=value1 value
 
-Observe that the relation modifier is preceeded with the @-character to
+Observe that the relation modifier is preceded with the @-character to
 avoid clash with other CQL relation modifiers.
 
 The type1, type2 and subfield must all be defined in schema.json, because
@@ -1185,7 +1159,11 @@ The field in the child table points to the primary key `id` field of the parent 
 * The `foreignKey` entry in schema.json automatically creates an index on the foreign key field.
 * For fast queries, declare an index on any other searched field like `title` in the schema.json file.
 * For a multi-table join, use `targetPath` instead of `fieldName` and put the list of field names into the `targetPath` array.
-  It must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance.
+  The `targetPath` array must be in child-to-parent direction (many-to-one), e.g. item → holdings_record → instance, queries are possible in both directions.
+* When querying in parent → child direction each sub-expression may refer to a different child/grandchild/...:
+Searching for instances using `item.status.name=="Missing" and item.effectiveLocationId="fcd64ce1-6995-48f0-840e-89ffa2288371"`
+will look for an instance that has at least one item that is missing and this or some other item of the instance has the effective location.
+Use a child-to-parent query against the item endpoint if both conditions should apply to the same item record.
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The sortBy clause doesn't support foreign table fields. Use the API endpoint of the records with the field you want to sort on.
 * The schema for the above example:
@@ -1298,88 +1276,86 @@ In Eclipse you may use "Run as ... Maven Build" for doing so.
 
 ## Tenant API
 
-The Postgres Client support in the RMB is schema specific, meaning that it expects every tenant to be represented by its own schema. The RMB exposes three APIs to facilitate the creation of schemas per tenant (a type of provisioning for the tenant). Post, Delete, and 'check existence' of a tenant schema. Note that the use of this API is optional.
+The Postgres Client support in the RMB is schema specific, meaning that
+it expects every tenant to be represented by its own schema. The Tenant
+API is asynchronous as of RMB 32 and later. The tenant job is initiated
+by a POST and may be inspected with GET and optionally be cleaned up
+with DELETE.
 
 The RAML defining the API:
 
-   https://github.com/folio-org/raml/blob/raml1.0/ramls/tenant.raml
+   https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml
 
-By default RMB includes an implementation of the Tenant API which assumes Postgres being present. Implementation in
+By default RMB includes an implementation of the Tenant API which assumes
+Postgres being present.
+Implementation in
  [TenantAPI.java](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/java/org/folio/rest/impl/TenantAPI.java) file. You might want to extend/override this because:
 
 1. You want to not call it at all (your module is not using Postgres).
 2. You want to provide further Tenant control, such as loading reference and/or sample data.
 
-#### Extending the Tenant Init
+#### Extending the Tenant API
 
-In order to implement your tenant API, extend `TenantAPI` class:
+Since RMB 32, the postTenant that is provided is working in
+an asynchronous fashion. The handler provided will be called
+very early in the process and before `schema.json` is fully processed.
+For this reason doing anything in the handler is problematic as the
+database is not fully populated with data. Furthermore, if there are
+any errors that could occur in your post handler, it seems natural to
+throw an error, but the underlying RMB code does not know about that, and
+thus, continues its operation - including managing a job in the background.
 
-```java
-package org.folio.rest.impl;
-import javax.ws.rs.core.Response;
-import org.folio.rest.jaxrs.model.TenantAttributes;
-
-public class MyTenantAPI extends TenantAPI {
-  @Validate
-  @Override
-  public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-      Handler<AsyncResult<Response>> handler, Context context) {
-
-    ..
-  }
-
-  @Validate
-  @Override
-  public void getTenant(Map<String, String> map, Handler<AsyncResult<Response>> handler, Context context) {
-    ..
-  }
-  ..
-}
-```
-
-If you wish to call the Post Tenant API (with Postgres) then just call the corresponding super-class, e.g.:
+Here's an example of incorrect usage.
+DO NOT DO THIS:
 
 ```java
-@Validate
-@Override
-public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-    Handler<AsyncResult<Response>> handler, Context context) {
-  super.postTenant(tenantAttributes, headers, handler, context);
-}
-```
-
-(Not much point in that though - it would be the same as not defining it at all).
-
-If you wish to load data for your module, that should be done after the DB has been successfully initialized,
-e.g. do something like:
-
-```
-@Validate
-@Override
-public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-    Handler<AsyncResult<Response>> handler, Context context) {
-  super.postTenant(tenantAttributes, headers, res -> {
-    if (res.failed()) {
-      handler.handle(res);
-      return;
-    }
-
-    // load data here
-    ...
-    if (some failure) {
-      handler.handle(Future.succeededFuture(PostTenantResponse
-          .respond500WithTextPlain(some failure message)));
-      return;
-    }
-    ...
-
-    handler.handle(res);  // HTTP status: 200 for upgrade, 201 for install
+  super.postTenant(entiry, headers, ar -> {
+     LiquibaseUtil.initializeSchemaForTenant(vertx, tenantId);
+     if (someerror) {
+       handler.handle(Future.succeededFuture(
+              PostTenantResponse.respond400TextPlain(...)));
+     }
   }, context);
+```
+
+The `LiquibaseUtil.initializeSchemaForTenant`
+assumes that the database is configured. The handler is called when the module
+is invoked always (on purge, disable as well). Throwing error is problematic
+because postTenant has already done something. And, finally, the status
+code of `ar` is not even inspected.
+
+For these reasons, in most cases, it is discouraged to call
+`super.postTenant`. Instead extend the `loadData` method (see below).
+
+If your module - based on RMB - does not use a storage then there is not
+a problem - you must not call `super.postTenant` and you can just
+implement an easy postTenant implementation in sync fashion -
+returning 204 for OK/No Content.
+
+Extend the `loadData` method, to load sample/reference data for a module
+or do any other initialiation of a module - such as doing LiquibaseUtil
+work. The loadData is called upon create/upgrade.
+
+
+```java
+@Validate
+@Override
+Future<Integer> loadData(TenantAttributes attributes, String tenantId,
+                         Map<String, String> headers, Context vertxContext) {
+  return super.loadData(attributes, tenantId, headers, vertxContext)
+      .compose(superRecordsLoaded -> {
+        // load n records or any other initialization
+        return Future.succeededFuture(superRecordsLoaded + n);
+      });
 }
 ```
 
-There is no right way to load data, but consider that data load will be both happening for first time tenant
-usage of the module and during an upgrade process. Your data loading should be idempotent. If files are stored
+The Integer here is the number of records loaded - just add 0 if
+no sample/ref is loaded.
+
+There is no right way to load data, but consider that data load will be
+both happening for first time tenant usage of the module and during an
+upgrade process. Your data loading should be idempotent. If files are stored
 as resources and as JSON files, you can use the TenantLoading utility.
 
 ```java
@@ -1387,36 +1363,23 @@ import org.folio.rest.tools.utils.TenantLoading;
 
 @Validate
 @Override
-public void postTenant(TenantAttributes tenantAttributes, Map<String, String> headers,
-    Handler<AsyncResult<Response>> handler, Context context) {
-  super.postTenant(tenantAttributes, headers, res -> {
-    if (res.failed()) {
-      handler.handle(res);
-      return;
-    }
-    TenantLoading tl = new TenantLoading();
-    // two sets of reference data files
-    // resources ref-data/data1 and ref-data/data2 .. loaded to
-    // okapi-url/instances and okapi-url/items respectively
-    tl.withKey("loadReference").withLead("ref-data")
-      .withIdContent()
-      .add("data1", "instances")
-      .add("data2", "items");
-    tl.perform(tenantAttributes, headers, vertx, res1 -> {
-      if (res1.failed()) {
-        handler.handle(Future.succeededFuture(PostTenantResponse
-          .respond500WithTextPlain(res1.cause().getMessage())));
-        return;
-      }
-      handler.handle(res);  // HTTP status: 200 for upgrade, 201 for install
-    });
-  }, context);
+Future<Integer> loadData(TenantAttributes attributes, String tenantId,
+                         Map<String, String> headers, Context vertxContext) {
+  return super.loadData(attributes, tenantId, headers, vertxContext)
+      .compose(recordsLoaded -> new TenantLoading()
+          // two sets of reference data files
+          // resources ref-data/data1 and ref-data/data2 .. loaded to
+          // okapi-url/instances and okapi-url/items respectively
+          .withKey("loadReference").withLead("ref-data")
+          .withIdContent()
+          .add("data1", "instances")
+          .add("data2", "items");
+          .perform(attributes, headers, vertxContext, recordsLoaded));
 }
 ```
 
-If data is already in resources, then fine. If not, for example, if in root of
-project in project, then copy it with maven-resource-plugin. For example, to
-copy `reference-data` to `ref-data` in resources:
+If data is already in resources, then fine. If not, then copy it with maven-resource-plugin.
+For example, to copy `reference-data` to `ref-data` in resources:
 
 ```xml
 <execution>
@@ -1437,6 +1400,31 @@ copy `reference-data` to `ref-data` in resources:
 </execution>
 ```
 
+#### Unit testing
+
+For unit testing method `TenantAPI.postTenantSync` may be used
+to initialize the tenant. This method is a straight API call and is
+not called via HTTP. Use it before/after using our own provided
+interfaces in `org.folio.rest.impl`. Example:
+
+```java
+  // create
+  TenantAPI tenantAPI = new TenantAPI();
+  TenantAttributes tenantAttributes = new TenantAttributes();
+  tenantAttributes.setModuleTo("mod-2.0.0");
+  tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result ->
+    assertThat(result.getStatus(), is(204))
+  ), vertx.getOrCreateContext());
+
+```
+
+A HTTP based alternatives is `TenantInit.exec` with a similar interface. Example:
+```java
+  TenantClient client = new TenantClient(....);
+  TenantAttributes tenantAttributes = new TenantAttributes().withModuleTo("mod-2.0.0");
+  TenantInit.exec(client, tenantAttributes, 60000).onComplete(context.asyncAssertSuccess());
+
+```
 
 #### The Post Tenant API
 
@@ -1501,6 +1489,7 @@ For each **table** in `tables` property:
 14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all JSON entries in the table
 15. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into `jsonb->'id'` on each insert and update.
 16. `pkColumnName` - No longer supported. The name of the primary key column is always `id` and is copied into `jsonb->'id'` in each insert and update. The method PostgresClient.setIdField(String) no longer exists.
+17. `withOptimisticLocking` - `off` (default), `logOnConflict`, or `failOnConflict`, for details see [Optimistic Locking section](#optimistic-locking) below
 
 The **views** section is a bit more self explanatory, as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```
@@ -1624,7 +1613,14 @@ When upgrading a module via the Tenant API, an index is deleted if either `"tOps
 
 ##### Posting information
 
-Posting a new tenant must include a body. The body should contain a JSON conforming to the [moduleInfoSchema](https://github.com/folio-org/raml/blob/master/schemas/moduleInfo.schema) schema. The `module_to` entry is mandatory, indicating the version module for this tenant. The `module_from` entry is optional and indicates an upgrade for the tenant to a new module version.
+Posting a new tenant must include a body. The body should contain a JSON
+conforming to the
+[tenantAttributes](https://github.com/folio-org/raml/blob/master/schemas/tenantAttributes.schema)
+schema.
+
+To enable a new module indicate the version module in `module_to` and omit `module_from`.
+To upgrade a module indicate the existing version module in `module_from` and the new version module in `module_to`.
+To disable a module indicate the existing version module in `module_from` and omit `module_to`.
 
 The body may also hold a `parameters` property to specify per-tenant
 actions/info to be done during tenant creation/update.
@@ -1669,26 +1665,22 @@ Saving a POJO within a transaction:
 
 ```java
 PoLine poline = new PoLine();
-
 ...
-
-postgresClient.save(beginTx, TABLE_NAME_POLINE, poline , reply -> {...
+postgresClient.withTrans(conn -> {
+  return conn.getByIdForUpdate(SOME_OTHER_TABLE, id)
+  .compose(x -> ...)
+  .compose(x -> conn.save(TABLE_NAME_POLINE, poline)
+  .compose(x -> ...);
+}).compose(res -> ...
 ```
-Remember to call beginTx and endTx
 
 Querying for similar POJOs in the DB (with or without additional criteria):
 
 ```java
-Criterion c = new Criterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setValue("'"+entryId+"'"));
+Criterion c = new Criterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setVal(entryId));
 
-postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c,
-              reply -> {...
-```
-
-The `Criteria` object which generates `where` clauses can also receive a JSON Schema so that it can cast values to the correct type within the `where` clause.
-
-```java
-Criteria idCrit = new Criteria("ramls/schemas/userdata.json");
+postgresClient.get(TABLE_NAME_POLINE, PoLine.class, c)
+.compose(x -> ...
 ```
 
 ## RAMLs API
@@ -1737,17 +1729,18 @@ The JSON Schemas API is a multiple interface which affords RMB modules to expose
 
 The interface has a single GET endpoint with an optional query parameter path.
 Without the path query parameter the response will be an "application/json" array of the available JSON Schemas. By default this will be JSON Schemas that are stored in the root of ramls directory of the module. Returned list of schemas can be customized in modules pom.xml file.
-Add schema_paths system property to "exec-maven-plugin" in pom.xml running the
-`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
-specify comma-separated list of directories that should be searched for schema files. To search directory recursively specify
-directory in the form of glob expression (e.g. "raml-util/**")
- For example:
+The `ramls` subdirectory is the default to search for schema files. Add `<ramlDirs>`
+to the domain-models-maven-plugin configuration in pom.xml to change it, for example:
+
 ```
-<systemProperty>
-  <key>schema_paths</key>
-  <value>schemas/**,raml-util/**</value>
-</systemProperty>
+            <configuration>
+              <ramlDirs>
+                <ramlDir>ramls</ramlDir>
+                <ramlDir>ramls/raml-util/ramls</ramlDir>
+              </ramlDirs>
+            </configuration>
 ```
+
 If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
 
 The RAML defining the API:
@@ -1790,11 +1783,11 @@ RMB adds a `totalRecords` field to result sets. For `limit = 0` it contains the 
 For estimation it uses this algorithm:
 
 1. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
-2. If this is greater than 4*1000 return it and stop.
-3. Run "SELECT COUNT(*) FROM query LIMIT 1000".
+2. If this is greater than `4\*1000 return it and stop.
+3. Run "SELECT COUNT(\*) FROM query LIMIT 1000".
 4. If this is less than 1000 return it (this is the exact number) and stop.
 5. If the result from 1. is less than 1000 return 1000 and stop.
-6. Return result from 1. (this is a value between 1000 and 4*1000).
+6. Return result from 1. (this is a value between 1000 and 4\*1000).
 
 Step 2. contains the factor 4 that should be adjusted when there is empirical data for a better number.
 Step 3. may take long for full text queries with many hits, therefore we need steps 1.-2.
@@ -1822,6 +1815,75 @@ Replace 1000 by `exactCount` if configured differently.
 ## Metadata
 
 RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/raml1.0/schemas/metadata.schema). When a request (POST / PUT / PATCH) comes into an RMB module, RMB will check if the passed-in JSON's schema declares a reference to the metadata schema. If so, RMB will populate the JSON with a metadata section with the current user and the current time. RMB will set both update and create values to the same date/time and to the same user, as accepting this information from the request may be unreliable. The module should persist the creation date and the created by values after the initial POST. For an example of this using SQL triggers see [metadata.ftl](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/main/resources/templates/db_scripts/metadata.ftl). Add [withMetadata to the schema.json](https://github.com/folio-org/raml-module-builder#the-post-tenant-api) to create that trigger.
+
+## Optimistic Locking
+
+RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 409 HTTP response code if 409 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code.
+
+* `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
+* `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction with a customized SQL error code 23F09.
+* `logOnConflict` Optimistic Locking is enabled but the conflicting update succeeds, the version conflict info is logged with a customized SQL error code 23F09. Consult [Vertx logging](https://vertx.io/docs/vertx-core/java/#_logging) and [PostgreSQL Errors and Messages](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html) if `logOnConflict` doesn't log.
+
+Upsert fails when using `INSERT ... ON CONFLICT (id) DO UPDATE` because the `INSERT` trigger overwrites the `\_version` property that the `UPDATE` trigger uses to detect optimistic locking conflicts. Instead use [RMB's `upsert` plpgsql function](domain-models-runtime/src/main/resources/templates/db_scripts/general_functions.ftl) or implement upsert using a transaction and `UPDATE ...; IF NOT FOUND THEN INSERT ...`
+
+_Sample log entries:_
+
+```
+01:14:07 [] [] [] [] WARN  ?                    Backend notice: severity='NOTICE', code='23F09', message='Ignoring optimistic locking conflict while overwriting changed record 57db089f-18e4-7815-55d5-4cc6607e9059: Stored _version is 2, _version of request is "1"' ...
+```
+
+```
+01:15:20 [] [] [] [] ERROR PostgresClient       saveBatch size=2 { "message": "version conflict", "severity": "ERROR", "code": "23F09", "where": "PL/pgSQL function raise_409() line 1 at RAISE", "file": "pl_exec.c", "line": "3337", "routine": "exec_stmt_raise" }
+```
+Use mod-inventory-storage `instance` table as an example, do following to enable optimistic locking
+
+* in db `schema.json`, add `withOptimisticLocking` attribute for `instance` table definition
+
+```
+{
+  "tableName": "instance",
+  "withOptimisticLocking": "logOnConflict",
+  ...
+}
+```
+
+* in `instance.json`, add `_version` field
+
+```
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "description": "An instance record",
+  "type": "object",
+  "properties": {
+   "_version": {
+    "type": "integer",
+    "description": "Record version for optimistic locking"
+   }
+  ...
+}
+```
+
+* update raml file to define 409 response code. For example in `instance-storage.raml` add below for `/{instanceId}` API
+
+```
+put:
+  responses:
+    409:
+      description: "Conflict"
+      body:
+        text/plain:
+          example: "Optimistic locking version has changed"
+```
+
+#### API and Schema versioning for OptimisticLocking
+
+When enabling the `withOptimisticLocking` property on a table definition in `schema.json` an optional `_version` property MUST be added to the related entity definition in JSON Schema.
+
+When changing the value of the `withOptimisticLocking` property, there MUST be a corresponding change to the API version:
+
+* when changing from `off` to `logOnConflict` – the API version change should be minor (e.g 1.1 to 1.2)
+* when changing from `off` or `logOnConflict` to `failOnConflict` – the API version change should be major (e.g 1.1 to 2.0)
+* when changing from `failOnConflict` to `off` or `logConflict` – the API version change should be major (e.g 2.0 to 3.0)
 
 ## Facet Support
 
@@ -2038,10 +2100,20 @@ All current API documentation is also available at [dev.folio.org/doc/api](https
 
 ## Logging
 
-RMB uses the Log4J logging library. Logs that are generated by RMB will print all log entries in the following format:
-`%d{dd MMM yyyy HH:mm:ss:SSS} %-5p %C{1} [%X{reqId}] %m%n`
+RMB uses [log4j2](https://logging.apache.org/log4j/2.x/) for logging.
+Bundled with the domain-models-runtime (jar) there are two log4j configurations:
 
-A module that wants to generate log4J logs in a different format can create a log4j.properties file in the /resources directory.
+ * `log4j2.properties` console/line based logger and it is the default
+ * `log4j2-json.properties` JSON structured logging
+
+You can choose the JSON structured logging by using setting:
+
+```
+  java -Dlog4j.configurationFile=log4j2-json.properties -jar ...
+```
+
+
+A module that wants to generate log4J2 logs in a different format can create a `log4j2.properties` file in the /resources directory.
 
 The log levels can also be changed via the `/admin` API provided by the framework. For example:
 
@@ -2077,7 +2149,7 @@ Some are listed below (and see the [full set](#documentation-of-the-apis)):
 
 ## Instrumentation
 
-RMB shares the same instrumentation code with Okapi. Please see 
+RMB shares the same instrumentation code with Okapi. Please see
 [Okapi instrumentation](https://github.com/folio-org/okapi/blob/master/doc/guide.md#instrumentation).
 Change `okapi-core/target/okapi-core-fat.jar dev` in the example to RMB based module jar name and parameters.
 
@@ -2123,37 +2195,30 @@ public class CustomHealthCheck extends AdminAPI {
 
 The framework can generate a Client class for every RAML file with a function for every API endpoint in the RAML.
 
-To generate a client API from your RAML add the following plugin to your pom.xml
+To generate a client API from your RAML use the `generateClients` option of
+the domain-models-maven-plugin in your pom.xml as well as depend on the
+artifact that includes interfaces.
 
 ```xml
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
-        <version>1.5.0</version>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${raml-module-builder-version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.folio</groupId>
+            <artifactId>mod-my-server</artifactId>
+            <version>${project.parent.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
-            <id>generate_client</id>
-            <phase>process-classes</phase>
+            <id>generate_interfaces</id>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>client.generate</key>
-                  <value>true</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>json.type</key>
-                  <value>postgres</value>
-                </systemProperty>
-              </systemProperties>
+              <generateClients>true</generateClients>
             </configuration>
           </execution>
         </executions>
@@ -2180,154 +2245,6 @@ Requesting a stack trace would look like this:
     });
 ```
 
-## Querying multiple modules via HTTP
-
-The RMB has some tools available to help:
- - Make HTTP requests to other modules
- - Parse JSON responses received (as well as any JSON for that matter)
- - Merge together / Join JSON responses from multiple modules
- - Build simple CQL query strings based on values in a JSON
-
-#### HTTP Requests
-
-The `HttpModuleClient2` class exposes a basic HTTP Client.
-The full constructor takes the following parameters
- - host
- - port
- - tenantId
- - keepAlive - of connections (default: true)
- - connTO - connection timeout (default: 2 seconds)
- - idleTO - idle timeout (default: 5 seconds)
- - autoCloseConnections - close connection when request completes (default: true)
- - cacheTO - cache of endpoint results timeout (in minutes, default: 30)
-
-```
-    HttpModuleClient2 hc = new HttpModuleClient2("localhost", 8083, "myuniversity_new2", false);
-    Response response = hc.request("/groups").get(5, TimeUNIT.SECONDS);
-```
-
-It is recommended to use the `HttpClientFactory` to get an instance of the `HttpModuleClient2`.
-The factory will then return either the actual `HttpModuleClient2` class or an instance of the `HttpClientMock2`. To return an instance of the mock client, set the mock mode flag in the vertx config. One way to do this:
-`new DeploymentOptions().setConfig(new JsonObject().put(HttpClientMock2.MOCK_MODE, "true"));`
-See [mock_content.json](https://github.com/folio-org/raml-module-builder/blob/master/domain-models-runtime/src/test/resources/mock_content.json) for an example of how to associate a url with mocked data and headers
-
-The client returns a `Response` object. The `Response` class has the following members:
-  - endpoint - url the response came from
-  - code - http returned status code for request
-  - (JsonObject) body - the response data
-  - (JsonObject) error -  in case of an error - The `error` member will be populated. The
-  error object will contain the `endpoint`, the `statusCode`, and the `errorMessage`
-  - (Throwable) exception - if an exception was thrown during the API call
-
-
-The `HttpModuleClient2 request` function can receive the following parameters:
- - `HttpMethod` - (default: GET)
- - `endpoint` - API endpoint
- - `headers` - Default headers are passed in if this is not populated: Content-type=application/json, Accept: plain/test
- - `RollBackURL` - NOT SUPPORTED - URL to call if the request is unsuccessful [a non 2xx code is returned]. Note that if the Rollback URL call is unsuccessful, the response error object will contain the following three entries with more info about the error (`rbEndpoint`, `rbStatusCode`, `rbErrorMessage`)
- - `cachable` - Whether to cache the response
- - `BuildCQL` object - This allows you to build a simple CQL query string from content within a JSON object. For example:
-`
-CompletableFuture<Response> cf =
-hc.request("/users", new BuildCQL(groupsResponse, "usergroups[*].id", "patron_group"));
-Response userResponse = cf.get(5, TimeUnit.SECONDS);
-`
-This will create a query string with all values from the JSON found in the path `usergroups[*].id` and will generate a CQL query string which will look something like this:
-`?query=patron_group==12345+or+patron+group==54321+or+patron_group==09876...`
-See `BuildCQL` for configuration options.
-
-The `Response` class also exposes a joinOn function that allow you to join / merge the received JSON objects from multiple requests.
-
-`public Response joinOn(String withField, Response response, String onField, String insertField,
-      String intoField, boolean allowNulls)`
-
-
-The Join occurs with the response initiating the joinOn call:
-
- - `withField` - the field within the response whose value / values will be used to join
- - `response` - the response to join this response with
- - `onField` - the field in the passed in response whose value / values will be used to join
- - `insertField` - the field in the passed in `response` to push into the current response (defaults to the `onField` value if this is not passed in)
- - `intoField` - the field to populate within this response
- - `allowNulls` - whether to populate with `null` if the field requested to push into the current response is `null` - if set to false - then the field will not be populated with a null value.
-
-Example:
-
-join:
-
-(response1) `{"a": "1","b": "2"}`
-
-with:
-
-(response2) `{"arr2":[{"id":"1","a31":"1"},{"id":"1","a31":"2"},{"id":"1","a32":"4"},{"id":"2","a31":"4"}]}`
-
-returns:
-`{"a":"1","b":["1","2"]}`
-
-with the following call:
-`response1.joinOn("a", response2, "arr2[*].id", "a31", "b", false)`
-
-Explanation:
-Join response1 on field "a" with response2 on field "arr2[*].id" (this means all IDs in the arr2 array. If a match is found take the value found in field "a31" and place it in field "b".
-Since in this case a single entry (response1) matches multiple entries from response2 - an array is created and populated. If this was a one-to-one match, then only the single value (whether a JSON object, JSON array, any value) would have been inserted.
-
-#### Parsing
-
-The RMB exposes a simple JSON parser for the vert.x JSONObject. The parser allows getting and setting nested JSON values. The parser allows retrieving values / nested values in a simpler manner.
-For example:
-
-`a.b` -- Get value of field 'b' which is nested within a JSONObject called 'a'
-
-`a.c[1].d` -- Get 'd' which appears in array 'c[1]'
-
-`a.'bb.cc'` -- Get field called 'bb.cc' (use '' when '.' in name)
-
-`a.c[*].a2` -- Get all 'a2' values as a List for each entry in the 'c' array
-
-
-See the `JsonPathParser` class for more info.
-
-
-#### An example HTTP request
-
-    //create a client
-    HttpClientInterface client = HttpClientFactory.getHttpClient(okapiURL, tenant);
-    //make a request
-    CompletableFuture<Response> response1 = client.request(url, okapiHeaders);
-    //chain a request to the previous request, the placeholder {users[0].username}
-    //means that the value appearing in the first user[0]'s username in the json returned
-    //in response1 will be injected here
-    //the handlePreviousResponse() is a function you code and will receive the response
-    //object (containing headers / body / etc,,,) of response1 so that you can decide what to do
-    //before the chainedRequest is issued - see example below
-    //the chained request will not be sent if the previous response (response1) has completed with
-    //an error
-    response1.thenCompose(client.chainedRequest("/authn/credentials/{users[0].username}",
-        okapiHeaders, null, handlePreviousResponse());
-
-        Consumer<Response> handlePreviousResponse(){
-            return (response) -> {
-                int statusCode = response.getCode();
-                boolean ok = Response.isSuccess(statusCode);
-                //if not ok, return error
-            };
-        }
-
-    //if you send multiple chained Requests based on response1 you can use the
-    //CompletableFuture.allOf() to wait till they are all complete
-    //or you can chain one request to another in a pipeline manner as well
-
-    //you can also generate a cql query param as part of the chained request based on the
-    //response of the previous response. the below will create a username=<value> cql clause for
-    //every value appearing in the response1 json's users array -> username
-    response1.thenCompose(client.chainedRequest("/authn/credentials", okapiHeaders, new BuildCQL(null, "users[*].username", "username")),...
-
-    //join the values within 2 responses - injecting the value from a field in one json into the field of another json when a constraint between the two jsons exists (like field a from json 1 equals field c from json 2)
-    //compare all users->patron_groups in response1 to all usergroups->id in groupResponse, when there is a match, push the group field in the specific entry of groupResonse into the patron_group field in the specific entry in the response1 json
-    response1.joinOn("users[*].patron_group", groupResponse, "usergroups[*].id", "group", "patron_group", false);
-    //close the http client
-    hClient.closeClient();
-
 ## A Little More on Validation
 
 Query parameters and header validation
@@ -2338,56 +2255,43 @@ Query parameters and header validation
 ![](images/object_validation.png)
 
 #### function example
+
+org.folio.rest.persist.PgUtil has default implementations that should be used if possible.
+
+This example shows how to use advanced features that go beyond that.
+
 ```java
   @Validate
   @Override
-  public void getConfigurationsEntries(String query, int offset, int limit,
-      String lang,java.util.Map<String, String>okapiHeaders,
-      Handler<AsyncResult<Response>> asyncResultHandler, Context context) throws Exception {
+  public void postConfigurationsEntries(
+      Config entity, RoutingContext routingContext, Map<String, String>okapiHeaders,
+      Handler<AsyncResult<Response>> asyncResultHandler, Context context) {
 
-    CQLWrapper cql = getCQL(query,limit, offset);
-    /**
-    * http://host:port/configurations/entries
-    */
-    context.runOnContext(v -> {
-      try {
-        System.out.println("sending... getConfigurationsTables");
-        String tenantId = TenantTool.calculateTenantId( okapiHeaders.get(RestVerticle.OKAPI_HEADER_TENANT) );
-
-        PostgresClient.getInstance(context.owner(), tenantId).get(CONFIG_TABLE, Config.class,
-          new String[]{"*"}, cql, true,
-            reply -> {
-              try {
-                if(reply.succeeded()){
-                  Configs configs = new Configs();
-                  List<Config> config = (List<Config>) reply.result()[0];
-                  configs.setConfigs(config);
-                  configs.setTotalRecords((Integer)reply.result()[1]);
-                  asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetConfigurationsEntriesResponse.withJsonOK(
-                    configs)));
-                }
-                else{
-                  log.error(reply.cause().getMessage(), reply.cause());
-                  asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetConfigurationsEntriesResponse
-                    .withPlainBadRequest(reply.cause().getMessage())));
-                }
-              } catch (Exception e) {
-                log.error(e.getMessage(), e);
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetConfigurationsEntriesResponse
-                  .withPlainInternalServerError(messages.getMessage(
-                    lang, MessageConsts.InternalServerError))));
-              }
-            });
-      } catch (Exception e) {
+    try {
+      log.debug("sending... postConfigurationsTables");
+      defaultToEnabled(entity);
+      String tenantId = TenantTool.tenantId(okapiHeaders);
+      PostgresClient.getInstance(context.owner(), tenantId)
+      .save(CONFIG_TABLE, entity.getId(), entity)
+      .onSuccess(ret -> {
+        entity.setId(ret);
+        asyncResultHandler.handle(Future.succeededFuture(
+            PostConfigurationsEntriesResponse.respond201WithApplicationJson(entity,
+                PostConfigurationsEntriesResponse.headersFor201().withLocation(LOCATION_PREFIX + ret))));
+      }).onFailure(e -> {
         log.error(e.getMessage(), e);
-        String message = messages.getMessage(lang, MessageConsts.InternalServerError);
-        if(e.getCause() != null && e.getCause().getClass().getSimpleName().endsWith("CQLParseException")){
-          message = " CQL parse error " + e.getLocalizedMessage();
+        if (isNotUniqueModuleConfigAndCode(e)) {
+          asyncResultHandler.handle(Future.succeededFuture(
+              PostConfigurationsEntriesResponse
+              .respond422WithApplicationJson(uniqueModuleConfigAndCodeError(entity))));
+          return;
         }
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetConfigurationsEntriesResponse
-          .withPlainInternalServerError(message)));
-      }
-    });
+        ValidationHelper.handleError(e, asyncResultHandler);
+      });
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      ValidationHelper.handleError(e, asyncResultHandler);
+    }
   }
 ```
 
@@ -2429,14 +2333,20 @@ public class UserDeserializer extends JsonDeserializer<User> {
 
 Making async calls to the PostgresClient requires handling failures of different kinds. RMB exposes a tool that can handle the basic error cases, and return them as a 422 validation error status falling back to a 500 error status when the error is not one of the standard DB errors.
 
-Usage:
+Usage with Future:
 
 ```
-if(reply.succeeded()){
-  ..........
-}
-else{
-   ValidationHelper.handleError(reply.cause(), asyncResultHandler);
+...
+.onFailure(exception -> ValidationHelper.handleError(exception, asyncResultHandler))
+.onSuccess(result -> ...);
+```
+
+Usage with AsyncResult:
+
+```
+if (asyncResult.failed()) {
+  ValidationHelper.handleError(asyncResult.cause(), asyncResultHandler);
+  return;
 }
 ```
 RMB will return a response to the client as follows:

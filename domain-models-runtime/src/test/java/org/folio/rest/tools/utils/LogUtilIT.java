@@ -7,7 +7,6 @@ import static org.mockito.Mockito.when;
 
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.core.net.impl.SocketAddressImpl;
 import io.vertx.ext.web.RoutingContext;
 import org.apache.logging.log4j.LogManager;
@@ -23,10 +22,6 @@ import org.junit.jupiter.api.Test;
 class LogUtilIT {
   private static Appender appender;
   private static Logger logger;
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
 
   @BeforeAll
   static void setUp() {

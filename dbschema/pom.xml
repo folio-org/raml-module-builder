@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>31.2.0-SNAPSHOT</version>
+    <version>33.1.0-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -26,7 +26,7 @@
     <repository>
       <id>indexdata</id>
       <name>Index Data</name>
-      <url>http://maven.indexdata.com/</url>
+      <url>https://maven.indexdata.com/</url>
     </repository>
   </repositories>
 

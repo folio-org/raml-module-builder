@@ -16,7 +16,7 @@ public class BeesApiTest extends ApiTestBase {
     when().get("/bees/bees/").
     then().
       statusCode(200).
-      body("total_records", is(0));
+      body("total_records", is(1)); // there's already one in reference-data
 
     String id = UUID.randomUUID().toString();
     JsonObject foo = new JsonObject().put("id", id).put("name", "Willy");
@@ -58,7 +58,7 @@ public class BeesApiTest extends ApiTestBase {
     when().get("/bees/history").
     then().log().body().
       statusCode(200).
-      body("beeHistories.size()", is(3),
+      body("beeHistories.size()", is(4),
           "beeHistories.beeHistory.id", hasItems(id, id, id),
           "beeHistories.findAll { it.operation == \"I\" }.beeHistory.name", hasItems("Willy"),
           "beeHistories.findAll { it.operation == \"U\" }.beeHistory.name", hasItems("Maya"),

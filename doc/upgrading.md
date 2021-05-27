@@ -4,6 +4,8 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 33.0](#version-330)
+* [Version 32.0](#version-320)
 * [Version 31.0](#version-310)
 * [Version 30.2](#version-302)
 * [Version 30.0](#version-300)
@@ -16,6 +18,189 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 33.0
+
+
+#### [RMB-845](https://issues.folio.org/browse/RMB-845) Upgrade to Vert.x 4.1.0.CR1
+
+Module should depend on that version or a later version in 4.1.0 series.
+
+#### [RMB-717](https://issues.folio.org/browse/RMB-717) Deprecate HttpClientInterface, HttpModuleClient2, HttpClientMock2
+
+All classes in org.folio.rest.tools.client are deprecated. Instead
+use the generated client provided by RMB or use WebClient directly.
+Tests can create HTTP servers with Vertx.createHttpServer or use other
+mocking facility.
+
+#### [RMB-789](https://issues.folio.org/browse/RMB-789) Remove support of Embedded PostgreSQL Server
+
+Removed support for embedded Postgres for testing. Testing is now with
+[Testcontainers](https://testcontainers.org/).
+
+The following calls have been removed:
+
+  * `PostgresClient.setIsEmbedded`
+  * `PostgresClient.setEmbeddedPort`
+  * `PostgresClient.getEmbeddedPort`
+
+Enable testing with postgres by calling
+`PostgresClient.setPostgresTester(new PostgresTesterContainer())`
+before any calls to PostgresClient or the Verticle. It is also
+possible to provide your own by implemeting the `PostgresTester` interface.
+
+If [DB\_\* environment variable database configuration](../README.md#environment-variables)
+(or JSON DB config) is provided, the PostgresTester instance is
+*not* used for testing. This allows testing to be performed on local
+Postgres instance. See [RMB-826](https://issues.folio.org/browse/RMB-826).
+
+`PostgresClient.stopEmbeddedPostgres` replaced with
+`PostgresClient.stopPostgresTester`. The invocation is usually *not* needed
+and should be removed because PostgresClient and Testcontainers core will automatically
+close and remove the container.
+
+`PostgresClient.startEmbeddedPostgres` replaced with
+`PostgresClient.startPostgresTester`. It is usually not necessary to
+invoke  this as it is automatically called by PostgresClient when an
+instance is created.
+
+Command-line option `embed_postgres=true` is no longer supported.
+
+Remove `<groupId>ru.yandex.qatools.embed</groupId>`
+`<artifactId>postgresql-embedded</artifactId>` from pom.xml.
+
+#### [RMB-785](https://issues.folio.org/browse/RMB-785) domain-models-maven-plugin
+
+In pom.xml replace the exec-maven-plugin sections that call
+`<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>` by :
+
+```xml
+      <plugin>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${raml-module-builder-version}</version>
+        <executions>
+          <execution>
+            <id>generate_interfaces</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
+```
+
+Replace `<mainClass>org.folio.rest.tools.ClientGenerator</mainClass>` by
+a call to the same plugin. It must be used in a separate project depending
+on the artifact with generated interfaces.
+
+```xml
+      <plugin>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${raml-module-builder-version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.folio</groupId>
+            <artifactId>mod-my-server</artifactId>
+            <version>${project.parent.version}</version>
+          </dependency>
+        </dependencies>
+        <executions>
+          <execution>
+            <id>generate_interfaces</id>
+            <goals>
+              <goal>java</goal>
+            </goals>
+            <configuration>
+              <generateClients>true</generateClients>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
+```
+
+If you need to set system properties for `domain-models-maven-plugin` run
+`properties-maven-plugin` with goal `set-system-properties` before:
+https://www.mojohaus.org/properties-maven-plugin/usage.html#set-system-properties
+
+Add FOLIO Maven repository for plugins after existing `<repositories>` section:
+```xml
+  <pluginRepositories>
+    <pluginRepository>
+      <id>folio-nexus</id>
+      <name>FOLIO Maven repository</name>
+      <url>https://repository.folio.org/repository/maven-folio</url>
+    </pluginRepository>
+  </pluginRepositories>
+```
+
+Replace `PomReader.INSTANCE.getModuleName()` by `ModuleName.getModuleName()`.
+
+Replace any joda class usage by a java.time class usage. RMB no longer ships with
+joda-time that is deprecated because the replacement java.time has been in JDK core
+since Java 8.
+
+Add commons-lang:commons-lang:2.6 dependency to pom.xml if commons-lang is used.
+RMB no longer ships with commons-lang.
+
+Add org.assertj test dependency to pom.xml if Assertj is used. RMB no longer ships
+with Assertj.
+
+## Version 32.0
+
+* [RMB-609](https://issues.folio.org/browse/RMB-609) Upgrade to Vert.x 4:
+  * Replace deprecated `io.vertx.core.logging.Logger` by
+    `org.apache.logging.log4j.Logger`, for example
+    `private static final Logger LOGGER = LogManager.getLogger(Foo.class)`
+    (using `getLogger()` without argument requires Multi-Release for
+    stack walking, see below).
+  * Replace `HttpClient` `.getAbs`, `.postAbs`, `.putAbs`, `.deleteAbs` by
+    `WebClient.requestAbs(HttpMethod method, ...)`.
+  * Replace `Future.setHandler` by `Future.onComplete`.
+  * `Future` has been split into `Future` and `Promise`, see
+    [Futurisation in Vert.x 4](futurisation.md).
+  * The handlers of the autogenerated clients (generated by ClientGenerator) should be migrated from Handler<HttpClientResponse> to Handler<AsyncResult<HttpResponse<Buffer>>>
+* [OKAPI-943](https://issues.folio.org/browse/OKAPI-943) When calling `.any`, `.all` or `.join`
+  replace `io.vertx.core.CompositeFuture` by `org.folio.okapi.common.GenericCompositeFuture`,
+  replace raw type by actual type and remove `@SuppressWarnings("rawtypes")`.
+* [RMB-728](https://issues.folio.org/browse/RMB-728) In `pom.xml` update `aspectj-maven-plugin`
+  `<configuration>` with `<complianceLevel>11</complianceLevel>`.
+* Remove `setWorker(true)` when starting RestVerticle in tests or production code, learn why at
+  [RMB RestVerticle](https://github.com/folio-org/raml-module-builder#restverticle) and
+  [MODINVSTOR-635](https://issues.folio.org/browse/MODINVSTOR-635).
+* Tenant API changed - refer to
+  [RAML](https://github.com/folio-org/raml/blob/tenant_v2_0/ramls/tenant.raml).
+  Tenant interface 2.0 is supported by Okapi 4.5.0 and later. RMB 32, thus, will
+*not* work with an earlier version of Okapi.
+  If module includes the shared raml as a Git sub module, it should be
+  updated as well.
+  See issues [FOLIO-2908](https://issues.folio.org/browse/FOLIO-2908)
+   and [FOLIO-2877](https://issues.folio.org/browse/FOLIO-2877)
+  The API for purge, upgrade, init is single end-point. Client code
+  (mostly testing code) must be able to handle both 201 with a Location
+  and 204 No content if testing via HTTP. However, for API testing RMB
+  32.1.0 provides a simpler call: `TenantAPI.postTenantSync`.
+  Update the module descriptor - usually `descriptors/ModuleDescriptor-template.json` - to
+  tenant interface version 2. Replace the old `_tenant` "provides" with
+
+```json
+    "provides" : [ {
+       "id" : "_tenant",
+       "version" : "2.0",
+       "interfaceType" : "system",
+       "handlers" : [ {
+         "methods" : [ "POST" ],
+         "pathPattern" : "/_/tenant"
+       }, {
+         "methods" : [ "GET", "DELETE" ],
+         "pathPattern" : "/_/tenant/{id}"
+       } ]
+    } ]
+```
+* Optional support for [optimistic locking](https://github.com/folio-org/raml-module-builder#optimistic-locking).
+Please refer to [RMB-719](https://issues.folio.org/browse/RMB-719) and [RMB-727](https://issues.folio.org/browse/RMB-727)
 
 ## Version 31.0
 
@@ -56,8 +241,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
   * `pom.xml`: For `maven-compiler-plugin` update `version` to `3.8.1` and
     use `<release>11</release>` instead
     of `source` and `target` elements.
-    Update aspectj version to `1.9.6`. Update `aspectj-maven-plugin` with
-    groupId `com.nickwongdev` and version `1.12.6`.
+  * `pom.xml`: Update aspectj version to `1.9.6`. Update `aspectj-maven-plugin` with
+    groupId `com.nickwongdev` and version `1.12.6` and set `<complianceLevel>11</complianceLevel>`
+    in the `<configuration>` section.
   * `Jenkinsfile`: Add `buildNode = 'jenkins-agent-java11'`
   * `Dockerfile` (if present): change `folioci/alpine-jre-openjdk8:latest`
     to `folioci/alpine-jre-openjdk11:latest`.

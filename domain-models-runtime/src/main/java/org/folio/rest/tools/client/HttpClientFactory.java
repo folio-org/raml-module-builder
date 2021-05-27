@@ -4,9 +4,11 @@ import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 
 /**
- * @author shale
- *
+ * Factory of HTTP clients with interface {@link HttpClientInterface}
+ * @deprecated Use {@link io.vertx.ext.web.client.WebClient} for generic HTTP client or generated client and
+ * mock server with {@link io.vertx.core.Vertx#createHttpServer()} or use a mocking utility.
  */
+@Deprecated
 public class HttpClientFactory {
 
 

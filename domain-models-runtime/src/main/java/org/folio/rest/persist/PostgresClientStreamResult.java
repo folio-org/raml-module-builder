@@ -9,7 +9,7 @@ import org.folio.rest.jaxrs.model.ResultInfo;
  *
  * @param <T> each item returned in stream is of this type
  */
-class PostgresClientStreamResult<T> implements ReadStream<T> {
+public class PostgresClientStreamResult<T> implements ReadStream<T> {
 
   private final ResultInfo resultInfo;
 
@@ -17,6 +17,7 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
   private Handler<Void> endHandler;
   private Handler<Throwable> exceptionHandler;
   private Handler<Void> closeHandler;
+  private Handler<Throwable> doneHandler;
   private boolean failed = false; // to ensure exceptionHandler being called at most once
 
   /**
@@ -85,6 +86,16 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
   }
 
   /**
+   * Set a handler that is called after the endHandler or the exceptionHandler has been fired.
+   * The handler is called even if endHandler or exceptionHandler is null.
+   * The value passed to the handler is null on success and the Throwable on failure.
+   */
+  PostgresClientStreamResult<T> setDoneHandler(Handler<Throwable> doneHandler) {
+    this.doneHandler = doneHandler;
+    return this;
+  }
+
+  /**
    * Only to be called by PostgresClient itself
    *
    * @param t
@@ -104,6 +115,9 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
     }
     if (endHandler != null) {
       endHandler.handle(null);
+    }
+    if (doneHandler != null) {
+      doneHandler.handle(null);
     }
   }
 
@@ -126,6 +140,9 @@ class PostgresClientStreamResult<T> implements ReadStream<T> {
     }
     if (exceptionHandler != null) {
       exceptionHandler.handle(cause);
+    }
+    if (doneHandler != null) {
+      doneHandler.handle(cause);
     }
   }
 

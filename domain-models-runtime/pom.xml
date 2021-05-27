@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>31.2.0-SNAPSHOT</version>
+    <version>33.1.0-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -22,9 +22,7 @@
     <filebeat_log_path>${basedir}/logs/filebeat</filebeat_log_path>
     <filebeat_registry_file>${basedir}/logs/filebeat/registry</filebeat_registry_file>
     <logstash_instance>ec2-52-27-98-246.us-west-2.compute.amazonaws.com:5044</logstash_instance>
-    <postgresql.version>9.4.1209</postgresql.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <generate_routing_context>/rmbtests/test</generate_routing_context>
   </properties>
   <dependencies>
     <dependency>
@@ -48,12 +46,22 @@
       <artifactId>jackson-annotations</artifactId>
     </dependency>
     <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web</artifactId>
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web-client</artifactId>
+    </dependency>
+     <!-- It is needed for SCRAM-SHA-256 authentication in postgres https://github.com/eclipse-vertx/vertx-sql-client/blob/master/vertx-pg-client/src/main/asciidoc/index.adoc#sasl-scram-sha-256-authentication-mechanism -->
+    <dependency>
+      <groupId>com.ongres.scram</groupId>
+      <artifactId>client</artifactId>
+      <version>2.1</version>
     </dependency>
     <dependency>
       <groupId>io.rest-assured</groupId>
@@ -106,28 +114,6 @@
       <version>${project.parent.version}</version>
     </dependency>
     <dependency>
-      <groupId>ru.yandex.qatools.embed</groupId>
-      <artifactId>postgresql-embedded</artifactId>
-      <version>${postgresql-embedded-version}</version>
-      <exclusions>
-        <exclusion>
-          <groupId>de.flapdoodle.embed</groupId>
-          <artifactId>de.flapdoodle.embed.process</artifactId>
-        </exclusion>
-      </exclusions>
-    </dependency>
-    <dependency>
-      <groupId>de.flapdoodle.embed</groupId>
-      <artifactId>de.flapdoodle.embed.process</artifactId>
-      <version>2.0.5</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>${postgresql.version}</version>
-    </dependency>
-    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-pg-client</artifactId>
     </dependency>
@@ -146,7 +132,6 @@
     <dependency>
       <groupId>commons-io</groupId>
       <artifactId>commons-io</artifactId>
-      <version>2.6</version>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -171,9 +156,15 @@
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.folio</groupId>
+      <artifactId>postgres-testing</artifactId>
+      <version>${project.parent.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.freemarker</groupId>
       <artifactId>freemarker</artifactId>
-      <version>2.3.29</version>
+      <version>2.3.31</version>
     </dependency>
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -193,6 +184,11 @@
       <artifactId>mockito-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
 
@@ -202,35 +198,33 @@
 
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <forceJavacCompilerUse>true</forceJavacCompilerUse>
+        </configuration>
       </plugin>
 
       <plugin>
-        <groupId>org.codehaus.mojo</groupId>
-        <artifactId>exec-maven-plugin</artifactId>
+        <groupId>org.folio</groupId>
+        <artifactId>domain-models-maven-plugin</artifactId>
+        <version>${project.parent.version}</version>
+        <dependencies>
+          <dependency>
+            <groupId>org.folio</groupId>
+            <artifactId>domain-models-api-interfaces</artifactId>
+            <version>${project.parent.version}</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
-            <id>generate_client</id>
+            <id>generate-clients</id>
             <phase>generate-sources</phase>
             <goals>
               <goal>java</goal>
             </goals>
             <configuration>
-              <mainClass>org.folio.rest.tools.ClientGenerator</mainClass>
-              <cleanupDaemonThreads>false</cleanupDaemonThreads>
-              <systemProperties>
-                <systemProperty>
-                  <key>client.generate</key>
-                  <value>true</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>project.basedir</key>
-                  <value>${basedir}</value>
-                </systemProperty>
-                <systemProperty>
-                  <key>json.type</key>
-                  <value>postgres</value>
-                </systemProperty>
-              </systemProperties>
+              <!-- interfaces have been generated by domain-models-api-interfaces -->
+              <generateInterfaces>false</generateInterfaces>
+              <generateClients>true</generateClients>
             </configuration>
           </execution>
         </executions>
@@ -420,23 +414,24 @@
                   <manifestEntries>
                     <Main-Class>org.folio.rest.RestLauncher</Main-Class>
                     <Main-Verticle>org.folio.rest.RestVerticle</Main-Verticle>
+                    <Multi-Release>true</Multi-Release>
                   </manifestEntries>
                 </transformer>
               </transformers>
               <artifactSet />
               <filters>
                 <filter>
-                  <!-- exclude classes from jaxb-xjc that already exist in com.sun.codemodel:codemodel -->
-                  <artifact>com.sun.xml.bind:jaxb-xjc</artifact>
+                  <artifact>*:*</artifact>
                   <excludes>
-                    <exclude>com/sun/codemodel/**</exclude>
+                    <exclude>**/Log4j2Plugins.dat</exclude>
                   </excludes>
                 </filter>
                 <filter>
-                  <!-- exclude classes from jaxb-xjc that already exist in com.sun.codemodel:codemodel -->
-                  <artifact>commons-collections:commons-collections</artifact>
+                  <!-- exclude what domain-models-maven-plugin will recreate based on module raml data -->
+                  <artifact>org.folio:domain-models-api-interfaces</artifact>
                   <excludes>
-                    <exclude>org/apache/commons/collections/**</exclude>
+                    <exclude>org/folio/rest/jaxrs/MappedClassesConfig.class</exclude>
+                    <exclude>org/folio/rest/tools/utils/ModuleName.class</exclude>
                   </excludes>
                 </filter>
               </filters>

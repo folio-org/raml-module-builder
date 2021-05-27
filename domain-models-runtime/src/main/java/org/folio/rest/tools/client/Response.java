@@ -4,12 +4,10 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
-
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.client.exceptions.ResponseNullPointer;
 import org.folio.rest.tools.parser.JsonPathParser;
 import org.folio.rest.tools.parser.JsonPathParser.Pairs;
-import org.folio.dbschema.ObjectMapperTool;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
@@ -19,9 +17,10 @@ import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 /**
- * @author shale
- *
+ * Http client response handling.
+ * @deprecated All material in org.folio.rest.tools.client is deprecated.
  */
+@Deprecated
 public class Response {
 
   private static final ObjectMapper MAPPER = ObjectMapperTool.getMapper();

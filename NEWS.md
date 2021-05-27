@@ -1,3 +1,128 @@
+## 33.0.0 2021-05-22
+
+Unlike pre4, this is using Vert.x 4.1.0.CR1. Use that version in your
+project or later veresion in 4.1.0-series.
+
+Fixes:
+ * [RMB-843](https://issues.folio.org/browse/RMB-843) Use percent encoding, not url encoding, for HTTP requests
+ * [RMB-844](https://issues.folio.org/browse/RMB-844) Properly report POST tenant with null exception message
+
+Other:
+ * [RMB-847](https://issues.folio.org/browse/RMB-847) Update to Vert.x 4.1.0CR1
+ * Use okapi-common 4.8.0
+
+## 33.0.0-pre4 2021-05-12
+
+This is a bug fix release. Module *must* use Vert.x 4.1.0.Beta1.
+
+Fixes:
+  * [RMB-842](https://issues.folio.org/browse/RMB-842) 33.0.0-pre3 leaks SQL connections
+
+Other:
+  * [RMB-839](https://issues.folio.org/browse/RMB-839) Upgrade to Vert.x 4.1.0.Beta1
+
+## 33.0.0-pre3 2021-05-11
+
+This release fixes a serious problem with pre2 release ([RMB-840](https://issues.folio.org/browse/RMB-840)).
+RMB is using Vert.x 4.0.3. Use same Vert.x version in module.
+
+New feature:
+ * [RMB-832](https://issues.folio.org/browse/RMB-832) Implement upsert, updateBatch for optimistic locking
+
+Fixes:
+ * [RMB-840](https://issues.folio.org/browse/RMB-840) IllegalStateException in handleClosed (ConnectionPool)
+ * [RMB-838](https://issues.folio.org/browse/RMB-838) Publish source jar and javadoc jar on repository.folio.org
+ * Bump jersey-media-json-jackson from 2.29.1 to 2.34 (CVE-2021-28168)
+ * [RMB-837](https://issues.folio.org/browse/RMB-837) Upgrade vertx-sql-client to v4.0.3-FOLIO
+ * [RMB-834](https://issues.folio.org/browse/RMB-834) Fix form key is lost for large value
+ * [RMB-833](https://issues.folio.org/browse/RMB-833) Update commons-io from 2.6 to 2.8.0
+ * [RMB-831](https://issues.folio.org/browse/RMB-831) raml plugin no generated clients
+ * [RMB-830](https://issues.folio.org/browse/RMB-830) foreign key non-alias sub-field - "missing FROM-clause"
+
+## 33.0.0-pre2 2021-04-21
+
+Changes and improvements:
+ * [RMB-826](https://issues.folio.org/browse/RMB-826) Only use postgresTester (testContainers) on "empty" db configuration
+ * [RMB-602](https://issues.folio.org/browse/RMB-602) PostgresClient futurisation for Vert.x 4, Part 1
+ * [RMB-814](https://issues.folio.org/browse/RMB-814) PostgresClient futurisation for Vert.x 4, Part 2
+ * [RMB-783](https://issues.folio.org/browse/RMB-783) ClientGenerator futurisation for Vert.x 4
+ * [RMB-789](https://issues.folio.org/browse/RMB-789) Remove support of EmbeddedPostgres
+ * [RMB-796](https://issues.folio.org/browse/RMB-796) ClientGenerator: add new HttpClient constructor, explain "close"
+ * [RMB-717](https://issues.folio.org/browse/RMB-717) Deprecate HttpClientInterface, HttpModuleClient2, HttpClientMock2
+ * [RMB-812](https://issues.folio.org/browse/RMB-812) Make PostgresClientStreamResult public
+
+Fixes:
+ * [RMB-829](https://issues.folio.org/browse/RMB-829) Suppress "Table audit_... NOT FOUND" in loadDbSchema()
+ * [RMB-823](https://issues.folio.org/browse/RMB-823) Update maven.indexdata.com url
+ * [RMB-819](https://issues.folio.org/browse/RMB-819) Atomic batch PostgresClient.execute with List<Tuple>
+ * [RMB-810](https://issues.folio.org/browse/RMB-810) domain-models-maven-plugin can not be resolved
+ * [RMB-808](https://issues.folio.org/browse/RMB-808) METHOD_URL of AnnotationGrabber should not be a "half" regular expression
+ * [RMB-784](https://issues.folio.org/browse/RMB-784) Reenable DB_CONNECTIONRELEASEDELAY
+ * [RMB-586](https://issues.folio.org/browse/RMB-586) == foreign key sub-field query causes "missing FROM-clause" error
+
+## 33.0.0-pre1 2021-03-05
+
+Changes and improvements:
+ * [RMB-785](https://issues.folio.org/browse/RMB-785) Convert GenerateRunner into maven plugin
+ * [RMB-800](https://issues.folio.org/browse/RMB-800) Generated Client should not throw generic exception
+
+Fixes:
+ * [RMB-805](https://issues.folio.org/browse/RMB-805) RestVerticle should check for implementation at startup
+ * [RMB-809](https://issues.folio.org/browse/RMB-809) Fix Form parameters lost
+
+Other:
+ * [RMB-770](https://issues.folio.org/browse/RMB-770) Add personal data disclosure form
+ * [RMB-787](https://issues.folio.org/browse/RMB-787) Document guidance on API and Schema versioning for OptimisticLocking
+ * [RMB-793](https://issues.folio.org/browse/RMB-793) Documentation updates / mention testing artifact
+
+## 32.2.0 2021-02-24
+
+New API features:
+
+ * [RMB-741](https://issues.folio.org/browse/RMB-741) PostgresClient.withTransaction
+ * [RMB-483](https://issues.folio.org/browse/RMB-483) TestContainers instead of postgresql-embedded
+ * [RMB-601](https://issues.folio.org/browse/RMB-601) PgUtil futurisation for Vert.x 4
+ * [RMB-806](https://issues.folio.org/browse/RMB-806) TenantClient: async utility
+-
+Other changes:
+
+￼* [RMB-519](https://issues.folio.org/browse/RMB-519) Default Accept: */*, Content-Type: application/json
+ * [RMB-768](https://issues.folio.org/browse/RMB-768) Default log4j2 logging should be line based patternlayout
+￼* [RMB-786](https://issues.folio.org/browse/RMB-786) Change OL trigger notice level
+
+Bugs fixed:
+
+￼* [RMB-799](https://issues.folio.org/browse/RMB-799) Update Vert.x from 4.0.0 to 4.0.2
+ * [RMB-788](https://issues.folio.org/browse/RMB-788) invalid id for GET /_/tenant/id hangs
+￼* [RMB-803](https://issues.folio.org/browse/RMB-803) Fix URL encoding in BuildCQL preventing CQL injection
+
+## 32.1.0 2021-01-05
+
+ * [RMB-782](https://issues.folio.org/browse/RMB-782) Make postTenantSync public
+ * [RMB-781](https://issues.folio.org/browse/RMB-781) Mention raml-util update for RMB upgrade notes
+ * [RMB-642](https://issues.folio.org/browse/RMB-642) Remove JDBC driver, use vertx-pg-client for running migrations
+ * [RMB-780](https://issues.folio.org/browse/RMB-780) NPE in logs after migrating to RMB v32.0.0
+
+## 32.0.0 2020-12-21
+
+New features (some of which are breaking changes):
+
+ * [RMB-609](https://issues.folio.org/browse/RMB-609) Update to Vert.x 4.0.0
+ * [RMB-655](https://issues.folio.org/browse/RMB-655) Add default metrics to RMB: Outgoing API calls
+ * [RMB-669](https://issues.folio.org/browse/RMB-669) Add default metrics to RMB: incoming API calls
+ * [RMB-720](https://issues.folio.org/browse/RMB-720) Replace DropWizard with Micrometer InfluxDB metrics options
+ * [RMB-727](https://issues.folio.org/browse/RMB-727) Implement support for optimistic locking
+ * [RMB-754](https://issues.folio.org/browse/RMB-754) Provide implementation for the async tenant API
+ * [RMB-772](https://issues.folio.org/browse/RMB-772) Persist tenant operation
+ * [RMB-759](https://issues.folio.org/browse/RMB-759) Consistent format for createdDate and updatedDate metadata
+ * [RMB-389](https://issues.folio.org/browse/RMB-389) PgUtil.delete by CQL
+ * Use okapi-common 4.5.0 (which is also using Vert.x 4.0.0)
+
+Fixes:
+
+ * [RMB-744](https://issues.folio.org/browse/RMB-744) Q2 to Q3 upgrade - "POST request for module_version /_/tenant failed with REVOKE ALL PRIVILEGES ON SCHEMA public FROM module_schema;"
+ * [RMB-728](https://issues.folio.org/browse/RMB-728) Unable to use 'var' keyword when a module uses aspects plugin
+
 ## 31.1.0 2020-09-16
 
  * [RMB-699](https://issues.folio.org/browse/RMB-699) Fix Module name detection broken
@@ -388,7 +513,7 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 ## 23.6.0 2019-02-18
 
  * [RMB-332](https://issues.folio.org/browse/RMB-332) Move BooksDemoAPI impl to test
- * Update cql2pgjson from 3.0.3 to 3.1.0 CQLPG-76 CQLPG-86
+ * Update cql2pgjson from 3.0.3 to 3.1.0 [CQLPG-76](https://issues.folio.org/browse/CQLPG-76) CQLPG-86
 
 ## 23.5.0 2019-01-29
 
@@ -454,11 +579,11 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 
 ## 22.0.0 2018-10-13
  * [RMB-272](https://issues.folio.org/browse/RMB-272) Update cql2pg-json to version 3.0.0:
-   * CQLPG-63 Drop field name to full field path resolution. This is a breaking change,
+   * [CQLPG-63](https://issues.folio.org/browse/CQLPG-63) Drop field name to full field path resolution. This is a breaking change,
      using the unambiguous suffix "email" no longer resolves to "personal.email".
-   * CQLPG-61 Equals empty is not same as equals star. Matching "*" means all records,
+   * [CQLPG-61](https://issues.folio.org/browse/CQLPG-61) Equals empty is not same as equals star. Matching "*" means all records,
      matching "" means all records where that field is defined. This is a breaking change.
-   * CQLPG-58 Performance: Convert id searches using '=' or '==' into primary key _id searches.
+   * [CQLPG-58](https://issues.folio.org/browse/CQLPG-58) Performance: Convert id searches using '=' or '==' into primary key _id searches.
      This is a breaking change because it restricts the operators allowed for id and assumes
      that id is a UUID.
  * [RMB-271](https://issues.folio.org/browse/RMB-271) Also accept windows \r\n line endings in unit test.
@@ -636,7 +761,7 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 * [RMB-110](https://issues.folio.org/browse/RMB-110): Lift time limit in PostgresClientIT.parallel(...)
 * hack to handle simple text response for rmb http client
 * ResourceUtil.asString(...): more documentation, more options
-* CQLPG-29 "sortBy field" sorts by null (cql2pgjson:1.3.3)
+* [CQLPG-29](https://issues.folio.org/browse/CQLPG-29) "sortBy field" sorts by null (cql2pgjson:1.3.3)
 
 ## 16.0.2 2017-12-05
 
@@ -688,11 +813,11 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 ## 13.0.3
 
 * [RMB-49](https://issues.folio.org/browse/RMB-49) VertxUtils.getVertxWithExceptionHandler()
-* FOLIO-749 add exception handler to each vertx
+* [FOLIO-749](https://issues.folio.org/browse/FOLIO-749) add exception handler to each vertx
 
 ## 13.0.2
 
-* FOLIO-727 Support multi-field queries in CQL2PgJSON (upgraded CQL2PgJSON for this functionality)
+* [FOLIO-727](https://issues.folio.org/browse/FOLIO-727) Support multi-field queries in CQL2PgJSON (upgraded CQL2PgJSON for this functionality)
 
 ## 13.0.1
 
@@ -702,9 +827,9 @@ There are several breaking changes, see [upgrading instructions](doc/upgrading.m
 
 * [RMB-42](https://issues.folio.org/browse/RMB-42) Generated clients populate Authorization header with okapi tenant
 * [RMB-34](https://issues.folio.org/browse/RMB-34) Validation response does not include content-type header
-* FOLIO-693 document HTTP status codes
-* DMOD-164 unit tests for Tenant API
-* FOLIO-685 explore auto-generation of fakes (mocks) for module testing
+* [FOLIO-693](https://issues.folio.org/browse/FOLIO-693) document HTTP status codes
+* [DMOD-164](https://issues.folio.org/browse/DMOD-164) unit tests for Tenant API
+* [FOLIO-685](https://issues.folio.org/browse/FOLIO-685) explore auto-generation of fakes (mocks) for module testing
 
 ## 12.1.4
 

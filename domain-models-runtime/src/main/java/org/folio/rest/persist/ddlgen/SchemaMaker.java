@@ -11,6 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.folio.dbschema.ForeignKeys;
+import org.folio.dbschema.OptimisticLockingMode;
 import org.folio.dbschema.Schema;
 import org.folio.dbschema.Table;
 import org.folio.dbschema.TableOperation;
@@ -28,7 +29,7 @@ import freemarker.template.Version;
  */
 public class SchemaMaker {
 
-  private static Configuration cfg;
+  private static Configuration cfg = getConfiguration();
   private Map<String, Object> templateInput = new HashMap<>();
   private String tenant;
   private String module;
@@ -40,19 +41,8 @@ public class SchemaMaker {
   private Schema previousSchema;
   private String schemaJson = "{}";
 
-  /**
-   * @param onTable
-   */
-  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion, String newVersion){
-    if(SchemaMaker.cfg == null){
-      //do this ONLY ONCE
-      SchemaMaker.cfg = new Configuration(new Version(2, 3, 26));
-      // Where do we load the templates from:
-      cfg.setClassForTemplateLoading(SchemaMaker.class, "/templates/db_scripts");
-      cfg.setDefaultEncoding("UTF-8");
-      cfg.setLocale(Locale.US);
-      cfg.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
-    }
+  public SchemaMaker(String tenant, String module, TenantOperation mode, String previousVersion,
+                     String newVersion) {
     this.tenant = tenant;
     this.module = module;
     this.mode = mode;
@@ -61,35 +51,42 @@ public class SchemaMaker {
     this.rmbVersion = RmbVersion.getRmbVersion();
   }
 
-  public String generateDDL() throws IOException, TemplateException {
-    return generateDDL(false);
+  private static Configuration getConfiguration() {
+    Configuration configuration = new Configuration(new Version(2, 3, 26));
+    // Where do we load the templates from:
+    configuration.setClassForTemplateLoading(SchemaMaker.class, "/templates/db_scripts");
+    configuration.setDefaultEncoding("UTF-8");
+    configuration.setLocale(Locale.US);
+    configuration.setTemplateExceptionHandler(TemplateExceptionHandler.RETHROW_HANDLER);
+    return configuration;
   }
 
-  public String generateDDL(boolean recreateIndexMode) throws IOException, TemplateException {
+  public String generatePurge() throws IOException, TemplateException {
+    return generateDDL("delete.ftl");
+  }
 
+  public String generateSchemas() throws IOException, TemplateException {
+    return generateDDL("schemas.ftl");
+  }
+
+  public String generateCreate() throws IOException, TemplateException {
+    return generateDDL("create.ftl");
+  }
+
+  private String generateDDL(String template) throws IOException, TemplateException {
     templateInput.put("myuniversity", this.tenant);
 
     templateInput.put("mymodule", this.module);
 
     templateInput.put("mode", this.mode);
 
-    if("delete".equalsIgnoreCase(this.mode.name())){
-      return handleDelete();
-    }
-
-    if(this.schema == null){
-      //log this
-      System.out.print("Must call setSchema() first...");
-      return null;
-    }
-
     String pVersion = this.previousVersion;
 
-    if(pVersion == null){
+    if (pVersion == null) {
       //will be null on deletes unless its read from db by rmb
       pVersion = "0.0";
     }
-    if(newVersion == null){
+    if (newVersion == null) {
       newVersion = "0.0";
     }
 
@@ -103,11 +100,6 @@ public class SchemaMaker {
 
     templateInput.put("schemaJson", this.getSchemaJson());
 
-    schema.setup();
-    if (previousSchema != null) {
-      previousSchema.setup();
-    }
-
     templateInput.put("tables", tables());
 
     templateInput.put("views", this.schema.getViews());
@@ -116,10 +108,6 @@ public class SchemaMaker {
 
     templateInput.put("exactCount", this.schema.getExactCount()+"");
 
-    String template = "main.ftl";
-    if(recreateIndexMode){
-      template = "indexes_only.ftl";
-    }
     Template tableTemplate = cfg.getTemplate(template);
     Writer writer = new StringWriter();
     tableTemplate.process(templateInput, writer);
@@ -127,11 +115,26 @@ public class SchemaMaker {
     return writer.toString();
   }
 
-  private String handleDelete() throws IOException, TemplateException {
-    Writer writer = new StringWriter();
-    Template tableTemplate = cfg.getTemplate("delete.ftl");
-    tableTemplate.process(templateInput, writer);
-    return writer.toString();
+  public String generateIndexesOnly() throws IOException, TemplateException {
+    return generateDDL("indexes_only.ftl");
+  }
+
+  public static String generateOptimisticLocking(String tenant, String module, String tablename) {
+    try {
+      Table table = new Table();
+      table.setTableName(tablename);
+      table.setWithOptimisticLocking(OptimisticLockingMode.FAIL);
+      Map<String, Object> parameters = new HashMap<>(3);
+      parameters.put("myuniversity", tenant);
+      parameters.put("mymodule", module);
+      parameters.put("table", table);
+      Template tableTemplate = cfg.getTemplate("optimistic_locking.ftl");
+      Writer writer = new StringWriter();
+      tableTemplate.process(parameters, writer);
+      return writer.toString();
+    } catch (IOException | TemplateException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /**
@@ -213,6 +216,7 @@ public class SchemaMaker {
 
   public void setSchema(Schema schema) {
     this.schema = schema;
+    schema.setup();
   }
 
   public Schema getPreviousSchema() {
@@ -221,6 +225,9 @@ public class SchemaMaker {
 
   public void setPreviousSchema(Schema previousSchema) {
     this.previousSchema = previousSchema;
+    if (previousSchema !=  null) {
+      previousSchema.setup();
+    }
   }
 
   public String getSchemaJson() {

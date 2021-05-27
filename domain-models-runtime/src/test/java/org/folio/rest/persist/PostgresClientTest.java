@@ -7,6 +7,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -24,7 +25,6 @@ import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
@@ -42,7 +42,9 @@ import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
+import org.folio.util.PostgresTester;
 import org.folio.util.ResourceUtil;
+import org.folio.rest.jaxrs.model.User;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.junit.After;
 import org.junit.Assert;
@@ -53,10 +55,7 @@ import org.junit.Test;
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
 
-  private Logger oldLogger;
   private String oldConfigFilePath;
-  private boolean oldIsEmbedded;
-  private int oldEmbeddedPort;
   /** empty = no environment variables */
   private JsonObject empty = new JsonObject();
 
@@ -68,27 +67,29 @@ public class PostgresClientTest {
   public void initConfig() {
     oldConfigFilePath = PostgresClient.getConfigFilePath();
     PostgresClient.setConfigFilePath(null);
-    oldIsEmbedded = PostgresClient.isEmbedded();
-    PostgresClient.setIsEmbedded(false);
-    oldEmbeddedPort = PostgresClient.getEmbeddedPort();
-    PostgresClient.setEmbeddedPort(-1);
   }
 
   @After
   public void restoreConfig() {
     PostgresClient.setConfigFilePath(oldConfigFilePath);
-    PostgresClient.setIsEmbedded(oldIsEmbedded);
-    PostgresClient.setEmbeddedPort(oldEmbeddedPort);
   }
 
   @Test
   public void configDefault() throws Exception {
-    assertThat("Port 6000 must be free for embedded postgres", NetworkUtils.isLocalPortFree(6000), is(true));
     PostgresClient.setConfigFilePath("nonexisting");
-    JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", null, empty);
-    assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
-    assertThat(config.getString("host"), is("127.0.0.1"));
-    assertThat(config.getInteger("port"), is(6000));
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", null, empty, false);
+    assertThat(config.getBoolean("postgres_tester"), is(false));
+    assertThat(config.containsKey("host"), is(false));
+    assertThat(config.containsKey("port"), is(false));
+    assertThat(config.getString("username"), is("username"));
+  }
+
+  @Test
+  public void configPostgresTesterEnabled() throws Exception {
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig(/* default schema = */ "public", null, empty, true);
+    assertThat(config.getBoolean("postgres_tester"), is(true));
+    assertThat(config.containsKey("host"), is(false));
+    assertThat(config.containsKey("port"), is(false));
     assertThat(config.getString("username"), is("username"));
   }
 
@@ -96,11 +97,8 @@ public class PostgresClientTest {
   public void configDefaultWithPortAndTenant() throws Exception {
     int port = NetworkUtils.nextFreePort();
     PostgresClient.setConfigFilePath("nonexisting");
-    PostgresClient.setEmbeddedPort(port);
-    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "barschema", empty);
-    assertThat("embedded postgres", PostgresClient.isEmbedded(), is(true));
-    assertThat(config.getString("host"), is("127.0.0.1"));
-    assertThat(config.getInteger("port"), is(port));
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "barschema", empty, false);
+    assertThat(config.getBoolean("postgres_tester"), is(false));
     assertThat(config.getString("username"), is("barschema"));
   }
 
@@ -112,7 +110,8 @@ public class PostgresClientTest {
         .put("host", "example.com")
         .put("port", 9876)
         .put("connectionReleaseDelay", 90000);
-    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "aSchemaName", env);
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "aSchemaName", env, true);
+    assertThat(config.getBoolean("postgres_tester"), is(false));
     assertThat(config.getString("host"), is("example.com"));
     assertThat(config.getInteger("port"), is(9876));
     assertThat(config.getString("username"), is("aSchemaName"));
@@ -125,7 +124,7 @@ public class PostgresClientTest {
   public void configFile() throws Exception {
     // values from src/test/resources/my-postgres-conf.json
     PostgresClient.setConfigFilePath("/my-postgres-conf.json");
-    JsonObject config = PostgresClient.getPostgreSQLClientConfig("public", null, empty);
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("public", null, empty, false);
     assertThat(config.getString("host"), is("localhost"));
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("postgres"));
@@ -136,7 +135,7 @@ public class PostgresClientTest {
   public void configFileTenant() throws Exception {
     // values from src/test/resources/my-postgres-conf.json
     PostgresClient.setConfigFilePath("/my-postgres-conf.json");
-    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "mySchemaName", empty);
+    JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "mySchemaName", empty, false);
     assertThat(config.getString("host"), is("localhost"));
     assertThat(config.getInteger("port"), is(5433));
     assertThat(config.getString("username"), is("mySchemaName"));
@@ -192,6 +191,20 @@ public class PostgresClientTest {
     // TODO: enable when available in vertx-sql-client/vertx-pg-client
     // https://issues.folio.org/browse/RMB-657
     // assertThat(1000, is(options.getConnectionReleaseDelay()));
+  }
+
+  @Test
+  public void closePostgresTester() {
+    PostgresTester postgresTester1 = mock(PostgresTester.class);
+    PostgresTester postgresTester2 = mock(PostgresTester.class);
+    PostgresClient.setPostgresTester(postgresTester1);
+    PostgresClient.setPostgresTester(postgresTester1);
+    verify(postgresTester1, times(1)).close();
+    PostgresClient.setPostgresTester(postgresTester2);
+    verify(postgresTester1, times(2)).close();
+    PostgresClient.stopPostgresTester();
+    verify(postgresTester1, times(2)).close();
+    verify(postgresTester2, times(1)).close();
   }
 
   @Test
@@ -266,7 +279,7 @@ public class PostgresClientTest {
     row.addString(foo);
     row.addString(bar);
     row.addDouble(biz);
-    row.addStringArray(baz);
+    row.addArrayOfString(baz);
 
     testClient.populateExternalColumns(externalColumnSetters, o, row);
     assertThat(o.getFoo(), is(foo));
@@ -318,8 +331,13 @@ public class PostgresClientTest {
 
     @Override
     public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
+      handler.handle(prepare(s));
       return this;
+    }
+
+    @Override
+    public Future<PreparedStatement> prepare(String s) {
+      return Future.failedFuture("not implemented");
     }
 
     @Override
@@ -333,13 +351,24 @@ public class PostgresClientTest {
     }
 
     @Override
-    public Transaction begin() {
+    public void begin(
+        Handler<AsyncResult<Transaction>> handler) {
+
+    }
+
+    @Override
+    public Future<Transaction> begin() {
       return null;
     }
 
     @Override
     public boolean isSSL() {
       return false;
+    }
+
+    @Override
+    public void close(Handler<AsyncResult<Void>> handler) {
+
     }
 
     @Override
@@ -367,6 +396,11 @@ public class PostgresClientTest {
         }
 
         @Override
+        public Future<RowSet<Row>> execute() {
+          return Future.future(promise -> execute(promise));
+        }
+
+        @Override
         public <R> Query<SqlResult<R>> collecting(Collector<Row, ?, R> collector) {
           return null;
         }
@@ -384,7 +418,8 @@ public class PostgresClientTest {
     }
 
     @Override
-    public void close() {
+    public Future<Void> close() {
+      return Future.succeededFuture();
     }
 
     @Override
@@ -408,14 +443,7 @@ public class PostgresClientTest {
       totaledResults -> {
         assertThat(totaledResults.estimatedTotal, is(total));
         return testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class);
-      },
-      reply -> {
-        List<TestPojo> results = reply.result().getResults();
-
-        assertTestPojoResults(results, total);
-      }
-    );
-
+      }).onSuccess(reply -> assertTestPojoResults(reply.getResults(), total));
   }
 
   @Test
@@ -489,7 +517,7 @@ public class PostgresClientTest {
       row.addString("foo " + i);
       row.addString("bar " + i);
       row.addDouble((double) i);
-      row.addStringArray(new String[] { "This", "is", "a", "test" } );
+      row.addArrayOfString(new String[] { "This", "is", "a", "test" } );
       rows.add(row);
     }
     return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
@@ -615,16 +643,6 @@ public class PostgresClientTest {
     }
   }
 
-  @Before
-  public void saveLogger() {
-    oldLogger = PostgresClient.log;
-  }
-
-  @After
-  public void restoreLogger() {
-    PostgresClient.log = oldLogger;
-  }
-
   @Test
   public void splitSqlStatementsSingleLine() {
     assertThat(PostgresClient.splitSqlStatements("foo bar"),
@@ -660,6 +678,14 @@ public class PostgresClientTest {
     String sqlFile = ResourceUtil.asString("import.sql");
     assertThat(PostgresClient.preprocessSqlStatements(sqlFile), hasItemInArray(stringContainsInOrder(
         "COPY test.po_line", "24\t")));
+  }
+
+  @Test
+  public void pojo2JsonObject() throws Exception {
+    String id = UUID.randomUUID().toString();
+    User user = new User().withId(id).withUsername("name").withVersion(5);
+    JsonObject json = PostgresClient.pojo2JsonObject(user);
+    assertThat(json.getMap(), is(Map.of("id", id, "username", "name", "_version", 5)));
   }
 
   @Test(expected = IllegalArgumentException.class)

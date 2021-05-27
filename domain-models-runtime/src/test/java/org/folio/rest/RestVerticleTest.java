@@ -1,94 +1,135 @@
 package org.folio.rest;
 
-import static org.folio.rest.jaxrs.model.CalendarPeriodsServicePointIdCalculateopeningGetUnit.*;
-import static org.hamcrest.collection.ArrayMatching.arrayContaining;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.nullValue;
-import static org.hamcrest.Matchers.emptyArray;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import java.util.regex.Pattern;
-import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
-import org.folio.rest.tools.client.exceptions.ResponseException;
-import org.junit.jupiter.api.Test;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Context;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Future;
-import io.vertx.ext.web.RoutingContext;
-import javax.ws.rs.core.Response;
+import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.folio.rest.resource.interfaces.InitAPI;
+import org.folio.rest.resource.interfaces.PostDeployVerticle;
+import org.folio.rest.resource.interfaces.ShutdownAPI;
+import org.folio.rest.tools.utils.NetworkUtils;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 
-class RestVerticleTest {
+@RunWith(VertxUnitRunner.class)
+public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAPI {
+  private static final Logger LOGGER = LogManager.getLogger(RestVerticleTest.class);
 
-  Object parseEnum(String value, String defaultValue) throws Exception {
-    return RestVerticle.parseEnum(
-          "org.folio.rest.jaxrs.model.CalendarPeriodsServicePointIdCalculateopeningGetUnit",
-          value, defaultValue);
+  private static Vertx vertx;
+  private static int port;
+  private static Boolean initResult = null;
+  private static int initCalls;
+  private static boolean shutdownFail;
+  private static int shutdownCalls;
+
+  @BeforeClass
+  public static void setUp(TestContext context) {
+    vertx = Vertx.vertx();
+    port = NetworkUtils.nextFreePort();
+  }
+
+  @AfterClass
+  public static void afterClass(TestContext context) {
+    vertx.close(context.asyncAssertSuccess());
+  }
+
+  @Override
+  public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> resultHandler) {
+    LOGGER.info("Init handler called");
+    initCalls++;
+    if (initResult == null) {
+      throw new RuntimeException("init exception");
+    } else if (initResult == false) {
+      resultHandler.handle(Future.failedFuture("init failed"));
+    } else {
+      resultHandler.handle(Future.succeededFuture(initResult));
+    }
+  }
+
+  @Override
+  public void shutdown(Vertx vertx, Context context, Handler<AsyncResult<Void>> handler) {
+    LOGGER.info("shutdown handler called");
+    shutdownCalls++;
+    if (shutdownFail) {
+      handler.handle(Future.failedFuture("shutdown failed"));
+    } else {
+      handler.handle(Future.succeededFuture());
+    }
+  }
+
+  Future<String> deploy() {
+    shutdownCalls = 0;
+    initCalls = 0;
+    JsonObject config = new JsonObject();
+    config.put("packageOfImplementations", "org.folio.rest");
+    config.put("http.port", port);
+    return vertx.deployVerticle(RestVerticle.class, new DeploymentOptions().setConfig(config));
   }
 
   @Test
-  void parseEnum() throws Exception {
-    assertThat(parseEnum(null,           null  ), is(nullValue()));
-    assertThat(parseEnum("",             ""    ), is(nullValue()));
-    assertThat(parseEnum("day",          "hour"), is(DAY));
-    assertThat(parseEnum("hour",         "day" ), is(HOUR));
-    assertThat(parseEnum("foo",          "day" ), is(DAY));
-    assertThat(parseEnum(null,           "day" ), is(DAY));
-    assertThat(parseEnum("foo",          "hour"), is(HOUR));
-    assertThat(parseEnum(null,           "hour"), is(HOUR));
-    assertThat(parseEnum("bee interval", ""    ), is(BEEINTERVAL));
+  public void initHookTrue(TestContext context) {
+    initResult = true;
+    shutdownFail = false;
+    deploy()
+        .onComplete(context.asyncAssertSuccess(res -> {
+          context.assertEquals(2, initCalls);
+          context.assertEquals(0, shutdownCalls);
+          vertx.undeploy(res).onComplete(context.asyncAssertSuccess(x -> {
+            context.assertEquals(2, initCalls);
+            context.assertEquals(1, shutdownCalls);
+          }));
+        }));
   }
 
   @Test
-  void parseEnumUnknownType() {
-    assertThrows(ClassNotFoundException.class, () -> RestVerticle.parseEnum("foo.bar", "foo", "bar"));
+  public void shutdownFail(TestContext context) {
+    initResult = true;
+    shutdownFail = true;
+    deploy()
+        .onComplete(context.asyncAssertSuccess(res -> {
+          context.assertEquals(2, initCalls);
+          context.assertEquals(0, shutdownCalls);
+          vertx.undeploy(res).onComplete(context.asyncAssertFailure(cause -> {
+            context.assertEquals(2, initCalls);
+            context.assertEquals(1, shutdownCalls);
+            // RestVerticle has this message hard coded in case of shutdown failure
+            context.assertEquals("shutdown hook failed....", cause.getMessage());
+          }));
+        }));
   }
 
   @Test
-  void parseEnumNonEnumClass() throws Exception {
-    assertThat(RestVerticle.parseEnum("java.util.Vector", "foo", "bar"), is(nullValue()));
+  public void initHookFail(TestContext context) {
+    initResult = false;
+    shutdownFail = false;
+    deploy()
+        .onComplete(context.asyncAssertFailure(cause -> {
+          context.assertEquals("init failed", cause.getMessage());
+          context.assertEquals(1, initCalls);
+          context.assertEquals(0, shutdownCalls);
+        }));
   }
 
   @Test
-  void routeExceptionReturns500() {
-    class MyRestVerticle extends RestVerticle {
-      public int status = -1;
-      @Override
-      void endRequestWithError(RoutingContext rc, int status, boolean chunked, String message, boolean[] isValid) {
-        this.status = status;
-      }
-    };
-    MyRestVerticle myRestVerticle = new MyRestVerticle();
-    myRestVerticle.route(null, null, null, null);
-    assertThat(myRestVerticle.status, is(500));
+  public void initHookException(TestContext context) {
+    initResult = null;
+    shutdownFail = false;
+    deploy()
+        .onComplete(context.asyncAssertFailure(cause -> {
+          context.assertNull(cause.getMessage());
+          context.assertEquals(1, initCalls);
+          context.assertEquals(0, shutdownCalls);
+        }));
   }
 
-  @Test
-  void matchUrl() {
-    assertThat(RestVerticle.matchPath("/", Pattern.compile("^/x$")), is(nullValue()));
-    assertThat(RestVerticle.matchPath("/x", Pattern.compile("^/$")), is(nullValue()));
-    assertThat(RestVerticle.matchPath("/x", Pattern.compile("^/y$")), is(nullValue()));
-    assertThat(RestVerticle.matchPath("/", Pattern.compile("^/$")), is(emptyArray()));
-    assertThat(RestVerticle.matchPath("/x/yy", Pattern.compile("^/x/yy$")), is(emptyArray()));
-    assertThat(RestVerticle.matchPath("/x/yy", Pattern.compile("^/x/([^/]+)$")),
-        is(arrayContaining("yy")));
-    assertThat(RestVerticle.matchPath("/abc/def/ghi", Pattern.compile("^/([^/]+)/([^/]+)/([^/]+)$")),
-        is(arrayContaining("abc", "def", "ghi")));
-    assertThat(RestVerticle.matchPath("/%2F%3F%2B%23/12%2334", Pattern.compile("^/([^/]+)/([^/]+)$")),
-        is(arrayContaining("/?+#", "12#34")));
-  }
 
-  @Test
-  void getResponseSucceeded() {
-    Response response = ResponseDelegate.status(234).build();
-    assertThat(RestVerticle.getResponse(Future.succeededFuture(response)).getStatus(), is(234));
-  }
-
-  @Test
-  void getResponseFailed() {
-    Response response = ResponseDelegate.status(456).build();
-    assertThat(RestVerticle.getResponse(Future.failedFuture(new ResponseException(response))).getStatus(), is(456));
-  }
-
-  @Test
-  void getResponseFailedWithoutResponse() {
-    assertThat(RestVerticle.getResponse(Future.failedFuture("foo")), is(nullValue()));
-  }
 }

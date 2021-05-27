@@ -5,8 +5,6 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
 import java.io.InputStream;
 import java.util.Date;
@@ -30,7 +28,6 @@ import org.folio.rest.tools.utils.OutStream;
  */
 public class BooksDemoAPI implements Rmbtests {
 
-  private static final Logger log = LoggerFactory.getLogger(BooksDemoAPI.class);
   private static final String TABLE = "test_tenantapi";
 
   /**
@@ -38,8 +35,8 @@ public class BooksDemoAPI implements Rmbtests {
    */
   @Validate
   @Override
-  public void getRmbtestsBooks(String author, Date publicationDate, Number rating, int edition, String isbn,
-      List<String> facets, Map<String, String> okapiHeaders,
+  public void getRmbtestsBooks(String author, Date publicationDate, Number score, Number rating, int edition, String isbn,
+      boolean available, List<String> facets, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
 
     asyncResultHandler.handle(Future.succeededFuture(GetRmbtestsBooksResponse.respond200WithApplicationJson(new
@@ -75,14 +72,14 @@ public class BooksDemoAPI implements Rmbtests {
     switch (query == null ? "null" : query) {
       case "badclass=true":
         PgUtil.streamGet(TABLE, /* can not be deserialized */ StringBuilder.class,
-          null, 0, 10, new LinkedList<String>(), "books", routingContext, okapiHeaders, vertxContext);
+          null, 0, 10, new LinkedList<>(), "books", routingContext, okapiHeaders, vertxContext);
         break;
       case "nullpointer=true":
         PgUtil.streamGet(TABLE, Book.class, null, 0, 10, null, "books",
           routingContext, /* okapiHeaders is null which results in exception */ null, vertxContext);
         break;
       case "slim=true":
-        PgUtil.streamGet(TABLE, SlimBook.class, null, 0, 10, new LinkedList<String>(), "books",
+        PgUtil.streamGet(TABLE, SlimBook.class, null, 0, 10, new LinkedList<>(), "books",
           routingContext, okapiHeaders, vertxContext);
         break;
       case "wrapper=true":
@@ -94,7 +91,7 @@ public class BooksDemoAPI implements Rmbtests {
         }
         break;
       default:
-        PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<String>(), "books",
+        PgUtil.streamGet(TABLE, Book.class, query, 0, 10, new LinkedList<>(), "books",
           routingContext, okapiHeaders, vertxContext);
     }
   }
@@ -117,6 +114,14 @@ public class BooksDemoAPI implements Rmbtests {
     jo.put("complete", okapiHeaders.containsKey("COMPLETE"));
     asyncResultHandler.handle(Future.succeededFuture(
       PostRmbtestsTestStreamResponse.respond200WithApplicationJson(jo.encodePrettily())));
+  }
+
+  @Override
+  public void postRmbtestsTestForm(RoutingContext routingContext, Map<String, String> okapiHeaders,
+                                   Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    asyncResultHandler.handle(Future.succeededFuture(
+        PostRmbtestsTestFormResponse.respond200WithApplicationJson(
+            routingContext.request().formAttributes().entries())));
   }
 
   @Validate

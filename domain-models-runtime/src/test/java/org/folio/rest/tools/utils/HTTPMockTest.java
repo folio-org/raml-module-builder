@@ -12,18 +12,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import io.vertx.core.logging.LoggerFactory;
-
 
 /**
  * @author shale
  *
  */
 public class HTTPMockTest {
-
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
 
   @Before
   public void setUp() throws Exception {

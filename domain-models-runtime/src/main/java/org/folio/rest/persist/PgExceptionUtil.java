@@ -10,6 +10,7 @@ public final class PgExceptionUtil {
   static final String FOREIGN_KEY_VIOLATION = "23503";
   static final String UNIQUE_VIOLATION = "23505";
   static final String INVALID_TEXT_REPRESENTATION = "22P02";
+  static final String VERSION_CONFLICT = "23F09";
 
   private PgExceptionUtil() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
@@ -63,6 +64,17 @@ public final class PgExceptionUtil {
    */
   public static boolean isInvalidTextRepresentation(Throwable throwable) {
     return INVALID_TEXT_REPRESENTATION.equals(get(throwable, 'C'));
+  }
+
+  /**
+   * Check for optimistic locking version conflict.
+   * @param throwable any Throwable or null
+   * @return true if throwable is a
+   *   {@link io.vertx.pgclient.PgException PgException}
+   *   that reports a version conflict, false otherwise.
+   */
+  public static boolean isVersionConflict(Throwable throwable) {
+    return VERSION_CONFLICT.equals(get(throwable, 'C'));
   }
 
   /**
@@ -132,7 +144,7 @@ public final class PgExceptionUtil {
     return "ErrorMessage(fields=["
         + "(Severity, " + e.getSeverity() + "), "
         + "(SQLSTATE, " + e.getCode() + "), "
-        + "(Message, " + e.getMessage() + "), "
+        + "(Message, " + e.getErrorMessage() + "), "
         + "(Detail, " + e.getDetail() + ")])";
   }
 
@@ -141,7 +153,7 @@ public final class PgExceptionUtil {
       return null;
     }
     Map<Character, String> map = new HashMap<>();
-    map.put('M', ((PgException) throwable).getMessage());
+    map.put('M', ((PgException) throwable).getErrorMessage());
     map.put('D', ((PgException) throwable).getDetail());
     map.put('S', ((PgException) throwable).getSeverity());
     map.put('C', ((PgException) throwable).getCode());

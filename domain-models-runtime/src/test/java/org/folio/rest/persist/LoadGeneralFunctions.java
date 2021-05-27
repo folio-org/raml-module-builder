@@ -1,28 +1,30 @@
 package org.folio.rest.persist;
 
+import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
-import java.io.IOException;
-import org.apache.commons.io.IOUtils;
+import org.folio.util.ResourceUtil;
 
 public class LoadGeneralFunctions {
-  static private void load(TestContext context, PostgresClient postgresClient, String rep, String file) {
-    Async async = context.async();
-    try {
-      String sql = IOUtils.toString(
-        LoadGeneralFunctions.class.getClassLoader().getResourceAsStream("templates/db_scripts/" + file), "UTF-8");
-      sql = sql.replace("${myuniversity}_${mymodule}.", rep.isEmpty() ? "" : (rep + "."));
-      sql = sql.replace("${myuniversity}_${mymodule}", rep);
-      sql = sql.replace("${exactCount}", "1000");
-      postgresClient.getClient().query(sql).execute(context.asyncAssertSuccess(reply -> async.complete()));
-    } catch (IOException ex) {
-      context.fail(ex);
-    }
-    async.awaitSuccess(1000);
+
+  static private Future<Void> load(PostgresClient postgresClient, String schema, String file) {
+    String sql = ResourceUtil.asString("templates/db_scripts/" + file);
+    sql = sql.replace("${myuniversity}_${mymodule}.", schema.isEmpty() ? "" : (schema + "."));
+    sql = sql.replace("${myuniversity}_${mymodule}", schema);
+    sql = sql.replace("${exactCount}", "1000");
+    return postgresClient.execute(sql).mapEmpty();
   }
 
-  static void loadFuncs(TestContext context, PostgresClient postgresClient, String rep) {
-    load(context, postgresClient, rep, "extensions.ftl");
-    load(context, postgresClient, rep, "general_functions.ftl");
+  static Future<Void> loadFuncs(PostgresClient postgresClient, String schema) {
+    return load(postgresClient, schema, "extensions.ftl")
+    .compose(x -> load(postgresClient, schema, "general_functions.ftl"));
+  }
+
+  static void loadFuncs(TestContext context, PostgresClient postgresClient, String schema) {
+    Async async = context.async();
+    loadFuncs(postgresClient, schema)
+    .onSuccess(x -> async.complete())
+    .onFailure(e -> context.fail(e));
+    async.await(1000);
   }
 }

@@ -1,18 +1,22 @@
 package org.folio.rest.persist;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collections;
 import java.util.HashSet;
@@ -24,17 +28,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
-
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.core.streams.ReadStream;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
@@ -53,12 +54,15 @@ import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
+import io.vertx.sqlclient.TransactionRollbackException;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
+import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.cql2pgjson.exception.FieldException;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Facet;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
@@ -79,14 +83,13 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresClientIT {
-  private static final Logger log = LoggerFactory.getLogger(PostgresClientIT.class);
-
   static private final String TENANT = "tenant";
   /** table name */
   static private final String FOO = "foo";
@@ -103,15 +106,12 @@ public class PostgresClientIT {
   @Rule
   public Timeout rule = Timeout.seconds(15);
 
-  static {
-    System.setProperty(LoggerFactory.LOGGER_DELEGATE_FACTORY_CLASS_NAME, "io.vertx.core.logging.Log4j2LogDelegateFactory");
-  }
-
   private int QUERY_TIMEOUT = 0;
 
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
     final String os = System.getProperty("os.name").toLowerCase();
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
   }
 
@@ -119,11 +119,7 @@ public class PostgresClientIT {
   public static void setUpClass(TestContext context) throws Exception {
     vertx = VertxUtils.getVertxWithExceptionHandler();
 
-    String embed = System.getProperty("embed_postgres", "").toLowerCase().trim();
-    if ("true".equals(embed)) {
-      PostgresClient.setIsEmbedded(true);
-      PostgresClient.getInstance(vertx).startEmbeddedPostgres();
-    }
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     PostgresClient.setExplainQueryThreshold(0);
 
     // fail the complete test class if the connection to postgres doesn't work
@@ -132,7 +128,7 @@ public class PostgresClientIT {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    PostgresClient.stopEmbeddedPostgres();
+    PostgresClient.stopPostgresTester();
     PostgresClient.setExplainQueryThreshold(PostgresClient.EXPLAIN_QUERY_THRESHOLD_DEFAULT);
     if (vertx != null) {
       vertx.close(context.asyncAssertSuccess());
@@ -412,6 +408,32 @@ public class PostgresClientIT {
     c2.closeClient(context.asyncAssertSuccess());
   }
 
+  /**
+   * Each connection runs pg_sleep(1) that takes 1 second.
+   * Setting maxPoolSize=90 runs them in parallel so that it
+   * completes within 5 seconds.
+   *
+   * <p>If you want to test with a higher maxPoolSize you
+   * need to increase max_connections so that maxPoolSize is within
+   * (max_connections - superuser_reserved_connections):
+   * <a href="https://www.postgresql.org/docs/current/runtime-config-connection.html">
+   * https://www.postgresql.org/docs/current/runtime-config-connection.html</a>
+   */
+  @Test(timeout = 5000)  // milliseconds
+  public void maxPoolSize(TestContext context) {
+    int maxPoolSize = 90;
+    postgresClient = createA(context, TENANT);
+    JsonObject configuration = postgresClient.getConnectionConfig().copy()
+        .put("maxPoolSize", maxPoolSize);
+    postgresClient.setClient(PostgresClient.createPgPool(vertx, configuration));
+    List<Future> futures = new ArrayList<>();
+    for (int i=0; i<maxPoolSize; i++) {
+      futures.add(Future.<RowSet<Row>>future(promise ->
+        postgresClient.execute("SELECT pg_sleep(1)", promise)));
+    }
+    CompositeFuture.all(futures).onComplete(context.asyncAssertSuccess());
+  }
+
   public static class StringPojo {
     public String id;
     public String key;
@@ -469,6 +491,13 @@ public class PostgresClientIT {
     }));
   }
 
+  @Test
+  public void deleteByIdException(TestContext context) {
+    postgresClientConnectionThrowsException().delete(FOO, randomUuid(), context.asyncAssertFailure(e -> {
+      assertThat(e, is(instanceOf(RuntimeException.class)));
+    }));
+  }
+
   private void deleteByCqlWrapper(TestContext context, String key) throws FieldException {
     Async async = context.async();
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
@@ -493,12 +522,15 @@ public class PostgresClientIT {
   @Test
   public void deleteByCqlWrapperThatThrowsException(TestContext context) {
     CQLWrapper cqlWrapper = new CQLWrapper() {
-      public String toString() {
+      @Override
+      public String getWhereClause() {
         throw new RuntimeException("ping pong");
       }
     };
-    createFoo(context).delete(FOO, cqlWrapper, context.asyncAssertFailure(fail -> {
-      context.assertTrue(fail.getMessage().contains("ping pong"));
+    createFoo(context).getSQLConnection(asyncAssertTx(context, sqlConnection  -> {
+      postgresClient.delete(sqlConnection,  FOO, cqlWrapper, context.asyncAssertFailure(fail -> {
+        context.assertTrue(fail.getMessage().contains("ping pong"));
+      }));
     }));
   }
 
@@ -628,6 +660,61 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void updateWithCriterion(TestContext context) {
+    Criterion criterion = new Criterion().addCriterion(new Criteria()
+        .addField("'key'").setOperation("=").setVal("x"));
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, criterion, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, criterion, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithCqlWrapper(TestContext context) throws Exception {
+    CQLWrapper cqlWrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "key=x");
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, cqlWrapper, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, cqlWrapper, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithWhereClause(TestContext context) throws Exception {
+    String where = "WHERE jsonb->>'key'='x'";
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.update(FOO, singleQuotePojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet -> {
+        assertThat(rowSet.rowCount(), is(1));
+        postgresClient.update(FOO, xPojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet2 -> {
+          assertThat(rowSet2.rowCount(), is(0));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateWithWhereClauseSqlConnection(TestContext context) throws Exception {
+    String where = "WHERE jsonb->>'key'='x'";
+    createFoo(context).save(FOO, xPojo, context.asyncAssertSuccess(save -> {
+      postgresClient.getSQLConnection(conn -> {
+        postgresClient.update(conn, FOO, singleQuotePojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet -> {
+          assertThat(rowSet.rowCount(), is(1));
+          postgresClient.update(conn, FOO, xPojo, "jsonb", where, true, context.asyncAssertSuccess(rowSet2 -> {
+            assertThat(rowSet2.rowCount(), is(0));
+          }));
+        }));
+      });
+    }));
+  }
+
+  @Test
   public void updateSectionX(TestContext context) {
     UpdateSection updateSection = new UpdateSection();
     updateSection.addField("key").setValue("x");
@@ -667,25 +754,52 @@ public class PostgresClientIT {
     }));
   }
 
-    @Test
-  public void selectWithTimeoutSuccess(TestContext context) {
-      PostgresClient client = postgresClient();
-      client.getSQLConnection(2000, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(1);",
-            client.closeAndHandleResult(conn, context.asyncAssertSuccess()));
-      }));
+  @Test
+  public void sqlConnectionWithTimeoutSuccess(TestContext context) {
+    PostgresClient client = postgresClient();
+    client.getSQLConnection(2000, asyncAssertTx(context, conn -> {
+      client.selectSingle(conn, "SELECT 1, pg_sleep(1);",
+          client.closeAndHandleResult(conn, context.asyncAssertSuccess()));
+    }));
   }
 
   @Test
-  public void selectWithTimeoutFailure(TestContext context) {
-      PostgresClient client = postgresClient();
-      client.getSQLConnection(500, asyncAssertTx(context, conn -> {
-        client.selectSingle(conn, "SELECT 1, pg_sleep(3);",
-            client.closeAndHandleResult(conn, context.asyncAssertFailure(e -> {
-              String sqlState = new PgExceptionFacade(e).getSqlState();
-              assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
-        })));
-      }));
+  public void sqlConnectionWithTimeoutFailure(TestContext context) {
+    PostgresClient client = postgresClient();
+    client.getSQLConnection(500, asyncAssertTx(context, conn -> {
+      client.selectSingle(conn, "SELECT 1, pg_sleep(3);",
+          client.closeAndHandleResult(conn, context.asyncAssertFailure(e -> {
+            String sqlState = new PgExceptionFacade(e).getSqlState();
+            assertThat(PgExceptionUtil.getMessage(e), sqlState, is("57014"));  // query_canceled
+          })));
+    }));
+  }
+
+  @Test
+  public void transWithError(TestContext context) {
+    postgresClient().withTrans(trans -> {
+      return trans.getPgConnection().query("SELECT (").execute();
+    }).onComplete(context.asyncAssertFailure(select -> {
+      assertThat(new PgExceptionFacade(select).getSqlState(), is("42601")); // syntax error
+    }));
+  }
+
+  @Test
+  public void transWithTimeoutSuccess(TestContext context) {
+    postgresClient().withTrans(3000, trans -> {
+      return trans.getPgConnection().query("SELECT 1, pg_sleep(0.1)").execute();
+    }).onComplete(context.asyncAssertSuccess(rowSet -> {
+      assertThat(rowSet.iterator().next().getInteger(0), is(1));
+    }));
+  }
+
+  @Test
+  public void transWithTimeoutFailure(TestContext context) {
+    postgresClient().withTrans(1, trans -> {
+      return trans.getPgConnection().query("SELECT 1, pg_sleep(3)").execute();
+    }).onComplete(context.asyncAssertFailure(e -> {
+      assertThat(e.getMessage(), containsString("57014"));  // query_canceled
+    }));
   }
 
   @Test
@@ -884,7 +998,7 @@ public class PostgresClientIT {
   }
 
   private String base64(byte [] source) {
-    return Base64.getEncoder().encodeToString(source);
+    return Base64.getEncoder().withoutPadding().encodeToString(source);
   }
 
   @Test
@@ -1011,6 +1125,64 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void updateBatch(TestContext context) {
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    JsonArray a1 = new JsonArray()
+        .add(new JsonObject().put("id", id1).put("a", 1).encode())
+        .add(new JsonObject().put("id", id2).put("b", 2).encode());
+    JsonArray a2 = new JsonArray()
+        .add(new JsonObject().put("id", id1).put("a", 3).encode())
+        .add(new JsonObject().put("id", id2).put("b", 4).encode());
+    postgresClient = createFoo(context);
+    postgresClient.updateBatch(FOO, a1, context.asyncAssertSuccess(update -> {
+      assertThat(update.rowCount(), is(0));
+      assertThat(update.next().rowCount(), is(0));
+      postgresClient.saveBatch(FOO, a1, context.asyncAssertSuccess(save -> {
+        assertThat(save.rowCount(), is(1));
+        assertThat(save.next().rowCount(), is(1));
+        postgresClient.updateBatch(FOO, a2, context.asyncAssertSuccess(update2 -> {
+          assertThat(update2.rowCount(), is(1));
+          assertThat(update2.next().rowCount(), is(1));
+          assertThat(update2.next().next(), is(nullValue()));
+          postgresClient.getById(FOO, id2, context.asyncAssertSuccess(get -> {
+            assertThat(get.getInteger("b"), is(4));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
+  public void updateBatchPojo(TestContext context) {
+    String id1 = randomUuid();
+    String id2 = randomUuid();
+    List<StringPojo> a1 = new ArrayList<>();
+    a1.add(new StringPojo("a", id1));
+    a1.add(new StringPojo("b", id2));
+    List<StringPojo> a2 = new ArrayList<>();
+    a2.add(new StringPojo("c", id1));
+    a2.add(new StringPojo("d", id2));
+    postgresClient = createFoo(context);
+    postgresClient.updateBatch(FOO, a1, context.asyncAssertSuccess(update -> {
+      assertThat(update.rowCount(), is(0));
+      assertThat(update.next().rowCount(), is(0));
+      postgresClient.saveBatch(FOO, a1, context.asyncAssertSuccess(save -> {
+        assertThat(save.rowCount(), is(1));
+        assertThat(save.next().rowCount(), is(1));
+        postgresClient.updateBatch(FOO, a2, context.asyncAssertSuccess(update2 -> {
+          assertThat(update2.rowCount(), is(1));
+          assertThat(update2.next().rowCount(), is(1));
+          assertThat(update2.next().next(), is(nullValue()));
+          postgresClient.getById(FOO, id2, context.asyncAssertSuccess(get -> {
+            assertThat(get.getString("key"), is("d"));
+          }));
+        }));
+      }));
+    }));
+  }
+
+  @Test
   public void upsertBatch(TestContext context) {
     String id1 = randomUuid();
     String id2 = randomUuid();
@@ -1057,6 +1229,23 @@ public class PostgresClientIT {
       }));
     }));
   }
+
+  @Test
+  public void upsertBatchXTrans(TestContext context) {
+    List<Object> list = Collections.singletonList(xPojo);
+    postgresClient = createFoo(context);
+    postgresClient.startTx(asyncAssertTx(context, trans -> {
+      postgresClient.upsertBatch(trans, FOO, list, context.asyncAssertSuccess(save -> {
+        final String id = save.iterator().next().getValue(0).toString();
+        postgresClient.endTx(trans, context.asyncAssertSuccess(end -> {
+          postgresClient.getById(FOO, id, context.asyncAssertSuccess(get -> {
+            context.assertEquals("x", get.getString("key"));
+          }));
+        }));
+      }));
+    }));
+  }
+
 
   @Test
   public void endTxTransFailed(TestContext context) {
@@ -1266,6 +1455,36 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveBatchJsonFailedConnection(TestContext context) {
+    postgresClient().saveBatch(Future.failedFuture("f"), FOO, new JsonArray(),
+        context.asyncAssertFailure(e -> assertThat(e.getMessage(), is("f"))));
+  }
+
+  @Test
+  public void saveBatchJsonConnection(TestContext context) {
+    String id = randomUuid();
+    JsonArray update = new JsonArray().add(new JsonObject().put("id", id).put("key", "y").encode());
+    createFoo(context).save(FOO, id, new StringPojo("x"), context.asyncAssertSuccess(x -> {
+      postgresClient.getSQLConnection(sqlConnection -> {
+        postgresClient.saveBatch(sqlConnection, FOO, update, context.asyncAssertFailure(e -> {
+          postgresClient.upsertBatch(sqlConnection, FOO, update, context.asyncAssertSuccess(rowSet -> {
+            postgresClient.getById(FOO, id, context.asyncAssertSuccess(json -> {
+              assertThat(rowSet.iterator().next().getUUID(0).toString(), is(id));
+              assertThat(json.getString("key"), is("y"));
+            }));
+          }));
+        }));
+      });
+    }));
+  }
+
+  @Test
+  public void upsertBatchJsonConnectionException(TestContext context) {
+    postgresClient().upsertBatch(Future.succeededFuture(), FOO, new JsonArray(),
+        context.asyncAssertFailure(e -> assertThat(e, is(instanceOf(NullPointerException.class)))));
+  }
+
+  @Test
   public void saveTrans(TestContext context) {
     postgresClient = createFoo(context);
     String uuid = randomUuid();
@@ -1399,6 +1618,24 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void saveAndReturnUpdatedEntityCreatingPojoFails(TestContext context) {
+    class FailingPojo extends StringPojo {
+      public FailingPojo() {  // this constructor is called when deserialising the JSON returned from DB
+        throw new RuntimeException();
+      }
+      public FailingPojo(String key, String id) {
+        this.key = key;
+        this.id = id;
+      }
+    };
+    String uuid = randomUuid();
+    FailingPojo failingPojo = new FailingPojo("y", uuid);
+    postgresClient = createFoo(context);
+    postgresClient.saveAndReturnUpdatedEntity(FOO, uuid, failingPojo, context.asyncAssertFailure(e ->
+      assertThat(e, is(instanceOf(UncheckedIOException.class)))));
+  }
+
+  @Test
   public void saveTransIdNull(TestContext context) {
     String id = randomUuid();
     postgresClient = createFoo(context);
@@ -1479,6 +1716,55 @@ public class PostgresClientIT {
         context.assertTrue(get.result().contains(":"));
         context.assertTrue(get.result().contains("\"x\""));
         async.complete();
+      });
+    });
+  }
+
+  @Test
+  public void getByIdAsStringForUpdate(TestContext context) {
+    Async async1 = context.async();
+    Async async2 = context.async();
+    String id = randomUuid();
+    postgresClient = createFoo(context);
+    postgresClient.save(FOO, id, new StringPojo("x0"), res -> {
+      assertSuccess(context, res);
+      context.assertEquals(id, res.result());
+      Criterion criterion = new Criterion();
+      criterion.addCriterion(new Criteria().addField("'id'").setOperation("=").setVal(id));
+      postgresClient.startTx(conn -> {
+        // lock the row for update
+        postgresClient.getByIdAsStringForUpdate(conn, FOO, id, get -> {
+          // concurrent update will have to wait
+          postgresClient.update(FOO, new StringPojo("x2"), id, rows -> {
+            context.assertTrue(async1.isCompleted());
+            postgresClient.getByIdAsString(FOO, id, get2 -> {
+              assertSuccess(context, get2);
+              context.assertTrue(get2.result().contains("\"x2\""));
+              async2.complete();
+            });
+          });
+          // update first because it holds the lock
+          postgresClient.execute(conn, "SELECT pg_sleep(0.5)", delayRs -> {
+            assertSuccess(context, delayRs);
+            postgresClient.update(conn, FOO, new StringPojo("x1"),
+                new CQLWrapper(criterion), true, rows -> {
+              assertSuccess(context, rows);
+              context.assertFalse(async2.isCompleted());
+              async1.complete();
+              // before the first update is committed
+              postgresClient.getByIdAsString(FOO, id, get0 -> {
+                assertSuccess(context, get0);
+                context.assertTrue(get0.result().contains("\"x0\""), get0.result());
+                // read in the same update transaction
+                postgresClient.getByIdAsString(conn, FOO, id, get1 -> {
+                  assertSuccess(context, get1);
+                  context.assertTrue(get1.result().contains("\"x1\""), get1.result());
+                  postgresClient.endTx(conn, context.asyncAssertSuccess());
+                });
+              });
+            });
+          });
+        });
       });
     });
   }
@@ -1636,7 +1922,33 @@ public class PostgresClientIT {
     PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
     Criterion criterion = new Criterion();
     criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setVal("x"));
+    postgresClient.get(FOO, StringPojo.class, criterion)
+    .onComplete(context.asyncAssertSuccess(res -> {
+      assertThat(res.getResults().size(), is(1));
+      assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
+    }));
+  }
+
+  @Test
+  public void getByCriterion2(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    Criterion criterion = new Criterion();
+    criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setVal("x"));
     postgresClient.get(FOO, StringPojo.class, criterion, false, context.asyncAssertSuccess(res -> {
+      assertThat(res.getResults().size(), is(1));
+      assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
+    }));
+  }
+
+  @Test
+  public void getByCriterionFacets(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, ids);
+    Criterion criterion = new Criterion();
+    criterion.addCriterion(new Criteria().addField("'key'").setOperation("=").setVal("x"));
+    postgresClient.get(FOO, StringPojo.class, criterion, false, false, (List<FacetField>)null)
+    .onComplete(context.asyncAssertSuccess(res -> {
       assertThat(res.getResults().size(), is(1));
       assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
     }));
@@ -1649,6 +1961,18 @@ public class PostgresClientIT {
     Criterion criterion = new Criterion();
     criterion.addCriterion(new Criteria().addField("id").setJSONB(false).setOperation("=").setVal(ids.getString(0)));
     postgresClient.get(FOO, StringPojo.class, criterion, false, context.asyncAssertSuccess(res -> {
+      assertThat(res.getResults().size(), is(1));
+      assertThat(res.getResults().get(0).key, is("x"));
+    }));
+  }
+
+  // broken since this RMB-497 commit:
+  // https://github.com/folio-org/raml-module-builder/commit/51a67d3b81b372096c11ddcc8e7b0af6db48c744
+  @Ignore("broken since RMB-497, see RMB-817")
+  @Test
+  public void getByExamplePojo(TestContext context) {
+    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(randomUuid()));
+    postgresClient.get(FOO, new StringPojo("x"), false, context.asyncAssertSuccess(res -> {
       assertThat(res.getResults().size(), is(1));
       assertThat(res.getResults().get(0).key, is("x"));
     }));
@@ -1682,7 +2006,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(null));
+        getConnection().onComplete(handler);
+      }
+
+      @Override
+      public Future<SqlConnection> getConnection() {
+        return Future.succeededFuture();
       }
 
       @Override
@@ -1696,13 +2025,14 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
-        handler.handle(Future.succeededFuture(null));
+      public void close(Handler<AsyncResult<Void>> handler) {
+        handler.handle(close());
       }
 
       @Override
-      public void close() {
+      public Future<Void> close() {
         // nothing to do
+        return Future.succeededFuture();
       }
     };
     try {
@@ -1719,9 +2049,15 @@ public class PostgresClientIT {
    */
   private PostgresClient postgresClientGetConnectionFails() {
     PgPool client = new PgPool() {
+
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.failedFuture("postgresClientGetConnectionFails"));
+        getConnection().onComplete(handler);
+      }
+
+      @Override
+      public Future<SqlConnection> getConnection() {
+        return Future.failedFuture("postgresClientGetConnectionFails");
       }
 
       @Override
@@ -1735,13 +2071,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
+      public void close(Handler<AsyncResult<Void>> handler) {
 
       }
 
       @Override
-      public void close() {
-        // nothing to do
+      public Future<Void> close() {
+        return null;
       }
     };
     try {
@@ -1785,6 +2121,11 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Future<PreparedStatement> prepare(String s) {
+        return null;
+      }
+
+      @Override
       public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
@@ -1795,13 +2136,29 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Transaction begin() {
+      public void begin(
+          Handler<AsyncResult<Transaction>> handler) {
+
+      }
+
+      @Override
+      public Future<Transaction> begin() {
         return null;
       }
 
       @Override
       public boolean isSSL() {
         return false;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+        close().onComplete(handler);
+      }
+
+      @Override
+      public Future<Void> close() {
+        return Future.succeededFuture();
       }
 
       @Override
@@ -1812,11 +2169,6 @@ public class PostgresClientIT {
       @Override
       public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
         throw new RuntimeException();
-      }
-
-      @Override
-      public void close() {
-
       }
 
       @Override
@@ -1828,7 +2180,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
+      }
+
+      @Override
+      public Future<SqlConnection> getConnection() {
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override
@@ -1842,13 +2199,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
+      public void close(Handler<AsyncResult<Void>> handler) {
 
       }
 
       @Override
-      public void close() {
-        // nothing to do
+      public Future<Void> close() {
+        return null;
       }
     };
     try {
@@ -1889,8 +2246,13 @@ public class PostgresClientIT {
 
       @Override
       public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-        handler.handle(Future.failedFuture("preparedFails"));
+        prepare(s).onComplete(handler);
         return null;
+      }
+
+      @Override
+      public Future<PreparedStatement> prepare(String s) {
+        return Future.failedFuture("preparedFails");
       }
 
       @Override
@@ -1904,7 +2266,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Transaction begin() {
+      public void begin(
+          Handler<AsyncResult<Transaction>> handler) {
+
+      }
+
+      @Override
+      public Future<Transaction> begin() {
         return null;
       }
 
@@ -1914,13 +2282,23 @@ public class PostgresClientIT {
       }
 
       @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+
+      }
+
+      @Override
       public Query<RowSet<Row>> query(String s)
       {
         return new Query<RowSet<Row>> () {
 
           @Override
           public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
-            handler.handle(Future.failedFuture("queryFails"));
+            handler.handle(execute());
+          }
+
+          @Override
+          public Future<RowSet<Row>> execute() {
+            return Future.failedFuture("queryFails");
           }
 
           @Override
@@ -1937,11 +2315,12 @@ public class PostgresClientIT {
 
       @Override
       public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        return null;
+        throw new RuntimeException("queryFails");
       }
 
       @Override
-      public void close() {
+      public Future<Void> close() {
+        return null;
       }
 
       @Override
@@ -1953,7 +2332,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
+      }
+
+      @Override
+      public Future<SqlConnection> getConnection() {
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override
@@ -1967,13 +2351,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
-
+      public void close(Handler<AsyncResult<Void>> handler) {
+        close().onComplete(handler);
       }
 
       @Override
-      public void close() {
-        // nothing to do
+      public Future<Void> close() {
+        return Future.succeededFuture();
       }
     };
     try {
@@ -2016,6 +2400,11 @@ public class PostgresClientIT {
       }
 
       @Override
+      public Future<PreparedStatement> prepare(String s) {
+        return null;
+      }
+
+      @Override
       public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
@@ -2026,13 +2415,24 @@ public class PostgresClientIT {
       }
 
       @Override
-      public Transaction begin() {
+      public void begin(
+          Handler<AsyncResult<Transaction>> handler) {
+
+      }
+
+      @Override
+      public Future<Transaction> begin() {
         return null;
       }
 
       @Override
       public boolean isSSL() {
         return false;
+      }
+
+      @Override
+      public void close(Handler<AsyncResult<Void>> handler) {
+
       }
 
       @Override
@@ -2046,8 +2446,9 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void close() {
+      public Future<Void> close() {
 
+        return null;
       }
 
       @Override
@@ -2058,7 +2459,12 @@ public class PostgresClientIT {
     PgPool client = new PgPool() {
       @Override
       public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        handler.handle(Future.succeededFuture(pgConnection));
+        getConnection().onComplete(handler);
+      }
+
+      @Override
+      public Future<SqlConnection> getConnection() {
+        return Future.succeededFuture(pgConnection);
       }
 
       @Override
@@ -2072,13 +2478,13 @@ public class PostgresClientIT {
       }
 
       @Override
-      public void begin(Handler<AsyncResult<Transaction>> handler) {
+      public void close(Handler<AsyncResult<Void>> handler) {
 
       }
 
       @Override
-      public void close() {
-        // nothing to do
+      public Future<Void> close() {
+        return Future.succeededFuture();
       }
     };
     try {
@@ -2090,36 +2496,24 @@ public class PostgresClientIT {
     }
   }
 
-  /**
-   * @return a PostgresClient that fails when closing the connection.
-   */
-  private PostgresClient postgresClientEndTxFailure() {
-    class PostgresClientEndTxFailure extends PostgresClient {
-      public PostgresClientEndTxFailure(Vertx vertx, String tenant) throws Exception {
-        super(vertx, tenant);
-      }
-      @Override
-      public void endTx(AsyncResult<SQLConnection> trans, Handler<AsyncResult<Void>> done) {
-        done.handle(Future.failedFuture(new RuntimeException()));
-      }
-    };
-    try {
-      return new PostgresClientEndTxFailure(vertx, TENANT);
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+  @Test
+  public void executeOK(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'",
+            context.asyncAssertSuccess(res -> {
+              context.assertEquals(1, res.rowCount());
+            }));
   }
 
   @Test
-  public void executeOK(TestContext context) {
-    Async async = context.async();
+  public void executeOKFuture(TestContext context) {
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'", res -> {
-      assertSuccess(context, res);
-      context.assertEquals(1, res.result().rowCount());
-      async.complete();
-    });
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id='" + ids.getString(1) + "'")
+        .onComplete(context.asyncAssertSuccess(res -> {
+          context.assertEquals(1, res.rowCount());
+        }));
   }
 
   @Test
@@ -2144,14 +2538,18 @@ public class PostgresClientIT {
 
   @Test
   public void executeParam(TestContext context) {
-    Async async = context.async();
     JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
     insertXAndSingleQuotePojo(context, ids)
-    .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))), res -> {
-      assertSuccess(context, res);
-      context.assertEquals(1, res.result().rowCount());
-      async.complete();
-    });
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))),
+            context.asyncAssertSuccess(res -> context.assertEquals(1, res.rowCount())));
+  }
+
+  @Test
+  public void executeParamFuture(TestContext context) {
+    JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+    insertXAndSingleQuotePojo(context, ids)
+        .execute("DELETE FROM tenant_raml_module_builder.foo WHERE id=$1", Tuple.of(UUID.fromString(ids.getString(0))))
+        .onComplete(context.asyncAssertSuccess(res -> context.assertEquals(1, res.rowCount())));
   }
 
   @Test
@@ -2321,6 +2719,69 @@ public class PostgresClientIT {
     });
   }
 
+  private void assertNRowSets(RowSet<Row> rowSet, int n) {
+    int actual = 0;
+    while (rowSet != null) {
+      RowIterator<Row> iterator = rowSet.iterator();
+      assertThat(iterator.next().getString(0), is("x"));
+      assertThat(iterator.hasNext(), is(false));
+      rowSet = rowSet.next();
+      actual++;
+    }
+    assertThat(actual, is(n));
+  }
+
+  @Test
+  public void executeList0EmptyTuples(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList())
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 0)));
+  }
+
+  @Test
+  public void executeList1EmptyTuple(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList(Tuple.tuple()))
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 1)));
+  }
+
+  @Test
+  public void executeList2EmptyTuples(TestContext context) {
+    postgresClient().execute("SELECT 'x'", Arrays.asList(Tuple.tuple(), Tuple.tuple()))
+    .onComplete(context.asyncAssertSuccess(res -> assertNRowSets(res, 2)));
+  }
+
+  private void assertNRowSets(List<RowSet<Row>> list, int n) {
+    assertThat(list.size(), is(n));
+    list.forEach(rowSet -> {
+      RowIterator<Row> iterator = rowSet.iterator();
+      assertThat(iterator.next().getString(0), is("y"));
+      assertThat(iterator.hasNext(), is(false));
+    });
+  }
+
+  @Test
+  public void executeList0EmptyTuplesHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 0)));
+  }
+
+  @Test
+  public void executeList1EmptyTupleHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(Tuple.tuple()), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 1)));
+  }
+
+  @Test
+  public void executeList2EmptyTuplesHandler(TestContext context) {
+    postgresClient().execute("SELECT 'y'", Arrays.asList(Tuple.tuple(), Tuple.tuple()), context.asyncAssertSuccess(
+        res -> assertNRowSets(res, 2)));
+  }
+
+  @Test
+  public void executeListNullParams(TestContext context) {
+    postgresClient().execute("SELECT $1", (List<Tuple>) null)
+    .onComplete(context.asyncAssertFailure(t -> assertThat(t, is(instanceOf(NullPointerException.class)))));
+  }
+
   /** @return List containing one empty Tuple */
   private List<Tuple> list1JsonArray() {
     return Collections.singletonList(Tuple.tuple());
@@ -2337,13 +2798,20 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void executeListEndTxFailure(TestContext context) {
-    postgresClientEndTxFailure().execute("SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  public void executeListFailure(TestContext context) {
+    postgresClient().execute("SELECT foobar", Arrays.asList(Tuple.of("a")))
+    .onComplete(context.asyncAssertFailure(t -> assertThat(t.getMessage(), containsString("foobar"))));
   }
 
   @Test
-  public void executeListTransNull(TestContext context) throws Exception {
-    postgresClient().execute(null, "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
+  public void executeListTrans(TestContext context) throws Exception {
+    postgresClient().getSQLConnection(context.asyncAssertSuccess(conn -> {
+      AsyncResult<SQLConnection> sqlConnection = Future.succeededFuture(conn);
+      postgresClient.execute(sqlConnection, "SELECT 5", list1JsonArray(), context.asyncAssertSuccess(r -> {
+        assertThat(r.size(), is(1));
+        assertThat(r.get(0).iterator().next().getInteger(0), is(5));
+      }));
+    }));
   }
 
   @Test
@@ -2351,7 +2819,7 @@ public class PostgresClientIT {
     postgresClient().execute(Future.failedFuture("failed"), "SELECT 1", list1JsonArray(), context.asyncAssertFailure());
   }
 
-  // see RunSQLIT.java for more tests
+  /** see {@link RunSQLIT} for more tests */
   @Test
   public void runSQLNull(TestContext context) throws Exception {
     postgresClient().runSQLFile(null, false).onComplete(context.asyncAssertFailure());
@@ -2439,6 +2907,36 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectStream(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    createNumbers(context, 21, 22, 23)
+    .selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(),
+        rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23]"))));
+  }
+
+  @Test
+  public void selectStreamChunkSize(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    createNumbers(context, 21, 22, 23)
+    .selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(), 2,
+        rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23]"))));
+  }
+
+  @Test
+  public void selectStreamTwoConnQueries(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    postgresClient = createNumbers(context, 21, 22, 23, 31, 32, 33);
+    postgresClient.withTrans(
+        conn -> conn.selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(),
+            rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+        .compose(x -> conn.selectStream("SELECT i FROM numbers WHERE i IN (31, 33, 35) ORDER BY i", Tuple.tuple(),
+            rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))))
+    .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23, 31, 33]"))));
+  }
+
+  @Test
   public void selectStreamTrans(TestContext context) {
     postgresClient = createNumbers(context, 21, 22, 23);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2487,7 +2985,10 @@ public class PostgresClientIT {
     postgresClient.startTx(asyncAssertTx(context, trans -> {
       postgresClient.selectStream(trans, "SELECT (", Tuple.tuple(),
           context.asyncAssertFailure(select -> {
-            postgresClient.endTx(trans, context.asyncAssertSuccess());
+            assertThat(new PgExceptionFacade(select).getSqlState(), is("42601")); // syntax error
+            postgresClient.endTx(trans, context.asyncAssertFailure(endTx -> {
+              assertThat(endTx, is(instanceOf(TransactionRollbackException.class)));
+            }));
           }));
     }));
   }
@@ -2497,6 +2998,15 @@ public class PostgresClientIT {
     postgresClient = createNumbers(context, 41, 42, 43);
     postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (41, 43, 45) ORDER BY i",
         context.asyncAssertSuccess(select -> {
+          context.assertEquals(41, select.getInteger(0));
+        }));
+  }
+
+  @Test
+  public void selectSingleFuture(TestContext context) {
+    postgresClient = createNumbers(context, 41, 42, 43);
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (41, 43, 45) ORDER BY i")
+        .onComplete(context.asyncAssertSuccess(select -> {
           context.assertEquals(41, select.getInteger(0));
         }));
   }
@@ -2519,6 +3029,15 @@ public class PostgresClientIT {
     postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
         Tuple.of(51, 53, 55),
         context.asyncAssertSuccess(select -> {
+          context.assertEquals(51, select.getInteger(0));
+        }));
+  }
+
+  @Test
+  public void selectSingleParamFuture(TestContext context) {
+    postgresClient = createNumbers(context, 51, 52, 53);
+    postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+        Tuple.of(51, 53, 55)).onComplete(context.asyncAssertSuccess(select -> {
           context.assertEquals(51, select.getInteger(0));
         }));
   }
@@ -2561,6 +3080,12 @@ public class PostgresClientIT {
   @Test
   public void selectSingleParamTxException(TestContext context) {
     postgresClient().selectSingle(null, "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void selectStreamNullConnection(TestContext context) {
+    new Conn(null, null).selectStream("sql", Tuple.tuple(), 1, rowStreamHandler -> {})
+    .onComplete(context.asyncAssertFailure(e -> assertThat(e, is(instanceOf(NullPointerException.class)))));
   }
 
   @Test
@@ -2614,9 +3139,7 @@ public class PostgresClientIT {
   @Test
   public void selectDistinctOn(TestContext context) throws IOException {
     Async async = context.async();
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-
+    createTableWithPoLines(context);
     postgresClient.select("SELECT DISTINCT ON (jsonb->>'owner') * FROM mock_po_lines  ORDER BY (jsonb->>'owner') DESC", select -> {
       context.assertEquals(3, select.result().size());
       async.complete();
@@ -2627,8 +3150,7 @@ public class PostgresClientIT {
   @Test
   public void streamGetLegacy(TestContext context) throws IOException {
     AtomicInteger objectCount = new AtomicInteger();
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    createTableWithPoLines(context);
     postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", null, false, null,
       streamHandler -> objectCount.incrementAndGet(), context.asyncAssertSuccess(asyncResult ->
         context.assertEquals(6, objectCount.get())));
@@ -2637,18 +3159,15 @@ public class PostgresClientIT {
   @Test
   public void streamGetLegacyFilter(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper, false, null,
+    createTableWithPoLines(context);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", firstEdition(), false, null,
       streamHandler -> objectCount.incrementAndGet(), context.asyncAssertSuccess(asyncResult ->
         context.assertEquals(3, objectCount.get())));
   }
 
   @Test
   public void streamGetLegacySyntaxError(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    createTableWithPoLines(context);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=");
     postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper,
       false, null, streamHandler -> context.fail(), context.asyncAssertFailure());
@@ -2656,11 +3175,9 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetLegacyQuerySingleError(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     AtomicInteger objectCount = new AtomicInteger();
-    postgresClient.streamGet("noSuchTable", new Object(), "jsonb", wrapper,
+    postgresClient.streamGet("noSuchTable", new Object(), "jsonb", firstEdition(),
       false, null, streamHandler -> objectCount.incrementAndGet(),
       context.asyncAssertFailure(asyncResult
         -> context.assertEquals(0, objectCount.get())));
@@ -2668,19 +3185,15 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetQuerySingleError(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet("noSuchTable", Object.class, "jsonb", wrapper,
+    createTableWithPoLines(context);
+    postgresClient.streamGet("noSuchTable", Object.class, "jsonb", firstEdition(),
       false, null, context.asyncAssertFailure());
   }
 
   @Test
   public void streamGetFilterNoHandlers(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+    createTableWithPoLines(context);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(),
       false, null, context.asyncAssertSuccess(sr -> {
         context.assertEquals(3, sr.resultInfo().getTotalRecords());
       }));
@@ -2690,10 +3203,8 @@ public class PostgresClientIT {
   public void streamGetWithFilterHandlers(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+    createTableWithPoLines(context);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), false, null,
       context.asyncAssertSuccess(sr -> {
         context.assertEquals(3, sr.resultInfo().getTotalRecords());
         sr.handler(streamHandler -> objectCount.incrementAndGet());
@@ -2760,11 +3271,8 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetUnsupported(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+    createTableWithPoLines(context);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), false, null,
       context.asyncAssertSuccess(sr -> {
         try {
           sr.pause();
@@ -2791,10 +3299,7 @@ public class PostgresClientIT {
   public void streamGetWithFilterZeroHits(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
-
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    createTableWithPoLines(context);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       context.asyncAssertSuccess(sr -> {
@@ -2812,14 +3317,11 @@ public class PostgresClientIT {
   public void streamGetWithFacetsAndFilter(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
-
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     List<FacetField> facets = new ArrayList<FacetField>();
     facets.add(new FacetField("jsonb->>'edition'"));
     facets.add(new FacetField("jsonb->>'title'"));
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Poline.class, "jsonb", wrapper, true, null,
+    createTableWithPoLines(context);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Poline.class, "jsonb", firstEdition(), true, null,
       facets, QUERY_TIMEOUT, context.asyncAssertSuccess(sr -> {
         ResultInfo resultInfo = sr.resultInfo();
         context.assertEquals(3, resultInfo.getTotalRecords());
@@ -2844,16 +3346,12 @@ public class PostgresClientIT {
 
   @Test
   public void normalGetWithFacetsAndFilter(TestContext context) throws IOException, FieldException {
-    AtomicInteger objectCount = new AtomicInteger();
-
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     List<FacetField> facets = new ArrayList<FacetField>();
     facets.add(new FacetField("jsonb->>'edition'"));
     facets.add(new FacetField("jsonb->>'title'"));
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-
-    postgresClient.get(MOCK_POLINES_TABLE, Poline.class, new String[]{"jsonb"}, wrapper, true, true, facets, context.asyncAssertSuccess(sr -> {
+    createTableWithPoLines(context);
+    postgresClient.get(MOCK_POLINES_TABLE, Poline.class, new String[]{"jsonb"}, firstEdition(),
+        true, true, facets, context.asyncAssertSuccess(sr -> {
       ResultInfo resultInfo = sr.getResultInfo();
       context.assertEquals(3, resultInfo.getTotalRecords());
       context.assertEquals(2, resultInfo.getFacets().size());
@@ -2873,12 +3371,10 @@ public class PostgresClientIT {
   public void streamGetWithFacetsZeroHits(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
-
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     List<FacetField> facets = new ArrayList<FacetField>();
     facets.add(new FacetField("jsonb->>'edition'"));
     facets.add(new FacetField("jsonb->>'title'"));
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    createTableWithPoLines(context);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=Millenium edition");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
       facets, context.asyncAssertSuccess(sr -> {
@@ -2896,20 +3392,16 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetWithFacetsError(TestContext context) throws IOException, FieldException {
-    AtomicInteger objectCount = new AtomicInteger();
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     List<FacetField> badFacets = new ArrayList<FacetField>();
     badFacets.add(new FacetField("'"));  // bad facet
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true, null,
+    createTableWithPoLines(context);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), true, null,
       badFacets, QUERY_TIMEOUT, context.asyncAssertFailure());
   }
 
   @Test
   public void streamGetWithSyntaxError(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    createTableWithPoLines(context);
     CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=");
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
       context.asyncAssertFailure());
@@ -2917,12 +3409,10 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetExceptionInHandler(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), false, null,
       context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -2942,13 +3432,10 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetConnectionFailed(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    createTableWithPoLines(context);
     List<FacetField> facets = new ArrayList<FacetField>();
     AsyncResult<SQLConnection> connResult = Future.failedFuture("connection error");
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(connResult, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, true,
+    postgresClient.streamGet(connResult, MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), true,
       null, facets, context.asyncAssertFailure(
         x -> context.assertEquals("connection error", x.getMessage())));
   }
@@ -2977,7 +3464,7 @@ public class PostgresClientIT {
     }
 
     @Override
-    public ReadStream<Row> fetch(long l) {
+    public RowStream<Row> fetch(long l) {
       return this;
     }
 
@@ -2987,8 +3474,8 @@ public class PostgresClientIT {
     }
 
     @Override
-    public void close() {
-
+    public Future<Void> close() {
+      return Future.succeededFuture();
     }
 
     @Override
@@ -2999,10 +3486,8 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetResultException(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     List<FacetField> facets = new ArrayList<FacetField>();
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     ResultInfo resultInfo = new ResultInfo();
     context.assertNotNull(vertx);
     RowStream<Row> sqlRowStream = new MySQLRowStream();
@@ -3032,12 +3517,10 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetExceptionInEndHandler(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), false, null,
       context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -3057,12 +3540,10 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetExceptionInEndHandler2(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), false, null,
       context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -3080,12 +3561,10 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetExceptionInHandler2(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), false, null,
       context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
@@ -3103,13 +3582,11 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetExceptionInHandler3(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     StringBuilder events = new StringBuilder();
     Async async = context.async();
     postgresClient.streamGet(MOCK_POLINES_TABLE, StringBuilder.class /* no JSON mapping */,
-      "jsonb", wrapper, false, null, context.asyncAssertSuccess(sr -> {
+      "jsonb", firstEdition(), false, null, context.asyncAssertSuccess(sr -> {
         sr.handler(streamHandler -> {
           events.append("[handler]");
         }).endHandler(x -> {
@@ -3125,12 +3602,10 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetExceptionInHandler4(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     StringBuilder events = new StringBuilder();
     Async async = context.async();
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper, false, null,
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(), false, null,
         context.asyncAssertSuccess(sr -> {
           sr.handler(streamHandler -> {
             events.append("[handler]");
@@ -3151,14 +3626,9 @@ public class PostgresClientIT {
   @Test
   public void streamGetWithLimit(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
-
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-
+    createTableWithPoLines(context);
     Async async = context.async();
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
-      .setLimit(new Limit(1));
+    CQLWrapper wrapper = firstEdition().setLimit(new Limit(1));
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
       false, null, context.asyncAssertSuccess(sr -> {
         context.assertEquals(3, sr.resultInfo().getTotalRecords());
@@ -3174,14 +3644,9 @@ public class PostgresClientIT {
   @Test
   public void streamGetWithLimitZero(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
-
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-
+    createTableWithPoLines(context);
     Async async = context.async();
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
-      .setLimit(new Limit(0));
+    CQLWrapper wrapper = firstEdition().setLimit(new Limit(0));
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
       false, null, context.asyncAssertSuccess(sr -> {
         context.assertEquals(3, sr.resultInfo().getTotalRecords());
@@ -3198,12 +3663,8 @@ public class PostgresClientIT {
   public void streamGetPlain(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
-
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+    createTableWithPoLines(context);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(),
         false, null, context.asyncAssertSuccess(sr -> {
           context.assertEquals(3, sr.resultInfo().getTotalRecords());
           sr.handler(streamHandler -> objectCount.incrementAndGet());
@@ -3219,12 +3680,9 @@ public class PostgresClientIT {
   public void streamGetWithTransaction(TestContext context) throws IOException, FieldException {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
+    createTableWithPoLines(context);
     postgresClient.startTx(trans -> {
-      postgresClient.streamGet(trans, MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
+      postgresClient.streamGet(trans, MOCK_POLINES_TABLE, Object.class, "jsonb", firstEdition(),
           false, null, null, context.asyncAssertSuccess(sr -> {
             context.assertEquals(3, sr.resultInfo().getTotalRecords());
             sr.handler(streamHandler -> objectCount.incrementAndGet());
@@ -3243,11 +3701,8 @@ public class PostgresClientIT {
     AtomicInteger objectCount = new AtomicInteger();
     Async async = context.async();
 
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
-      .setOffset(new Offset(1));
+    createTableWithPoLines(context);
+    CQLWrapper wrapper = firstEdition().setOffset(new Offset(1));
     postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
       false, null, context.asyncAssertSuccess(sr -> {
         context.assertEquals(3, sr.resultInfo().getTotalRecords());
@@ -3262,16 +3717,13 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetWithOffsetAndLimit(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+    createTableWithPoLines(context);
     Set<String> ids = new HashSet<>();
     for (int i = 0; i < 4; i++) {
       AtomicInteger objectCount = new AtomicInteger();
       Async async = context.async();
 
-      CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition")
-        .setOffset(new Offset(i)).setLimit(new Limit(1));
+      CQLWrapper wrapper = firstEdition().setOffset(new Offset(i)).setLimit(new Limit(1));
       postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb", wrapper,
         false, null, context.asyncAssertSuccess(sr -> {
           context.assertEquals(3, sr.resultInfo().getTotalRecords());
@@ -3297,13 +3749,28 @@ public class PostgresClientIT {
   @Test
   public void streamGetLegacyDistinctOn(TestContext context) throws IOException {
     AtomicInteger objectCount = new AtomicInteger();
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-
+    createTableWithPoLines(context);
     postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", null, false, "jsonb->>'edition'",
       streamHandler -> objectCount.incrementAndGet(),
       context.asyncAssertSuccess(res -> context.assertEquals(2, objectCount.get())));
+  }
+
+  @Test
+  public void streamGetFuture4Args(TestContext context) throws Exception {
+    createTableWithPoLines(context);
+    postgresClient
+    .streamGet(MOCK_POLINES_TABLE, Object.class, firstEdition(), context.asyncAssertSuccess(
+        r -> assertThat(r.resultInfo().getTotalRecords(), is(3))))
+    .onComplete(context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void streamGetFuture8Args(TestContext context) throws Exception {
+    createTableWithPoLines(context);
+    postgresClient
+    .streamGet(MOCK_POLINES_TABLE, Object.class, firstEdition(), "jsonb", false, null, null,
+        context.asyncAssertSuccess(r -> assertThat(r.resultInfo().getTotalRecords(), is(3))))
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @Test
@@ -3387,6 +3854,51 @@ public class PostgresClientIT {
         async2.complete();
       });
     async2.awaitSuccess();
+  }
+
+  private void assertCQLWrapper(TestContext context, Function<CQLWrapper,Future<Results<StringPojo>>> function) {
+    try {
+      JsonArray ids = new JsonArray().add(randomUuid()).add(randomUuid());
+      insertXAndSingleQuotePojo(context, ids);
+      CQLWrapper cqlWrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "key = x");
+      function.apply(cqlWrapper)
+      .onComplete(context.asyncAssertSuccess(res -> {
+        assertThat(res.getResults().size(), is(1));
+        assertThat(res.getResults().get(0).getId(), is(ids.getString(0)));
+      }));
+    } catch (FieldException e) {
+      context.fail(e);
+    }
+  }
+
+  @Test
+  public void getCQLWrapper(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.get(FOO, StringPojo.class, new String [] { "jsonb" }, cqlWrapper, false, false, (List<FacetField>)null));
+  }
+
+  @Test
+  public void getCQLWrapper2(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.get(FOO, StringPojo.class, new String [] { "jsonb" }, cqlWrapper, false));
+  }
+
+  @Test
+  public void getCQLWrapper3(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.get(FOO, StringPojo.class, cqlWrapper, false, (List<FacetField>)null));
+  }
+
+  @Test
+  public void getCQLWrapper4(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.get(FOO, StringPojo.class, cqlWrapper, false));
+  }
+
+  @Test
+  public void getCQLWrapper5(TestContext context) throws CQL2PgJSONException {
+    assertCQLWrapper(context, cqlWrapper ->
+    postgresClient.withConn(conn -> conn.get(FOO, StringPojo.class, cqlWrapper)));
   }
 
   @Test
@@ -3677,8 +4189,8 @@ public class PostgresClientIT {
         });
         return null;
       };
-      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", resultSetMapper,
-          context.asyncAssertSuccess());
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", resultSetMapper)
+      .onComplete(context.asyncAssertSuccess());
     }));
   }
 
@@ -3689,10 +4201,10 @@ public class PostgresClientIT {
       QueryHelper queryHelper = new QueryHelper("table");
       queryHelper.selectQuery = "'";
       queryHelper.countQuery = "'";
-      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", null,
-          context.asyncAssertFailure(fail -> {
-            assertThat(fail.getMessage(), containsString("unterminated quoted string"));
-          }));
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", null)
+      .onComplete(context.asyncAssertFailure(fail -> {
+        assertThat(fail.getMessage(), containsString("unterminated quoted string"));
+      }));
     }));
   }
 
@@ -3718,8 +4230,7 @@ public class PostgresClientIT {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
 
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=First edition");
-    postgresClient.persistentlyCacheResult("cache_polines", MOCK_POLINES_TABLE, wrapper,
+    postgresClient.persistentlyCacheResult("cache_polines", MOCK_POLINES_TABLE, firstEdition(),
         context.asyncAssertSuccess(res ->
             postgresClient.removePersistentCacheResult("cache_polines",
                   context.asyncAssertSuccess())
@@ -3805,7 +4316,7 @@ public class PostgresClientIT {
         context.asyncAssertFailure());
   }
 
-  private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) throws IOException {
+  private void createTableWithPoLines(TestContext context, String tableName, String tableDefiniton) {
     String schema = PostgresClient.convertToPsqlStandard(TENANT);
     String polines = getMockData("mockdata/poLines.json");
     postgresClient = createTable(context, TENANT, tableName, tableDefiniton);
@@ -3816,7 +4327,23 @@ public class PostgresClientIT {
     }
   }
 
-  public static String getMockData(String path) throws IOException {
+  private void createTableWithPoLines(TestContext context) {
+    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
+  }
+
+  /**
+   * Returns {@code new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=\"First edition\"")}
+   */
+  private static CQLWrapper firstEdition() {
+    try {
+      return new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=\"First edition\"");
+    } catch (FieldException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  public static String getMockData(String path) {
     try (InputStream resourceAsStream = PostgresClientIT.class.getClassLoader().getResourceAsStream(path)) {
       if (resourceAsStream != null) {
         return IOUtils.toString(resourceAsStream, StandardCharsets.UTF_8);
@@ -3827,6 +4354,8 @@ public class PostgresClientIT {
         }
         return sb.toString();
       }
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 

@@ -1,12 +1,12 @@
 package org.folio.rest.persist;
 
 import static org.junit.Assert.assertTrue;
+
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
@@ -17,9 +17,8 @@ import java.util.UUID;
 
 import javax.ws.rs.core.Response;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.pgclient.PgException;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
@@ -29,6 +28,7 @@ import org.folio.rest.jaxrs.model.UserdataCollection;
 import org.folio.rest.jaxrs.model.Users;
 import org.folio.rest.jaxrs.model.Users.PostUsersResponse;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
+import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
@@ -53,8 +53,6 @@ import junit.framework.AssertionFailedError;
 
 @RunWith(VertxUnitRunner.class)
 public class PgUtilIT {
-  static Logger log = LoggerFactory.getLogger(PgUtilIT.class);
-
   @Rule
   public Timeout timeoutRule = Timeout.seconds(40);
 
@@ -66,48 +64,26 @@ public class PgUtilIT {
   @Rule
   public final ExpectedException exception = ExpectedException.none();
   /** If we start and stop our own embedded postgres */
-  static private boolean ownEmbeddedPostgres = false;
   static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
   static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
   static private Vertx vertx;
 
   @BeforeClass
   public static void setUpClass(TestContext context) throws Exception {
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
     vertx = VertxUtils.getVertxWithExceptionHandler();
-    startEmbeddedPostgres(vertx);
     createUserTable(context);
   }
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    if (ownEmbeddedPostgres) {
-      PostgresClient.stopEmbeddedPostgres();
-    }
-
     vertx.close(context.asyncAssertSuccess());
   }
 
-  public static void startEmbeddedPostgres(Vertx vertx) throws IOException {
-    if (PostgresClient.isEmbedded()) {
-      // starting and stopping embedded postgres is done by someone else
-      return;
-    }
-
-    // Read configuration
-    PostgresClient postgresClient = PostgresClient.getInstance(vertx);
-
-    if (! PostgresClient.isEmbedded()) {
-      // some external postgres
-      return;
-    }
-
-    postgresClient.startEmbeddedPostgres();
-
-    // We started our own embedded postgres, we also need to stop it.
-    ownEmbeddedPostgres = true;
-  }
-
   private static final String DUMMY_VAL = "dummy value set by trigger";
+
+  // a special user name used to test 409 response
+  private static final String USER_409 = "user_409_raise_exception";
 
   private static void createUserTable(TestContext context) {
     execute(context, "CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA public;");
@@ -128,6 +104,8 @@ public class PgUtilIT {
                      + "$$ BEGIN NEW.jsonb = NEW.jsonb || '{\"dummy\" : \"" + DUMMY_VAL + "\"}'; RETURN NEW; END; $$ language 'plpgsql';");
     execute(context, "CREATE TRIGGER idusername BEFORE INSERT OR UPDATE ON " + schema + ".users "
                      + "FOR EACH ROW EXECUTE PROCEDURE " + schema + ".dummy();");
+    execute(context, SchemaMaker.generateOptimisticLocking("testtenant", "raml_module_builder", "users"));
+
     execute(context, "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA " + schema + " TO " + schema);
     LoadGeneralFunctions.loadFuncs(context, PostgresClient.getInstance(vertx), schema);
   }
@@ -156,6 +134,11 @@ public class PgUtilIT {
 
   private static String randomUuid() {
     return UUID.randomUUID().toString();
+  }
+
+  private Future<User> getUser(String id) {
+    PostgresClient postgresClient = PgUtil.postgresClient(vertx.getOrCreateContext(), okapiHeaders);
+    return postgresClient.getById("users", id, User.class);
   }
 
   /**
@@ -394,6 +377,88 @@ public class PgUtilIT {
   }
 
   @Test
+  public void deleteByCQLwithNo500(TestContext testContext) {
+    PgUtil.delete("users",  "username=delete_test",
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
+        asyncAssertFail(testContext, "respond500"));
+  }
+
+  @Test
+  public void deleteByCQLwithNo400(TestContext testContext) {
+    PgUtil.delete("users", "username=delete_test",
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout400.class,
+        asyncAssertSuccess(testContext, 500, "respond400"));
+  }
+
+  @Test
+  public void deleteByCQLwithNo204(TestContext testContext) {
+    PgUtil.delete("users", "username=delete_test",
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout204.class,
+        asyncAssertSuccess(testContext, 500, "respond204"));
+  }
+
+  @Test
+  public void deleteByCQLNullHeaders(TestContext testContext) {
+    PgUtil.delete("users",  "username==delete_test",
+        null, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "null"));
+  }
+
+  @Test
+  public void deleteByCQLOK(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    insert(testContext, pg, "delete_a",  1);
+    insert(testContext, pg, "delete_b1",  1);
+    insert(testContext, pg, "delete_b2",  1);
+
+    // delete two
+    {
+      Async async = testContext.async();
+      PgUtil.delete("users",  "username=delete_b*", okapiHeaders, vertx.getOrCreateContext(),
+          Users.DeleteUsersByUserIdResponse.class,
+          testContext.asyncAssertSuccess(res -> {
+            assertThat(res.getStatus(), is(204));
+            async.complete();
+          }));
+      async.await();
+    }
+    // and check 1 left
+    {
+      Async async = testContext.async();
+      PgUtil.get(
+          "users", User.class, UserdataCollection.class, "username=delete*", 0, 0, okapiHeaders,
+          vertx.getOrCreateContext(), ResponseImpl.class, testContext.asyncAssertSuccess(response -> {
+            if (response.getStatus() != 200) {
+              testContext.fail("Expected status 200, got "
+                  + response.getStatus() + " " + response.getStatusInfo().getReasonPhrase());
+              async.complete();
+              return;
+            }
+            UserdataCollection c = (UserdataCollection) response.getEntity();
+            assertThat(c.getTotalRecords(), is(1));
+            async.complete();
+          }));
+      async.awaitSuccess(10000 /* ms */);
+    }
+  }
+
+  @Test
+  public void deleteByCQLSyntaxError(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    PgUtil.delete("users",  "username==",
+        okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "expected index or term, got EOF"));
+  }
+
+  @Test
+  public void deleteByCQLBadTable(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    PgUtil.delete("users1",  "username==delete_test",
+        okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "relation \\\"testtenant_raml_module_builder.users1\\\" does not exist"));
+  }
+
+  @Test
   public void getResponseWithout500(TestContext testContext) {
     PgUtil.get("users", User.class, UserdataCollection.class, "username=b", 0, 9,
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
@@ -595,10 +660,20 @@ public class PgUtilIT {
   public void put(TestContext testContext) {
     String uuid = randomUuid();
     post(testContext, "Pippilotta", uuid, 201);
-    PgUtil.put("users", new User().withUsername("Momo").withId(randomUuid()), uuid,
-        okapiHeaders, vertx.getOrCreateContext(),
-        Users.PutUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 204, put -> assertGetById(testContext, uuid, "Momo")));
+    getUser(uuid)
+    .compose(user -> PgUtil.put("users", user.withUsername("Momo").withId(randomUuid()),
+        uuid, okapiHeaders, vertx.getOrCreateContext(), Users.PutUsersByUserIdResponse.class))
+    .onComplete(asyncAssertSuccess(testContext, 204, put -> assertGetById(testContext, uuid, "Momo")));
+  }
+
+  @Test
+  public void put409WhenOptimisticLockingVersionIsWrong(TestContext testContext) {
+    String uuid = randomUuid();
+    post(testContext, "Pippilotta", uuid, 201);
+    getUser(uuid)
+    .compose(user -> PgUtil.put("users", user.withUsername("Momo").withVersion(5),
+        uuid, okapiHeaders, vertx.getOrCreateContext(), Users.PutUsersByUserIdResponse.class))
+    .onComplete(asyncAssertSuccess(testContext, 409, put -> assertGetById(testContext, uuid, "Pippilotta")));
   }
 
   @Test
@@ -675,30 +750,39 @@ public class PgUtilIT {
         asyncAssertFail(testContext, "respond500WithTextPlain"));
   }
 
-  @Test
-  public void postSync(TestContext testContext) {
-    String id1 = UUID.randomUUID().toString();
-    String id2 = UUID.randomUUID().toString();
+  private Future<Response> postSync(List<User> entities, boolean upsert) {
     Map<String,String> headers = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     headers.putAll(okapiHeaders);
     headers.put(RestVerticle.OKAPI_USERID_HEADER, "okapiUser");
+    return PgUtil.postSync("users", entities, 1000, upsert, headers,
+        vertx.getOrCreateContext(), PostUsersResponse.class);
+  }
+
+  @Test
+  public void postSync(TestContext testContext) {
+    String id1 = randomUuid();
+    String id2 = randomUuid();
     List<User> entities = Arrays.asList(new User().withId(id1), new User().withId(id2));
+    List<User> entities1 = Arrays.asList(new User().withId(id1).withVersion(1), new User().withId(id2).withVersion(1));
+    List<User> entities2 = Arrays.asList(new User().withId(id1).withVersion(2), new User().withId(id2).withVersion(2));
     boolean upsert = true;
-    PgUtil.postSync("users", entities, 1000, upsert, headers, vertx.getOrCreateContext(),
-        PostUsersResponse.class, asyncAssertSuccess(testContext, 201, post -> {
-          PgUtil.getById("users", User.class, id2,
-              okapiHeaders, vertx.getOrCreateContext(), ResponseImpl.class,
-              asyncAssertSuccess(testContext, 200, get -> {
-                User user = (User) get.result().getEntity();
-                assertThat(user.getMetadata().getCreatedByUserId(), is("okapiUser"));
-                PgUtil.postSync("users", entities, 1000, upsert, headers, vertx.getOrCreateContext(),
-                    PostUsersResponse.class, asyncAssertSuccess(testContext, 201, post2 -> {
-                      boolean noUpsert = false;
-                      PgUtil.postSync("users", entities, 1000, noUpsert, headers, vertx.getOrCreateContext(),
-                          PostUsersResponse.class, asyncAssertSuccess(testContext, 422));
-                    }));
-              }));
-        }));
+    boolean noUpsert = false;
+    postSync(entities, upsert)
+    .onComplete(asyncAssertSuccess(testContext, 201))
+    .compose(x -> getUser(id2))
+    .onComplete(testContext.asyncAssertSuccess(user -> {
+      assertThat(user.getMetadata().getCreatedByUserId(), is("okapiUser"));
+    }))
+    .compose(x -> postSync(entities, upsert))
+    .onComplete(asyncAssertSuccess(testContext, 409))
+    .compose(x -> postSync(entities1, upsert))
+    .onComplete(asyncAssertSuccess(testContext, 201))
+    .compose(x -> postSync(entities1, upsert))
+    .onComplete(asyncAssertSuccess(testContext, 409))
+    .compose(x -> postSync(entities2, noUpsert))
+    .onComplete(asyncAssertSuccess(testContext, 422))
+    .compose(x -> postSync(entities2, upsert))
+    .onComplete(asyncAssertSuccess(testContext, 201));
   }
 
   @Test
@@ -712,6 +796,15 @@ public class PgUtilIT {
     PgUtil.postSync("users", Arrays.asList(new User [1001]), 1000, true, okapiHeaders, vertx.getOrCreateContext(),
         PostUsersResponse.class, asyncAssertSuccess(testContext, 413,
             "Expected a maximum of 1000 records to prevent out of memory but got 1001"));
+  }
+
+  @Test
+  public void postSync409(TestContext testContext) {
+    String uuid = randomUuid();
+    post(testContext, "abc", uuid, 201);
+    List<User> users = Arrays.asList(new User(), new User().withId(uuid).withUsername("xyz"));
+    postSync(users, true)
+    .onComplete(result -> assertStatusAndUser(testContext, result, 409, "abc", uuid));
   }
 
   @Test
@@ -1358,6 +1451,9 @@ public class PgUtilIT {
     }
     public static Response respond404WithTextPlain(Object entity) {
       return plain(404, entity);
+    }
+    public static Response respond409WithTextPlain(Object entity) {
+      return plain(409, entity);
     }
     public static Response respond500WithTextPlain(Object entity) {
       return plain(500, entity);

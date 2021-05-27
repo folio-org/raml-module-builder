@@ -5,6 +5,7 @@ import java.util.Enumeration;
 import java.util.function.Function;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
@@ -14,14 +15,12 @@ import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.RoutingContext;
 
 
 public class LogUtil {
 
-  private static final Logger log = LoggerFactory.getLogger(LogUtil.class);
+  private static final Logger log = LogManager.getLogger(LogUtil.class);
 
   public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int responseCode, long responseTime,
       long responseSize, String url, String queryParams, String message) {
@@ -95,11 +94,11 @@ public class LogUtil {
   }
 
   private static String injectDeploymentId(){
-    if(LogManager.getLogger(RestVerticle.class).isDebugEnabled()){
-      if(Vertx.currentContext() != null && Vertx.currentContext().getInstanceCount() > 1 &&
-          RestVerticle.getDeploymentId() != null){
-        return RestVerticle.getDeploymentId() + " ";
-      }
+    if (log.isDebugEnabled() &&
+        Vertx.currentContext() != null &&
+        Vertx.currentContext().getInstanceCount() > 1 &&
+        RestVerticle.getDeploymentId() != null) {
+      return RestVerticle.getDeploymentId() + " ";
     }
     return "";
   }

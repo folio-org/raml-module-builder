@@ -8,6 +8,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.client.BuildCQL;
 import org.folio.rest.tools.client.Response;
 import org.folio.rest.tools.client.RollBackURL;
@@ -20,16 +22,18 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
 
-@SuppressWarnings("unchecked")
+/**
+ * Mock HTTP client.
+ * @deprecated Use {@link io.vertx.core.Vertx#createHttpServer()} for mocking a server or use mocking utility.
+ */
+@Deprecated
 public class HttpClientMock2 implements HttpClientInterface {
 
   public static final String MOCK_MODE = "mock.httpclient";
   public static final String MOCK_FILE = "mock_content.json";
 
-  private static final Logger log = LoggerFactory.getLogger(HttpClientMock2.class);
+  private static final Logger log = LogManager.getLogger(HttpClientMock2.class);
 
   private static JsonObject mockJson;
 
