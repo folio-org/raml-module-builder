@@ -1808,7 +1808,7 @@ For `limit = 0` an exact count is returned without any records. Otherwise:
 
 If a result set has a `totalRecords` value that is less than 1000 then it is the exact count; if it is 1000 or more it may be an estimate.
 
-If the exact count is less than 1000 then `totalRecords` almost always contains the exact count; only when PostgreSQL estimates it to be more than 4*1000 then it contains that overestimation.
+If the exact count is less than 1000 then `totalRecords` almost always contains the exact count; only when PostgreSQL estimates it to be more than 4\*1000 then it contains that overestimation.
 
 Replace 1000 by `exactCount` if configured differently.
 
@@ -1818,13 +1818,13 @@ RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/ram
 
 ## Optimistic Locking
 
-RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate/update `_version` field in json on insert/update. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 409 HTTP response code if 409 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code.
+RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate the `_version` field in json on insert. On update a database trigger will check that the `_version` field is the same in the incoming record and in the database, and will then increment the `_version` field before updating the database record. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 409 HTTP response code if 409 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code. The client should never increment the `_version` property; only the trigger should increment it to ensure that the check and the increment are in the same transaction to avoid any race condition.
 
 * `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
 * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction with a customized SQL error code 23F09.
 * `logOnConflict` Optimistic Locking is enabled but the conflicting update succeeds, the version conflict info is logged with a customized SQL error code 23F09. Consult [Vertx logging](https://vertx.io/docs/vertx-core/java/#_logging) and [PostgreSQL Errors and Messages](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html) if `logOnConflict` doesn't log.
 
-Upsert fails when using `INSERT ... ON CONFLICT (id) DO UPDATE` because the `INSERT` trigger overwrites the `\_version` property that the `UPDATE` trigger uses to detect optimistic locking conflicts. Instead use [RMB's `upsert` plpgsql function](domain-models-runtime/src/main/resources/templates/db_scripts/general_functions.ftl) or implement upsert using a transaction and `UPDATE ...; IF NOT FOUND THEN INSERT ...`
+Upsert fails when using `INSERT ... ON CONFLICT (id) DO UPDATE` because the `INSERT` trigger overwrites the `_version` property that the `UPDATE` trigger uses to detect optimistic locking conflicts. Instead use [RMB's `upsert` plpgsql function](domain-models-runtime/src/main/resources/templates/db_scripts/general_functions.ftl) or implement upsert using a transaction and `UPDATE ...; IF NOT FOUND THEN INSERT ...`
 
 _Sample log entries:_
 
