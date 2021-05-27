@@ -194,10 +194,16 @@ public class PostgresClient {
   }
 
   /**
-   * Set test instance to use for testing.
-   * If database configuration is already provided, this call is ignored and testing
-   * is performed against the database instance given by configuration.
-   * See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()} }
+   * Set PostgresTester instance to use for testing.
+   *
+   * <p>If database configuration is already provided (DB_* env variables or JSON config file),
+   * this call is ignored and testing is performed against the database instance given by configuration.
+   *
+   * <p>Setting the same or a different PostgresTester instance invokes the close method of the
+   * old PostgresTester instance.
+   *
+   * <p>See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()}
+   *
    * @param tester instance to use for testing.
    */
   public static void setPostgresTester(PostgresTester tester) {
@@ -4101,8 +4107,16 @@ public class PostgresClient {
   }
 
   /**
-   * Stop Postgres Tester.
-   * Does nothing, if postgresTester is not enabled.
+   * Stop the PostgresTester instance.
+   *
+   * <p>Does nothing, if postgresTester is not enabled or stopPostgresTester() has already been called.
+   *
+   * <p>After running this method a {@link #setPostgresTester(PostgresTester)} call with the same or a different
+   * PostgresTester instance is needed if PostgresClient should continue using a PostgresTester.
+   *
+   * <p>Clients usually don't need to call this method because {@link #setPostgresTester(PostgresTester)}
+   * automatically calls it if needed and both PostgresClient and Testcontainers core will take care of stopping
+   * the container at the end of the test suite.
    */
   public static void stopPostgresTester() {
     if (postgresTester != null) {

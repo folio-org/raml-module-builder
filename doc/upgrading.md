@@ -55,7 +55,9 @@ If [DB\_\* environment variable database configuration](../README.md#environment
 Postgres instance. See [RMB-826](https://issues.folio.org/browse/RMB-826).
 
 `PostgresClient.stopEmbeddedPostgres` replaced with
-`PostgresClient.stopPostgresTester`.
+`PostgresClient.stopPostgresTester`. The invocation is usually *not* needed
+and should be removed because PostgresClient and Testcontainers core will automatically
+close and remove the container.
 
 `PostgresClient.startEmbeddedPostgres` replaced with
 `PostgresClient.startPostgresTester`. It is usually not necessary to
@@ -119,6 +121,10 @@ on the artifact with generated interfaces.
 
 ```
 
+If you need to set system properties for `domain-models-maven-plugin` run
+`properties-maven-plugin` with goal `set-system-properties` before:
+https://www.mojohaus.org/properties-maven-plugin/usage.html#set-system-properties
+
 Add FOLIO Maven repository for plugins after existing `<repositories>` section:
 ```xml
   <pluginRepositories>
@@ -135,6 +141,9 @@ Replace `PomReader.INSTANCE.getModuleName()` by `ModuleName.getModuleName()`.
 Replace any joda class usage by a java.time class usage. RMB no longer ships with
 joda-time that is deprecated because the replacement java.time has been in JDK core
 since Java 8.
+
+Add commons-lang:commons-lang:2.6 dependency to pom.xml if commons-lang is used.
+RMB no longer ships with commons-lang.
 
 Add org.assertj test dependency to pom.xml if Assertj is used. RMB no longer ships
 with Assertj.
