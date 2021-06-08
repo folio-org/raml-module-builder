@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>32.2.3</version>
+  <version>32.2.4-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -392,7 +392,7 @@
     <url>https://github.com/folio-org/raml-module-builder</url>
     <connection>scm:git:git://github.com:folio-org/raml-module-builder.git</connection>
     <developerConnection>scm:git:git@github.com:folio-org/raml-module-builder.git</developerConnection>
-    <tag>v32.2.3</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <distributionManagement>
