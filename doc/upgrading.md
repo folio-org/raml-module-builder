@@ -55,8 +55,9 @@ Module should use `vertx-stack-depchain`:
   </dependencyManagement>
 ```
 
-Module should use the vertx, netty, jackson and tcnative dependencies from `vertx-stack-depchain`: Either
-remove the explicit dependency from the pom.xml or use the
+Module should use the vertx, netty, jackson and tcnative dependencies from `vertx-stack-depchain` to avoid
+old version with security vulnerabilities: Either remove the explicit vertx, netty, jackson and tcnative
+dependencies from the pom.xml or use the
 [versions that vertx-stack-depchain` ships with](https://github.com/vert-x3/vertx-dependencies/blob/4.1.0/pom.xml),
 for example:
 
