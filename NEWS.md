@@ -1,3 +1,9 @@
+## 32.2.3 2021-06-08
+
+Bug fixes:
+
+* [RMB-823](https://issues.folio.org/browse/RMB-823) Upgrade okapi-common to 4.8.0 fixing maven.indexdata.com url
+
 ## 32.2.2 2021-04-23
 
 Bug fixes:

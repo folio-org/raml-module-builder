@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>32.2.3-SNAPSHOT</version>
+  <version>32.2.4-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -177,7 +177,7 @@
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-common</artifactId>
-        <version>4.5.0</version>
+        <version>4.8.0</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
