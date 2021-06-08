@@ -22,9 +22,63 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 33.0
 
 
-#### [RMB-845](https://issues.folio.org/browse/RMB-845) Upgrade to Vert.x 4.1.0.CR1
+#### [RMB-851](https://issues.folio.org/browse/RMB-851) Upgrade to Vert.x 4.1.0
 
 Module should depend on that version or a later version in 4.1.0 series.
+
+Module should use `vertx-stack-depchain`:
+
+```
+  <properties>
+    <vertx.version>4.1.0</vertx.version>
+  </properties>
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-stack-depchain</artifactId>
+        <version>${vertx.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-sql-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
+      </dependency>
+      <dependency>
+        <groupId>io.vertx</groupId>
+        <artifactId>vertx-pg-client</artifactId>
+        <version>${vertx.version}-FOLIO</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+```
+
+Module should use the vertx, netty, jackson and tcnative dependencies from `vertx-stack-depchain` to avoid
+old version with security vulnerabilities: Either remove the explicit vertx, netty, jackson and tcnative
+dependencies from the pom.xml or use the
+[versions that vertx-stack-depchain` ships with](https://github.com/vert-x3/vertx-dependencies/blob/4.1.0/pom.xml),
+for example:
+
+```
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-codegen</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-common</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-tcnative-boringssl-static</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.fasterxml.jackson.core</groupId>
+      <artifactId>jackson-core</artifactId>
+    </dependency>
+```
 
 #### [RMB-717](https://issues.folio.org/browse/RMB-717) Deprecate HttpClientInterface, HttpModuleClient2, HttpClientMock2
 
