@@ -22,6 +22,7 @@ import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import java.io.IOException;
+import java.lang.StackWalker.Option;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -55,7 +56,6 @@ import org.folio.rest.persist.interfaces.Results;
 import org.folio.rest.security.AES;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.MetadataUtil;
-import org.folio.rest.tools.utils.ModuleName;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
 
@@ -79,6 +79,7 @@ public class PostgresClient {
   static final int               STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
   static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
 
+  private static final String    MODULE_NAME              = getModuleName("org.folio.rest.tools.utils.ModuleName");
   private static final String    ID_FIELD                 = "id";
 
   private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
@@ -4128,11 +4129,36 @@ public class PostgresClient {
   }
 
   public static String convertToPsqlStandard(String tenantId){
-    return tenantId.toLowerCase() + "_" + ModuleName.getModuleName();
+    return tenantId.toLowerCase() + "_" + MODULE_NAME;
   }
 
-  public static String getModuleName(){
-    return ModuleName.getModuleName();
+  /**
+   * Name of the back-end module, usually determined and stored in
+   * {@link org.folio.rest.tools.utils.ModuleName} by domain-models-maven-plugin at build time.
+   */
+  public static String getModuleName() {
+    return MODULE_NAME;
+  }
+
+  static String getModuleName(final String className) {
+    try {
+      // there might be multiple class loaders: raml-module-builder, folio-some-library, mod-example
+      StackWalker stackWalker = StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE);
+      ClassLoader classLoader = stackWalker.getCallerClass().getClassLoader();
+      while (classLoader != null) {
+        try {
+          Class<?> moduleNameClass = Class.forName(className, true, classLoader);
+          return moduleNameClass.getMethod("getModuleName").invoke(null).toString();
+        } catch (ClassNotFoundException e) {
+          classLoader = classLoader.getParent();
+        }
+      }
+      throw new ClassNotFoundException(className);
+    } catch (ReflectiveOperationException e) {
+      throw new RuntimeException(
+          "A module should generate " + className + " using domain-models-maven-plugin, "
+          + "a library should provide src/test/java/" + className.replace('.', '/') + ".java for unit tests.", e);
+    }
   }
 
   /**

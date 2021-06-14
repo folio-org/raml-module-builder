@@ -14,6 +14,9 @@ public class ModuleNameWriter {
       // {} is replaced before writing this .java file
       + "  private static final String MODULE_NAME = \"{}\";\n"
       + "\n"
+      + "  /**\n"
+      + "   * The module name with minus replaced by underscore, for example {@code mod_foo_bar}.\n"
+      + "   */\n"
       + "  public static String getModuleName() {\n"
       + "    return MODULE_NAME;\n"
       + "  }\n"
