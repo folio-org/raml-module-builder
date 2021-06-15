@@ -194,6 +194,8 @@ Remove `domain-models-interface-extensions` dependency from pom.xml.
 
 Replace `PomReader.INSTANCE.getModuleName()` by `ModuleName.getModuleName()`.
 
+Replace `PomReader.INSTANCE.getVersion()` by `ModuleName.getModuleVersion()`.
+
 Replace `PomReader.INSTANCE.getRmbVersion()` by `RmbVersion.getRmbVersion()`.
 
 Replace any joda class usage by a java.time class usage. RMB no longer ships with
