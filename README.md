@@ -3,8 +3,8 @@
 
 Copyright (C) 2016-2021 The Open Library Foundation
 
-[ClassPath.java](domain-models-interface-extensions/src/main/java/org/folio/rest/tools/utils/ClassPath.java) and
-[ClassPathTest.java](domain-models-interface-extensions/src/test/java/org/folio/rest/tools/utils/ClassPathTest.java)
+[ClassPath.java](domain-models-api-aspects/src/main/java/org/folio/rest/tools/utils/ClassPath.java) and
+[ClassPathTest.java](domain-models-api-aspects/src/test/java/org/folio/rest/tools/utils/ClassPathTest.java)
 are also Copyright (C) 2012 The Guava Authors.
 
 This software is distributed under the terms of the Apache License, Version 2.0.
@@ -1980,12 +1980,11 @@ However, a module may not want to allow such a high maximum as this may cause a 
 A module can create a `raml_overrides.json` file and place it in the `/resources/overrides/` directory.
 
 The file is defined in the schema:
-`domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.schema`
+`domain-models-maven-plugin/src/main/resources/overrides/raml_overrides.schema`.
 
 Note that `DEFAULTVALUE` only allows string values. `SIZE` requires a range ex. `"15, 20"`. `REQUIRED` does not accept a `"value"`, meaning an optional parameter can become required but not vice versa.
 
-example:
-`domain-models-interface-extensions/src/main/resources/overrides/raml_overrides.json`
+Example: `domain-models-maven-plugin/src/main/resources/overrides/raml_overrides.json`
 
 ## Boxed types
 
