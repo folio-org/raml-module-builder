@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Objects;
 import org.apache.maven.project.MavenProject;
 
 public class ModuleNameWriter {
@@ -11,11 +12,22 @@ public class ModuleNameWriter {
       "package org.folio.rest.tools.utils;\n"
       + "\n"
       + "public class ModuleName {\n"
-      // {} is replaced before writing this .java file
-      + "  private static final String MODULE_NAME = \"{}\";\n"
+      // {name} and {version} are replaced before writing this .java file
+      + "  private static final String MODULE_NAME = \"{name}\";\n"
+      + "  private static final String MODULE_VERSION = \"{version}\";\n"
       + "\n"
+      + "  /**\n"
+      + "   * The module name with minus replaced by underscore, for example {@code mod_foo_bar}.\n"
+      + "   */\n"
       + "  public static String getModuleName() {\n"
       + "    return MODULE_NAME;\n"
+      + "  }\n"
+      + "\n"
+      + "  /**\n"
+      + "   * The module version taken from pom.xml at compile time.\n"
+      + "   */\n"
+      + "  public static String getModuleVersion() {\n"
+      + "    return MODULE_VERSION;\n"
       + "  }\n"
       + "}\n"
       + "";
@@ -30,9 +42,9 @@ public class ModuleNameWriter {
     project.addCompileSourceRoot(sourceRoot.getPath());
     Path dir = new File(sourceRoot, "org/folio/rest/tools/utils").toPath();
     Files.createDirectories(dir);
-    project.getParentArtifact();
-    String moduleName = project.getParent() == null ? project.getArtifactId() : project.getParent().getArtifactId();
-    moduleName = moduleName.replace('-', '_');
-    Files.writeString(dir.resolve("ModuleName.java"), JAVA.replace("{}", moduleName));
+    MavenProject root = Objects.requireNonNullElse(project.getParent(), project);
+    String name = root.getArtifactId().replace('-', '_');
+    String version = root.getVersion();
+    Files.writeString(dir.resolve("ModuleName.java"), JAVA.replace("{name}", name).replace("{version}", version));
   }
 }
