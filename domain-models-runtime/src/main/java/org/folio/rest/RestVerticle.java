@@ -43,7 +43,7 @@ public class RestVerticle extends AbstractVerticle {
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
-  private static final int FORM_ATTRIBUTE_SIZE_MAX = 16384;
+  private static final int FORM_ATTRIBUTE_SIZE_MAX = 32768;
   private static final String       HTTP_PORT_SETTING               = "http.port";
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static String             deploymentId                     = "";
