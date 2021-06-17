@@ -1,12 +1,15 @@
 package org.folio.rest.persist;
 
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Method;
@@ -734,6 +737,13 @@ public class PostgresClientTest {
     assertEquals((Integer)30, PostgresClient.getTotalRecords(10, 20, 20, 10));
 
     assertEquals((Integer) 25, PostgresClient.getTotalRecords(5, 20, 20, 10));
+  }
+
+  @Test
+  public void getModuleName() {
+    Exception e = assertThrows(RuntimeException.class, () -> PostgresClient.getModuleName("foo.Bar"));
+    assertThat(e.getMessage(), containsString("src/test/java/foo/Bar.java"));
+    assertThat(e.getCause(), is(instanceOf(ClassNotFoundException.class)));
   }
 
 }
