@@ -141,7 +141,7 @@
             </goals>
             <configuration>
               <target>
-                <delete dir="${project.build.directory}/generated-sources/modulename"/>
+                <delete dir="${project.build.directory}/generated-sources/modulename" />
               </target>
             </configuration>
           </execution>

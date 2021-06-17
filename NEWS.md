@@ -1,3 +1,16 @@
+## 33.0.1 2021-06-17
+
+Fixes:
+ * [RMB-854](https://issues.folio.org/browse/RMB-854) Increase FORM\_ATTRIBUTE\_SIZE\_MAX from 16384 to 32768
+ * [RMB-851](https://issues.folio.org/browse/RMB-851) Upgrade to final version of Vert.x 4.1.0
+ * [RMB-849](https://issues.folio.org/browse/RMB-849) Remove duplicate ModuleName class from domain-models-api-interfaces
+
+Documentation:
+ * [RMB-855](https://issues.folio.org/browse/RMB-855) Mention that loading db conf from url was removed 	
+ * [RMB-848](https://issues.folio.org/browse/RMB-848) Always close PostgresTester on reuse (test, javadoc)
+ * [RMB-853](https://issues.folio.org/browse/RMB-853) ModuleName.getModuleVersion() replacing PomReader.INSTANCE.getVersion()
+ * [RMB-852](https://issues.folio.org/browse/RMB-852) Update documentation for domain-models-interface-extensions removal
+
 ## 33.0.0 2021-05-22
 
 Unlike pre4, this is using Vert.x 4.1.0.CR1. Use that version in your
