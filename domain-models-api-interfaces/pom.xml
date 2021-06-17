@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>33.1.0-SNAPSHOT</version>
+    <version>33.0.1</version>
   </parent>
   <artifactId>domain-models-api-interfaces</artifactId>
   <properties>
@@ -141,7 +141,7 @@
             </goals>
             <configuration>
               <target>
-                <delete dir="${project.build.directory}/generated-sources/modulename"/>
+                <delete dir="${project.build.directory}/generated-sources/modulename" />
               </target>
             </configuration>
           </execution>
