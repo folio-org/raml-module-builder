@@ -123,6 +123,12 @@ Command-line option `embed_postgres=true` is no longer supported.
 Remove `<groupId>ru.yandex.qatools.embed</groupId>`
 `<artifactId>postgresql-embedded</artifactId>` from pom.xml.
 
+#### Remove loading db conf from url
+
+Removed for security. Use
+[DB\_\* environment variables](../README.md#environment-variables)
+instead. See discussion of [RMB-855](https://issues.folio.org/browse/RMB-855).
+
 #### [RMB-785](https://issues.folio.org/browse/RMB-785) domain-models-maven-plugin
 
 In pom.xml replace the exec-maven-plugin sections that call
