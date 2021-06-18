@@ -1,3 +1,8 @@
+## 33.0.2 2021-06-18
+
+Fixes:
+ * [RMB-858](https://issues.folio.org/browse/RMB-858) HttpClientMock2 not enabled due to race condition
+
 ## 33.0.1 2021-06-17
 
 Fixes:
