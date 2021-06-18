@@ -26,6 +26,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.resource.DomainModelConsts;
+import org.folio.rest.tools.client.HttpClientFactory;
 import org.folio.rest.tools.client.test.HttpClientMock2;
 import org.folio.rest.tools.utils.InterfaceToImpl;
 import org.folio.rest.tools.utils.LogUtil;
@@ -116,6 +117,7 @@ public class RestVerticle extends AbstractVerticle {
           String mockMode = config().getString(HttpClientMock2.MOCK_MODE);
           if (mockMode != null) {
             System.setProperty(HttpClientMock2.MOCK_MODE, mockMode);
+            HttpClientFactory.setMockEnabled(true);
           }
           runPostDeployHook(res2 -> {
             if (!res2.succeeded()) {
