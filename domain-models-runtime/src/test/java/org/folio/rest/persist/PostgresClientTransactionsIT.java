@@ -525,12 +525,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     try {
       PostgresClient postgresClient = new PostgresClient(vertx, tenant);
       PgPool ePool = postgresClient.getClient();
-      PgPool client = new PgPool() {
-
-        @Override
-        public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-          getConnection().onComplete(handler);
-        }
+      PgPool client = new PgPoolBase() {
 
         @Override
         public Future<SqlConnection> getConnection() {
@@ -545,11 +540,6 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
         @Override
         public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
           return ePool.preparedQuery(s);
-        }
-
-        @Override
-        public void close(Handler<AsyncResult<Void>> handler) {
-          close().onComplete(handler);
         }
 
         @Override
