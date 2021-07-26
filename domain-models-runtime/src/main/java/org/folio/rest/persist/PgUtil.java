@@ -961,7 +961,7 @@ public final class PgUtil {
    * <p>Use reflection, the POJOs don't have a interface/superclass in common.
    */
   private static <T> Object getId(T entity) throws ReflectiveOperationException {
-    return entity.getClass().getDeclaredMethod("getId").invoke(entity);
+    return entity.getClass().getMethod("getId").invoke(entity);
   }
 
   /**
@@ -972,7 +972,7 @@ public final class PgUtil {
    * @param id  the new id value
    */
   private static <T> void setId(T entity, String id) throws ReflectiveOperationException {
-    entity.getClass().getDeclaredMethod("setId", String.class).invoke(entity, id);
+    entity.getClass().getMethod("setId", String.class).invoke(entity, id);
   }
 
   /**
