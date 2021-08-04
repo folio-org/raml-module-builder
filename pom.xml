@@ -30,7 +30,7 @@
     <aspectj.version>1.9.6</aspectj.version>
     <junit-jupiter-version>5.7.0</junit-jupiter-version>
     <maven.version>3.6.3</maven.version>
-    <vertx.version>4.1.0</vertx.version>
+    <vertx.version>4.1.2</vertx.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -61,16 +61,6 @@
         <version>${vertx.version}</version>
         <type>pom</type>
         <scope>import</scope>
-      </dependency>
-      <dependency>
-        <groupId>io.vertx</groupId>
-        <artifactId>vertx-sql-client</artifactId>
-        <version>${vertx.version}-FOLIO</version>
-      </dependency>
-      <dependency>
-        <groupId>io.vertx</groupId>
-        <artifactId>vertx-pg-client</artifactId>
-        <version>${vertx.version}-FOLIO</version>
       </dependency>
       <dependency>
         <groupId>io.rest-assured</groupId>

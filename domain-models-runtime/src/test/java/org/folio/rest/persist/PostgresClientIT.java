@@ -2003,38 +2003,7 @@ public class PostgresClientIT {
    * a null result value and success status.
    */
   private PostgresClient postgresClientNullConnection() {
-    PgPool client = new PgPool() {
-      @Override
-      public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        getConnection().onComplete(handler);
-      }
-
-      @Override
-      public Future<SqlConnection> getConnection() {
-        return Future.succeededFuture();
-      }
-
-      @Override
-      public Query<RowSet<Row>> query(String s) {
-        return null;
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        return null;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        handler.handle(close());
-      }
-
-      @Override
-      public Future<Void> close() {
-        // nothing to do
-        return Future.succeededFuture();
-      }
-    };
+    PgPool client = new PgPoolBase();
     try {
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setClient(client);
@@ -2048,36 +2017,10 @@ public class PostgresClientIT {
    * @return a PostgresClient where getConnection(handler) invokes the handler with a failure.
    */
   private PostgresClient postgresClientGetConnectionFails() {
-    PgPool client = new PgPool() {
-
-      @Override
-      public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        getConnection().onComplete(handler);
-      }
-
+    PgPool client = new PgPoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.failedFuture("postgresClientGetConnectionFails");
-      }
-
-      @Override
-      public Query<RowSet<Row>> query(String s) {
-        return null;
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        return null;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-
-      }
-
-      @Override
-      public Future<Void> close() {
-        return null;
       }
     };
     try {
@@ -2177,35 +2120,10 @@ public class PostgresClientIT {
       }
     };
 
-    PgPool client = new PgPool() {
-      @Override
-      public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        getConnection().onComplete(handler);
-      }
-
+    PgPool client = new PgPoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
-      }
-
-      @Override
-      public Query<RowSet<Row>> query(String s) {
-        return null;
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        return null;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-
-      }
-
-      @Override
-      public Future<Void> close() {
-        return null;
       }
     };
     try {
@@ -2329,35 +2247,10 @@ public class PostgresClientIT {
       }
     };
 
-    PgPool client = new PgPool() {
-      @Override
-      public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        getConnection().onComplete(handler);
-      }
-
+    PgPool client = new PgPoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
-      }
-
-      @Override
-      public Query<RowSet<Row>> query(String s) {
-        return null;
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        return null;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        close().onComplete(handler);
-      }
-
-      @Override
-      public Future<Void> close() {
-        return Future.succeededFuture();
       }
     };
     try {
@@ -2456,35 +2349,10 @@ public class PostgresClientIT {
         return null;
       }
     };
-    PgPool client = new PgPool() {
-      @Override
-      public void getConnection(Handler<AsyncResult<SqlConnection>> handler) {
-        getConnection().onComplete(handler);
-      }
-
+    PgPool client = new PgPoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
-      }
-
-      @Override
-      public Query<RowSet<Row>> query(String s) {
-        return null;
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        return null;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-
-      }
-
-      @Override
-      public Future<Void> close() {
-        return Future.succeededFuture();
       }
     };
     try {
