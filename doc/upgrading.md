@@ -4,7 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
-* [Version 33.0](#version-331)
+* [Version 33.1](#version-331)
 * [Version 33.0](#version-330)
 * [Version 32.0](#version-320)
 * [Version 31.0](#version-310)
