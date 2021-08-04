@@ -1,0 +1,67 @@
+{
+  "tables": [
+    {
+      "tableName": "users",
+      "uniqueIndex": [
+        {
+          "fieldName": "a",
+          "tOps": "ADD",
+          "caseSensitive": true,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "b",
+          "tOps": "DELETE",
+          "caseSensitive": true,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "c",
+          "tOps": "DELETE",
+          "caseSensitive": true,
+          "removeAccents": false
+        }
+      ],
+      "index": [
+        {
+          "fieldName": "a",
+          "tOps": "DELETE",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "b",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "c",
+          "tOps": "DELETE",
+          "caseSensitive": false,
+          "removeAccents": false
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "a",
+          "tOps": "DELETE",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "b",
+          "tOps": "DELETE",
+          "caseSensitive": false,
+          "removeAccents": true
+        },
+        {
+          "fieldName": "c",
+          "tOps": "ADD",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ]
+    }
+  ]
+}
