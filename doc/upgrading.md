@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 33.0](#version-331)
 * [Version 33.0](#version-330)
 * [Version 32.0](#version-320)
 * [Version 31.0](#version-310)
@@ -19,7 +20,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
-## Version 33.0
+## Version 33.1
 
 #### [RMB-862](https://issues.folio.org/browse/RMB-862) Upgrade to Vert.x 4.1.2
 
@@ -60,10 +61,12 @@ Therefore _remove_ these dependencies from the pom.xml:
       </dependency>
 ```
 
+## Version 33.0
+
 Module should use the vertx, netty, jackson and tcnative dependencies from `vertx-stack-depchain` to avoid
 old version with security vulnerabilities: Either remove the explicit vertx, netty, jackson and tcnative
 dependencies from the pom.xml or use the
-[versions that vertx-stack-depchain` ships with](https://github.com/vert-x3/vertx-dependencies/blob/4.1.0/pom.xml),
+[versions that vertx-stack-depchain` ships with](https://github.com/vert-x3/vertx-dependencies/blob/4.1.2/pom.xml),
 for example:
 
 ```
