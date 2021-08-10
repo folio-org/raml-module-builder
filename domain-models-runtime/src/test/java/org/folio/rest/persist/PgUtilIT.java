@@ -1,6 +1,8 @@
 package org.folio.rest.persist;
 
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
@@ -38,6 +40,7 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
+import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
@@ -49,6 +52,7 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.ext.web.RoutingContext;
 import junit.framework.AssertionFailedError;
 
 @RunWith(VertxUnitRunner.class)
@@ -459,6 +463,13 @@ public class PgUtilIT {
   }
 
   @Test
+  public void getByInvalidCql(TestContext testContext) {
+    PgUtil.get("users", User.class, UserdataCollection.class, "/", 0, 9,
+        okapiHeaders, vertx.getOrCreateContext(), Users.GetUsersResponse.class,
+        asyncAssertSuccess(testContext, 400));
+  }
+
+  @Test
   public void getResponseWithout500(TestContext testContext) {
     PgUtil.get("users", User.class, UserdataCollection.class, "username=b", 0, 9,
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
@@ -469,7 +480,15 @@ public class PgUtilIT {
   public void getResponseWithout400(TestContext testContext) {
     PgUtil.get("users", User.class, UserdataCollection.class, "username=b", 0, 9,
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout400.class,
-        asyncAssertFail(testContext, "respond400WithTextPlain"));
+        asyncAssertSuccess(testContext, 500));
+  }
+
+  @Test
+  public void streamGetByInvalidCql(TestContext testContext) {
+    RoutingContext routingContext = mock(RoutingContext.class, Mockito.RETURNS_DEEP_STUBS);
+    PgUtil.streamGet("users", User.class, "/", 0, 9, null, "users",
+        routingContext, okapiHeaders, vertx.getOrCreateContext());
+    verify(routingContext.response()).setStatusCode(400);
   }
 
   @Test
@@ -1179,6 +1198,14 @@ public class PgUtilIT {
     assertThat(PgUtil.getOptimizedSqlSize(), is(newSize));
     PgUtil.setOptimizedSqlSize(oldSize);
     assertThat(PgUtil.getOptimizedSqlSize(), is(oldSize));
+  }
+
+  @Test
+  public void optimizedSqlInvalidCql(TestContext testContext) {
+    PgUtil.getWithOptimizedSql("users", User.class, UserdataCollection.class,
+        "title", "/", 0, 10,
+        okapiHeaders, vertx.getOrCreateContext(), Users.GetUsersResponse.class,
+        asyncAssertSuccess(testContext, 400));
   }
 
   @Test
