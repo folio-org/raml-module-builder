@@ -470,6 +470,20 @@ public class PgUtilIT {
   }
 
   @Test
+  public void getWithInvalidTable(TestContext testContext) {
+    PgUtil.get("foo'bar", User.class, UserdataCollection.class, "username=b", 0, 9,
+        okapiHeaders, vertx.getOrCreateContext(), Users.GetUsersResponse.class,
+        asyncAssertSuccess(testContext, 500));
+  }
+
+  @Test(expected = NullPointerException.class)
+  public void getWithInvalidTableWithout500(TestContext testContext) {
+    PgUtil.get("foo'bar", User.class, UserdataCollection.class, "username=b", 0, 9,
+        okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,
+        asyncAssertSuccess(testContext, 500));
+  }
+
+  @Test
   public void getResponseWithout500(TestContext testContext) {
     PgUtil.get("users", User.class, UserdataCollection.class, "username=b", 0, 9,
         okapiHeaders, vertx.getOrCreateContext(), ResponseWithout500.class,

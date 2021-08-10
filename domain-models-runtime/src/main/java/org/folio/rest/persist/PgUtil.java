@@ -736,9 +736,16 @@ public final class PgUtil {
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       return get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass);
     } catch (Exception e) {
+      final Method respond500;
+      try {
+        respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+      } catch (Exception e2) {
+        logger.error(e2.getMessage(), e2);
+        return response(e2.getMessage(), null, null);
+      }
       logger.error(e.getMessage(), e);
       // invalid CQL is handled by get(...), here we get Exception about invalid table
-      return response(e.getMessage(), null, null);
+      return response(e.getMessage(), respond500, respond500);
     }
   }
 
