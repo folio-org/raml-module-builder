@@ -724,30 +724,28 @@ public final class PgUtil {
    *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
    * @return future  where to return the result created by the responseDelegateClass
    */
-  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
   public static <T, C> Future<Response> get(String table, Class<T> clazz, Class<C> collectionClazz,
       String cql, int offset, int limit,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass) {
-
-    final Method respond500;
-    final Method respond400;
-    try {
-      respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
-      respond400 = responseDelegateClass.getMethod(RESPOND_400_WITH_TEXT_PLAIN, Object.class);
-    } catch (Exception e) {
-      logger.error(e.getMessage(), e);
-      return response(e.getMessage(), null, null);
-    }
 
     try {
       CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       return get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass);
-    } catch (FieldException e) {
+    } catch (Exception e) {
       logger.error(e.getMessage(), e);
-      return response(e.getMessage(), respond400, respond500);
+      final Method respond500;
+      try {
+        respond500 = responseDelegateClass.getMethod(RESPOND_500_WITH_TEXT_PLAIN, Object.class);
+      } catch (Exception e2) {
+        logger.error(e2.getMessage(), e2);
+        return response(e2.getMessage(), null, null);
+      }
+      // invalid CQL is handled by get(...), here we get Exception about invalid table
+      return response(e.getMessage(), respond500, respond500);
     }
   }
 
