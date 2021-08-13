@@ -1,3 +1,13 @@
+## 33.0.3 2021-08-12
+
+Fixes:
+ * [RMB-589](https://issues.folio.org/browse/RMB-589) Response With Schema Name For Some AdminAPIs
+ * [RMB-628](https://issues.folio.org/browse/RMB-628) PgUtil.put should find super.setId(String)
+ * [RMB-859](https://issues.folio.org/browse/RMB-859) Remove xerces:xmlParserAPIs dependency
+ * [RMB-862](https://issues.folio.org/browse/RMB-862) Update Vert.x to 4.1.2
+ * [RMB-864](https://issues.folio.org/browse/RMB-864) Ignore deleted index in schema.json
+ * [RMB-865](https://issues.folio.org/browse/RMB-865) Ensure that PgUtil returns 400 (not 500) on invalid CQL and 500 (not 400) on invalid table name
+
 ## 33.0.2 2021-06-18
 
 Fixes:
