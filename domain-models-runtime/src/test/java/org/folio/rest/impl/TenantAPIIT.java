@@ -571,7 +571,7 @@ public class TenantAPIIT {
         .onComplete(context.asyncAssertFailure(cause -> {
           assertThat(job.getError(), is("SQL error"));
           // for some bizarre reason a space is put in front the returned stmt
-          assertThat(job.getMessages(), containsInAnyOrder(" SELECT ("));
+          assertThat(job.getMessages(), containsInAnyOrder(CoreMatchers.startsWith(" SELECT (\n")));
         }));
   }
 

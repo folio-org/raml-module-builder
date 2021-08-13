@@ -4001,7 +4001,8 @@ public class PostgresClient {
    *
    * @param sqlFile - string of sqls with executable statements
    * @param stopOnError - stop on first error
-   * @return Future with list of statements that failed; the list may be empty
+   * @return Future with list of failures, each failure is a string of the
+   *     statement that failed and the error message; the list may be empty
    */
   public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
     return Future.future(promise -> runSQLFile(sqlFile, stopOnError, promise));
@@ -4014,7 +4015,8 @@ public class PostgresClient {
    *
    * @param sqlFile - string of sqls with executable statements
    * @param stopOnError - stop on first error
-   * @param replyHandler - the handler's result is the list of statements that failed; the list may be empty
+   * @param replyHandler - the handler's result is the list of failures, each failure is a string of the
+   *     statement that failed and the error message; the list may be empty
    */
   public void runSQLFile(String sqlFile, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
@@ -4032,7 +4034,8 @@ public class PostgresClient {
    * @param sql SQL lines
    * @param stopOnError whether to ignore errors
    * @param replyHandler succeeding AsyncResult with empty list on success, succeeding AsyncResult
-   *   with list of SQL lines that failed, failing AsyncResult if connection to database fails
+   *   with list of failures, each failure is a string with the SQL command that failed and the error message,
+   *   failing AsyncResult if connection to database fails
    */
   private void execute(String[] sql, boolean stopOnError,
                        Handler<AsyncResult<List<String>>> replyHandler) {
@@ -4059,7 +4062,7 @@ public class PostgresClient {
                         return Future.succeededFuture();
                       }, res -> {
                         log.error(res.getMessage(), res);
-                        results.add(stmt);
+                        results.add(stmt + "\n" + res.getMessage());
                         if (stopOnError) {
                           return Future.failedFuture(stmt);
                         } else {
