@@ -30,7 +30,11 @@ For RMB based modules a DB migration will be done automatically based on the con
 
 ### “fromModuleVersion” notes
 
-fromModuleVersion - this field indicates the version which the table was created/updated in. The same for scripts. ComparableVersion.java forked from maven is used under the hood for comparison. So, for example, mod-inventory-storage-1.0.0-SNAPSHOT.265 is a valid version number.
+fromModuleVersion - this field indicates the version which the table was created/updated in. The same for scripts.
+
+If no fromModuleVersion is provided the SQL runs on each upgrade. This is reasonable if the SQL runs fast and is idempotent, for example ```CREATE OR REPLACE FUNCTION``` and you want to avoid the error-prone fromModuleVersion value maintenance needed when changing the function.
+
+SemVer.java from Okapi is used under the hood for comparison. So, for example, mod-inventory-storage-1.0.0-SNAPSHOT.265 is a valid version number.
 
 This is a result of a comparison between mod-inventory-storage-1.0.0-SNAPSHOT.265 and mod-inventory-storage-1.0.0-SNAPSHOT:
 ```
