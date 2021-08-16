@@ -47,6 +47,7 @@ import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.util.StringUtil;
 
 import javax.validation.ConstraintViolation;
+import javax.validation.Path.Node;
 import javax.validation.Validation;
 import javax.validation.ValidatorFactory;
 import javax.ws.rs.core.MultivaluedMap;
@@ -144,7 +145,7 @@ public final class RestRouting {
     }
     boolean ret = true;
     for (ConstraintViolation<?> cv : validationErrors) {
-      if ("must be null".equals(cv.getMessage())) {
+      if ("{javax.validation.constraints.Null.message}".equals(cv.getMessageTemplate())) {
         /**
          * read only fields are marked with a 'must be null' annotation @null
          * so the client should not pass them in, if they were passed in, remove them here
@@ -154,7 +155,15 @@ public final class RestRouting {
           if (!(content instanceof JsonObject)) {
             content = JsonObject.mapFrom(content);
           }
-          ((JsonObject) content).remove(cv.getPropertyPath().toString());
+          JsonObject json = (JsonObject) content;
+          Node last = null;
+          for (Node node : cv.getPropertyPath()) {
+            if (last != null) {
+              json = json.getJsonObject(last.getName());
+            }
+            last = node;
+          }
+          json.remove(last.getName());
           continue;
         } catch (Exception e) {
           withRequestId(rc, () -> LOGGER.warn("Failed to remove {} field from body when calling {}",
@@ -169,7 +178,8 @@ public final class RestRouting {
       p.setValue(val == null ? "null" : val.toString());
       error.getParameters().add(p);
       error.setMessage(cv.getMessage());
-      error.setCode("-1");
+      String messageTemplate = cv.getMessageTemplate();
+      error.setCode(messageTemplate.substring(1, messageTemplate.length() - 1));  // strip {}
       error.setType(DomainModelConsts.VALIDATION_FIELD_ERROR);
       //return the error if the validation is requested on a specific field
       //and that field fails validation. if another field fails validation
