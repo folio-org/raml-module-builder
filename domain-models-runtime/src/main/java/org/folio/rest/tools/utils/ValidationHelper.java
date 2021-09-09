@@ -30,7 +30,11 @@ public class ValidationHelper {
     Error error = new Error();
     Parameter p = new Parameter();
     p.setKey(field);
+    //
+
     p.setValue(value);
+
+
     error.getParameters().add(p);
     error.setMessage(message);
     error.setCode("-1");
@@ -60,10 +64,13 @@ public class ValidationHelper {
             }
             r = withJsonUnprocessableEntity(ValidationHelper.createValidationErrorMessage("", value, mess));
           }
-          else if(isDuplicate(mess) || isFKViolation(mess)){
-            String[] errorDesc = desc.split("=");
-            String field = errorDesc[0].substring(errorDesc[0].indexOf('(')+1,errorDesc[0].indexOf(')'));
-            String value = errorDesc[1].substring(errorDesc[1].indexOf('(')+1,errorDesc[1].indexOf(')'));
+          String[] errorDesc = desc.split("=");
+          String field = errorDesc[0].substring(errorDesc[0].indexOf('(')+1,errorDesc[0].indexOf(')'));
+          String value = errorDesc[1].substring(errorDesc[1].indexOf('(')+1,errorDesc[1].indexOf(')'));
+
+          if(isDuplicate(mess,field,value) || isFKViolation(mess)){
+
+
             r = withJsonUnprocessableEntity(ValidationHelper.createValidationErrorMessage(field, value, mess));
           }
           else if(isAuthFailed(mess)){
@@ -151,9 +158,10 @@ public class ValidationHelper {
     return (errorMessage != null &&
         (errorMessage.contains("violates foreign key constraint")));
   }
-
-  public static boolean isDuplicate(String errorMessage){
-    return (errorMessage != null && errorMessage.contains("duplicate key value violates unique constraint"));
+//Error message changes
+  public static boolean isDuplicate(String errorMessage,String field,String value){
+    //return (errorMessage != null && errorMessage.contains("duplicate key value violates unique constraint"));
+    return (errorMessage != null && errorMessage.contains("duplicate \'"+field+"\' value violates unique constraint: "+value));
   }
 
   public static boolean isAuthFailed(String errorMessage){

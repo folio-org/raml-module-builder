@@ -154,9 +154,12 @@ public final class PgExceptionUtil {
     }
     Map<Character, String> map = new HashMap<>();
     map.put('M', ((PgException) throwable).getErrorMessage());
+
     map.put('D', ((PgException) throwable).getDetail());
+
     map.put('S', ((PgException) throwable).getSeverity());
     map.put('C', ((PgException) throwable).getCode());
+
     return map;
   }
 
