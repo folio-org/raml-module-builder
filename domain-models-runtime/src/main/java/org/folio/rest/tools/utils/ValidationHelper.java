@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
 
 import org.apache.commons.lang3.builder.ToStringExclude;
 import org.folio.rest.jaxrs.model.Error;
@@ -59,7 +60,7 @@ public class ValidationHelper {
             String field = errorDesc[0].substring(errorDesc[0].indexOf('(') + 1, errorDesc[0].indexOf(')'));
             String value = errorDesc[1].substring(errorDesc[1].indexOf('(') + 1, errorDesc[1].indexOf(')'));
             if (isDuplicate(mess))
-              mess = "duplicate" + field + " value violates unique constraint :" + value;
+              mess = "duplicate " + field + " value violates unique constraint :" + value;
             r = withJsonUnprocessableEntity(ValidationHelper.createValidationErrorMessage(field, value, mess));
           } else if (isAuthFailed(mess)) {
             r = withForbiddenEntity();
@@ -140,8 +141,8 @@ public class ValidationHelper {
   }
 
   public static boolean isDuplicate(String errorMessage) {
-    //return (errorMessage != null && errorMessage.contains("duplicate key value violates unique constraint"));
-    return (errorMessage != null && errorMessage.contains("duplicate value violates unique constraint "));
+    return (errorMessage != null && errorMessage.contains("duplicate key value violates unique constraint"));
+
   }
 
   public static boolean isAuthFailed(String errorMessage) {
