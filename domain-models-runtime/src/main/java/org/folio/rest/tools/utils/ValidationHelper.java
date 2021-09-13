@@ -1,12 +1,7 @@
 package org.folio.rest.tools.utils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.StreamingOutput;
-
-import org.apache.commons.lang3.builder.ToStringExclude;
+import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Parameter;
@@ -14,8 +9,11 @@ import org.folio.rest.persist.PgExceptionUtil;
 import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.messages.MessageConsts;
 import org.folio.rest.tools.messages.Messages;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
+
+import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
 public class ValidationHelper {
   private static final Messages MESSAGES = Messages.getInstance();

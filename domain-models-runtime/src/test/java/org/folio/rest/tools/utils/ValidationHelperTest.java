@@ -1,17 +1,13 @@
 package org.folio.rest.tools.utils;
 
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.pgclient.PgException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.folio.rest.jaxrs.model.Errors;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import io.vertx.pgclient.PgException;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * @author shale
