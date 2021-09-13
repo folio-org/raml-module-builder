@@ -18,7 +18,7 @@ public class ValidationHelperTest {
   private static final String QueryValidationException3 = "org.z3950.zing.cql.CQLParseException: expected index or term, got EOF";
 
   @Test
-  public void uuidTest(TestContext context) {
+  public void uuidTest(TestContext context)  {
     Async async = context.async();
     Throwable t = new PgException("invalid input syntax for uuid: \"1234567\"", null, "22P02", null);
     ValidationHelper.handleError(t, r -> {
