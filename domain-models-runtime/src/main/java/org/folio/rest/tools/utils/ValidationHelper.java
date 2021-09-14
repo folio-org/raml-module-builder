@@ -57,8 +57,9 @@ public class ValidationHelper {
             String[] errorDesc = desc.split("=");
             String field = errorDesc[0].substring(errorDesc[0].indexOf('(') + 1, errorDesc[0].indexOf(')'));
             String value = errorDesc[1].substring(errorDesc[1].indexOf('(') + 1, errorDesc[1].indexOf(')'));
-            if (isDuplicate(mess))
-              mess = "duplicate " + field + " value violates unique constraint :" + value;
+            if (isDuplicate(mess)){
+              mess = "duplicate " + field + " value violates unique constraint: " + value;
+              }
             r = withJsonUnprocessableEntity(ValidationHelper.createValidationErrorMessage(field, value, mess));
           } else if (isAuthFailed(mess)) {
             r = withForbiddenEntity();

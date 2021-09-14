@@ -107,6 +107,7 @@ public class ValidationHelperTest {
       async.complete();
     });
   }
+
   @Test
   public void dupMsgTest(TestContext context) {
     Async async = context.async();
@@ -114,7 +115,7 @@ public class ValidationHelperTest {
     Throwable t = new PgException("duplicate key value violates unique constraint \"123456\"", null, "23505",
         "Key (_id)=(55835c7c-2885-44f4-96ac-f03525b8e608) already exists.");
     ValidationHelper.handleError(t, r -> {
-      String responseMsg=((Errors) r.result().getEntity()).getErrors().get(0).getMessage();
+      String responseMsg = ((Errors) r.result().getEntity()).getErrors().get(0).getMessage();
       context.assertEquals(msg, responseMsg);
       async.complete();
     });
