@@ -48,11 +48,11 @@ public class ValidationHelper {
           if (isInvalidUUID(mess)) {
             int start = mess.indexOf('\"');
             int end = mess.indexOf('\"', start + 1);
-            String UUIDvalue = "";
+            String uuidValue = "";
             if (start != -1 && end != -1 && start < end) {
-              UUIDvalue = mess.substring(start + 1, end);
+              uuidValue = mess.substring(start + 1, end);
             }
-            r = withJsonUnprocessableEntity(ValidationHelper.createValidationErrorMessage("", UUIDvalue, mess));
+            r = withJsonUnprocessableEntity(ValidationHelper.createValidationErrorMessage("", uuidValue, mess));
           } else if (isDuplicate(mess) || isFKViolation(mess)) {
             String[] errorDesc = desc.split("=");
             String field = errorDesc[0].substring(errorDesc[0].indexOf('(') + 1, errorDesc[0].indexOf(')'));
