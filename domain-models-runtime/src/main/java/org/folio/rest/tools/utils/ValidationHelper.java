@@ -141,7 +141,6 @@ public class ValidationHelper {
 
   public static boolean isDuplicate(String errorMessage) {
     return (errorMessage != null && errorMessage.contains("duplicate key value violates unique constraint"));
-
   }
 
   public static boolean isAuthFailed(String errorMessage) {
