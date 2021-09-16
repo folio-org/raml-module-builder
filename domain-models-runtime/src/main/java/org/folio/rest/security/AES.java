@@ -35,7 +35,7 @@ public final class AES {
 
   /** encrypt a password with the secret key object */
   public static byte[] encryptPassword(String password, SecretKey secretKey) throws Exception {
-    Cipher aesCipherForEncryption = Cipher.getInstance("AES/GCM/NoPadding");
+    Cipher aesCipherForEncryption = Cipher.getInstance("AES/GCM/NoPadding");//(algo/Mode/padding)
     aesCipherForEncryption.init(Cipher.ENCRYPT_MODE, secretKey);
     byte[] byteDataToEncrypt = password.getBytes();
     byte[] byteCipherText = aesCipherForEncryption

@@ -22,11 +22,10 @@ public class FacetField {
   public FacetField(String path2facet, int amountOfValues2return){
     this(path2facet, amountOfValues2return, null);
   }
-
-  @SuppressWarnings("all")
   /**
- * //line:33-causing security hotspot ,@SupressWarnings can be used as input is very small."replaceAll(".*->>'|'$", "")".
- */
+  * //line:33-causing security hotspot ,@SupressWarnings can be used as input is very small."replaceAll(".*->>'|'$", "")".
+  */
+  @SuppressWarnings("all")
   private FacetField(String path2facet, int topFacets2return, String alias){
     this.fieldPath = path2facet;
     this.topFacets2return = topFacets2return;
