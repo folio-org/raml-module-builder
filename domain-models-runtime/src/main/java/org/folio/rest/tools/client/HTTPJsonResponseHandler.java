@@ -64,7 +64,7 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
         HttpModuleClient2.cache.put(endpoint, cf.get());
       } catch (Exception e) {
         log.error(e.getMessage(), e);
-        //InterruptedExceptions should never be ignored in the code, and simply logging the exception counts in this case as "ignoring".
+        //InterruptedExceptions should never be ignored in the code.
         Thread.currentThread().interrupt();
       }
     }

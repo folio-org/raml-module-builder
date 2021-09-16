@@ -123,7 +123,7 @@ public class Criteria {
       select = new Select();
       //replace surrounding '' from the field name
       select.setSnippet(field.get(0).replaceAll("'", ""));
-      }
+    }
   }
 
   private String wrapField() {
