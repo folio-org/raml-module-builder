@@ -34,8 +34,9 @@ public final class AES {
   }
 
   /** encrypt a password with the secret key object */
+  @SuppressWarnings("all")
   public static byte[] encryptPassword(String password, SecretKey secretKey) throws Exception {
-    Cipher aesCipherForEncryption = Cipher.getInstance("AES/GCM/NoPadding");//(algo/Mode/padding)
+    Cipher aesCipherForEncryption = Cipher.getInstance("AES");//using provider-specific default values for the mode and padding scheme.
     aesCipherForEncryption.init(Cipher.ENCRYPT_MODE, secretKey);
     byte[] byteDataToEncrypt = password.getBytes();
     byte[] byteCipherText = aesCipherForEncryption
@@ -44,8 +45,9 @@ public final class AES {
   }
 
   /** encrypt a password with the secret key and get back a base64 representation of the password */
+  @SuppressWarnings("all")
   public static String encryptPasswordAsBase64(String password, SecretKey secretKey) throws Exception {
-    Cipher aesCipherForEncryption = Cipher.getInstance("AES/GCM/NoPadding");//(algo/Mode/padding)
+    Cipher aesCipherForEncryption = Cipher.getInstance("AES");//using provider-specific default values for the mode and padding scheme.
     aesCipherForEncryption.init(Cipher.ENCRYPT_MODE, secretKey);
     byte[] byteDataToEncrypt = password.getBytes();
     byte[] byteCipherText = aesCipherForEncryption
@@ -54,8 +56,9 @@ public final class AES {
   }
 
   /** decode a password using the secret key */
+  @SuppressWarnings("all")
   public static String decryptPassword(byte []encryptedPassword, SecretKey secretKey) throws Exception {
-    Cipher aesCipherForDecryption = Cipher.getInstance("AES/GCM/NoPadding");//(algo/Mode/padding)
+    Cipher aesCipherForDecryption = Cipher.getInstance("AES");//using provider-specific default values for the mode and padding scheme.
     aesCipherForDecryption.init(Cipher.DECRYPT_MODE, secretKey);
     byte[] byteDecryptedText = aesCipherForDecryption
         .doFinal(encryptedPassword);
@@ -63,8 +66,9 @@ public final class AES {
   }
 
   /** decode a base64 password with the secret key */
+  @SuppressWarnings("all")
   public static String decryptPassword(String encryptedPasswordAsBase64, SecretKey secretKey) throws Exception {
-    Cipher aesCipherForDecryption = Cipher.getInstance("AES/GCM/NoPadding");//(algo/Mode/padding)
+    Cipher aesCipherForDecryption = Cipher.getInstance("AES");//using provider-specific default values for the mode and padding scheme.
     aesCipherForDecryption.init(Cipher.DECRYPT_MODE, secretKey);
     byte[] byteDecryptedText = aesCipherForDecryption
         .doFinal(Base64.getDecoder().decode(encryptedPasswordAsBase64));
