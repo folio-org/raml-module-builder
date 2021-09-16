@@ -45,7 +45,7 @@ public final class AES {
 
   /** encrypt a password with the secret key and get back a base64 representation of the password */
   public static String encryptPasswordAsBase64(String password, SecretKey secretKey) throws Exception {
-    Cipher aesCipherForEncryption = Cipher.getInstance("AES/GCM/NoPadding");
+    Cipher aesCipherForEncryption = Cipher.getInstance("AES/GCM/NoPadding");//(algo/Mode/padding)
     aesCipherForEncryption.init(Cipher.ENCRYPT_MODE, secretKey);
     byte[] byteDataToEncrypt = password.getBytes();
     byte[] byteCipherText = aesCipherForEncryption
@@ -55,7 +55,7 @@ public final class AES {
 
   /** decode a password using the secret key */
   public static String decryptPassword(byte []encryptedPassword, SecretKey secretKey) throws Exception {
-    Cipher aesCipherForDecryption = Cipher.getInstance("AES/GCM/NoPadding");
+    Cipher aesCipherForDecryption = Cipher.getInstance("AES/GCM/NoPadding");//(algo/Mode/padding)
     aesCipherForDecryption.init(Cipher.DECRYPT_MODE, secretKey);
     byte[] byteDecryptedText = aesCipherForDecryption
         .doFinal(encryptedPassword);
@@ -64,7 +64,7 @@ public final class AES {
 
   /** decode a base64 password with the secret key */
   public static String decryptPassword(String encryptedPasswordAsBase64, SecretKey secretKey) throws Exception {
-    Cipher aesCipherForDecryption = Cipher.getInstance("AES/GCM/NoPadding");
+    Cipher aesCipherForDecryption = Cipher.getInstance("AES/GCM/NoPadding");//(algo/Mode/padding)
     aesCipherForDecryption.init(Cipher.DECRYPT_MODE, secretKey);
     byte[] byteDecryptedText = aesCipherForDecryption
         .doFinal(Base64.getDecoder().decode(encryptedPasswordAsBase64));
