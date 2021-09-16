@@ -6,6 +6,8 @@ import java.util.List;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
+import javax.validation.constraints.NotNull;
+
 /**
  * Based on the vertx json object implementation which is mapped based.
  * <p>
@@ -275,7 +277,10 @@ public class JsonPathParser {
         }
       }
       if(returnRoot){
-        parent.requestedValue = ((JsonObject) o).getValue(path);
+      //parent may throw @NullPointerException
+        if (parent != null) {
+          parent.requestedValue = ((JsonObject) o).getValue(path);
+        }
         return parent;
       }
       else{
@@ -292,7 +297,10 @@ public class JsonPathParser {
         }
       }
       if(returnRoot){
-        parent.requestedValue = o1;
+      ////parent may throw @NullPointerException
+        if (parent != null) {
+          parent.requestedValue = o1;
+        }
         return parent;
       }
       else{

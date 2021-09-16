@@ -109,21 +109,22 @@ public class Criteria {
     }
   }
 
-  private void createFromSnippet() {
+private void createFromSnippet() {
     if (isArray()) {
       from = new From();
       from.setSnippet(ARRAY_FROM_CLAUSE + "("
         + PostgresClient.DEFAULT_JSONB_FIELD_NAME + GET_JSON_FIELD + arrayField + ")");
-      from.setAsValue(field.get(0).replaceAll("^'|'$", "")); //remove ''
+      //from.setAsValue(field.get(0).replaceAll("^'|'$", "")); //remove ''
+      from.setAsValue(field.get(0).replaceAll("'", "")); //remove ''
     }
   }
-
   private void createSelectSnippet() {
     if (isArray()) {
       select = new Select();
       //replace surrounding '' from the field name
-      select.setSnippet(field.get(0).replaceAll("^'|'$", ""));
-    }
+      //select.setSnippet(field.get(0).replaceAll("^'|'$", ""));
+      select.setSnippet(field.get(0).replaceAll("'", ""));
+      }
   }
 
   private String wrapField() {

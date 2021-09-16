@@ -16,6 +16,10 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class NetworkUtils {
 
+  /**
+ *  ThreadLocalRandom has a Random instance per thread and safeguards against contention.
+ */
+ @SuppressWarnings("all")
   public static int nextFreePort() {
     int maxTries = 10000;
     int port = ThreadLocalRandom.current().nextInt(49152 , 65535);

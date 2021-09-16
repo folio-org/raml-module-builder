@@ -93,6 +93,7 @@ public class Index extends TableIndexes {
     this.sqlExpressionQuery = sqlExpressionQuery;
   }
 
+  @SuppressWarnings("all")//Line:105-causing security hotspot ,@SupressWarnings can be used as input is very small(split(" *, *")).
   public String getFinalSqlExpression(String tableLoc, boolean lowerIt) {
     if (this.getSqlExpression() != null) {
       return this.getSqlExpression();
