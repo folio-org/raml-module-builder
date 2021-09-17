@@ -26,15 +26,15 @@ public final class AES {
   }
 
   /** generate a secret key to use for encrypting a password */
-  public static SecretKey generateSecretKey() throws NoSuchAlgorithmException {
+  /*public static SecretKey generateSecretKey() throws NoSuchAlgorithmException {
     KeyGenerator keyGen = KeyGenerator.getInstance("AES");
     keyGen.init(128);
     SecretKey secretKey = keyGen.generateKey();
     return secretKey;
   }
-
+*/
   /** encrypt a password with the secret key object */
-  @SuppressWarnings("all")
+ /* @SuppressWarnings("all")
   public static byte[] encryptPassword(String password, SecretKey secretKey) throws Exception {
     Cipher aesCipherForEncryption = Cipher.getInstance("AES");//using provider-specific default values for the mode and padding scheme.
     aesCipherForEncryption.init(Cipher.ENCRYPT_MODE, secretKey);
@@ -42,7 +42,7 @@ public final class AES {
     byte[] byteCipherText = aesCipherForEncryption
         .doFinal(byteDataToEncrypt);
     return byteCipherText;
-  }
+  }*/
 
   /** encrypt a password with the secret key and get back a base64 representation of the password */
   @SuppressWarnings("all")
@@ -56,14 +56,14 @@ public final class AES {
   }
 
   /** decode a password using the secret key */
-  @SuppressWarnings("all")
+  /*@SuppressWarnings("all")
   public static String decryptPassword(byte []encryptedPassword, SecretKey secretKey) throws Exception {
     Cipher aesCipherForDecryption = Cipher.getInstance("AES");//using provider-specific default values for the mode and padding scheme.
     aesCipherForDecryption.init(Cipher.DECRYPT_MODE, secretKey);
     byte[] byteDecryptedText = aesCipherForDecryption
         .doFinal(encryptedPassword);
     return new String(byteDecryptedText);
-  }
+  }*/
 
   /** decode a base64 password with the secret key */
   @SuppressWarnings("all")
@@ -83,10 +83,10 @@ public final class AES {
   }
 
   /** convert a secret key object to a string base64 representation */
-  public static String convertSecretKeyToString(SecretKey secretKey) throws Exception {
+  /*public static String convertSecretKeyToString(SecretKey secretKey) throws Exception {
     byte[] encoded = secretKey.getEncoded();
     String output = Base64.getEncoder().withoutPadding().encodeToString(encoded);
     return output;
-  }
+  }*/
 
 }
