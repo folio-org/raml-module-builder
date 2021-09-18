@@ -7,6 +7,17 @@ import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 
+/**
+ * This uses "AES" = "AES/ECB/NoPadding" encryption algorithm that has this weakness:
+ *
+ * <p>Under a given key any given plaintext block always gets encrypted to the same
+ * ciphertext block.
+ *
+ * <p>However, this is used only for encrypting a few passwords that seldom change, have a length of
+ * one or two blocks and are chosen in a way without having a plaintext block of 128 bit in common.
+ */
+@SuppressWarnings("java:S5542")  // Suppress "Encryption algorithms should be used
+// with secure mode and padding scheme", see javadoc above
 public final class AES {
 
   private static String secretKey = null;

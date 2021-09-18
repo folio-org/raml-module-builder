@@ -633,7 +633,7 @@ public class InitConfigService implements PostDeployVerticle {
 
     System.out.println("Getting secret key to decode DB password.");
     /** hard code the secret key for now - in production env - change this to read from a secure place */
-    String secretKey = "b2%2BS%2BX4F/NFys/0jMaEG1A";
+    String secretKey = "b2+S+X4F/NFys/0jMaEG1A";
     int port = context.config().getInteger("http.port");
     AdminClient ac = new AdminClient("http://localhost:" + port, null);
     ac.postSetAESKey(secretKey, reply -> {
