@@ -66,7 +66,7 @@ class HTTPJsonResponseHandler implements Handler<AsyncResult<HttpResponse<Buffer
         log.error(e.getMessage(), e);
 
         //InterruptedExceptions should never be ignored in the code
-        if(e instanceof InterruptedException){
+        if (e instanceof InterruptedException){
         //Restore interrupted state...
          Thread.currentThread().interrupt();}
       }
