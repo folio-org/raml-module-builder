@@ -23,7 +23,7 @@ public class FacetField {
     this(path2facet, amountOfValues2return, null);
   }
 
-  @SuppressWarnings("java:S5850")//Line:34 (in regex '$' has higher precedence than '|' , but it is a small regex so we can keep it)
+  @SuppressWarnings({"java:S5850","java:S5852"})//Line:34 (in regex '$' has higher precedence than '|' , but it is a small regex so we can keep it)
   private FacetField(String path2facet, int topFacets2return, String alias){
     this.fieldPath = path2facet;
     this.topFacets2return = topFacets2return;

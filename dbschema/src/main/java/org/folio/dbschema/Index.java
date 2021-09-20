@@ -93,6 +93,7 @@ public class Index extends TableIndexes {
     this.sqlExpressionQuery = sqlExpressionQuery;
   }
 
+  @SuppressWarnings("java:S5852")//Line:105-Most of the regular expression engines use backtracking, but here regex is very small so we can keep it.
   public String getFinalSqlExpression(String tableLoc, boolean lowerIt) {
     if (this.getSqlExpression() != null) {
       return this.getSqlExpression();
