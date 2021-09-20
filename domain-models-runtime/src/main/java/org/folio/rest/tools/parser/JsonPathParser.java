@@ -6,7 +6,6 @@ import java.util.List;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
-
 /**
  * Based on the vertx json object implementation which is mapped based.
  * <p>
