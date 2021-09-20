@@ -274,7 +274,7 @@ public class JsonPathParser {
           parent.rootNode = o;
         }
       }
-      if(returnRoot && parent != null){
+      if (returnRoot && parent != null) {
         parent.requestedValue = ((JsonObject) o).getValue(path);
         return parent;
       }
