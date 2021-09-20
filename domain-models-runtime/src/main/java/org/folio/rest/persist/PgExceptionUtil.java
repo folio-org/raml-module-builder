@@ -18,15 +18,16 @@ public final class PgExceptionUtil {
 
   /**
    * Return the value for key in the
-   *   {@link io.vertx.pgclient.PgException PgException}
+   * {@link io.vertx.pgclient.PgException PgException}
+   *
    * @param throwable a Throwable or null
    * @param key
    * @return the value if throwable is a
-   *   {@link io.vertx.pgclient.PgException PgException}
-   *   and the key exists, null otherwise.
+   * {@link io.vertx.pgclient.PgException PgException}
+   * and the key exists, null otherwise.
    */
   public static String get(Throwable throwable, Character key) {
-    Map<Character,String> fields = getBadRequestFields(throwable);
+    Map<Character, String> fields = getBadRequestFields(throwable);
     if (fields == null) {
       return null;
     }
@@ -35,10 +36,11 @@ public final class PgExceptionUtil {
 
   /**
    * Check for foreign key violation.
+   *
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link io.vertx.pgclient.PgException PgException}
-   *   that reports a foreign key violation, false otherwise.
+   * {@link io.vertx.pgclient.PgException PgException}
+   * that reports a foreign key violation, false otherwise.
    */
   public static boolean isForeignKeyViolation(Throwable throwable) {
     return FOREIGN_KEY_VIOLATION.equals(get(throwable, 'C'));
@@ -46,10 +48,11 @@ public final class PgExceptionUtil {
 
   /**
    * Check for unique violation.
+   *
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link io.vertx.pgclient.PgException PgException}
-   *   that reports a unique violation, false otherwise.
+   * {@link io.vertx.pgclient.PgException PgException}
+   * that reports a unique violation, false otherwise.
    */
   public static boolean isUniqueViolation(Throwable throwable) {
     return UNIQUE_VIOLATION.equals(get(throwable, 'C'));
@@ -57,10 +60,11 @@ public final class PgExceptionUtil {
 
   /**
    * Check for invalid text representation.
+   *
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link io.vertx.pgclient.PgException PgException}
-   *   that reports an invalid text representation, false otherwise.
+   * {@link io.vertx.pgclient.PgException PgException}
+   * that reports an invalid text representation, false otherwise.
    */
   public static boolean isInvalidTextRepresentation(Throwable throwable) {
     return INVALID_TEXT_REPRESENTATION.equals(get(throwable, 'C'));
@@ -68,10 +72,11 @@ public final class PgExceptionUtil {
 
   /**
    * Check for optimistic locking version conflict.
+   *
    * @param throwable any Throwable or null
    * @return true if throwable is a
-   *   {@link io.vertx.pgclient.PgException PgException}
-   *   that reports a version conflict, false otherwise.
+   * {@link io.vertx.pgclient.PgException PgException}
+   * that reports a version conflict, false otherwise.
    */
   public static boolean isVersionConflict(Throwable throwable) {
     return VERSION_CONFLICT.equals(get(throwable, 'C'));
@@ -89,7 +94,7 @@ public final class PgExceptionUtil {
     if (throwable instanceof IllegalArgumentException) {
       return throwable.getMessage();
     }
-    Map<Character,String> fields = getBadRequestFields(throwable);
+    Map<Character, String> fields = getBadRequestFields(throwable);
     if (fields == null) {
       return null;
     }
@@ -99,19 +104,18 @@ public final class PgExceptionUtil {
     }
     String detail = fields.getOrDefault('D', "");
     String message = fields.getOrDefault('M', "");
-
     switch (sqlstate) {
-    case FOREIGN_KEY_VIOLATION:
-      // insert or update on table "item" violates foreign key constraint "item_permanentloantypeid_fkey":
-      // Key (permanentloantypeid)=(5573df18-043f-4228-b108-483fd3a0cb57) is not present in table "loan_type".
-    case UNIQUE_VIOLATION:
-      // duplicate key value violates unique constraint "loan_type_unique_idx":
-      // Key ((jsonb ->> 'name'::text))=(Can circulate) already exists.
-      return message + ": " + detail;
-    case INVALID_TEXT_REPRESENTATION:  // invalid input syntax for uuid: "1234"
-      return message;
-    default:
-      return null;
+      case FOREIGN_KEY_VIOLATION:
+        // insert or update on table "item" violates foreign key constraint "item_permanentloantypeid_fkey":
+        // Key (permanentloantypeid)=(5573df18-043f-4228-b108-483fd3a0cb57) is not present in table "loan_type".
+      case UNIQUE_VIOLATION:
+        // duplicate key value violates unique constraint "loan_type_unique_idx":
+        // Key ((jsonb ->> 'name'::text))=(Can circulate) already exists.
+        return message + ": " + detail;
+      case INVALID_TEXT_REPRESENTATION:  // invalid input syntax for uuid: "1234"
+        return message;
+      default:
+        return null;
     }
   }
 
@@ -121,16 +125,16 @@ public final class PgExceptionUtil {
    * <p>Example output:
    *
    * <p>{@code ErrorMessage(fields=[(Severity, ERROR), (SQLSTATE, 23505),
-   *     (Message, duplicate key value violates unique constraint "t_text_key"),
-   *     (Detail, Key (text)=(a) already exists.)]}
+   * (Message, duplicate key value violates unique constraint "t_text_key"),
+   * (Detail, Key (text)=(a) already exists.)]}
    *
    * <p>This is similar to {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException#getMessage()
    * GenericDatabaseException#getMessage()} that returns
    *
    * <p>{@code ErrorMessage(fields=[(Severity, ERROR), (V, ERROR), (SQLSTATE, 23505),
-   *     (Message, duplicate key value violates unique constraint "t_text_key"),
-   *     (Detail, Key (text)=(a) already exists.), (s, public), (t, t), (n, t_text_key),
-   *     (File, nbtinsert.c), (Line, 427), (Routine, _bt_check_unique)])}
+   * (Message, duplicate key value violates unique constraint "t_text_key"),
+   * (Detail, Key (text)=(a) already exists.), (s, public), (t, t), (n, t_text_key),
+   * (File, nbtinsert.c), (Line, 427), (Routine, _bt_check_unique)])}
    *
    * <p>Use this method where PgException.getMessage() returning the message field only is not sufficient.
    *
@@ -162,6 +166,7 @@ public final class PgExceptionUtil {
 
   /**
    * Constructor for PgException similar to the old postgres driver
+   *
    * @param map map of message, detail, code
    * @return
    */
