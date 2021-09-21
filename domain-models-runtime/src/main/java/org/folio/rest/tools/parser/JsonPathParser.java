@@ -274,7 +274,7 @@ public class JsonPathParser {
           parent.rootNode = o;
         }
       }
-      if(returnRoot){
+      if (returnRoot && parent != null){
         parent.requestedValue = ((JsonObject) o).getValue(path);
         return parent;
       }
@@ -291,7 +291,7 @@ public class JsonPathParser {
           parent.rootNode = o;
         }
       }
-      if(returnRoot){
+      if (returnRoot && parent != null){
         parent.requestedValue = o1;
         return parent;
       }
