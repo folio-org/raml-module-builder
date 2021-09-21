@@ -26,6 +26,7 @@ public class FacetField {
   private FacetField(String path2facet, int topFacets2return, String alias){
     this.fieldPath = path2facet;
     this.topFacets2return = topFacets2return;
+    this.alias=alias;
     if(path2facet == null || !path2facet.contains("\'")){
       throw new ExceptionInInitializerError("Path to facet must be in the form of jsonb_field_name->'field1'->>'field2', for example jsonb->>'field'");
     }
