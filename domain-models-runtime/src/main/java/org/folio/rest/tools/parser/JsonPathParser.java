@@ -274,11 +274,8 @@ public class JsonPathParser {
           parent.rootNode = o;
         }
       }
-      if(returnRoot){
-      //parent may throw @NullPointerException
-        if (parent != null) {
-          parent.requestedValue = ((JsonObject) o).getValue(path);
-        }
+      if (returnRoot && parent != null){
+        parent.requestedValue = ((JsonObject) o).getValue(path);
         return parent;
       }
       else{
@@ -294,11 +291,8 @@ public class JsonPathParser {
           parent.rootNode = o;
         }
       }
-      if(returnRoot){
-      ////parent may throw @NullPointerException
-        if (parent != null) {
-          parent.requestedValue = o1;
-        }
+      if (returnRoot && parent != null){
+        parent.requestedValue = o1;
         return parent;
       }
       else{

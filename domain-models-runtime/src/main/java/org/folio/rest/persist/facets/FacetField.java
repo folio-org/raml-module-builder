@@ -23,10 +23,7 @@ public class FacetField {
     this(path2facet, amountOfValues2return, null);
   }
 
-  /**
-  * //line:33-causing security hotspot ,@SupressWarnings can be used as input is very small."replaceAll(".*->>'|'$", "")".
-  */
-  @SuppressWarnings("all")
+  @SuppressWarnings("java:S5850")//Line:34 (in regex '$' has higher precedence than '|' , but it is a small regex so we can keep it)
   private FacetField(String path2facet, int topFacets2return, String alias){
     this.fieldPath = path2facet;
     this.topFacets2return = topFacets2return;
@@ -35,7 +32,6 @@ public class FacetField {
     }
     //alias is the last field name wrapped in ''
     this.alias = path2facet.trim().replaceAll(".*->>'|'$", "");
-
     if(path2facet.contains("jsonb_array_elements(")){
       //array path , get last occurrence of what is in between ''
       Matcher m = QUOTES_PATTERN.matcher(path2facet);
