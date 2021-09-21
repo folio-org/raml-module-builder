@@ -1,5 +1,6 @@
 package org.folio.dbschema;
 
+import java.util.Arrays;
 import java.util.List;
 
 import org.folio.dbschema.util.SqlUtil;
@@ -101,7 +102,8 @@ public class Index extends TableIndexes {
       return this.fieldPath;
     }
 
-    String [] splitIndex = this.getMultiFieldNames().split(" *, *");
+    String [] splitIndex = this.getMultiFieldNames().split(",");
+    Arrays.asList(splitIndex).replaceAll(s -> s.strip());
 
     StringBuilder result = new StringBuilder("concat_space_sql(");
     for (int i = 0; i < splitIndex.length; i++) {
