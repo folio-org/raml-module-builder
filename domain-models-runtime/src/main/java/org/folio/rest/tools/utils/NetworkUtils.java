@@ -16,6 +16,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class NetworkUtils {
 
+  @SuppressWarnings("java:S2245")//Suppress "Weak Cryptography" warning, ThreadLocalRandom is good enough for finding a free port
   public static int nextFreePort() {
     int maxTries = 10000;
     int port = ThreadLocalRandom.current().nextInt(49152 , 65535);
