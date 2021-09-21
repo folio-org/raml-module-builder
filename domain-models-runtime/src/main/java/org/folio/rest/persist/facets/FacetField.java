@@ -9,7 +9,7 @@ import java.util.regex.Pattern;
  */
 public class FacetField {
 
-  private static final Pattern QUOTES_PATTERN = Pattern.compile("(\'[^\']*\')", Pattern.CASE_INSENSITIVE);
+  private static final Pattern QUOTES_PATTERN = Pattern.compile("'([^\']*)'", Pattern.CASE_INSENSITIVE);
 
   private String fieldPath;
   private int topFacets2return;
@@ -23,24 +23,17 @@ public class FacetField {
     this(path2facet, amountOfValues2return, null);
   }
 
-  @SuppressWarnings("java:S5850")//Line:34 (in regex '$' has higher precedence than '|' , but it is a small regex so we can keep it)
   private FacetField(String path2facet, int topFacets2return, String alias){
     this.fieldPath = path2facet;
     this.topFacets2return = topFacets2return;
+    this.alias=alias;
     if(path2facet == null || !path2facet.contains("\'")){
       throw new ExceptionInInitializerError("Path to facet must be in the form of jsonb_field_name->'field1'->>'field2', for example jsonb->>'field'");
     }
-    //alias is the last field name wrapped in ''
-    this.alias = path2facet.trim().replaceAll(".*->>'|'$", "");
-    if(path2facet.contains("jsonb_array_elements(")){
-      //array path , get last occurrence of what is in between ''
       Matcher m = QUOTES_PATTERN.matcher(path2facet);
       while (m.find()){
-        this.alias = m.group();
-        //remove ''
-        this.alias = this.alias.substring(1, this.alias.length()-1);
+       this.alias = m.group(1);
       }
-    }
   }
 
   public String getFieldPath() {
