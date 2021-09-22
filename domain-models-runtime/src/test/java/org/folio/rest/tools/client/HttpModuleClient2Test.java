@@ -209,4 +209,18 @@ public class HttpModuleClient2Test {
     // don't compare against locale dependent error message
     assertThat(response.getError().encodePrettily(), containsString("" + port2));
   }
+
+  @Test(expected = InterruptedException.class)
+  public void testWithInterruptedException(TestContext context) throws Exception {
+    HttpModuleClient2 httpModuleClient2 = new HttpModuleClient2("localhost", port1, "tenant");
+
+    Buffer badPojo = Buffer.buffer("{");
+
+    Map<String,String> headers = new HashMap<>();
+    headers.put("X-Name", "x-value");
+
+    final CompletableFuture<Response> cf = httpModuleClient2.request(HttpMethod.POST, badPojo, "/test-pojo", headers);
+    Thread.currentThread().interrupt();
+    cf.get(5, TimeUnit.SECONDS);
+  }
 }
