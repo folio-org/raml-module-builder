@@ -363,7 +363,7 @@ public class JsonPathParser {
         o = getValueAt(subPathsList[i], parent, null, false);
         if(o == null){
           String fieldName = subPathsList[i];
-          if(subPathsList[i+1].matches(".*\\[.*?\\].*")){
+          if(subPathsList[i+1].contains("[") && subPathsList[i+1].contains("]")){
             fieldName = subPathsList[i];
             //create an array
             o = new JsonArray();
