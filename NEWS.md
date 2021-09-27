@@ -1,3 +1,19 @@
+## 33.1.0 2021-09-27
+
+Fixes:
+ * [RMB-863](https://issues.folio.org/browse/RMB-863) Free streamGet PreparedStatement fixing Aggressive DB Memory Consumption
+ * [RMB-538](https://issues.folio.org/browse/RMB-538) JSON validation: read-only sub-fields, translation code
+ * [RMB-850](https://issues.folio.org/browse/RMB-850) Fix sonarqube bugs + vulnerabilities + security hot spots
+
+New features:
+ * [RMB-403](https://issues.folio.org/browse/RMB-403) The 422 message should be human readable (duplicate key, foreign key, invalid uuid, ...)
+ * [RMB-868](https://issues.folio.org/browse/RMB-868) PostgresClient.runSQL should append the database exception message
+
+Documentation:
+ * [RMB-852](https://issues.folio.org/browse/RMB-852) Update documentation for domain-models-interface-extensions removal
+ * [#965](https://github.com/folio-org/raml-module-builder/pull/965) AES.java: Fix README example, suppress algo warning, add tests
+ * [#962](https://github.com/folio-org/raml-module-builder/pull/962) Explain optional fromModuleVersion
+
 ## 33.0.3 2021-08-12
 
 Fixes:
