@@ -2,6 +2,7 @@ package org.folio.rest.persist;
 
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
 import static org.hamcrest.CoreMatchers.*;
@@ -502,7 +503,7 @@ public class PgUtilIT {
     RoutingContext routingContext = mock(RoutingContext.class, Mockito.RETURNS_DEEP_STUBS);
     PgUtil.streamGet("users", User.class, "/", 0, 9, null, "users",
         routingContext, okapiHeaders, vertx.getOrCreateContext());
-    verify(routingContext.response()).setStatusCode(400);
+    verify(routingContext.response(), timeout(100).atLeastOnce()).setStatusCode(400);
   }
 
   @Test

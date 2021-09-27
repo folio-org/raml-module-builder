@@ -14,12 +14,23 @@ import io.vertx.sqlclient.Tuple;
  * endHandler or exceptionHandler has been called.
  */
 public class PreparedRowStream implements RowStream<Row> {
+  private final PreparedStatement preparedStatement;
   private final RowStream<Row> rowStream;
   private Promise<Void> result = Promise.promise();
   private Handler<Throwable> exceptionHandler;
   private Handler<Void> endHandler;
 
   public PreparedRowStream(RowStream<Row> rowStream) {
+    this(null, rowStream);
+  }
+
+  /**
+   * Constructor with PreparedStatement and RowStream<Row>.
+   *
+   * @param preparedStatement the query to execute, it is closed when this PreparedRowStream is closed
+   */
+  public PreparedRowStream(PreparedStatement preparedStatement, RowStream<Row> rowStream) {
+    this.preparedStatement = preparedStatement;
     this.rowStream = rowStream;
     rowStream.exceptionHandler(t -> {
       if (exceptionHandler != null) {
@@ -38,12 +49,12 @@ public class PreparedRowStream implements RowStream<Row> {
   /**
    * Create a RowStream<Row> using the preparedStatement, fetch and tuple.
    *
-   * @param preparedStatement the query to execute
+   * @param preparedStatement the query to execute, it is closed when this PreparedRowStream is closed
    * @param fetch the cursor fetch size
    * @param tuple the arguments for preparedStatement
    */
   public PreparedRowStream(PreparedStatement preparedStatement, int fetch, Tuple tuple) {
-    this(preparedStatement.createStream(fetch, tuple));
+    this(preparedStatement, preparedStatement.createStream(fetch, tuple));
   }
 
   /**
@@ -89,13 +100,26 @@ public class PreparedRowStream implements RowStream<Row> {
     return this;
   }
 
+  /**
+   * Close the RowStream and the PreparedStatement. Each PreparedStatement occupies
+   * memory in the database that needs to be freed to avoid out-of-memory error.
+   */
   @Override
   public Future<Void> close() {
-    return rowStream.close();
+    return rowStream.close().eventually(x -> {
+      if (preparedStatement == null) {
+        return Future.succeededFuture();
+      }
+      return preparedStatement.close();
+    });
   }
 
+  /**
+   * Close the RowStream and the PreparedStatement. Each PreparedStatement occupies
+   * memory in the database that needs to be freed to avoid out-of-memory error.
+   */
   @Override
   public void close(Handler<AsyncResult<Void>> completionHandler) {
-    rowStream.close(completionHandler);
+    close().onComplete(completionHandler);
   }
 }

@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.Mockito.*;
 
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
@@ -85,5 +86,14 @@ class PreparedRowStreamTest {
     endHandler.get().handle(null);
     exceptionHandler.get().handle(new RuntimeException("foo"));
     assertThat(preparedRowStream.getResult().succeeded(), is(true));
+  }
+
+  @Test
+  void close() {
+    RowStream<Row> rowStream = mock(RowStream.class);
+    when(rowStream.close()).thenReturn(Future.succeededFuture());
+    PreparedRowStream preparedRowStream = new PreparedRowStream(null, rowStream);
+    preparedRowStream.close(x -> {});
+    verify(rowStream).close();
   }
 }
