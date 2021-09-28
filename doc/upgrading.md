@@ -22,7 +22,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 33.1
 
-#### [RMB-862](https://issues.folio.org/browse/RMB-862) Upgrade to Vert.x 4.1.2
+#### [RMB-862](https://issues.folio.org/browse/RMB-862), [RMB-874](https://issues.folio.org/browse/RMB-874) Upgrade to Vert.x 4.1.2/4.1.4
 
 RMB 33.1.0 requires Vert.x 4.1.2 and okapi-common 4.8.2.
 RMB >= 33.1.1 requires Vert.x >= 4.1.3 and okapi-common >= 4.9.0.
