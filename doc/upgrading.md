@@ -22,9 +22,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 33.1
 
-#### [RMB-862](https://issues.folio.org/browse/RMB-862) Upgrade to Vert.x 4.1.2
+#### [RMB-862](https://issues.folio.org/browse/RMB-862), [RMB-874](https://issues.folio.org/browse/RMB-874) Upgrade to Vert.x 4.1.2/4.1.4
 
-Module should depend on Vert.x 4.1.2 or a later version in 4.1.x series.
+RMB 33.1.0 requires Vert.x 4.1.2 and okapi-common 4.8.2.
+RMB >= 33.1.1 requires Vert.x >= 4.1.3 and okapi-common >= 4.9.0.
 
 Module should use `vertx-stack-depchain`:
 
@@ -34,7 +35,7 @@ Module should use `vertx-stack-depchain`:
       <dependency>
         <groupId>io.vertx</groupId>
         <artifactId>vertx-stack-depchain</artifactId>
-        <version>4.1.2</version>
+        <version>4.1.4</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
