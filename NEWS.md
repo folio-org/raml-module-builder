@@ -1,3 +1,8 @@
+## 33.1.1 2021-09-28
+
+Fix/feature:
+ * [RMB-874](https://issues.folio.org/browse/RMB-874) Update Vert.x to 4.1.4 and okapi-common to 4.9.0
+
 ## 33.1.0 2021-09-27
 
 Fixes:
