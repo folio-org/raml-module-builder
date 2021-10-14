@@ -18,6 +18,7 @@ import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -30,6 +31,7 @@ import java.util.jar.JarFile;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.util.PercentCodec;
@@ -179,6 +181,9 @@ public class TenantLoading {
     }
     req.headers().add("Content-Type", "application/json");
     req.headers().add("Accept", "application/json, text/plain");
+    if (json == null) {
+      return req.send();
+    }
     return req.sendBuffer(Buffer.buffer(json));
   }
 
@@ -241,63 +246,80 @@ public class TenantLoading {
             .compose(id -> loadURL(headers, content, id, httpClient, loadingEntry, endPointUrl)));
   }
 
+  private static boolean isSuccess(HttpResponse<Buffer> httpResponse, LoadingEntry loadingEntry) {
+    return
+        httpResponse.statusCode() == 200 ||
+        httpResponse.statusCode() == 201 ||
+        httpResponse.statusCode() == 204 ||
+        loadingEntry.statusAccept.contains(httpResponse.statusCode());
+  }
+
+  /**
+   * Content with _version copied from the body of httpResponse if httpMethod is PUT and the body
+   * has a _version property. Otherwise content unchanged.
+   */
+  private static String mergeVersion(HttpMethod httpMethod, String content, HttpResponse<Buffer> httpResponse) {
+    if (httpMethod != HttpMethod.PUT) {
+      return content;
+    }
+    Integer version = httpResponse.bodyAsJsonObject().getInteger("_version");
+    if (version == null) {
+      return content;
+    }
+    return new JsonObject(content).put("_version", version).encode();
+  }
+
   private static Future<Void> loadURL(Map<String, String> headers, String content, String id,
                                       WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
-    StringBuilder putUri = new StringBuilder();
-    HttpMethod method1t;
-    if (loadingEntry.strategy == Strategy.RAW_POST) {
-      method1t = HttpMethod.POST;
-    } else {
-      method1t = HttpMethod.PUT;
-    }
+    StringBuilder idUrl = new StringBuilder();
+    HttpMethod method1 = (loadingEntry.strategy == Strategy.RAW_POST) ? HttpMethod.POST : HttpMethod.PUT;
     if (id == null) {
-      putUri.append(endPointUrl);
+      idUrl.append(endPointUrl);
     } else {
-      if (endPointUrl.contains("%d")) {
-        putUri.append(endPointUrl.replaceAll("%d", id));
+      if (endPointUrl.contains("/%d")) {
+        idUrl.append(endPointUrl.replaceAll("/%d", id));
       } else {
-        putUri.append(endPointUrl + "/" + id);
+        idUrl.append(endPointUrl + "/" + id);
       }
     }
-    final HttpMethod method1 = method1t;
-    HttpRequest<Buffer> reqPut = httpClient.requestAbs(method1, putUri.toString());
-    return sendWithXHeaders(reqPut, headers, content).compose(resPut -> {
-      Buffer body1 = resPut.bodyAsBuffer();
-      if (loadingEntry.strategy != Strategy.RAW_PUT
-          && loadingEntry.strategy != Strategy.RAW_POST
-          && (resPut.statusCode() == 404 || resPut.statusCode() == 400
-          || resPut.statusCode() == 422)) {
-        HttpMethod method2 = HttpMethod.POST;
-        HttpRequest<Buffer> reqPost = httpClient.requestAbs(method2, endPointUrl);
-        return sendWithXHeaders(reqPost, headers, content).compose(resPost -> {
-          Buffer body2 = resPost.bodyAsBuffer();
-          if (resPost.statusCode() == 201) {
-            return Future.succeededFuture();
-          } else {
-            String diag = method1.name() + " " + putUri.toString()
-                + RETURNED_STATUS + resPut.statusCode() + ": " + body1
-                + " " + method2.name() + " " + endPointUrl
-                + RETURNED_STATUS + resPost.statusCode() + ": " + body2;
+    if (loadingEntry.strategy == Strategy.RAW_PUT ||
+        loadingEntry.strategy == Strategy.RAW_POST) {
+      String url = loadingEntry.strategy == Strategy.RAW_PUT ? idUrl.toString() : endPointUrl;
+      HttpRequest<Buffer> req = httpClient.requestAbs(method1, url);
+      return sendWithXHeaders(req, headers, content)
+          .compose(res -> {
+            if (isSuccess(res, loadingEntry)) {
+              return Future.succeededFuture();
+            }
+            String diag = method1.name() + " " + url + RETURNED_STATUS
+                + res.statusCode() + ": " + res.bodyAsString();
             log.error(diag);
             return Future.failedFuture(diag);
-          }
-        });
-      } else if (resPut.statusCode() == 200 || resPut.statusCode() == 201
-          || resPut.statusCode() == 204 || loadingEntry.statusAccept
-          .contains(resPut.statusCode())) {
-        return Future.succeededFuture();
-      } else {
-        String diag =
-            method1.name() + " " + putUri.toString() + RETURNED_STATUS + resPut.statusCode()
-                + ": " + body1;
+          });
+    }
+
+    HttpRequest<Buffer> reqGet = httpClient.getAbs(idUrl.toString());
+    return sendWithXHeaders(reqGet, headers, null).compose(resGet -> {
+      HttpMethod method2 = (resGet.statusCode() == 200) ? HttpMethod.PUT : HttpMethod.POST;
+      String url2 = (method2 == HttpMethod.PUT) ? idUrl.toString() : endPointUrl.replace("/%d", "");
+      String finalContent = mergeVersion(method2, content, resGet);
+      HttpRequest<Buffer> req2 = httpClient.requestAbs(method2, url2);
+      return sendWithXHeaders(req2, headers, finalContent).compose(res2 -> {
+        if (res2.statusCode() == 201 || res2.statusCode() == 204) {
+          return Future.succeededFuture();
+        }
+        String diag = "GET " + idUrl.toString()
+          + RETURNED_STATUS + resGet.statusCode() + ": " + resGet.bodyAsString()
+          + " " + method2.name() + " " + url2
+          + RETURNED_STATUS + res2.statusCode() + ": " + res2.bodyAsString();
         log.error(diag);
         return Future.failedFuture(diag);
-      }
+      });
     });
   }
 
   private static Future<Integer> loadData(String okapiUrl, Map<String, String> headers,
-    LoadingEntry loadingEntry, WebClient httpClient) {
+      LoadingEntry loadingEntry, WebClient httpClient) {
 
     String filePath = loadingEntry.lead;
     if (!loadingEntry.filePath.isEmpty()) {
@@ -308,12 +330,11 @@ public class TenantLoading {
       List<URL> urls = getURLsFromClassPathDir(filePath);
       if (urls.isEmpty()) {
         log.warn("loadData getURLsFromClassPathDir returns empty list for path=" + filePath);
+        return Future.succeededFuture(0);
       }
-      Future<Void> future = Future.succeededFuture();
-      for (URL url : urls) {
-        future = future.compose(x -> loadURL(headers, url, httpClient, loadingEntry, endPointUrl));
-      }
-      return future.map(urls.size());
+      List<Future<Void>> futures = new ArrayList<>(urls.size());
+      urls.forEach(url -> futures.add(loadURL(headers, url, httpClient, loadingEntry, endPointUrl)));
+      return GenericCompositeFuture.all(futures).map(urls.size());
     } catch (URISyntaxException|IOException ex) {
       log.error("Exception for path " + filePath, ex);
       return Future.failedFuture("Exception for path " + filePath + " ex=" + ex.getMessage());
