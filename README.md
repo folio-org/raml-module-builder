@@ -164,25 +164,72 @@ Build the `raml-module-builder` project to generate the needed jars, then add th
 
 ![](images/build.png)
 
-### Generate-time workflows
+### Generate-time workflow
 
 Call a Maven exec plugin with a class from the interfaces jar to generate POJOs and interfaces within your project.
 
 ![](images/generate.png)
 
-See call to `com.sling.rest.tooks.GenerateRunner` in the circulation project's `pom.xml` for an example.
+See the call to `com.sling.rest.tooks.GenerateRunner` in the circulation project's `pom.xml` for an example.
 
-![](images/what.png)
+#### Generated Files
+
+The following RAML snippet will be used for this example:
+
+```raml
+/bibs/{bibId}:
+  type:
+    post:
+      example:
+        !include examples/bid.sample
+      schema:
+        bib.schema
+```
+
+Additionally, the following query parameters and header requirements will be used:
+```raml
+headers:
+  Authorization:
+    description: |
+      Used to send a valid JWT token.
+    example:
+      Bearer Hc8KNK7LAJPasAwX9pIbN7yeTwSCAq
+  required: true
+queryParameters:
+  lang:
+    description: |
+      Requested language. Optional. [lang=en]
+    type: string
+    required: false
+    default: en
+    pattern: "[a-zA-Z]{2}"
+```
+
+From this snippet, an interface (`BibInterface.java`) is generated based on the paths (each path+verb pair generates a method).  This is documented with the examples from your RAML.
+
+Additionally, an object (`Bib.java`) is generated based on the JSON Schema provided.  An example of this may be found in the [A Little More on Validation](#a-little-more-on-validation) section.  
+
+The following is an example of the interface method signature that would be generated:
+
+```java
+void postBibs(
+  @HeaderParam("Authorization")
+  @NotNull
+  String authorization,
+  @QueryParam("lang")
+  @DefaultValue("en")
+  @Pattern(regexp = "[a-zA-Z]{2}")
+  String lang,
+  Bib entity
+) throws Exception;
+```
 
 ### Implement the interfaces
 
-For example, note the validation annotations generated based on the constraints in the RAML.
-
-![](images/interface_example.png)
+An example of the generated constraints is shown [above](#generated-files).
 
 - When implementing the interfaces, you must add the @Validate
   annotation to enforce the annotated constraints declared by the interface.
-
 - Note that a Bib entity was passed as a parameter. The runtime framework
   transforms the JSON passed in the body into the correct POJO.
 
@@ -1750,13 +1797,13 @@ Without the path query parameter the response will be an "application/json" arra
 The `ramls` subdirectory is the default to search for schema files. Add `<ramlDirs>`
 to the domain-models-maven-plugin configuration in pom.xml to change it, for example:
 
-```
-            <configuration>
-              <ramlDirs>
-                <ramlDir>ramls</ramlDir>
-                <ramlDir>ramls/raml-util/ramls</ramlDir>
-              </ramlDirs>
-            </configuration>
+```xml
+<configuration>
+  <ramlDirs>
+    <ramlDir>ramls</ramlDir>
+    <ramlDir>ramls/raml-util/ramls</ramlDir>
+  </ramlDirs>
+</configuration>
 ```
 
 If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
@@ -2264,16 +2311,53 @@ Requesting a stack trace would look like this:
 
 ## A Little More on Validation
 
-Query parameters and header validation
-![](images/validation.png)
+Query parameters and headers, as declared in the RAML, are used to generate the parameter annotations.
+
+An example of this is found above in the [Generated Files](#generated-files) section.
 
 #### Object validations
 
-![](images/object_validation.png)
+For object validation, the provided JSON schema is used as the basis for constraint annotations.
+
+For example, a Vendor object defined like this:
+```json5
+"type": "object",
+"properties": {
+  "vendors": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "$ref": "vendor"
+    }
+  }.
+  "total_records": {
+    "type": "integer"
+  }
+},
+"required": [
+  "vendors",
+  "total_records"
+]
+```
+
+Will result in a class with generated fields and annotations as follows:
+
+```java
+public class Vendors {
+  @Valid
+  @NotNull
+  private List<Vendor> vendors = new ArrayList<Vendor>();
+
+  @NotNull
+  private Integer totalRecords;
+
+  ...
+}
+```
 
 #### function example
 
-org.folio.rest.persist.PgUtil has default implementations that should be used if possible.
+`org.folio.rest.persist.PgUtil` has default implementations that should be used if possible.
 
 This example shows how to use advanced features that go beyond that.
 
