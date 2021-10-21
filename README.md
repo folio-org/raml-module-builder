@@ -15,6 +15,8 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Upgrading](#upgrading)
 * [Overview](#overview)
 * [The basics](#the-basics)
+    * [Build-time workflow](#build-time-workflow)
+    * [Generate-time workflows](#generate-time-workflows)
     * [Implement the interfaces](#implement-the-interfaces)
     * [Set up your pom.xml](#set-up-your-pomxml)
     * [Build and run](#build-and-run)
@@ -156,8 +158,20 @@ be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your pro
 
 ## The basics
 
+### Build-time workflow
+
+Build the `raml-module-builder` project to generate the needed jars, then add them to your project's `pom.xml`.
+
 ![](images/build.png)
+
+### Generate-time workflows
+
+Call a Maven exec plugin with a class from the interfaces jar to generate POJOs and interfaces within your project.
+
 ![](images/generate.png)
+
+See call to `com.sling.rest.tooks.GenerateRunner` in the circulation project's `pom.xml` for an example.
+
 ![](images/what.png)
 
 ### Implement the interfaces
