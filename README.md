@@ -16,7 +16,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Overview](#overview)
 * [The basics](#the-basics)
     * [Build-time workflow](#build-time-workflow)
-    * [Generate-time workflows](#generate-time-workflows)
+    * [Generate-time workflow](#generate-time-workflow)
     * [Implement the interfaces](#implement-the-interfaces)
     * [Set up your pom.xml](#set-up-your-pomxml)
     * [Build and run](#build-and-run)
