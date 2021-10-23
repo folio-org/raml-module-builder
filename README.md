@@ -15,6 +15,8 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Upgrading](#upgrading)
 * [Overview](#overview)
 * [The basics](#the-basics)
+    * [Build-time workflow](#build-time-workflow)
+    * [Generate-time workflow](#generate-time-workflow)
     * [Implement the interfaces](#implement-the-interfaces)
     * [Set up your pom.xml](#set-up-your-pomxml)
     * [Build and run](#build-and-run)
@@ -156,19 +158,78 @@ be [incorporated](#step-2-include-the-jars-in-your-project-pomxml) into your pro
 
 ## The basics
 
+### Build-time workflow
+
+Build the `raml-module-builder` project to generate the needed jars, then add them to your project's `pom.xml`.
+
 ![](images/build.png)
+
+### Generate-time workflow
+
+Call a Maven exec plugin with a class from the interfaces jar to generate POJOs and interfaces within your project.
+
 ![](images/generate.png)
-![](images/what.png)
+
+See the call to `com.sling.rest.tooks.GenerateRunner` in the circulation project's `pom.xml` for an example.
+
+#### Generated Files
+
+The following RAML snippet will be used for this example:
+
+```raml
+/bibs/{bibId}:
+  type:
+    post:
+      example:
+        !include examples/bid.sample
+      schema:
+        bib.schema
+```
+
+Additionally, the following query parameters and header requirements will be used:
+```raml
+headers:
+  Authorization:
+    description: |
+      Used to send a valid JWT token.
+    example:
+      Bearer Hc8KNK7LAJPasAwX9pIbN7yeTwSCAq
+  required: true
+queryParameters:
+  lang:
+    description: |
+      Requested language. Optional. [lang=en]
+    type: string
+    required: false
+    default: en
+    pattern: "[a-zA-Z]{2}"
+```
+
+From this snippet, an interface (`BibInterface.java`) is generated based on the paths (each path+verb pair generates a method).  This is documented with the examples from your RAML.
+
+Additionally, an object (`Bib.java`) is generated based on the JSON Schema provided.  An example of this may be found in the [A Little More on Validation](#a-little-more-on-validation) section.  
+
+The following is an example of the interface method signature that would be generated:
+
+```java
+void postBibs(
+  @HeaderParam("Authorization")
+  @NotNull
+  String authorization,
+  @QueryParam("lang")
+  @DefaultValue("en")
+  @Pattern(regexp = "[a-zA-Z]{2}")
+  String lang,
+  Bib entity
+) throws Exception;
+```
 
 ### Implement the interfaces
 
-For example, note the validation annotations generated based on the constraints in the RAML.
-
-![](images/interface_example.png)
+An example of the generated constraints is shown [above](#generated-files).
 
 - When implementing the interfaces, you must add the @Validate
   annotation to enforce the annotated constraints declared by the interface.
-
 - Note that a Bib entity was passed as a parameter. The runtime framework
   transforms the JSON passed in the body into the correct POJO.
 
@@ -875,42 +936,49 @@ The source code is at [./cql2pgjson](cql2pgjson) and [./cql2pgjson-cli](cql2pgjs
 
 Invoke like this:
 
-    // users.user_data is a JSONB field in the users table.
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
-    String cql = "name=Miller";
-    String where = cql2pgJson.cql2pgJson(cql);
-    String sql = "select * from users where " + where;
-    // select * from users
-    // where CAST(users.user_data->'name' AS text)
-    //       ~ '(^|[[:punct:]]|[[:space:]])Miller($|[[:punct:]]|[[:space:]])'
+```java
+// users.user_data is a JSONB field in the users table.
+CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
+String cql = "name=Miller";
+String where = cql2pgJson.cql2pgJson(cql);
+String sql = "select * from users where " + where;
+// select * from users
+// where CAST(users.user_data->'name' AS text)
+//       ~ '(^|[[:punct:]]|[[:space:]])Miller($|[[:punct:]]|[[:space:]])'
+```
 
 Or use `toSql(String cql)` to get the `ORDER BY` clause separately:
 
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
-    String cql = "name=Miller";
-    SqlSelect sqlSelect = cql2pgJson.toSql(cql);
-    String sql = "select * from users where " + sqlSelect.getWhere()
-                               + " order by " + sqlSelect.getOrderBy();
-
+```java
+CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data");
+String cql = "name=Miller";
+SqlSelect sqlSelect = cql2pgJson.toSql(cql);
+String sql = "select * from users where " + sqlSelect.getWhere()
+                           + " order by " + sqlSelect.getOrderBy();
+```
 
 Setting server choice indexes is possible, the next example searches `name=Miller or email=Miller`:
 
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
-    String cql = "Miller";
-    String where = cql2pgJson.cql2pgJson(cql);
-    String sql = "select * from users where " + where;
+```java
+CQL2PgJSON cql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
+String cql = "Miller";
+String where = cql2pgJson.cql2pgJson(cql);
+String sql = "select * from users where " + where;
+```
 
 Searching across multiple JSONB fields works like this. The _first_ json field specified
 in the constructor will be applied to any query arguments that aren't prefixed with the appropriate
 field name:
 
-    // Instantiation
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
+```java
+// Instantiation
+CQL2PgJSON cql2pgJson = new CQL2PgJSON(Arrays.asList("users.user_data","users.group_data"));
 
-    // Query processing
-    where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
-    where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
-    where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
+// Query processing
+where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
+where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
+where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
+```
 
 ### CQL: Relations
 
@@ -931,7 +999,7 @@ Note to mask the CQL special characters by prepending a backslash: * ? ^ " \
 
 Example using [StringUtil](util/src/main/java/org/folio/util/StringUtil.java):
 
-```
+```java
 String query = "username==" + StringUtil.cqlEncode(username);
 String url = "https://example.com/users?query=" + StringUtil.urlEncode(query);
 ```
@@ -1049,14 +1117,16 @@ an array element value does not contain double quotes):
 RMB 26 or later supports array searches with relation modifiers, that
 are particular suited for structures like:
 
-    "property" : [
-      {
-        "type1" : "value1",
-        "type2" : "value2",
-        "subfield": "value"
-      },
-      ...
-    ]
+```json5
+"property" : [
+  {
+    "type1" : "value1",
+    "type2" : "value2",
+    "subfield": "value"
+  },
+  ...
+]
+```
 
 An example of this kind of structure is `contributors ` (property) from
 mod-inventory-storage . `contributorTypeId` is the type of contributor
@@ -1065,7 +1135,9 @@ mod-inventory-storage . `contributorTypeId` is the type of contributor
 With CQL you can limit searches to `property` with regular match in
 `subfield`, with type1=value1 with
 
-    property =/@type1=value1 value
+```
+property =/@type1=value1 value
+```
 
 Observe that the relation modifier is preceded with the @-character to
 avoid clash with other CQL relation modifiers.
@@ -1077,7 +1149,9 @@ property contents of type1, full-text match is used.
 
 Multiple relation modifiers with value are ANDed together. So
 
-    property =/@type1=value1/@type2=value2 value
+```
+property =/@type1=value1/@type2=value2 value
+```
 
 will only give a hit if both type1 has value1 AND type2 has value2.
 
@@ -1086,53 +1160,60 @@ essentially is a way to override what subfield to search. In this case
 the right hand side term is matched. Multiple relation modifiers
 are OR'ed together. For example:
 
-    property =/@type1 value
+```
+property =/@type1 value
+```
 
 And to match any of the sub properties type1, type2, you could use:
 
-    property =/@type1/@type2 value
+```
+property =/@type1/@type2 value
+```
 
 In schema.json two new properties, `arraySubfield` and `arrayModifiers`,
 specifies the subfield and the list of modifiers respectively.
 This can be applied to `ginIndex` or `fullTextIndex`.
 schema.json example:
 
-    {
-      "fieldName": "property",
-      "tOps": "ADD",
-      "caseSensitive": false,
-      "removeAccents": true,
-      "arraySubfield": "subfield",
-      "arrayModifiers": ["type1", "type2"]
-    }
+```json5
+{
+  "fieldName": "property",
+  "tOps": "ADD",
+  "caseSensitive": false,
+  "removeAccents": true,
+  "arraySubfield": "subfield",
+  "arrayModifiers": ["type1", "type2"]
+}
+```
 
 For the identifiers example we could define things in schema.json with:
-
-    {
-      "fieldName": "identifiers",
-      "tOps": "ADD",
-      "arraySubfield": "value",
-      "arrayModifiers": ["identifierTypeId"]
-    }
-
+```json5
+{
+  "fieldName": "identifiers",
+  "tOps": "ADD",
+  "arraySubfield": "value",
+  "arrayModifiers": ["identifierTypeId"]
+}
+```
 This will allow you to perform searches, such as:
-
-    identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
+```
+identifiers = /@identifierTypeId=7e591197-f335-4afb-bc6d-a6d76ca3bace 6316800312
+```
 
 ### CQL2PgJSON: Multi Field Index
 
 CQL2PGjson allows generating and querying indexes that contain multiple columns. The index json object now has support for the following properties:
-* sqlExpression
+* `sqlExpression`
 	Allows the user to explicitly define the expression they wish to use in the index
-	```
-        "fieldName": "address",
-        "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",
+	```json5
+  "fieldName": "address",
+  "sqlExpression": "concat_space_sql(jsonb->>'city', jsonb->>'state')",
 	```
 
-* multiFieldNames
+* `multiFieldNames`
 	This is a comma-separated list of json fields that are to be concatenated together via concat_ws with a space character.
 	example:
-	```
+	```json5
 		"fieldName": "address",
 		"multiFieldNames": "city,state",
 	```
@@ -1171,7 +1252,7 @@ Use a child-to-parent query against the item endpoint if both conditions should 
 * Use `= *` to check whether a join record exists. This runs a cross index join with no further restriction, e.g. `instance.id = *`.
 * The sortBy clause doesn't support foreign table fields. Use the API endpoint of the records with the field you want to sort on.
 * The schema for the above example:
-```
+```json
 {
   "tables": [
     {
@@ -1230,26 +1311,26 @@ If any of these two properties is missing, then that respective foreign key join
 The name may be different from the table name (`tableName`, `targetTable`). One use case is to change to camelCase, e.g.
 `"targetTable": "holdings_record"` and `"targetTableAlias": "holdingsRecord"`. Another use case is
 to resolve ambiguity when two foreign keys point to the same target table, example:
-```
+```json
+{
+  "tableName": "item",
+  "foreignKeys": [
     {
-      "tableName": "item",
-      "foreignKeys": [
-        {
-          "fieldName": "permanentLoanTypeId",
-          "tableAlias": "itemWithPermanentLoanType",
-          "targetTable": "loan_type",
-          "targetTableAlias": "loanType",
-          "tOps": "ADD"
-        },
-        {
-          "fieldName": "temporaryLoanTypeId",
-          "tableAlias": "itemWithTemporaryLoanType",
-          "targetTable": "loan_type",
-          "targetTableAlias": "temporaryLoanType",
-          "tOps": "ADD"
-        }
-      ]
+      "fieldName": "permanentLoanTypeId",
+      "tableAlias": "itemWithPermanentLoanType",
+      "targetTable": "loan_type",
+      "targetTableAlias": "loanType",
+      "tOps": "ADD"
+    },
+    {
+      "fieldName": "temporaryLoanTypeId",
+      "tableAlias": "itemWithTemporaryLoanType",
+      "targetTable": "loan_type",
+      "targetTableAlias": "temporaryLoanType",
+      "tOps": "ADD"
     }
+  ]
+}
 ```
 Running CQL `loanType.name == "Can circulate"` against the item endpoint returns all items where the item's permanentLoanTypeId points to a loan_type where the loan_type's name equals "Can circulate".
 
@@ -1265,13 +1346,15 @@ All locally produced Exceptions are derived from a single parent so they can be 
 or individually. Methods that load a JSON data object model pass in the identity of the model as a
 resource file name, and may also throw a native `java.io.IOException`.
 
-    CQL2PgJSONException
-      ├── FieldException
-      ├── SchemaException
-      ├── ServerChoiceIndexesException
-      ├── CQLFeatureUnsupportedException
-      └── QueryValidationException
-            └── QueryAmbiguousException
+```
+CQL2PgJSONException
+  ├── FieldException
+  ├── SchemaException
+  ├── ServerChoiceIndexesException
+  ├── CQLFeatureUnsupportedException
+  └── QueryValidationException
+        └── QueryAmbiguousException
+```
 
 ### CQL2PgJSON: Unit tests
 
@@ -1377,7 +1460,7 @@ Future<Integer> loadData(TenantAttributes attributes, String tenantId,
           .withKey("loadReference").withLead("ref-data")
           .withIdContent()
           .add("data1", "instances")
-          .add("data2", "items");
+          .add("data2", "items")
           .perform(attributes, headers, vertxContext, recordsLoaded));
 }
 ```
@@ -1412,22 +1495,20 @@ not called via HTTP. Use it before/after using our own provided
 interfaces in `org.folio.rest.impl`. Example:
 
 ```java
-  // create
-  TenantAPI tenantAPI = new TenantAPI();
-  TenantAttributes tenantAttributes = new TenantAttributes();
-  tenantAttributes.setModuleTo("mod-2.0.0");
-  tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result ->
-    assertThat(result.getStatus(), is(204))
-  ), vertx.getOrCreateContext());
-
+// create
+TenantAPI tenantAPI = new TenantAPI();
+TenantAttributes tenantAttributes = new TenantAttributes();
+tenantAttributes.setModuleTo("mod-2.0.0");
+tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result ->
+  assertThat(result.getStatus(), is(204))
+), vertx.getOrCreateContext());
 ```
 
 A HTTP based alternatives is `TenantInit.exec` with a similar interface. Example:
 ```java
-  TenantClient client = new TenantClient(....);
-  TenantAttributes tenantAttributes = new TenantAttributes().withModuleTo("mod-2.0.0");
-  TenantInit.exec(client, tenantAttributes, 60000).onComplete(context.asyncAssertSuccess());
-
+TenantClient client = new TenantClient(....);
+TenantAttributes tenantAttributes = new TenantAttributes().withModuleTo("mod-2.0.0");
+TenantInit.exec(client, tenantAttributes, 60000).onComplete(context.asyncAssertSuccess());
 ```
 
 #### The Post Tenant API
@@ -1496,25 +1577,25 @@ For each **table** in `tables` property:
 17. `withOptimisticLocking` - `off` (default), `logOnConflict`, or `failOnConflict`, for details see [Optimistic Locking section](#optimistic-locking) below
 
 The **views** section is a bit more self explanatory, as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
-```
-  "views": [
-    {
-      "viewName": "items_mt_view",
-      "join": [
-        {
-          "table": {
-            "tableName": "item",
-            "joinOnField": "materialTypeId"
-          },
-          "joinTable": {
-            "tableName": "material_type",
-            "joinOnField": "id",
-            "jsonFieldAlias": "mt_jsonb"
-          }
+```json
+"views": [
+  {
+    "viewName": "items_mt_view",
+    "join": [
+      {
+        "table": {
+          "tableName": "item",
+          "joinOnField": "materialTypeId"
+        },
+        "joinTable": {
+          "tableName": "material_type",
+          "joinOnField": "id",
+          "jsonFieldAlias": "mt_jsonb"
         }
-      ]
-    }
-  ]
+      }
+    ]
+  }
+]
 ```
 Behind the scenes this will produce the following statement which will be run as part of the schema creation:
 
@@ -1528,35 +1609,35 @@ Notice the `lower(f_unaccent(` functions, currently, by default, all string fiel
 
 A three table join would look something like this:
 
-```
+```json
+{
+  "viewName": "instance_holding_item_view",
+  "join": [
     {
-      "viewName": "instance_holding_item_view",
-      "join": [
-        {
-          "table": {
-            "tableName": "instance",
-            "joinOnField": "id"
-          },
-          "joinTable": {
-            "tableName": "holdings_record",
-            "joinOnField": "instanceId",
-            "jsonFieldAlias": "ho_jsonb"
-          }
-        },
-        {
-          "table": {
-            "tableName": "holdings_record",
-            "joinOnField": "id",
-            "jsonFieldAlias": "ho2_jsonb"
-          },
-          "joinTable": {
-            "tableName": "item",
-            "joinOnField": "holdingsRecordId",
-            "jsonFieldAlias": "it_jsonb"
-          }
-        }
-      ]
+      "table": {
+        "tableName": "instance",
+        "joinOnField": "id"
+      },
+      "joinTable": {
+        "tableName": "holdings_record",
+        "joinOnField": "instanceId",
+        "jsonFieldAlias": "ho_jsonb"
+      }
+    },
+    {
+      "table": {
+        "tableName": "holdings_record",
+        "joinOnField": "id",
+        "jsonFieldAlias": "ho2_jsonb"
+      },
+      "joinTable": {
+        "tableName": "item",
+        "joinOnField": "holdingsRecordId",
+        "jsonFieldAlias": "it_jsonb"
+      }
     }
+  ]
+}
 ```
 
 The **script** section allows a module to run custom SQLs before table / view creation/updates and after all tables/views have been created/updated.
@@ -1600,11 +1681,11 @@ The value used for the module name is the artifactId found in the pom.xml (the p
 
 #### Removing an index
 
-When upgrading a module via the Tenant API, an index is deleted if either `"tOps": "DELETE"` is set or the complete index entry is removed. Note that indexes are the only elements where removing the entry in schema.json removes them from the database.
+When upgrading a module via the Tenant API, an index is deleted if either `"tOps": "DELETE"` is set or the complete index entry is removed. Note that indexes are the only elements where removing the entry in `schema.json` removes them from the database.
 
 "tOps" example:
 
-```JSON
+```json
 "index": [
   {
     "fieldName": "title",
@@ -1674,7 +1755,7 @@ postgresClient.withTrans(conn -> {
   return conn.getByIdForUpdate(SOME_OTHER_TABLE, id)
   .compose(x -> ...)
   .compose(x -> conn.save(TABLE_NAME_POLINE, poline)
-  .compose(x -> ...);
+  .compose(x -> ...)
 }).compose(res -> ...
 ```
 
@@ -1736,13 +1817,13 @@ Without the path query parameter the response will be an "application/json" arra
 The `ramls` subdirectory is the default to search for schema files. Add `<ramlDirs>`
 to the domain-models-maven-plugin configuration in pom.xml to change it, for example:
 
-```
-            <configuration>
-              <ramlDirs>
-                <ramlDir>ramls</ramlDir>
-                <ramlDir>ramls/raml-util/ramls</ramlDir>
-              </ramlDirs>
-            </configuration>
+```xml
+<configuration>
+  <ramlDirs>
+    <ramlDir>ramls</ramlDir>
+    <ramlDir>ramls/raml-util/ramls</ramlDir>
+  </ramlDirs>
+</configuration>
 ```
 
 If the query parameter path is provided it will return the JSON Schema at the path if exists. The JSON Schema will have HTTP resolvable references. These references are either to JSON Schemas or RAMLs the module provides or shared JSON Schemas and RAMLs. The shared JSON Schemas and RAMLs are included in each module via a git submodule under the path `raml_util`. These paths are resolvable using the path query parameter.
@@ -1832,18 +1913,18 @@ Upsert fails when using `INSERT ... ON CONFLICT (id) DO UPDATE` because the `INS
 
 _Sample log entries:_
 
-```
+```jsonp
 01:14:07 [] [] [] [] WARN  ?                    Backend notice: severity='NOTICE', code='23F09', message='Ignoring optimistic locking conflict while overwriting changed record 57db089f-18e4-7815-55d5-4cc6607e9059: Stored _version is 2, _version of request is "1"' ...
 ```
 
-```
+```jsonp
 01:15:20 [] [] [] [] ERROR PostgresClient       saveBatch size=2 { "message": "version conflict", "severity": "ERROR", "code": "23F09", "where": "PL/pgSQL function raise_409() line 1 at RAISE", "file": "pl_exec.c", "line": "3337", "routine": "exec_stmt_raise" }
 ```
 Use mod-inventory-storage `instance` table as an example, do following to enable optimistic locking
 
 * in db `schema.json`, add `withOptimisticLocking` attribute for `instance` table definition
 
-```
+```json5
 {
   "tableName": "instance",
   "withOptimisticLocking": "logOnConflict",
@@ -1853,7 +1934,7 @@ Use mod-inventory-storage `instance` table as an example, do following to enable
 
 * in `instance.json`, add `_version` field
 
-```
+```json5
 {
   "$schema": "http://json-schema.org/draft-04/schema#",
   "description": "An instance record",
@@ -1869,7 +1950,7 @@ Use mod-inventory-storage `instance` table as an example, do following to enable
 
 * update raml file to define 409 response code. For example in `instance-storage.raml` add below for `/{instanceId}` API
 
-```
+```raml
 put:
   responses:
     409:
@@ -1897,21 +1978,22 @@ To add faceting to your API.
     - facet query parameter format: `facets=a.b.c` or `facets=a.b.c:10` (they are repeating). For example `?facets=active&facets=personal.lastName`
 2. Add the [resultInfo.schema](https://github.com/folio-org/raml/blob/master/schemas/resultInfo.schema) to your RAML and reference it within your collection schemas.
 For example:
-```
- "type": "object",
-  "properties": {
+```json5
+"type": "object",
+"properties": {
+  "items": {
+    "id": "items",
+    "type": "array",
     "items": {
-      "id": "items",
-      "type": "array",
-      "items": {
-        "type": "object",
-        "$ref" : "item.json"
-      }
-    },
-    "resultInfo": {
       "type": "object",
-      "$ref": "raml-util/schemas/resultInfo.schema"
+      "$ref" : "item.json"
     }
+  },
+  "resultInfo": {
+    "type": "object",
+    "$ref": "raml-util/schemas/resultInfo.schema"
+  }
+}
 ```
 3. When building your module, an additional parameter will be added to the generated interfaces of the faceted endpoints. `List<String> facets`. You can simply convert this list into a List of Facet objects using the RMB tool as follows: `List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, "jsonb");` and pass the `facetList` returned to the `postgresClient`'s `get()` methods.
 
@@ -1927,23 +2009,23 @@ NOTE: Creating an index on potential facet fields may be required so that perfor
 ## JSON Schema fields
 
 It is possible to indicate that a field in the JSON is a readonly field when declaring the schema. `"readonly": true`. From example:
-```
-    "resultInfo": {
-      "$ref": "raml-util/schemas/resultInfo.schema",
-      "readonly" : true
-    }
+```json
+"resultInfo": {
+  "$ref": "raml-util/schemas/resultInfo.schema",
+  "readonly" : true
+}
 ```
 A `readonly` field is not allowed to be passed in as part of the request. A request that contains data for a field that was declared as `readonly` will have its read-only fields removed from the passed in data by RMB (the data will be passed into the implementing functions without the read-only fields)
 
 This is part of a framework exposed by RMB which allows creating a field and associating a validation constraint on that field.
 
-To add a custom field, add a system property (in the configuration) to the plugin definition (in the pom.xml) running the `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
+To add a custom field, add a system property (in the configuration) to the plugin definition (in the `pom.xml`) running the `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
 
 for example:
-```
+```xml
 <systemProperty>
-    <key>jsonschema.customfield</key>
-    <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"}</value>
+  <key>jsonschema.customfield</key>
+  <value>{"fieldname" : "readonly" , "fieldvalue": true , "annotation" : "javax.validation.constraints.Null"}</value>
 </systemProperty>
 ```
 
@@ -1966,15 +2048,15 @@ For more available properties see:
 
 A module may require slight changes to existing RAML traits.
 For example, a `limit` trait may be defined in the following manner:
- ```
-        limit:
-          description: Limit the number of elements returned in the response
-          type: integer
-          required: false
-          example: 10
-          default: 10
-          minimum: 1
-          maximum: 2147483647
+```raml
+limit:
+  description: Limit the number of elements returned in the response
+  type: integer
+  required: false
+  example: 10
+  default: 10
+  minimum: 1
+    maximum: 2147483647
 ```
 However, a module may not want to allow such a high maximum as this may cause a crash.
 A module can create a `raml_overrides.json` file and place it in the `/resources/overrides/` directory.
@@ -1994,7 +2076,7 @@ Here is an example of a [boxed boolean](https://github.com/folio-org/raml-module
 
 In order to use plugins you must use a library for `annotationTypes`:
 
-```
+```raml
 uses:
   ramltojaxrs: raml-util/library/ramltojaxrs.raml
 ```
@@ -2003,11 +2085,11 @@ This can be found in the raml repository. [ramltojaxrs.raml](https://github.com/
 
 Then can apply plugin to a type:
 
-```
-        type: boolean
-        (ramltojaxrs.types):
-          plugins:
-            - name: core.box
+```raml
+type: boolean
+(ramltojaxrs.types):
+  plugins:
+    - name: core.box
 ```
 
 **Caveat**
@@ -2111,8 +2193,8 @@ Bundled with the domain-models-runtime (jar) there are two log4j configurations:
 
 You can choose the JSON structured logging by using setting:
 
-```
-  java -Dlog4j.configurationFile=log4j2-json.properties -jar ...
+```sh
+java -Dlog4j.configurationFile=log4j2-json.properties -jar ...
 ```
 
 
@@ -2250,16 +2332,53 @@ Requesting a stack trace would look like this:
 
 ## A Little More on Validation
 
-Query parameters and header validation
-![](images/validation.png)
+Query parameters and headers, as declared in the RAML, are used to generate the parameter annotations.
+
+An example of this is found above in the [Generated Files](#generated-files) section.
 
 #### Object validations
 
-![](images/object_validation.png)
+For object validation, the provided JSON schema is used as the basis for constraint annotations.
+
+For example, a Vendor object defined like this:
+```json5
+"type": "object",
+"properties": {
+  "vendors": {
+    "type": "array",
+    "items": {
+      "type": "object",
+      "$ref": "vendor"
+    }
+  }.
+  "total_records": {
+    "type": "integer"
+  }
+},
+"required": [
+  "vendors",
+  "total_records"
+]
+```
+
+Will result in a class with generated fields and annotations as follows:
+
+```java
+public class Vendors {
+  @Valid
+  @NotNull
+  private List<Vendor> vendors = new ArrayList<Vendor>();
+
+  @NotNull
+  private Integer totalRecords;
+
+  ...
+}
+```
 
 #### function example
 
-org.folio.rest.persist.PgUtil has default implementations that should be used if possible.
+`org.folio.rest.persist.PgUtil` has default implementations that should be used if possible.
 
 This example shows how to use advanced features that go beyond that.
 
@@ -2299,8 +2418,10 @@ This example shows how to use advanced features that go beyond that.
 ```
 
 ## Advanced Features
-1. RMB handles all routing, so this is abstracted from the developer. However, there are cases where third party functionality may need access to routing information. Once again, this is not to be used for routing, but in order to pass in routing information to a third party (one such example is the pac4j vertx saml client). RMB allows a developer to receive the Vertx RoutingContext object as a parameter to a generated function by indicating the endpoint represented by the function in the pom.xml (uses a comma delimiter for multiple paths).
-```java
+
+RMB handles all routing, so this is abstracted from the developer. However, there are cases where third party functionality may need access to routing information. Once again, this is not to be used for routing, but in order to pass in routing information to a third party (one such example is the pac4j vertx saml client). RMB allows a developer to receive the Vertx RoutingContext object as a parameter to a generated function by indicating the endpoint represented by the function in the pom.xml (uses a comma delimiter for multiple paths).
+
+```xml
   <properties>
     <generate_routing_context>/rmbtests/test</generate_routing_context>
   </properties>
@@ -2309,8 +2430,10 @@ This example shows how to use advanced features that go beyond that.
 ## Additional Tools
 
 #### De-Serializers
+
 At runtime RMB will serialize/deserialize the received JSON in the request body of PUT, PATCH and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
-```
+
+```java
 ObjectMapperTool.registerDeserializer(User.class, new UserDeserializer());
 
 public class UserDeserializer extends JsonDeserializer<User> {
@@ -2332,13 +2455,14 @@ public class UserDeserializer extends JsonDeserializer<User> {
   }
 }
 ```
+
 #### Error handling tool
 
 Making async calls to the PostgresClient requires handling failures of different kinds. RMB exposes a tool that can handle the basic error cases, and return them as a 422 validation error status falling back to a 500 error status when the error is not one of the standard DB errors.
 
 Usage with Future:
 
-```
+```java
 ...
 .onFailure(exception -> ValidationHelper.handleError(exception, asyncResultHandler))
 .onSuccess(result -> ...);
@@ -2346,12 +2470,13 @@ Usage with Future:
 
 Usage with AsyncResult:
 
-```
+```java
 if (asyncResult.failed()) {
   ValidationHelper.handleError(asyncResult.cause(), asyncResultHandler);
   return;
 }
 ```
+
 RMB will return a response to the client as follows:
 
 - invalid UUID - 422 status
@@ -2363,19 +2488,17 @@ RMB will return a response to the client as follows:
 
 RMB will not cross check the raml to see that these statuses have been defined for the endpoint. This is the developer's responsibility.
 
-
-
 ## Some REST examples
 
 Have these in the headers - currently not validated hence not mandatory:
 
-- Accept: application/json,text/plain
-- Content-Type: application/json;
+- `Accept: application/json,text/plain`
+- `Content-Type: application/json;`
 
 #### Example 1: Add a fine to a patron (post)
 
-```
-http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
+```js
+// POST http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 {
   "fine_amount": 10,
   "fine_outstanding": 0,
@@ -2395,31 +2518,31 @@ http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 #### Example 2: Get fines for patron with id
 
 ```
-http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
+GET http://localhost:8080/patrons/56dbe25ea12958478cec42ba/fines
 ```
 
 #### Example 3: Get a specific patron
 
 ```
-http://localhost:8080/patrons/56dbe25ea12958478cec42ba
+GET http://localhost:8080/patrons/56dbe25ea12958478cec42ba
 ```
 
 #### Example 4: Get all patrons
 
 ```
-http://localhost:8080/patrons
+GET http://localhost:8080/patrons
 ```
 
 #### Example 5: Delete a patron (delete)
 
 ```
-http://localhost:8080/patrons/56dbe791a129584a506fb41a
+DELETE http://localhost:8080/patrons/56dbe791a129584a506fb41a
 ```
 
 #### Example 6: Add a patron (post)
 
-```
-http://localhost:8080/patrons
+```js
+// POST http://localhost:8080/patrons
 {
  "status": "ACTIVE",
  "patron_name": "Smith,John",
