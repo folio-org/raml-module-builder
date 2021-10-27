@@ -281,12 +281,12 @@ and other [modules](https://dev.folio.org/source-code/#server-side) (not all do 
 
 ## Get started with a sample working module
 
-The [mod-notify](https://github.com/folio-org/mod-notify)
+The [mod-organizations-storage](https://github.com/folio-org/mod-organizations-storage)
 is a full example which uses the RMB. Clone it, and then investigate:
 
 ```
-$ git clone --recursive https://github.com/folio-org/mod-notify.git
-$ cd mod-notify
+$ git clone --recursive https://github.com/folio-org/mod-organizations-storage.git
+$ cd mod-organizations-storage
 $ mvn clean install
 ```
 
@@ -295,7 +295,7 @@ These are also displayed as local [API documentation](#documentation-of-the-apis
 
 - Open the pom.xml file - notice the jars in the `dependencies` section as well as the `plugins` section. The `ramls` directory is declared in the pom.xml and passed to the interface and POJO generating tool via a maven exec plugin. The tool generates source files into the `target/generated-sources/raml-jaxrs` directory. The generated interfaces are implemented within the project in the `org.folio.rest.impl` package.
 
-- Investigate the `src/main/java/org/folio/rest/impl/NotificationsResourceImpl.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the class contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for this module by the RMB at build time.
+- Investigate the `src/main/java/org/folio/rest/impl/OrganizationsAPI.java` class. Notice that there is a function representing each endpoint that is declared in the RAML file. The appropriate parameters (as described in the RAML) are passed as parameters to these functions so that no parameter parsing is needed by the developer. Notice that the class contains all the code for the entire module. All handling of URLs, validations, objects, etc. is all either in the RMB jars, or generated for this module by the RMB at build time.
 
 - **IMPORTANT NOTE:** Every interface implementation - by any module -
   must reside in package `org.folio.rest.impl`. This is the package that is
@@ -305,7 +305,7 @@ These are also displayed as local [API documentation](#documentation-of-the-apis
 Now run the module in standalone mode:
 
 ```
-$ java -jar target/mod-notify-fat.jar
+$ java -jar target/mod-organizations-storage-fat.jar
 ```
 
 Now send some requests using '[curl](https://curl.haxx.se)' or '[httpie](https://httpie.org)'
@@ -517,7 +517,7 @@ for example implementations.
 
 It is beneficial at this stage to take some time to design and prepare the RAML files for the project.
 Investigate the other FOLIO modules for guidance.
-The [mod-notify](https://github.com/folio-org/mod-notify) is an exemplar.
+The [mod-notify](https://github.com/folio-org/mod-notify/tree/master/ramls) is an exemplar.
 
 Remove the temporary copy of the "ramls" directory from Step 1, and replace with your own.
 
@@ -2380,7 +2380,12 @@ public class Vendors {
 
 `org.folio.rest.persist.PgUtil` has default implementations that should be used if possible.
 
-This example shows how to use advanced features that go beyond that.
+Example: [mod-organizations-storage OrganizationsAPI.java](https://github.com/folio-org/mod-organizations-storage/blob/v4.1.0/src/main/java/org/folio/rest/impl/OrganizationsAPI.java)
+
+You need to add `@Validate` to each implementing method so that RMB validates the input against the schema,
+for example required properties, no additional properties, property type, or regexp pattern.
+
+This example shows how to use advanced features that go beyond the default PgUtil implementation.
 
 ```java
   @Validate
