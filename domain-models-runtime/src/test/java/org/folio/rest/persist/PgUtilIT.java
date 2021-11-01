@@ -1,10 +1,11 @@
 package org.folio.rest.persist;
 
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
-
+import static org.mockito.Mockito.when;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -45,11 +46,14 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
-
+import org.mockito.stubbing.Answer;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.core.json.Json;
+import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -464,6 +468,22 @@ public class PgUtilIT {
   }
 
   @Test
+  public void getWithoutTotalRecords(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    insert(testContext, pg, "getWithoutTotalRecords", 5);
+
+    PgUtil.get("users", User.class, UserdataCollection.class, "id=*", 0, 3, "none",
+        okapiHeaders, vertx.getOrCreateContext(), Users.GetUsersResponse.class,
+        testContext.asyncAssertSuccess(result -> {
+          assertThat(result.getStatus(), is(200));
+          UserdataCollection collection = (UserdataCollection) result.getEntity();
+          System.out.println(Json.encode(collection));
+          assertThat(collection.getUsers().size(), is(3));
+          assertThat(collection.getTotalRecords(), is(nullValue()));
+        }));
+  }
+
+  @Test
   public void getByInvalidCql(TestContext testContext) {
     PgUtil.get("users", User.class, UserdataCollection.class, "/", 0, 9,
         okapiHeaders, vertx.getOrCreateContext(), Users.GetUsersResponse.class,
@@ -498,12 +518,58 @@ public class PgUtilIT {
         asyncAssertSuccess(testContext, 500));
   }
 
+  void assertSizeAndTotalRecords(String hasTotalRecords, int expectedSize, Integer expectedTotalRecords) {
+    RoutingContext routingContext = mock(RoutingContext.class, Mockito.RETURNS_DEEP_STUBS);
+    Buffer written = Buffer.buffer();
+    Answer<Future<Void>> append = invocationOnMock -> {
+      written.appendString(invocationOnMock.getArgument(0).toString());
+      return null;
+    };
+    when(routingContext.response().write(anyString())).thenAnswer(append);
+    when(routingContext.response().end(anyString())).thenAnswer(append);
+    PgUtil.streamGet("users", User.class, "id=*", hasTotalRecords, 0, 12,
+        null, "users", 0, routingContext, okapiHeaders, vertx.getOrCreateContext());
+
+    verify(routingContext.response(), timeout(5000).atLeastOnce()).end(anyString());
+    assertThat(new JsonObject(written).getJsonArray("users").size(), is(expectedSize));
+    assertThat(new JsonObject(written).getInteger("totalRecords"), is(expectedTotalRecords));
+  }
+
+  @Test
+  public void streamGetHasTotalRecords(TestContext testContext) {
+    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
+    truncateUsers(testContext, pg);
+    insert(testContext, pg, "streamGetWithoutTotalRecords", 15);
+    assertSizeAndTotalRecords("auto", 12, 15);
+    assertSizeAndTotalRecords("none", 12, null);
+  }
+
   @Test
   public void streamGetByInvalidCql(TestContext testContext) {
     RoutingContext routingContext = mock(RoutingContext.class, Mockito.RETURNS_DEEP_STUBS);
     PgUtil.streamGet("users", User.class, "/", 0, 9, null, "users",
         routingContext, okapiHeaders, vertx.getOrCreateContext());
     verify(routingContext.response(), timeout(100).atLeastOnce()).setStatusCode(400);
+  }
+
+  @Test
+  public void streamGetException(TestContext testContext) {
+    RoutingContext routingContext = mock(RoutingContext.class, Mockito.RETURNS_DEEP_STUBS);
+    List<String> facets = mock(List.class);
+    when(facets.size()).thenThrow(RuntimeException.class);
+    PgUtil.streamGet("users", User.class, "/", 0, 9, facets, "users",
+        routingContext, okapiHeaders, vertx.getOrCreateContext());
+    verify(routingContext.response()).setStatusCode(500);
+  }
+
+  @Test
+  public void streamGetException2(TestContext testContext) {
+    RoutingContext routingContext = mock(RoutingContext.class, Mockito.RETURNS_DEEP_STUBS);
+    List<String> facets = mock(List.class);
+    when(facets.size()).thenThrow(RuntimeException.class);
+    PgUtil.streamGet("users", User.class, "/", "auto", 0, 9, facets, "users", 0,
+        routingContext, okapiHeaders, vertx.getOrCreateContext());
+    verify(routingContext.response()).setStatusCode(500);
   }
 
   @Test
@@ -1237,13 +1303,16 @@ public class PgUtilIT {
     assertThat(msg, containsString("Unsupported modifier sort.respectaccents"));
   }
 
-  private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
+  private void truncateUsers(TestContext testContext, PostgresClient pg) {
     Async async = testContext.async();
     pg.execute("truncate " + schema + ".users CASCADE", testContext.asyncAssertSuccess(truncated -> {
       async.complete();
     }));
     async.awaitSuccess(1000 /* ms */);
+  }
 
+  private void setUpUserDBForTest(TestContext testContext, PostgresClient pg) {
+    truncateUsers(testContext, pg);
     int optimizdSQLSize = 10000;
     int n = optimizdSQLSize / 2;
     insert(testContext, pg, "a", n);
