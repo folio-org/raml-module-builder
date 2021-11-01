@@ -104,7 +104,6 @@ public class DemoRamlRestTest {
    * Cleanup: Delete temporary file, close the vert.x instance.
    *
    * @param context  the test context
-   * @throws Throwable
    */
   @AfterClass
   public static void tearDown(TestContext context) {
