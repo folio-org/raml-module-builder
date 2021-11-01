@@ -107,16 +107,7 @@ public class DemoRamlRestTest {
    * @throws Throwable
    */
   @AfterClass
-  public static void tearDown(TestContext context) throws Throwable {
-    String sql = "select grantee, table_catalog, privilege_type, table_schema, table_name "
-        + "from information_schema.table_privileges order by grantee, table_schema, table_name "
-        + "where grantee not in ('PUBLIC') AND table_schema NOT IN ('pg_catalog', 'information_schema')";
-    PostgresClient.getInstance(vertx).execute(sql)
-    .onSuccess(rowSet -> {
-      System.out.println("rowSet.size=" + rowSet.size());
-      rowSet.forEach(row -> System.out.println("row: " + row.deepToString()));
-    });
-    Thread.sleep(1000);
+  public static void tearDown(TestContext context) {
     TenantInit.purge(client, 60000).onComplete(context.asyncAssertSuccess(x -> {
       PostgresClient.stopPostgresTester();
       vertx.close(context.asyncAssertSuccess());
