@@ -131,9 +131,9 @@ public class PostgresClient {
   /**
    * Used only if {@link #sharedPgPool} is true.
    */
-  private static Map<Vertx,PgPool> pgPools = new HashMap<>();
+  private static final Map<Vertx,PgPool> pgPools = new HashMap<>();
   /** map (Vertx, String tenantId) to PostgresClient */
-  private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
+  private static final MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
 
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
       // \\B = a non-word boundary, the first $ must not be part of an identifier (foo$bar$baz)
