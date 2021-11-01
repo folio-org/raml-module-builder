@@ -147,6 +147,7 @@ public class PostgresClientIT {
       postgresClient.closeClient(context.asyncAssertSuccess());
       postgresClient = null;
     }
+    PostgresClient.sharedPgPool = false;
   }
 
   private static <T> void assertSuccess(TestContext context, AsyncResult<T> result) {
@@ -297,6 +298,43 @@ public class PostgresClientIT {
       c2.closeClient(context.asyncAssertSuccess());
       async.complete();
     });
+  }
+
+  private void assertPoolsOfTwoTenants(TestContext context, boolean shared, int expectedPools) {
+    PostgresClient.closeAllClients();
+    PostgresClient.sharedPgPool = shared;
+    PostgresClient c1 = createA(context, "t1");
+    PostgresClient c2 = createA(context, "t2");
+    c1.execute("INSERT INTO a VALUES (1)")
+    .compose(x -> c2.execute("SELECT i FROM a"))
+    .onComplete(context.asyncAssertSuccess(rowSet -> {
+      assertThat(rowSet.size(), is(0));
+    }))
+    .compose(x -> c1.execute("SELECT i FROM a"))
+    .onComplete(context.asyncAssertSuccess(rowSet -> {
+      assertThat(rowSet.size(), is(1));
+      assertThat(PostgresClient.getConnectionPoolSize(), is(expectedPools));
+    }))
+    .compose(x -> {
+      // DROP ROLE only succeeds if we switch back from t1 ROLE to a superuser ROLE
+      String sql = "DROP SCHEMA t1_raml_module_builder CASCADE;"
+          + "DROP ROLE t1_raml_module_builder";
+      return PostgresClient.getInstance(vertx).execute(sql);
+    })
+    .onComplete(context.asyncAssertSuccess(x -> {
+      PostgresClient.closeAllClients();
+    }));
+  }
+
+  @Test
+  public void getNewInstancesSeparatePools(TestContext context) {
+    // 1 for default schema public, 1 for t1, 1 for t2
+    assertPoolsOfTwoTenants(context, false, 3);
+  }
+
+  @Test
+  public void getNewInstanceSharedPool(TestContext context) {
+    assertPoolsOfTwoTenants(context, true, 1);
   }
 
   @Test(expected = IllegalArgumentException.class)

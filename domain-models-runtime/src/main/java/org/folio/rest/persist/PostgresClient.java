@@ -19,6 +19,7 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
+import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 import java.io.IOException;
@@ -79,11 +80,22 @@ public class PostgresClient {
   static final int               STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
   static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
 
+  /**
+   * True if all tenants of a Vertx share one PgPool, false for having a separate PgPool for
+   * each combination of tenant and Vertx (= each PostgresClient has its own PgPool).
+   *
+   * <p>sharedPgPool is set to true if the {@code DB_MAXSHAREDPOOLSIZE} environment variable is set.
+   *
+   * @see #pgPools
+   */
+  static boolean sharedPgPool = false;
+
   private static final String    MODULE_NAME              = getModuleName("org.folio.rest.tools.utils.ModuleName");
   private static final String    ID_FIELD                 = "id";
 
   private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
   private static final String    MAX_POOL_SIZE = "maxPoolSize";
+  private static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
   /** default release delay in milliseconds; after this time an idle database connection is closed */
   private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
@@ -116,6 +128,11 @@ public class PostgresClient {
 
   private static String          configPath               = null;
 
+  /**
+   * Used only if {@link #sharedPgPool} is true.
+   */
+  private static Map<Vertx,PgPool> pgPools = new HashMap<>();
+  /** map (Vertx, String tenantId) to PostgresClient */
   private static MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
 
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
@@ -328,7 +345,15 @@ public class PostgresClient {
   }
 
   /**
-   * @return this instance's PgPool that allows connections to be made
+   * This instance's PgPool for database connections.
+   *
+   * Take care to execute "SET ROLE ..." when {@link #sharedPgPool} is true; consider using
+   * one of the with... methods that automatically execute "SET ROLE ...".
+   *
+   * @see #withConnection(Function)
+   * @see #withConn(Function)
+   * @see #withTrans(Function)
+   * @see #withTransaction(Function)
    */
   PgPool getClient() {
     return client;
@@ -353,6 +378,9 @@ public class PostgresClient {
     PgPool clientToClose = client;
     client = null;
     connectionPool.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
+    if (sharedPgPool) {
+      return Future.succeededFuture();
+    }
     return clientToClose.close();
   }
 
@@ -365,14 +393,21 @@ public class PostgresClient {
     closeClient().onComplete(whenDone);
   }
 
+  /**
+   * The number of PgPool instances in use.
+   */
   static int getConnectionPoolSize() {
-    return connectionPool.size();
+    return sharedPgPool ? pgPools.size() : connectionPool.size();
   }
 
   /**
    * Closes all SQL clients of the tenant.
    */
   public static void closeAllClients(String tenantId) {
+    if (sharedPgPool) {
+      return;
+    }
+
     // A for or forEach loop does not allow concurrent delete
     List<PostgresClient> clients = new ArrayList<>();
     connectionPool.forEach((multiKey, postgresClient) -> {
@@ -391,6 +426,8 @@ public class PostgresClient {
     for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
       client.closeClient();
     }
+    pgPools.values().forEach(PgPool::close);
+    pgPools.clear();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig) {
@@ -435,14 +472,19 @@ public class PostgresClient {
     }
     logPostgresConfig();
 
-    client = createPgPool(vertx, postgreSQLClientConfig);
+    if (sharedPgPool) {
+      client = pgPools.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig));
+    } else {
+      client = createPgPool(vertx, postgreSQLClientConfig);
+    }
   }
 
   static PgPool createPgPool(Vertx vertx, JsonObject configuration) {
     PgConnectOptions connectOptions = createPgConnectOptions(configuration);
 
     PoolOptions poolOptions = new PoolOptions();
-    poolOptions.setMaxSize(configuration.getInteger(MAX_POOL_SIZE, 4));
+    poolOptions.setMaxSize(
+        configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, 4)));
     Integer connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
     poolOptions.setIdleTimeout(connectionReleaseDelay);
     poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
@@ -486,7 +528,8 @@ public class PostgresClient {
     if (v instanceof Long) {
       PostgresClient.setExplainQueryThreshold((Long) v);
     }
-    if (tenantId.equals(DEFAULT_SCHEMA)) {
+    sharedPgPool |= config.containsKey(MAX_SHARED_POOL_SIZE);
+    if (tenantId.equals(DEFAULT_SCHEMA) || sharedPgPool) {
       config.put(PASSWORD, decodePassword( config.getString(PASSWORD) ));
     } else {
       log.info("Using schema: " + tenantId);
@@ -3457,18 +3500,30 @@ public class PostgresClient {
   /**
    * Get vertx-pg-client connection
    *
-   * @see #withConnection(Function)
    * @see #withConn(Function)
+   * @see #withConnection(Function)
+   * @see #withTrans(Function)
+   * @see #withTransaction(Function)
    */
   public Future<PgConnection> getConnection() {
-    return getClient().getConnection().map(sqlConnection -> (PgConnection) sqlConnection);
+    Future<SqlConnection> future = getClient().getConnection();
+    if (! sharedPgPool) {
+      return future.map(sqlConnection -> (PgConnection) sqlConnection);
+    }
+    // running the "SET ROLE ..." query adds about 1.5 ms execution time
+    String sql = DEFAULT_SCHEMA.equals(tenantId) ? "SET ROLE NONE" : "SET ROLE '" + schemaName + "'";
+    return future.compose(sqlConnection ->
+        sqlConnection.query(sql).execute()
+        .map((PgConnection) sqlConnection));
   }
 
   /**
    * Get Vert.x {@link PgConnection}.
-
-   * @see #withConnection(Function)
+   *
    * @see #withConn(Function)
+   * @see #withConnection(Function)
+   * @see #withTrans(Function)
+   * @see #withTransaction(Function)
    */
   public void getConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
     getConnection().onComplete(replyHandler);
@@ -3482,6 +3537,11 @@ public class PostgresClient {
    * <pre>getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
    *
    * <p>Or avoid this method and use the preferred {@link #withConn(Function)}.
+   *
+   * @see #withConn(Function)
+   * @see #withConnection(Function)
+   * @see #withTrans(Function)
+   * @see #withTransaction(Function)
    */
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLConnection(0, handler);
@@ -3496,6 +3556,10 @@ public class PostgresClient {
    *
    * <p>Or avoid this method and use the preferred {@link #withConn(int, Function)}.
    *
+   * @see #withConn(Function)
+   * @see #withConnection(Function)
+   * @see #withTrans(Function)
+   * @see #withTransaction(Function)
    */
   void getSQLConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
     getConnection(res -> {
@@ -4048,7 +4112,7 @@ public class PostgresClient {
       replyHandler.handle(Future.failedFuture("Cannot create PostgresClient instance"));
       return;
     }
-    postgresClient.getClient().getConnection()
+    postgresClient.getConnection()
         .compose(conn -> conn.begin()
             .compose(tx -> {
               Future<Void> future = Future.succeededFuture();

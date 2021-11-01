@@ -14,6 +14,7 @@ public enum Envs {
   DB_QUERYTIMEOUT,
   DB_CHARSET,
   DB_MAXPOOLSIZE,
+  DB_MAXSHAREDPOOLSIZE,
   DB_CONNECTIONRELEASEDELAY,
   DB_EXPLAIN_QUERY_THRESHOLD;
 
@@ -45,6 +46,7 @@ public enum Envs {
     switch (envs) {
     case DB_QUERYTIMEOUT:            return "queryTimeout";
     case DB_MAXPOOLSIZE:             return "maxPoolSize";
+    case DB_MAXSHAREDPOOLSIZE:       return "maxSharedPoolSize";
     case DB_CONNECTIONRELEASEDELAY:  return "connectionReleaseDelay";
     case DB_EXPLAIN_QUERY_THRESHOLD: return envs.name();
     default:                         return envs.name().substring(3).toLowerCase();
@@ -57,6 +59,7 @@ public enum Envs {
       case DB_PORT:
       case DB_QUERYTIMEOUT:
       case DB_MAXPOOLSIZE:
+      case DB_MAXSHAREDPOOLSIZE:
       case DB_CONNECTIONRELEASEDELAY:
         return Integer.parseInt(value);
       case DB_EXPLAIN_QUERY_THRESHOLD:
