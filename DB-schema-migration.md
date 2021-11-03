@@ -6,6 +6,8 @@ This documentation includes information about possible strategies regarding DB s
 
 For RMB based modules a DB migration will be done automatically based on the content of the schema.json provided within the module. Indeed there are exceptions, but each such case must be considered separately.
 
+DB Schema migration script can only support forward compatibility. To rollback the DB, please check Database rollback commands topic https://docs.liquibase.com/commands/home.html and https://docs.liquibase.com/tools-integrations/maven/commands/maven-rollback.html?Highlight=backward
+
 ## Recommendations for the creation and maintenance of the schema.json file
 
 * For each table in the “tables” section provide “fromModuleVersion” value, even if this table has not been added in this version and already exists in the database. It will eliminate the generation and running of unnecessary SQL statements for the table. You can provide a value for the first production version for example
