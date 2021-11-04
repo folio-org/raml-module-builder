@@ -6,7 +6,8 @@ This documentation includes information about possible strategies regarding DB s
 
 For RMB based modules a DB migration will be done automatically based on the content of the schema.json provided within the module. Indeed there are exceptions, but each such case must be considered separately.
 
-RMB only supports migrations to later version. They are _NOT_ backward-compatible database migrations, RMB doesn't support rolling back to a previous version.
+RMB only supports migrations to later version. They are _NOT_ backward-compatible database migrations, RMB doesn't support rolling back to a previous version. SysOps and DevOps need to dump the database before the migration to be able to undo the migration.
+
 
 ## Recommendations for the creation and maintenance of the schema.json file
 
