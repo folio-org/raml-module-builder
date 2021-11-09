@@ -86,7 +86,7 @@ public class PostgresClient {
    *
    * <p>sharedPgPool is set to true if the {@code DB_MAXSHAREDPOOLSIZE} environment variable is set.
    *
-   * @see #pgPools
+   * @see #PG_POOLS
    */
   static boolean sharedPgPool = false;
 
@@ -131,9 +131,10 @@ public class PostgresClient {
   /**
    * Used only if {@link #sharedPgPool} is true.
    */
-  private static final Map<Vertx,PgPool> pgPools = new HashMap<>();
+  private static final Map<Vertx,PgPool> PG_POOLS = new HashMap<>();
   /** map (Vertx, String tenantId) to PostgresClient */
-  private static final MultiKeyMap<Object, PostgresClient> connectionPool = MultiKeyMap.multiKeyMap(new HashedMap<>());
+  private static final MultiKeyMap<Object, PostgresClient> CONNECTION_POOL =
+      MultiKeyMap.multiKeyMap(new HashedMap<>());
 
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
       // \\B = a non-word boundary, the first $ must not be part of an identifier (foo$bar$baz)
@@ -271,19 +272,19 @@ public class PostgresClient {
   }
 
   /**
-   * Instance for the tenantId from connectionPool or created and
-   * added to connectionPool.
+   * Instance for the tenantId from CONNECTION_POOL, or created and
+   * added to CONNECTION_POOL.
    * @param vertx the Vertx to use
    * @param tenantId the tenantId the instance is for
    * @return the PostgresClient instance, or null on error
    */
   private static PostgresClient getInstanceInternal(Vertx vertx, String tenantId) {
     // assumes a single thread vertx model so no sync needed
-    PostgresClient postgresClient = connectionPool.get(vertx, tenantId);
+    PostgresClient postgresClient = CONNECTION_POOL.get(vertx, tenantId);
     try {
       if (postgresClient == null) {
         postgresClient = new PostgresClient(vertx, tenantId);
-        connectionPool.put(vertx, tenantId, postgresClient);
+        CONNECTION_POOL.put(vertx, tenantId, postgresClient);
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -377,7 +378,7 @@ public class PostgresClient {
     }
     PgPool clientToClose = client;
     client = null;
-    connectionPool.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
+    CONNECTION_POOL.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
     if (sharedPgPool) {
       return Future.succeededFuture();
     }
@@ -397,7 +398,7 @@ public class PostgresClient {
    * The number of PgPool instances in use.
    */
   static int getConnectionPoolSize() {
-    return sharedPgPool ? pgPools.size() : connectionPool.size();
+    return sharedPgPool ? PG_POOLS.size() : CONNECTION_POOL.size();
   }
 
   /**
@@ -410,7 +411,7 @@ public class PostgresClient {
 
     // A for or forEach loop does not allow concurrent delete
     List<PostgresClient> clients = new ArrayList<>();
-    connectionPool.forEach((multiKey, postgresClient) -> {
+    CONNECTION_POOL.forEach((multiKey, postgresClient) -> {
       if (tenantId.equals(multiKey.getKey(1))) {
         clients.add(postgresClient);
       }
@@ -422,12 +423,12 @@ public class PostgresClient {
    * Close all SQL clients stored in the connection pool.
    */
   public static void closeAllClients() {
-    // copy of values() because closeClient will delete them from connectionPool
-    for (PostgresClient client : connectionPool.values().toArray(new PostgresClient [0])) {
+    // copy of values() because closeClient will delete them from CONNECTION_POOL
+    for (PostgresClient client : CONNECTION_POOL.values().toArray(new PostgresClient [0])) {
       client.closeClient();
     }
-    pgPools.values().forEach(PgPool::close);
-    pgPools.clear();
+    PG_POOLS.values().forEach(PgPool::close);
+    PG_POOLS.clear();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig) {
@@ -473,7 +474,7 @@ public class PostgresClient {
     logPostgresConfig();
 
     if (sharedPgPool) {
-      client = pgPools.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig));
+      client = PG_POOLS.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig));
     } else {
       client = createPgPool(vertx, postgreSQLClientConfig);
     }
