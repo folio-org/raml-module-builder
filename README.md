@@ -44,6 +44,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [CQL (Contextual Query Language)](#cql-contextual-query-language)
     * [CQL2PgJSON: CQL to PostgreSQL JSON converter](#cql2pgjson-cql-to-postgresql-json-converter)
     * [CQL2PgJSON: Usage](#cql2pgjson-usage)
+    * [CQL: Field names](#field-names)
     * [CQL: Relations](#cql-relations)
     * [CQL: Modifiers](#cql-modifiers)
     * [CQL: Matching, comparing and sorting numbers](#cql-matching-comparing-and-sorting-numbers)
@@ -982,6 +983,10 @@ where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
 where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
 where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
 ```
+
+### CQL: Field names
+
+The field names (keys in JSON) are case sensitive. This is against the CQL specification of index names.
 
 ### CQL: Relations
 
