@@ -44,6 +44,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [CQL (Contextual Query Language)](#cql-contextual-query-language)
     * [CQL2PgJSON: CQL to PostgreSQL JSON converter](#cql2pgjson-cql-to-postgresql-json-converter)
     * [CQL2PgJSON: Usage](#cql2pgjson-usage)
+    * [CQL: Field names](#field-names)
     * [CQL: Relations](#cql-relations)
     * [CQL: Modifiers](#cql-modifiers)
     * [CQL: Matching, comparing and sorting numbers](#cql-matching-comparing-and-sorting-numbers)
@@ -355,6 +356,7 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_QUERYTIMEOUT
  - DB_CHARSET
  - DB_MAXPOOLSIZE
+ - DB_MAXSHAREDPOOLSIZE
  - DB_CONNECTIONRELEASEDELAY
  - DB_EXPLAIN_QUERY_THRESHOLD
 
@@ -364,7 +366,9 @@ Environment variables with periods/dots in their names are deprecated in RMB bec
 
 See the [Vert.x Async PostgreSQL Client Configuration documentation](https://vertx.io/docs/vertx-mysql-postgresql-client/java/#_configuration) for the details.
 
-The environment variable `DB_MAXPOOLSIZE` sets the maximum number of concurrent connections for a tenant that one module instance opens. They are only opened if needed. If all connections for a tenant are in use further requests for that tenant will wait until one connnection becomes free. Other tenants and other instances of a module are unaffected. The default is 4.
+The environment variable `DB_MAXPOOLSIZE` sets the maximum number of concurrent connections for a tenant that one module instance opens. They are only opened if needed. If all connections for a tenant are in use further requests for that tenant will wait until one connection becomes free. Other tenants and other instances of a module are unaffected. The default is 4.
+
+The environment variable `DB_MAXSHAREDPOOLSIZE` sets the maximum number of concurrent connections that one module instance opens. They are only opened if needed. If all connections are in use further requests will wait until one connection becomes free. This way one tenant may block other tenants. If the variable is set `DB_MAXPOOLSIZE` is ignored and all connections are shared across tenants.
 
 The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. A connection becomes idle if the query ends, it is not idle if it is waiting for a response. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
 
@@ -979,6 +983,10 @@ where = cql2pgJson.cql2pgJson( "users.user_data.name=Miller" );
 where = cql2pgJson.cql2pgJson( "users.group_data.name==Students" );
 where = cql2pgJson.cql2pgJson( "name=Miller" ); // implies users.user_data
 ```
+
+### CQL: Field names
+
+The field names (keys in JSON) are case sensitive. This is against the CQL specification of index names.
 
 ### CQL: Relations
 
