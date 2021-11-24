@@ -3122,6 +3122,22 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void streamGetNoTotalRecords(TestContext context) throws Exception {
+    AtomicInteger objectCount = new AtomicInteger();
+    Async async = context.async();
+    createTableWithPoLines(context);
+    postgresClient.streamGet(MOCK_POLINES_TABLE, Object.class, "jsonb",
+        firstEdition().setTotalRecords("none"), false, null, context.asyncAssertSuccess(result -> {
+          assertThat(result.resultInfo().getTotalRecords(), is(nullValue()));
+          result.handler(streamHandler -> objectCount.incrementAndGet());
+          result.endHandler(x -> {
+            assertThat(objectCount.get(), is(3));
+            async.complete();
+          });
+        }));
+  }
+
+  @Test
   public void closeAtEndException(TestContext context) throws Exception {
     Async async = context.async();
     CQLWrapper cql = new CQLWrapper(new CQL2PgJSON("jsonb"), "id=*", 1, /* offset */ 0);
@@ -3686,7 +3702,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     String distinctOn = "jsonb->>'order_format'";
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", false, false,
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", true, false,
       false, null, distinctOn, handler -> {
         ResultInfo resultInfo = handler.result().getResultInfo();
         context.assertEquals(4, resultInfo.getTotalRecords());
@@ -3696,7 +3712,7 @@ public class PostgresClientIT {
 
     String whereClause = "WHERE jsonb->>'order_format' = 'Other'";
     Async async2 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, false, false,
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, true, false,
       false, null, distinctOn, handler -> {
         ResultInfo resultInfo = handler.result().getResultInfo();
         context.assertEquals(1, resultInfo.getTotalRecords());
@@ -3827,23 +3843,27 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void getCQLWrapperNoCount(TestContext context) throws IOException, FieldException {
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
+  public void getCQLWrapperNoCount(TestContext context) throws Exception {
+    final String tableDefiniton = "id UUID PRIMARY KEY, jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
-    CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
-    {
-      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
-      Async async = context.async();
-      postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
-        cqlWrapper, false, true, null, null/*facets*/, handler -> {
-          context.assertTrue(handler.succeeded());
-          ResultInfo resultInfo = handler.result().getResultInfo();
-          context.assertEquals(6, resultInfo.getTotalRecords());
-          async.complete();
-        });
-      async.awaitSuccess();
-    }
+    CQLWrapper cqlWrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "cql.allRecords=1")
+        .setTotalRecords("none");
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*",
+        cqlWrapper, false, false, null, null, context.asyncAssertSuccess(result -> {
+          assertThat(result.getResultInfo().getTotalRecords(), is(nullValue()));
+          assertThat(result.getResults().size(), is(6));
+        }));
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class,
+        cqlWrapper, false, false, context.asyncAssertSuccess(result -> {
+          assertThat(result.getResultInfo().getTotalRecords(), is(nullValue()));
+          assertThat(result.getResults().size(), is(6));
+        }));
+    postgresClient.get(MOCK_POLINES_TABLE, Object.class,
+        cqlWrapper, false, context.asyncAssertSuccess(result -> {
+          assertThat(result.getResultInfo().getTotalRecords(), is(nullValue()));
+          assertThat(result.getResults().size(), is(6));
+        }));
   }
 
   @Test

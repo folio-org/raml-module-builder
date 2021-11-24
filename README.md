@@ -1871,7 +1871,12 @@ http://localhost:<port>/configurations/entries?query=scope.institution_id=aaa%20
 
 ## Estimated totalRecords
 
-RMB adds a `totalRecords` field to result sets. For `limit = 0` it contains the exact value, otherwise an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited.
+RMB adds a `totalRecords` field to result sets. For `limit` = 0 it contains the exact value, otherwise an estimation how many records were matching if paging parameters were set to `offset` = 0 and `limit` = unlimited. For `totalRecords` = none the calculation and the field are suppressed.
+
+Examples (before percent encoding):
+
+/instance-storage/instances?query=title=garden&limit=0
+/users?query=barcode=="1234"&totalRecords=none
 
 For estimation it uses this algorithm:
 
