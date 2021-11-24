@@ -760,9 +760,9 @@ public final class PgUtil {
    * @param clazz  the class of the record type T
    * @param collectionClazz  the class of the collection type C containing records of type T
    * @param cql  the CQL query for filtering and sorting the records
+   * @param hasTotalRecords "auto" to calculate the totalRecords estimation, "none" to suppress it
    * @param offset number of records to skip, use 0 or negative number for not skipping
    * @param limit maximum number of records to return, use a negative number for no limit
-   * @param hasTotalRecords "auto" to calculate the totalRecords estimation, "none" to suppress it
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
@@ -771,12 +771,12 @@ public final class PgUtil {
    */
   @SuppressWarnings("squid:S107")     // Method has >7 parameters
   public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
-      String cql, int offset, int limit, String hasTotalRecords,
+      String cql, String hasTotalRecords, int offset, int limit,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
 
-    get(table, clazz, collectionClazz, cql, offset, limit, hasTotalRecords,
+    get(table, clazz, collectionClazz, cql, hasTotalRecords, offset, limit,
         okapiHeaders,vertxContext,responseDelegateClass)
     .onComplete(asyncResultHandler);
   }
@@ -827,7 +827,7 @@ public final class PgUtil {
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass) {
 
-    return get(table, clazz, collectionClazz, cql, offset, limit, "auto",
+    return get(table, clazz, collectionClazz, cql, "auto", offset, limit,
         okapiHeaders, vertxContext,responseDelegateClass);
   }
 
@@ -837,9 +837,9 @@ public final class PgUtil {
    * @param clazz  the class of the record type T
    * @param collectionClazz  the class of the collection type C containing records of type T
    * @param cql  the CQL query for filtering and sorting the records
+   * @param hasTotalRecords how to calculate totalRecords
    * @param offset number of records to skip, use 0 or negative number for not skipping
    * @param limit maximum number of records to return, use a negative number for no limit
-   * @param hasTotalRecords how to calculate totalRecords
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
@@ -848,7 +848,7 @@ public final class PgUtil {
    */
   @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
   public static <T, C> Future<Response> get(String table, Class<T> clazz, Class<C> collectionClazz,
-      String cql, int offset, int limit, String hasTotalRecords,
+      String cql, String hasTotalRecords, int offset, int limit,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass) {
 

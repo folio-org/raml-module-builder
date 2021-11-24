@@ -472,7 +472,7 @@ public class PgUtilIT {
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
     insert(testContext, pg, "getWithoutTotalRecords", 5);
 
-    PgUtil.get("users", User.class, UserdataCollection.class, "id=*", 0, 3, "none",
+    PgUtil.get("users", User.class, UserdataCollection.class, "id=*", "none", 0, 3,
         okapiHeaders, vertx.getOrCreateContext(), Users.GetUsersResponse.class,
         testContext.asyncAssertSuccess(result -> {
           assertThat(result.getStatus(), is(200));
