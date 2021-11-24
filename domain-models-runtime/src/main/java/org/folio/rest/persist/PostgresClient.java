@@ -1991,14 +1991,24 @@ public class PostgresClient {
     try {
       QueryHelper queryHelper = buildQueryHelper(table,
         fieldName, wrapper, returnIdField, facets, distinctOn);
-      connection.query(queryHelper.countQuery).execute(countQueryResult -> {
-        if (countQueryResult.failed()) {
-          replyHandler.handle(Future.failedFuture(countQueryResult.cause()));
-          return;
-        }
+
+      Future<Integer> countQuery;
+      if (wrapper == null || wrapper.hasReturnCount()) {
+        countQuery = connection.query(queryHelper.countQuery).execute()
+            .map(result -> result.iterator().next().getInteger(0));
+      } else {
+        countQuery = Future.succeededFuture(null);
+      }
+
+      countQuery
+      .onSuccess(count -> {
         ResultInfo resultInfo = new ResultInfo();
-        resultInfo.setTotalRecords(countQueryResult.result().iterator().next().getInteger(0));
+        resultInfo.setTotalRecords(count);
         doStreamGetQuery(connection, startTransaction, queryHelper, resultInfo, clazz, replyHandler);
+      })
+      .onFailure(e -> {
+        log.error(e.getMessage(), e);
+        replyHandler.handle(Future.failedFuture(e));
       });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -2909,10 +2919,10 @@ public class PostgresClient {
     final Map<String, org.folio.rest.jaxrs.model.Facet> facets;
     final RowSet<Row> resultSet;
     final Class<T> clazz;
-    int total;
+    Integer total;
     int offset;
     boolean facet;
-    public ResultsHelper(RowSet<Row> resultSet, int total, Class<T> clazz) {
+    public ResultsHelper(RowSet<Row> resultSet, Integer total, Class<T> clazz) {
       this.list = new ArrayList<>();
       this.facets = new HashMap<>();
       this.resultSet = resultSet;
@@ -2952,11 +2962,6 @@ public class PostgresClient {
    */
   <T> Results<T> processResults(RowSet<Row> rs, Integer total, int offset, int limit, Class<T> clazz) {
     long start = System.nanoTime();
-
-    if (total == null) {
-      // NOTE: this may not be an accurate total, may be better for it to be 0 or null
-      total = rs.rowCount();
-    }
 
     ResultsHelper<T> resultsHelper = new ResultsHelper<>(rs, total, clazz);
 

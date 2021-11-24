@@ -488,20 +488,25 @@ public final class PgUtil {
     throw new NoSuchMethodException(collectionClass.getName() + " must have a set...(java.util.List<>) method.");
   }
 
-  private static <T, C> C collection(Class<C> collectionClazz, List<T> list, int totalRecords)
+  private static <T, C> C collection(Class<C> collectionClazz, List<T> list, Integer totalRecords)
       throws ReflectiveOperationException {
 
     Method setList = getListSetter(collectionClazz);
-    Method setTotalRecords = collectionClazz.getMethod("setTotalRecords", Integer.class);
-    C collection = collectionClazz.newInstance();
+    C collection = collectionClazz.getDeclaredConstructor().newInstance();
     setList.invoke(collection, list);
-    setTotalRecords.invoke(collection, totalRecords);
+    if (totalRecords != null) {
+      Method setTotalRecords = collectionClazz.getMethod("setTotalRecords", Integer.class);
+      setTotalRecords.invoke(collection, totalRecords);
+    }
     return collection;
   }
 
   private static void streamTrailer(HttpServerResponse response, ResultInfo resultInfo) {
-    response.write(String.format("],%n  \"totalRecords\": %d,%n", resultInfo.getTotalRecords()));
-    response.end(String.format(" \"resultInfo\": %s%n}", Json.encode(resultInfo)));
+    response.write("],\n");
+    if (resultInfo.getTotalRecords() != null) {
+      response.write("  \"totalRecords\": " + resultInfo.getTotalRecords() + ",\n");
+    }
+    response.end("  \"resultInfo\": " + Json.encode(resultInfo) + "\n}");
   }
 
   private static <T> void streamGetResult(PostgresClientStreamResult<T> result,
@@ -579,7 +584,7 @@ public final class PgUtil {
    * @param okapiHeaders
    * @param vertxContext
    */
-  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  @SuppressWarnings("squid:S107")     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
     String cql, int offset, int limit, List<String> facets,
     String element, RoutingContext routingContext, Map<String, String> okapiHeaders,
@@ -587,6 +592,69 @@ public final class PgUtil {
 
    streamGet(table, clazz, cql, offset, limit, facets, element, 0, routingContext, okapiHeaders,
        vertxContext);
+  }
+
+  /**
+   * Streaming GET with query. This produces a HTTP with JSON content with
+   * properties {@code totalRecords}, {@code resultInfo} and custom element.
+   * The custom element is array type which POJO that is of type clazz.
+   * The JSON schema looks as follows:
+   *
+   * <pre>{@code
+   * "properties": {
+   *   "element": {
+   *     "description": "the custom element array wrapper",
+   *     "type": "array",
+   *     "items": {
+   *       "description": "The clazz",
+   *       "type": "object",
+   *       "$ref": "clazz.schema"
+   *     }
+   *   },
+   *   "totalRecords": {
+   *     "type": "integer"
+   *   },
+   *   "resultInfo": {
+   *     "$ref": "raml-util/schemas/resultInfo.schema",
+   *     "readonly": true
+   *   }
+   * },
+   * "required": [
+   *   "instances"
+   * ]
+   *</pre>
+   * @param <T> Class for each item returned
+   * @param table SQL table
+   * @param clazz The item class
+   * @param cql CQL query
+   * @param hasTotalRecords "auto" for estimating totalRecords, "none" to suppress totalRecords estimation
+   * @param offset offset >= 0; < 0 for no offset
+   * @param limit  limit >= 0 ; <0 for no limit
+   * @param facets facets (null or empty for no facets)
+   * @param element wrapper JSON element for list of items (eg books / users)
+   * @param routingContext routing context from which a HTTP response is made
+   * @param okapiHeaders
+   * @param vertxContext
+   */
+  @SuppressWarnings("squid:S107")     // Method has >7 parameters
+  public static <T> void streamGet(String table, Class<T> clazz,
+      String cql, String hasTotalRecords, int offset, int limit,
+      List<String> facets, String element, int queryTimeout,
+      RoutingContext routingContext, Map<String, String> okapiHeaders, Context vertxContext) {
+
+    HttpServerResponse response = routingContext.response();
+    try {
+      List<FacetField> facetList = FacetManager.convertFacetStrings2FacetFields(facets, JSON_COLUMN);
+      CQLWrapper wrapper = new CQLWrapper(
+          new CQL2PgJSON(table + "." + JSON_COLUMN), cql, limit, offset, hasTotalRecords);
+      streamGet(table, clazz, wrapper, facetList, element, queryTimeout,
+          routingContext, okapiHeaders, vertxContext);
+    } catch (Exception e) {
+      logger.error(e.getMessage(), e);
+      response.setStatusCode(500);
+      response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
+      response.end(e.toString());
+    }
   }
 
     /**
@@ -639,7 +707,7 @@ public final class PgUtil {
    * @param vertxContext
    * @param routingContext
    */
-  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  @SuppressWarnings("squid:S107")     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
                                    CQLWrapper filter, List<FacetField> facetList, String element,
                                    RoutingContext routingContext, Map<String, String> okapiHeaders,
@@ -661,7 +729,7 @@ public final class PgUtil {
      * @param vertxContext
      * @param routingContext
      */
-  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  @SuppressWarnings("squid:S107")     // Method has >7 parameters
   public static <T> void streamGet(String table, Class<T> clazz,
       CQLWrapper filter, List<FacetField> facetList, String element,
       int queryTimeout, RoutingContext routingContext, Map<String, String> okapiHeaders,
@@ -686,6 +754,32 @@ public final class PgUtil {
       });
   }
 
+  /**
+   * Get records by CQL.
+   * @param table  the table that contains the records
+   * @param clazz  the class of the record type T
+   * @param collectionClazz  the class of the collection type C containing records of type T
+   * @param cql  the CQL query for filtering and sorting the records
+   * @param hasTotalRecords "auto" to calculate the totalRecords estimation, "none" to suppress it
+   * @param offset number of records to skip, use 0 or negative number for not skipping
+   * @param limit maximum number of records to return, use a negative number for no limit
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
+   */
+  @SuppressWarnings("squid:S107")     // Method has >7 parameters
+  public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
+      String cql, String hasTotalRecords, int offset, int limit,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass,
+      Handler<AsyncResult<Response>> asyncResultHandler) {
+
+    get(table, clazz, collectionClazz, cql, hasTotalRecords, offset, limit,
+        okapiHeaders,vertxContext,responseDelegateClass)
+    .onComplete(asyncResultHandler);
+  }
 
   /**
    * Get records by CQL.
@@ -701,13 +795,16 @@ public final class PgUtil {
    *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by the responseDelegateClass
    */
-  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  @SuppressWarnings("squid:S107")     // Method has >7 parameters
   public static <T, C> void get(String table, Class<T> clazz, Class<C> collectionClazz,
       String cql, int offset, int limit,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
-    get(table,clazz,collectionClazz,cql,offset,limit,okapiHeaders,vertxContext,responseDelegateClass).onComplete(asyncResultHandler);
+
+    get(table, clazz, collectionClazz, cql, offset, limit,
+        okapiHeaders,vertxContext,responseDelegateClass)
+    .onComplete(asyncResultHandler);
   }
 
   /**
@@ -730,9 +827,34 @@ public final class PgUtil {
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseDelegateClass) {
 
+    return get(table, clazz, collectionClazz, cql, "auto", offset, limit,
+        okapiHeaders, vertxContext,responseDelegateClass);
+  }
+
+  /**
+   * Get records by CQL.
+   * @param table  the table that contains the records
+   * @param clazz  the class of the record type T
+   * @param collectionClazz  the class of the collection type C containing records of type T
+   * @param cql  the CQL query for filtering and sorting the records
+   * @param hasTotalRecords how to calculate totalRecords
+   * @param offset number of records to skip, use 0 or negative number for not skipping
+   * @param limit maximum number of records to return, use a negative number for no limit
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods: respond200(C), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return future  where to return the result created by the responseDelegateClass
+   */
+  @SuppressWarnings({"squid:S107"})     // Method has >7 parameters
+  public static <T, C> Future<Response> get(String table, Class<T> clazz, Class<C> collectionClazz,
+      String cql, String hasTotalRecords, int offset, int limit,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseDelegateClass) {
+
     try {
       CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
-      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset);
+      CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, limit, offset, hasTotalRecords);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
       return get(preparedCql, clazz, collectionClazz, okapiHeaders, vertxContext, responseDelegateClass);
     } catch (Exception e) {
@@ -768,7 +890,9 @@ public final class PgUtil {
       Promise<Response> promise = Promise.promise();
 
       PostgresClient postgresClient = PgUtil.postgresClient(vertxContext, okapiHeaders);
-      postgresClient.get(preparedCql.getTableName(), clazz, preparedCql.getCqlWrapper(), true, reply -> {
+      CQLWrapper cqlWrapper = preparedCql.getCqlWrapper();
+      boolean returnCount = cqlWrapper.hasReturnCount();
+      postgresClient.get(preparedCql.getTableName(), clazz, cqlWrapper, returnCount, reply -> {
         try {
           if (reply.failed()) {
             String message = PgExceptionUtil.badRequestMessage(reply.cause());

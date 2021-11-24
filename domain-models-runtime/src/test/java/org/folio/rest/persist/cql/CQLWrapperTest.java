@@ -130,6 +130,14 @@ public class CQLWrapperTest {
   }
 
   @Test
+  public void setTotalRecords() {
+    assertThat(new CQLWrapper().hasTotalRecords(), is("auto"));
+    CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1", 0, 0, "none");
+    assertThat(cqlWrapper.hasTotalRecords(), is("none"));
+    assertThat(cqlWrapper.setTotalRecords("auto").hasTotalRecords(), is("auto"));
+  }
+
+  @Test
   public void wrap() throws FieldException {
     CQLWrapper wrapper = new CQLWrapper().setField(cql2pgJson).setQuery("cql.allRecords=1");
     wrapper.addWrapper(wrapper);

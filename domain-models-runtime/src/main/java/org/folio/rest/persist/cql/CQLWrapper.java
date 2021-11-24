@@ -19,6 +19,7 @@ public class CQLWrapper {
   String whereClause;
   private Limit  limit = new Limit();
   private Offset offset = new Offset();
+  private String hasTotalRecords = "auto";
   private List<WrapTheWrapper> addedWrappers = new ArrayList<>();
 
   public CQLWrapper() {
@@ -48,7 +49,7 @@ public class CQLWrapper {
    *   private static CQL2PgJSON cql2PgJson;
    *   static {
    *     try {
-   *       cql2PgJson = new CQL2PgJSON("users.jsonb", ResourceUtils.resource2String("ramls/user.json"));
+   *       cql2PgJson = new CQL2PgJSON("users.jsonb");
    *     } catch (Exception e) {
    *       throw new RuntimeException(e);
    *     }
@@ -74,6 +75,11 @@ public class CQLWrapper {
     if (offset >= 0) {
       this.offset = new Offset(offset);
     }
+  }
+
+  public CQLWrapper(CQL2PgJSON field, String query, int limit, int offset, String hasTotalRecords) {
+    this(field, query, limit, offset);
+    this.hasTotalRecords = hasTotalRecords;
   }
 
   public CQL2PgJSON getField() {
@@ -145,6 +151,29 @@ public class CQLWrapper {
     this.offset = offset;
     return this;
   }
+
+  /**
+   * "exact", "estimated", "none" or "auto"
+   */
+  public String hasTotalRecords() {
+    return hasTotalRecords;
+  }
+
+  /**
+   * @param hasTotalRecords "exact", "estimated", "none" or "auto"
+   */
+  public CQLWrapper setTotalRecords(String hasTotalRecords) {
+    this.hasTotalRecords = hasTotalRecords;
+    return this;
+  }
+
+  /**
+   * False if hasTotalRecords equals "none", true otherwise.
+   */
+  public boolean hasReturnCount() {
+    return ! "none".equals(hasTotalRecords);
+  }
+
   public CQLWrapper addWrapper(CQLWrapper wrapper){
     addWrapper(wrapper, "and");
     return this;
