@@ -32,11 +32,13 @@ import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.impl.RowImpl;
+import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
+import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.impl.RowDesc;
@@ -344,6 +346,16 @@ public class PostgresClientTest {
     }
 
     @Override
+    public SqlConnection prepare(String sql, PrepareOptions options, Handler<AsyncResult<PreparedStatement>> handler) {
+      return prepare(sql, handler);
+    }
+
+    @Override
+    public Future<PreparedStatement> prepare(String sql, PrepareOptions options) {
+      return prepare(sql);
+    }
+
+    @Override
     public PgConnection exceptionHandler(Handler<Throwable> handler) {
       return this;
     }
@@ -417,6 +429,11 @@ public class PostgresClientTest {
 
     @Override
     public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
+      return null;
+    }
+
+    @Override
+    public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
       return null;
     }
 

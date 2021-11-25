@@ -5,6 +5,7 @@ import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
@@ -34,6 +35,11 @@ public class PgPoolBase implements PgPool {
 
   @Override
   public PreparedQuery<RowSet<Row>> preparedQuery(String sql) {
+    return null;
+  }
+
+  @Override
+  public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
     return null;
   }
 
