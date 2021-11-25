@@ -44,6 +44,7 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
+import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Query;
@@ -2107,6 +2108,17 @@ public class PostgresClientIT {
       }
 
       @Override
+      public SqlConnection prepare(String sql, PrepareOptions options,
+          Handler<AsyncResult<PreparedStatement>> handler) {
+        return null;
+      }
+
+      @Override
+      public Future<PreparedStatement> prepare(String s, PrepareOptions prepareOptions) {
+        return null;
+      }
+
+      @Override
       public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
@@ -2144,6 +2156,11 @@ public class PostgresClientIT {
 
       @Override
       public Query<RowSet<Row>> query(String s) {
+        throw new RuntimeException();
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String s, PrepareOptions options) {
         throw new RuntimeException();
       }
 
@@ -2212,6 +2229,18 @@ public class PostgresClientIT {
       }
 
       @Override
+      public SqlConnection prepare(String sql, PrepareOptions options,
+          Handler<AsyncResult<PreparedStatement>> handler) {
+        prepare(sql, options).onComplete(handler);
+        return null;
+      }
+
+      @Override
+      public Future<PreparedStatement> prepare(String sql, PrepareOptions options) {
+        return prepare(sql);
+      }
+
+      @Override
       public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
@@ -2267,6 +2296,11 @@ public class PostgresClientIT {
             return null;
           }
         };
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
+        return preparedQuery(sql);
       }
 
       @Override
@@ -2336,6 +2370,17 @@ public class PostgresClientIT {
       }
 
       @Override
+      public SqlConnection prepare(String sql, PrepareOptions options,
+          Handler<AsyncResult<PreparedStatement>> handler) {
+        return null;
+      }
+
+      @Override
+      public Future<PreparedStatement> prepare(String sql, PrepareOptions options) {
+        return null;
+      }
+
+      @Override
       public PgConnection exceptionHandler(Handler<Throwable> handler) {
         return null;
       }
@@ -2374,6 +2419,11 @@ public class PostgresClientIT {
       @Override
       public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
         return null;
+      }
+
+      @Override
+      public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
+        return preparedQuery(sql);
       }
 
       @Override

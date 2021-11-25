@@ -464,7 +464,7 @@ public class PgUtilIT {
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
     PgUtil.delete("users1",  "username==delete_test",
         okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
-        asyncAssertSuccess(testContext, 400, "relation \\\"testtenant_raml_module_builder.users1\\\" does not exist"));
+        asyncAssertSuccess(testContext, 400, "relation \"testtenant_raml_module_builder.users1\" does not exist"));
   }
 
   @Test

@@ -6,6 +6,7 @@ import io.vertx.core.Handler;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Query;
@@ -467,6 +468,17 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     }
 
     @Override
+    public SqlConnection prepare(String sql, PrepareOptions options, Handler<AsyncResult<PreparedStatement>> handler) {
+      conn.prepare(sql, options, handler);
+      return this;
+    }
+
+    @Override
+    public Future<PreparedStatement> prepare(String sql, PrepareOptions options) {
+      return conn.prepare(sql, options);
+    }
+
+    @Override
     public PgConnection exceptionHandler(Handler<Throwable> handler) {
       conn.exceptionHandler(handler);
       return this;
@@ -502,6 +514,11 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     @Override
     public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
       return conn.preparedQuery(s);
+    }
+
+    @Override
+    public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
+      return conn.preparedQuery(sql, options);
     }
 
     @Override
