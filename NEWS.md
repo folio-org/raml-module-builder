@@ -165,6 +165,9 @@ New features (some of which are breaking changes):
  * [RMB-772](https://issues.folio.org/browse/RMB-772) Persist tenant operation
  * [RMB-759](https://issues.folio.org/browse/RMB-759) Consistent format for createdDate and updatedDate metadata
  * [RMB-389](https://issues.folio.org/browse/RMB-389) PgUtil.delete by CQL
+ * [RMB-388](https://issues.folio.org/browse/RMB-388) PostgresClient.getById with transaction, with "SELECT … FOR UPDATE"
+ * [RMB-735](https://issues.folio.org/browse/RMB-735) Reject unsupported sort modifiers in getWithOptimizedSql
+ * [RMB-736](https://issues.folio.org/browse/RMB-736) Enable Prometheus support for micrometer metrics
  * Use okapi-common 4.5.0 (which is also using Vert.x 4.0.0)
 
 Fixes:
