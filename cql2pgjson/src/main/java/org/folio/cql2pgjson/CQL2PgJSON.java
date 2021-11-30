@@ -173,7 +173,7 @@ public class CQL2PgJSON {
         schemaPath = "templates/db_scripts/schema.json";
       }
       String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
-      logger.log(Level.INFO, "loadDbSchema: Loaded {0} OK", schemaPath);
+      logger.log(Level.FINE, "loadDbSchema: Loaded {0} OK", schemaPath);
       dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
     } catch (IOException ex) {
       logger.log(Level.SEVERE, "No schema.json found", ex);
