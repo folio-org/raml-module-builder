@@ -1,3 +1,16 @@
+## 33.2.0 2021-11-30
+
+Fixes:
+ * [RMB-872](https://issues.folio.org/browse/RMB-872) Optimistic locking support for TenantLoading PUT
+ * [RMB-877](https://issues.folio.org/browse/RMB-877) Schema name can't replace in snippet (schema.json)
+ * [RMB-881](https://issues.folio.org/browse/RMB-881) Reduce logging level of loadDbSchema messages
+ * [RMB-880](https://issues.folio.org/browse/RMB-880) Update Vert.x from 4.1.4 to 4.2.1
+ * [#989](https://github.com/folio-org/raml-module-builder/pull/989), [#990](https://github.com/folio-org/raml-module-builder/pull/990): Updated most dependencies to latest version.
+
+New features:
+ * [RMB-664](https://issues.folio.org/browse/RMB-664) One connection pool for all tenants
+ * [RMB-718](https://issues.folio.org/browse/RMB-718) totalRecords=none to avoid calling count_estimate()
+
 ## 33.1.1 2021-09-28
 
 Fix/feature:
