@@ -2005,17 +2005,6 @@ public class PostgresClientIT {
     }));
   }
 
-  // broken since this RMB-497 commit:
-  // https://github.com/folio-org/raml-module-builder/commit/51a67d3b81b372096c11ddcc8e7b0af6db48c744
-  @Ignore("broken since RMB-497, see RMB-817")
-  @Test
-  public void getByExamplePojo(TestContext context) {
-    PostgresClient postgresClient = insertXAndSingleQuotePojo(context, new JsonArray().add(randomUuid()).add(randomUuid()));
-    postgresClient.get(FOO, new StringPojo("x"), false, context.asyncAssertSuccess(res -> {
-      assertThat(res.getResults().size(), is(1));
-      assertThat(res.getResults().get(0).key, is("x"));
-    }));
-  }
 
   @Test
   public void getByIdsEmpty(TestContext context) {
@@ -4011,43 +4000,6 @@ public class PostgresClientIT {
           try {
             List<Object> objs = handler.result().getResults();
             context.assertEquals(4, objs.size());
-          } catch (Exception ex) {
-            context.fail(ex);
-          }
-          List<Facet> retFacets = resultInfo.getFacets();
-          context.assertEquals(0, retFacets.size());
-          async.complete();
-        });
-      async.awaitSuccess();
-    }
-    {
-      Async async = context.async();
-      postgresClient.get(MOCK_POLINES_TABLE, Object.class, new String[]{"*"},
-        true, true, 2, 1, handler -> {
-          context.assertTrue(handler.succeeded());
-          ResultInfo resultInfo = handler.result().getResultInfo();
-          context.assertEquals(6, resultInfo.getTotalRecords());
-          try {
-            List<Class<Object>> objs = handler.result().getResults();
-            context.assertEquals(1, objs.size());
-          } catch (Exception ex) {
-            context.fail(ex);
-          }
-          List<Facet> retFacets = resultInfo.getFacets();
-          context.assertEquals(0, retFacets.size());
-          async.complete();
-        });
-      async.awaitSuccess();
-    }
-    {
-      Async async = context.async();
-      postgresClient.get(MOCK_POLINES_TABLE, Object.class, true, true, handler -> {
-          context.assertTrue(handler.succeeded());
-          ResultInfo resultInfo = handler.result().getResultInfo();
-          context.assertEquals(6, resultInfo.getTotalRecords());
-          try {
-            List<Class<Object>> objs = handler.result().getResults();
-            context.assertEquals(6, objs.size());
           } catch (Exception ex) {
             context.fail(ex);
           }
