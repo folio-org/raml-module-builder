@@ -1,3 +1,8 @@
+## 34.0.0 2021-12-03
+
+New features:
+ * [RMB 817](https://issues.folio.org/browse/RMB-817) Remove broken PostgresClient.get(String table, Object entity, ...) methods
+
 ## 33.2.0 2021-11-30
 
 Fixes:
@@ -55,7 +60,7 @@ Fixes:
  * [RMB-849](https://issues.folio.org/browse/RMB-849) Remove duplicate ModuleName class from domain-models-api-interfaces
 
 Documentation:
- * [RMB-855](https://issues.folio.org/browse/RMB-855) Mention that loading db conf from url was removed 	
+ * [RMB-855](https://issues.folio.org/browse/RMB-855) Mention that loading db conf from url was removed
  * [RMB-848](https://issues.folio.org/browse/RMB-848) Always close PostgresTester on reuse (test, javadoc)
  * [RMB-853](https://issues.folio.org/browse/RMB-853) ModuleName.getModuleVersion() replacing PomReader.INSTANCE.getVersion()
  * [RMB-852](https://issues.folio.org/browse/RMB-852) Update documentation for domain-models-interface-extensions removal
@@ -212,7 +217,7 @@ Fixes:
  * [RMB-715](https://issues.folio.org/browse/RMB-715) [Snyk] Update commons-cli from 1.3.1 to 1.4
  * [RMB-716](https://issues.folio.org/browse/RMB-716) [Snyk] Update javaparser-core from 3.3.0 to 3.16.1
  * [RMB-714](https://issues.folio.org/browse/RMB-714) Remove unused aws-lambda-java-core dependency
- * [RMB-725](https://issues.folio.org/browse/RMB-725) StringUtil.cqlEncode masking CQL characters preventing CQL injection	
+ * [RMB-725](https://issues.folio.org/browse/RMB-725) StringUtil.cqlEncode masking CQL characters preventing CQL injection
 
 ## 31.0.0 2020-08-18
 

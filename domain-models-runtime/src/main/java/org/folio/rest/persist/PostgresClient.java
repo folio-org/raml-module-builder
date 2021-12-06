@@ -2258,64 +2258,6 @@ public class PostgresClient {
   }
 
   /**
-   * pass in an entity that is fully / partially populated and the query will return all records matching the
-   * populated fields in the entity - note that this queries the jsonb object, so should not be used to query external
-   * fields
-   *
-   * @param <T>  type of the query entity and the result entity
-   * @param table  database table to query
-   * @param entity  contains the fields to use for the query
-   * @param replyHandler  the result contains the entities found
-   */
-  public <T> void get(String table, T entity, boolean returnCount,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, entity, returnCount, true /*returnIdField*/, replyHandler);
-  }
-
-  public <T> void get(String table, T entity, boolean returnCount, boolean returnIdField,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, entity, new String[]{DEFAULT_JSONB_FIELD_NAME}, returnCount, returnIdField, replyHandler);
-  }
-
-  public <T> void get(String table, T entity, String[] fields, boolean returnCount, boolean returnIdField,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, entity, fields, returnCount, returnIdField, -1, -1, replyHandler);
-  }
-
-  /**
-   * pass in an entity that is fully / partially populated and the query will return all records matching the
-   * populated fields in the entity - note that this queries the jsonb object, so should not be used to query external
-   * fields
-   *
-   * @param <T>  type of the query entity and the result entity
-   * @param table  database table to query
-   * @param entity  contains the fields to use for filtering
-   * @param fields  the table columns to return, for example {@link #DEFAULT_JSONB_FIELD_NAME}
-   * @param returnCount  if totalRecords should be calculated
-   * @param returnIdField  if the id field should also be returned
-   * @param offset  number of records to skip, use -1 for no SQL {@code OFFSET}
-   * @param limit  number of records to return, use -1 for no SQL {@code LIMIT}
-   * @param replyHandler returns {@link Results} with the entities found
-   */
-  public <T> void get(String table, T entity, String[] fields, boolean returnCount,
-    boolean returnIdField, int offset, int limit,
-    Handler<AsyncResult<Results<T>>> replyHandler) {
-
-    Criterion criterion = new Criterion();
-    if (offset != -1) {
-      criterion.setOffset(new Offset(offset));
-    }
-    if (limit != -1) {
-      criterion.setLimit(new Limit(limit));
-    }
-    String fieldsStr = Arrays.toString(fields);
-    @SuppressWarnings("unchecked")
-    Class<T> clazz = (Class<T>) entity.getClass();
-    get(null, table, clazz, fieldsStr.substring(1, fieldsStr.length() - 1),
-      criterion, returnCount, returnIdField, null, replyHandler);
-  }
-
-  /**
    * Returns records selected by {@link Criterion} filter.
    *
    * <p>Doesn't calculate totalRecords, the number of matching records when disabling OFFSET and LIMIT.
