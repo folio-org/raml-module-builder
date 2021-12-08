@@ -2,6 +2,7 @@ package org.folio.rest.tools.utils;
 
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.vertx.core.AsyncResult;
@@ -277,6 +278,37 @@ public class TenantLoadingTest {
   }
 
   @Test
+  public void testPostIgnoreOk(TestContext context) {
+    TenantLoading tl = new TenantLoading();
+    tl.withKey("loadRef").withLead("tenant-load-ref").withPostIgnore().add("data", "data");
+    tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, "1", "2"));
+  }
+
+  @Test
+  public void testPostIgnoreOk2(TestContext context) {
+    records.put("1", 1);
+    records.put("2", 1);
+    TenantLoading tl = new TenantLoading();
+    // data2 = 1, 3, 4
+    tl.withKey("loadRef").withLead("tenant-load-ref").withPostIgnore().add("data2", "data");
+    tl.perform(tenantAttributes(), headers(), vertx, context.asyncAssertSuccess(n2 -> {
+      assertThat(n2, is(2));  // only add "3" and "4" because existing "1" is ignored
+      assertThat(records.keySet(), containsInAnyOrder("1", "2", "3", "4"));
+      tl.perform(tenantAttributes(), headers(), vertx, context.asyncAssertSuccess(n3 -> {
+        assertThat(n3, is(0));
+      }));
+    }));
+  }
+
+  @Test
+  public void testPostIgnoreFail(TestContext context) {
+    postStatus = 500;
+    TenantLoading tl = new TenantLoading();
+    tl.withKey("loadRef").withLead("tenant-load-ref").withPostIgnore().add("data", "data");
+    tl.perform(tenantAttributes(), headers(), vertx, context.asyncAssertFailure());
+  }
+
+  @Test
   public void testBadUriPath(TestContext context) {
     TenantLoading tl = new TenantLoading();
     tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data1");
@@ -341,7 +373,12 @@ public class TenantLoadingTest {
   public void testOKPostOnly(TestContext context) {
     TenantLoading tl = new TenantLoading().withKey("loadRef").withLead("tenant-load-ref");
     tl.withPostOnly().add("data");
-    tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, "1", "2"));
+    tl.perform(tenantAttributes(), headers(), vertx, context.asyncAssertSuccess(n -> {
+      assertIds(n, "1", "2");
+      tl.perform(tenantAttributes(), headers(), vertx, context.asyncAssertFailure(e -> {
+        assertThat(e.getMessage(), containsString("400"));
+      }));
+    }));
   }
 
   @Test

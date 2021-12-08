@@ -25,6 +25,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.UnaryOperator;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
@@ -85,6 +86,7 @@ public class TenantLoading {
     BASENAME, // PUT with ID as basename
     RAW_PUT, // PUT with no ID
     RAW_POST, // POST with no ID
+    RAW_POST_IGNORE, // POST with no ID, ignore 4xx error (already exists, etc.)
   }
 
   private class LoadingEntry {
@@ -215,6 +217,7 @@ public class TenantLoading {
         return Future.succeededFuture(PercentCodec.encodeAsString(id));
       case RAW_PUT:
       case RAW_POST:
+      case RAW_POST_IGNORE:
         break;
     }
     return Future.succeededFuture(null);
@@ -238,7 +241,7 @@ public class TenantLoading {
     }
   }
 
-  private static Future<Void> loadURL(Map<String, String> headers, URL url,
+  private static Future<Integer> loadURL(Map<String, String> headers, URL url,
                                       WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
 
     return getContent(url, loadingEntry)
@@ -269,8 +272,29 @@ public class TenantLoading {
     return new JsonObject(content).put("_version", version).encode();
   }
 
-  private static Future<Void> loadURL(Map<String, String> headers, String content, String id,
+  /**
+   * Returns 1 on successful POST/PUT, 0 on 4xx HTTP status if strategy is POST_IGNORE
+   */
+  private static Future<Integer> loadURL(Map<String, String> headers, String content, String id,
                                       WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
+
+    if (loadingEntry.strategy == Strategy.RAW_POST_IGNORE) {
+      HttpRequest<Buffer> req = httpClient.postAbs(endPointUrl);
+      return sendWithXHeaders(req, headers, content)
+          .compose(res -> {
+            if (isSuccess(res, loadingEntry)) {
+              return Future.succeededFuture(1);
+            }
+            // ignore 4xx errors
+            if (400 <= res.statusCode() && res.statusCode() <= 499) {
+              return Future.succeededFuture(0);
+            }
+            String diag = "POST " + endPointUrl + RETURNED_STATUS
+                + res.statusCode() + ": " + res.bodyAsString();
+            log.error(diag);
+            return Future.failedFuture(diag);
+          });
+    }
     StringBuilder idUrl = new StringBuilder();
     HttpMethod method1 = (loadingEntry.strategy == Strategy.RAW_POST) ? HttpMethod.POST : HttpMethod.PUT;
     if (id == null) {
@@ -289,7 +313,7 @@ public class TenantLoading {
       return sendWithXHeaders(req, headers, content)
           .compose(res -> {
             if (isSuccess(res, loadingEntry)) {
-              return Future.succeededFuture();
+              return Future.succeededFuture(1);
             }
             String diag = method1.name() + " " + url + RETURNED_STATUS
                 + res.statusCode() + ": " + res.bodyAsString();
@@ -306,7 +330,7 @@ public class TenantLoading {
       HttpRequest<Buffer> req2 = httpClient.requestAbs(method2, url2);
       return sendWithXHeaders(req2, headers, finalContent).compose(res2 -> {
         if (res2.statusCode() == 201 || res2.statusCode() == 204) {
-          return Future.succeededFuture();
+          return Future.succeededFuture(1);
         }
         String diag = "GET " + idUrl.toString()
           + RETURNED_STATUS + resGet.statusCode() + ": " + resGet.bodyAsString()
@@ -332,9 +356,12 @@ public class TenantLoading {
         log.warn("loadData getURLsFromClassPathDir returns empty list for path=" + filePath);
         return Future.succeededFuture(0);
       }
-      List<Future<Void>> futures = new ArrayList<>(urls.size());
-      urls.forEach(url -> futures.add(loadURL(headers, url, httpClient, loadingEntry, endPointUrl)));
-      return GenericCompositeFuture.all(futures).map(urls.size());
+      AtomicInteger sum = new AtomicInteger(0);
+      List<Future<Integer>> futures = new ArrayList<>(urls.size());
+      urls.forEach(url -> futures.add(
+          loadURL(headers, url, httpClient, loadingEntry, endPointUrl)
+          .onSuccess(sum::addAndGet)));
+      return GenericCompositeFuture.all(futures).map(x -> sum.get());
     } catch (URISyntaxException|IOException ex) {
       log.error("Exception for path " + filePath, ex);
       return Future.failedFuture("Exception for path " + filePath + " ex=" + ex.getMessage());
@@ -529,6 +556,19 @@ public class TenantLoading {
    */
   public TenantLoading withPostOnly() {
     nextEntry.strategy = Strategy.RAW_POST;
+    return this;
+  }
+
+  /**
+   * Specify POST, ignoring any 4xx HTTP status error, for example if record already exists.
+   *
+   * Triggers POST with raw path without unique id. The data presumably has an identifier (but
+   * TenantLoading is not aware of what it is).
+   *
+   * @return TenandLoading new state
+   */
+  public TenantLoading withPostIgnore() {
+    nextEntry.strategy = Strategy.RAW_POST_IGNORE;
     return this;
   }
 
