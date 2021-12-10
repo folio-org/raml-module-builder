@@ -47,8 +47,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
-import org.folio.rest.persist.Criteria.Limit;
-import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
@@ -1020,7 +1018,7 @@ public class PostgresClient {
    * @return one result row per inserted row, containing the id field
    */
   public Future<RowSet<Row>> saveBatch(String table, JsonArray entities) {
-    return withConn(conn -> conn.saveBatch(table, entities));
+    return withTrans(conn -> conn.saveBatch(table, entities));
   }
 
   /**
@@ -1040,7 +1038,7 @@ public class PostgresClient {
    * @return one {@link RowSet} per array element with {@link RowSet#rowCount()} information
    */
   public Future<RowSet<Row>> updateBatch(String table, JsonArray entities) {
-    return withConn(conn -> conn.updateBatch(table, entities));
+    return withTrans(conn -> conn.updateBatch(table, entities));
   }
 
   /**
@@ -1060,7 +1058,7 @@ public class PostgresClient {
    * @return one result row per inserted row, containing the id field
    */
   public Future<RowSet<Row>> upsertBatch(String table, JsonArray entities) {
-    return withConn(conn -> conn.upsertBatch(table, entities));
+    return withTrans(conn -> conn.upsertBatch(table, entities));
   }
 
   /**
@@ -1099,7 +1097,7 @@ public class PostgresClient {
 
   /**
    * Insert or upsert the entities into table using a single transaction.
-   * @param sqlConnection  the connection to run on, may be on a transaction
+   * @param sqlConnection  the connection to run on, must be on a transaction so that SELECT ... FOR UPDATE works
    * @param upsert  true for upsert, false for insert with fail on duplicate id
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
@@ -1122,7 +1120,7 @@ public class PostgresClient {
    * @return one result row per inserted row, containing the id field
    */
   public <T> Future<RowSet<Row>> saveBatch(String table, List<T> entities) {
-    return withConn(conn -> conn.saveBatch(table, entities));
+    return withTrans(conn -> conn.saveBatch(table, entities));
   }
 
   /**
@@ -1148,7 +1146,7 @@ public class PostgresClient {
    * @return one {@link RowSet} per list element with {@link RowSet#rowCount()} information
    */
   public <T> Future<RowSet<Row>> updateBatch(String table, List<T> entities) {
-    return withConn(conn -> conn.updateBatch(table, entities));
+    return withTrans(conn -> conn.updateBatch(table, entities));
   }
 
   /**
@@ -1175,7 +1173,7 @@ public class PostgresClient {
    * @return one result row per inserted row, containing the id field
    */
   public <T> Future<RowSet<Row>> upsertBatch(String table, List<T> entities) {
-    return withConn(conn -> conn.upsertBatch(table, entities));
+    return withTrans(conn -> conn.upsertBatch(table, entities));
   }
 
   /***
@@ -1198,7 +1196,7 @@ public class PostgresClient {
    * POJOs are converted to a JSON String.
    * A random id is generated if POJO's id is null.
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
-   * @param sqlConnection  the connection to run on, may be on a transaction
+   * @param sqlConnection  the connection to run on, must be on a transaction so that SELECT ... FOR UPDATE works
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
    * @param replyHandler result, containing the id field for each inserted POJO
@@ -1214,7 +1212,7 @@ public class PostgresClient {
    * A random id is generated if POJO's id is null.
    * If a record with the id already exists it is updated (upsert).
    * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
-   * @param sqlConnection  the connection to run on, may be on a transaction
+   * @param sqlConnection  the connection to run on, must be on a transaction so that SELECT ... FOR UPDATE works
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
    * @param replyHandler result, containing the id field for each inserted POJO
