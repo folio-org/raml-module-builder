@@ -1,3 +1,8 @@
+## 33.2.1 2021-12-11
+
+Fixes:
+ * [RMB-888](https://issues.folio.org/browse/RMB-888) Log4j 2.15.0 fixing remote execution (CVE-2021-44228)
+
 ## 33.2.0 2021-11-30
 
 Fixes:
