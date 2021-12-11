@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>33.3.0-SNAPSHOT</version>
+    <version>33.2.1</version>
   </parent>
 
   <properties>
