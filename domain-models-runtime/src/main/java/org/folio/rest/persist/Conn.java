@@ -327,6 +327,8 @@ public class Conn {
   /**
    * Insert or upsert the entities into table.
    *
+   * <p>A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   *
    * @param upsert  true for upsert, false for insert with fail on duplicate id
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
@@ -358,6 +360,8 @@ public class Conn {
   }
 
   /**
+   * A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   *
    * @throws Throwable the caller needs to catch and convert into a failed Future
    */
   private Future<RowSet<Row>> saveBatchInternal(boolean upsert, String table, List<Tuple> batch) {
@@ -368,6 +372,13 @@ public class Conn {
     }
     long start = log.isDebugEnabled() ? System.nanoTime() : 0;
     log.info("starting: saveBatch size=" + batch.size());
+
+    StringBuilder selectForUpdate = new StringBuilder(batch.size() * 39 + 50 + table.length());
+    selectForUpdate.append("SELECT 1 FROM ").append(table).append(" WHERE id in (");
+    batch.forEach(tuple -> selectForUpdate.append('\'').append(tuple.getUUID(0)).append('\'').append(","));
+    selectForUpdate.deleteCharAt(selectForUpdate.length() - 1);  // delete last comma
+    selectForUpdate.append(") FOR UPDATE");
+
     String sql;
     if (upsert) {
       sql = "SELECT upsert('" + table + "', $1::uuid, $2::jsonb)";
@@ -375,22 +386,27 @@ public class Conn {
       sql = "INSERT INTO " + postgresClient.getSchemaName() + "." + table + " (id, jsonb) VALUES ($1, $2)"
         + " RETURNING id";
     }
-    return pgConnection.preparedQuery(sql).executeBatch(batch)
-    .map(rowSet -> {
-      log.debug(() -> durationMsg("saveBatch", table, start));
-      if (rowSet == null) {
-        return emptyRowSetOfId();
-      }
-      return rowSet;
-    })
-    .onFailure(e -> {
-      log.error("saveBatch size=" + batch.size() + " " + e.getMessage(), e);
-      log.debug(() -> durationMsg("saveBatchFailed", table, start));
-    });
+
+    return pgConnection.query(selectForUpdate.toString()).execute()
+        .compose(x -> pgConnection.preparedQuery(sql).executeBatch(batch))
+        .map(rowSet -> {
+          log.debug(() -> durationMsg("saveBatch", table, start));
+          if (rowSet == null) {
+            return emptyRowSetOfId();
+          }
+          return rowSet;
+        })
+        .onFailure(e -> {
+          log.error("saveBatch size=" + batch.size() + " " + e.getMessage(), e);
+          log.debug(() -> durationMsg("saveBatchFailed", table, start));
+        });
   }
 
   /**
    * Insert the entities into table.
+   *
+   * <p>A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   *
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @return one result row per inserted row, containing the id field
@@ -401,6 +417,9 @@ public class Conn {
 
   /**
    * Upsert the entities into table.
+   *
+   * <p>A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   *
    * @param table  destination table to insert into
    * @param entities  each array element is a String with the content for the JSONB field of table; if id is missing a random id is generated
    * @return one result row per inserted row, containing the id field
@@ -409,13 +428,16 @@ public class Conn {
     return saveBatch(true, table, entities);
   }
 
+  /**
+   * A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   */
   <T> Future<RowSet<Row>> saveBatch(boolean upsert, String table, List<T> entities) {
 
     try {
-      List<Tuple> batch = new ArrayList<>();
       if (entities == null || entities.isEmpty()) {
         return Future.succeededFuture(emptyRowSetOfId());
       }
+      List<Tuple> batch = new ArrayList<>(entities.size());
       // We must use reflection, the POJOs don't have an interface/superclass in common.
       Method getIdMethod = entities.get(0).getClass().getDeclaredMethod("getId");
       for (Object entity : entities) {
@@ -432,9 +454,15 @@ public class Conn {
 
   /**
    * Save a list of POJOs.
-   * POJOs are converted to a JSON String.
-   * A random id is generated if POJO's id is null.
-   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   *
+   * <p>POJOs are converted to a JSON String.
+   *
+   * <p>A random id is generated if POJO's id is null.
+   *
+   * <p>Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   *
+   * <p>A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   *
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
    * @return one result row per inserted row, containing the id field
@@ -445,10 +473,17 @@ public class Conn {
 
   /**
    * Upsert a list of POJOs.
-   * POJOs are converted to a JSON String.
-   * A random id is generated if POJO's id is null.
-   * If a record with the id already exists it is updated (upsert).
-   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   *
+   * <p>POJOs are converted to a JSON String.
+   *
+   * <p>A random id is generated if POJO's id is null.
+   *
+   * <p>If a record with the id already exists it is updated (upsert).
+   *
+   * <p>Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   *
+   * <p>A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   *
    * @param table  destination table to insert into
    * @param entities  each list element is a POJO
    * @return one result row per inserted row, containing the id field
@@ -472,6 +507,9 @@ public class Conn {
 
   /**
    * Update the entities in the table , match using the id property.
+   *
+   * <p>A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   *
    * @param entities  each array element is a String with the content for the JSONB field of table
    * @return one {@link RowSet} per array element with {@link RowSet#rowCount()} information
    */
@@ -494,8 +532,13 @@ public class Conn {
 
   /**
    * Update a list of POJOs.
-   * POJOs are converted to a JSON String and matched using the id property.
-   * Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   *
+   * <p>POJOs are converted to a JSON String and matched using the id property.
+   *
+   * <p>Call {@link MetadataUtil#populateMetadata(List, Map)} before if applicable.
+   *
+   * <p>A transaction must be open on this {@link #Conn} so that SELECT ... FOR UPDATE works.
+   *
    * @param table  table to update
    * @param entities  each list element is a POJO
    * @return one {@link RowSet} per array element with {@link RowSet#rowCount()} information
