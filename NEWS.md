@@ -1,3 +1,8 @@
+## 33.2.2 2021-12-14
+
+Fixes:
+ * [RMB-889](https://issues.folio.org/browse/RMB-889) Log4j 2.16.0 disabling JDNI and lookups (CVE-2021-44228)
+
 ## 33.2.1 2021-12-11
 
 Fixes:
