@@ -30,6 +30,7 @@ import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.client.exceptions.ResponseException;
@@ -436,6 +437,7 @@ public final class RestRouting {
     FolioLoggingContext.put(FolioLoggingContext.TENANT_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_HEADER_TENANT));
     FolioLoggingContext.put(FolioLoggingContext.REQUEST_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_REQUESTID_HEADER));
     FolioLoggingContext.put(FolioLoggingContext.USER_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_USERID_HEADER));
+    FolioLoggingContext.put(FolioLoggingContext.MODULE_ID_LOGGING_VAR_NAME, PostgresClient.getModuleName());
 
     withRequestId(rc, () -> LOGGER.info("invoking {}", method.getName()));
 
