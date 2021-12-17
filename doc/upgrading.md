@@ -27,8 +27,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 Update the submodule that sources https://github.com/folio-org/raml to the latest version. This removes the
 language trait and adds totalRecords to the pageable trait:
+
 * https://github.com/folio-org/raml/pull/141/files
 * https://github.com/folio-org/raml/pull/140/files
+
 Therefore you need to change the parameters of your methods that implement the RAML generated interfaces -
 remove the lang parameter, and add the `String totalRecords` parameter before the `int limit` parameter.
 The compile will fail unless this is done.
@@ -36,13 +38,19 @@ The compile will fail unless this is done.
 Examples:
 
 Replace
+
 `public void getMyitems(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,`
+
 by
+
 `public void getMyitems(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,`
 
 Replace
+
 `public void postMyitems(String lang, Myitem entity, Map<String, String> okapiHeaders,`
+
 by
+
 `public void postMyitems(Myitem entity, Map<String, String> okapiHeaders,`
 
 Note: Upgrading the raml submodule is not required for RMB 33.2, it can be postponed.
