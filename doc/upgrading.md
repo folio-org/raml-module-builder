@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 33.2](#version-332)
 * [Version 33.1](#version-331)
 * [Version 33.0](#version-330)
 * [Version 32.0](#version-320)
@@ -19,6 +20,32 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 33.2
+
+#### [RMB-718](https://issues.folio.org/browse/RMB-718), [FOLIO-3351](https://issues.folio.org/browse/FOLIO-3351)
+
+Update the submodule that sources https://github.com/folio-org/raml to the latest version. This removes the
+language trait and adds totalRecords to the pageable trait:
+* https://github.com/folio-org/raml/pull/141/files
+* https://github.com/folio-org/raml/pull/140/files
+Therefore you need to change the parameters of your methods that implement the RAML generated interfaces -
+remove the lang parameter, and add the `String totalRecords` parameter before the `int limit` parameter.
+The compile will fail unless this is done.
+
+Examples:
+
+Replace
+`public void getMyitems(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,`
+by
+`public void getMyitems(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,`
+
+Replace
+`public void postMyitems(String lang, Myitem entity, Map<String, String> okapiHeaders,`
+by
+`public void postMyitems(Myitem entity, Map<String, String> okapiHeaders,`
+
+Note: Upgrading the raml submodule is not required for RMB 33.2, it can be postponed.
 
 ## Version 33.1
 
