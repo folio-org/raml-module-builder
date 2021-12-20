@@ -1,3 +1,10 @@
+## 33.2.3 2021-12-20
+
+Fixes:
+
+* [RMB-891](https://issues.folio.org/browse/RMB-891) Log4j 2.17.0 fixing self-referential lookups in MDC (CVE-2021-45105)
+* [RMB-892](https://issues.folio.org/browse/RMB-892) Backport Netty 4.1.72.Final (CVE-2021-43197)
+
 ## 33.2.2 2021-12-14
 
 Fixes:
