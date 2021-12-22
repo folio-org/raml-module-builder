@@ -2405,22 +2405,6 @@ public class PostgresClient {
     .onComplete(replyHandler);
   }
 
-  @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
-  <T> void get(AsyncResult<SQLConnection> sqlConnection, String table, Class<T> clazz,
-    String fieldName, Criterion filter, boolean returnCount, boolean returnIdField,
-    List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
-
-    CQLWrapper cqlWrapper = new CQLWrapper(filter);
-    if (sqlConnection == null) {
-      get(table, clazz, fieldName, cqlWrapper, returnCount,
-        returnIdField, facets, null, replyHandler);
-    } else {
-      withConn(sqlConnection, conn -> conn.get(table, clazz, fieldName, cqlWrapper, returnCount,
-        returnIdField, facets, null))
-      .onComplete(replyHandler);
-    }
-  }
-
   /**
    * A FunctionalInterface that may throw an Exception.
    *
