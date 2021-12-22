@@ -255,7 +255,7 @@ public class PostgresClient {
    *   this is never null
    */
   public static String getConfigFilePath(){
-    if(configPath == null){
+    if (configPath == null){
       configPath = POSTGRES_LOCALHOST_CONFIG;
     }
     return configPath;
@@ -318,7 +318,7 @@ public class PostgresClient {
    * verticle is deployed*/
   private static String decodePassword(String password) throws Exception {
     String key = AES.getSecretKey();
-    if(key != null){
+    if (key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
       return AES.decryptPassword(password, sk);
     }
@@ -333,7 +333,7 @@ public class PostgresClient {
    * and encrypt it with the secret key and then you have the tenant's password */
   private static String createPassword(String password) throws Exception {
     String key = AES.getSecretKey();
-    if(key != null){
+    if (key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
       return AES.encryptPasswordAsBase64(password, sk);
     }
@@ -3797,7 +3797,7 @@ public class PostgresClient {
       if (allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
         final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
         final Matcher matcher = pattern.matcher(allLines[i]);
-        if(matcher.find()){
+        if (matcher.find()){
           /* password argument indicated in the create user / role statement */
           String newPassword = createPassword(matcher.group(1));
           allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
