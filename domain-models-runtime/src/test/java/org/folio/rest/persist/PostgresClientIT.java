@@ -3064,42 +3064,6 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void streamGetLegacy(TestContext context) throws IOException {
-    AtomicInteger objectCount = new AtomicInteger();
-    createTableWithPoLines(context);
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", null, false, null,
-      streamHandler -> objectCount.incrementAndGet(), context.asyncAssertSuccess(asyncResult ->
-        context.assertEquals(6, objectCount.get())));
-  }
-
-  @Test
-  public void streamGetLegacyFilter(TestContext context) throws IOException, FieldException {
-    AtomicInteger objectCount = new AtomicInteger();
-    createTableWithPoLines(context);
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", firstEdition(), false, null,
-      streamHandler -> objectCount.incrementAndGet(), context.asyncAssertSuccess(asyncResult ->
-        context.assertEquals(3, objectCount.get())));
-  }
-
-  @Test
-  public void streamGetLegacySyntaxError(TestContext context) throws IOException, FieldException {
-    createTableWithPoLines(context);
-    CQLWrapper wrapper = new CQLWrapper(new CQL2PgJSON("jsonb"), "edition=");
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", wrapper,
-      false, null, streamHandler -> context.fail(), context.asyncAssertFailure());
-  }
-
-  @Test
-  public void streamGetLegacyQuerySingleError(TestContext context) throws IOException, FieldException {
-    createTableWithPoLines(context);
-    AtomicInteger objectCount = new AtomicInteger();
-    postgresClient.streamGet("noSuchTable", new Object(), "jsonb", firstEdition(),
-      false, null, streamHandler -> objectCount.incrementAndGet(),
-      context.asyncAssertFailure(asyncResult
-        -> context.assertEquals(0, objectCount.get())));
-  }
-
-  @Test
   public void streamGetQuerySingleError(TestContext context) throws IOException, FieldException {
     createTableWithPoLines(context);
     postgresClient.streamGet("noSuchTable", Object.class, "jsonb", firstEdition(),
@@ -3676,15 +3640,6 @@ public class PostgresClientIT {
       context.assertEquals(i < 3 ? 1 : 0, objectCount.get());
     }
     context.assertEquals(3, ids.size());
-  }
-
-  @Test
-  public void streamGetLegacyDistinctOn(TestContext context) throws IOException {
-    AtomicInteger objectCount = new AtomicInteger();
-    createTableWithPoLines(context);
-    postgresClient.streamGet(MOCK_POLINES_TABLE, new Object(), "jsonb", null, false, "jsonb->>'edition'",
-      streamHandler -> objectCount.incrementAndGet(),
-      context.asyncAssertSuccess(res -> context.assertEquals(2, objectCount.get())));
   }
 
   @Test

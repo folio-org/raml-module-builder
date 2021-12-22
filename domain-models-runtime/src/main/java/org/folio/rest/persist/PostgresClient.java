@@ -1665,44 +1665,6 @@ public class PostgresClient {
     }
   }
 
-  /**
-   * Streamed GET with CQLWrapper (T variant, no facets)
-   * @param <T>
-   * @param table
-   * @param entity
-   * @param fieldName usually "jsonb"
-   * @param filter usually CQL query
-   * @param returnIdField
-   * @param distinctOn may be null
-   * @param streamHandler called for each record
-   * @param replyHandler called when query is complete
-   * @deprecated This function is deprecated because either you'll have to
-   * buffer whole HTTP buffer in memory to produce HTTP status; or you'll have to
-   * return a fake error. Furthermore, this API does not provide totalCount
-   * Use streamGet with {@link PostgresClientStreamResult} instead.
-   * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String,
-   *         org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String,
-   *         io.vertx.core.Handler, io.vertx.core.Handler)}
-   */
-  @Deprecated
-  @SuppressWarnings({"squid:S00107"})  // has more than 7 parameters
-  public <T> void streamGet(String table, T entity, String fieldName,
-    CQLWrapper filter, boolean returnIdField, String distinctOn,
-    Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
-
-    Class<T> clazz = (Class<T>) entity.getClass();
-    streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
-      res -> {
-        if (res.failed()) {
-          replyHandler.handle(Future.failedFuture(res.cause()));
-          return;
-        }
-        PostgresClientStreamResult<T> streamResult = res.result();
-        streamResult.handler(streamHandler);
-        streamResult.endHandler(x -> replyHandler.handle(Future.succeededFuture()));
-        streamResult.exceptionHandler(e -> replyHandler.handle(Future.failedFuture(e)));
-      });
-  }
 
   /**
    * Stream GET with CQLWrapper, no facets {@link org.folio.rest.persist.PostgresClientStreamResult}
