@@ -320,8 +320,7 @@ public class PostgresClient {
     String key = AES.getSecretKey();
     if(key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
-      String decoded = AES.decryptPassword(password, sk);
-      return decoded;
+      return AES.decryptPassword(password, sk);
     }
     /* no key , so nothing to decode */
     return password;
@@ -336,10 +335,9 @@ public class PostgresClient {
     String key = AES.getSecretKey();
     if(key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
-      String newPassword = AES.encryptPasswordAsBase64(password, sk);
-      return newPassword;
+      return AES.encryptPasswordAsBase64(password, sk);
     }
-    /** no key , so nothing to encrypt, the password will be the tenant id */
+    /* no key , so nothing to encrypt, the password will be the tenant id */
     return password;
   }
 
@@ -414,7 +412,7 @@ public class PostgresClient {
         clients.add(postgresClient);
       }
     });
-    clients.forEach(client -> client.closeClient());
+    clients.forEach(PostgresClient::closeClient);
   }
 
   /**
@@ -456,7 +454,7 @@ public class PostgresClient {
 
   private void init() throws Exception {
 
-    /** check if in pom.xml this prop is declared in order to work with encrypted
+    /* check if in pom.xml this prop is declared in order to work with encrypted
      * passwords for postgres embedded - this is a dev mode only feature */
     String secretKey = System.getProperty("postgres_secretkey_4_embeddedmode");
 
@@ -1763,7 +1761,7 @@ public class PostgresClient {
    * @param distinctOn may be null
    * @param facets for no facets: null or Collections.emptyList()
    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
-   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
+   * @return AsyncResult; on success with result {@link PostgresClientStreamResult}
    */
   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> Future<PostgresClientStreamResult<T>> streamGet(String table, Class<T> clazz, String fieldName,
@@ -1804,7 +1802,7 @@ public class PostgresClient {
    * @param table - table to query
    * @param clazz - class of objects to be returned
    * @param filter - which records to select
-   * @param streamHandler - contains {@link ResultInfo} and handlers to process the stream
+   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
    */
   public <T> Future<Void> streamGet(String table, Class<T> clazz, CQLWrapper filter,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
@@ -1822,7 +1820,7 @@ public class PostgresClient {
    * @param returnIdField - if the id field should also be returned, must be true for facets
    * @param distinctOn - database column to calculate the number of distinct values for, null or empty string for none
    * @param facets - fields to calculate counts for
-   * @param streamHandler - contains {@link ResultInfo} and handlers to process the stream
+   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
    */
   public <T> Future<Void> streamGet(String table, Class<T> clazz, CQLWrapper filter, String fieldName,
       boolean returnIdField, String distinctOn, List<FacetField> facets,
@@ -2205,7 +2203,7 @@ public class PostgresClient {
    * @param returnCount - whether to calculate totalRecords
    *            (the number of records that match when disabling offset and limit)
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param factes - fields to calculate counts for
+   * @param facets - fields to calculate counts for
    * @return {@link Results} with the entities found
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
@@ -2814,7 +2812,7 @@ public class PostgresClient {
   ) throws IOException, InstantiationException, IllegalAccessException, InvocationTargetException {
     int columnIndex = row.getColumnIndex(DEFAULT_JSONB_FIELD_NAME);
     Object jo = columnIndex == -1 ? null : row.getValue(columnIndex);
-    Object o = null;
+    Object o;
     resultsHelper.facet = false;
 
     if (!isAuditFlavored && jo != null) {
