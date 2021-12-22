@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 34.0](#version-340)
 * [Version 33.2](#version-332)
 * [Version 33.1](#version-331)
 * [Version 33.0](#version-330)
@@ -20,6 +21,40 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 34.0
+
+
+#### [RMB-885](https://issues.folio.org/browse/RMB-885)
+
+The following PostgresClient methods have been removed:
+
+```java
+
+<T> void streamGet(String table, T entity, String fieldName,
+   CQLWrapper filter, boolean returnIdField, String distinctOn,
+   Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler)
+
+<T> void get(String table, Class<T> clazz, String fieldName, String where,
+   boolean returnCount, boolean returnIdField, boolean setId,
+   Handler<AsyncResult<Results<T>>> replyHandler)
+
+<T> void get(String table, Class<T> clazz, String fieldName, String where,
+   boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
+   Handler<AsyncResult<Results<T>>> replyHandler)
+
+<T> void get(String table, Class<T> clazz, String fieldName, String where,
+   boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
+   Handler<AsyncResult<Results<T>>> replyHandler)
+
+<T> void get(String table, Class<T> clazz, String[] fields, String filter,
+   boolean returnCount, boolean setId,
+   Handler<AsyncResult<Results<T>>> replyHandler)
+
+<T> void get(String table, Class<T> clazz, String filter,
+   boolean returnCount, boolean setId,
+   Handler<AsyncResult<Results<T>>> replyHandler)
+```
 
 ## Version 33.2
 
