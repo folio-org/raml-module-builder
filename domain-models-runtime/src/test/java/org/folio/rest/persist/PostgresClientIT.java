@@ -6,7 +6,6 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.collection.IsCollectionWithSize.hasSize;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -61,7 +60,6 @@ import io.vertx.sqlclient.impl.RowDesc;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
-import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Facet;
@@ -84,7 +82,6 @@ import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -3382,7 +3379,6 @@ public class PostgresClientIT {
 
   @Test
   public void streamGetResultException(TestContext context) {
-    List<FacetField> facets = new ArrayList<FacetField>();
     createTableWithPoLines(context);
     ResultInfo resultInfo = new ResultInfo();
     context.assertNotNull(vertx);
@@ -3666,9 +3662,7 @@ public class PostgresClientIT {
     final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
-    List<FacetField> facets = new ArrayList<>() {{
-      add(new FacetField("jsonb->>'edition'"));
-    }};
+    List<FacetField> facets = List.of(new FacetField("jsonb->>'edition'"));
     String distinctOn = "jsonb->>'order_format'";
     //with facets and return count
     Async async1 = context.async();
@@ -3885,11 +3879,7 @@ public class PostgresClientIT {
     createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
 
     CQL2PgJSON cql2pgJson = new CQL2PgJSON("jsonb");
-    List<FacetField> facets = new ArrayList<FacetField>() {
-      {
-        add(new FacetField("jsonb->>'edition'"));
-      }
-    };
+    List<FacetField> facets = List.of(new FacetField("jsonb->>'edition'"));
     {
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, "cql.allRecords=1");
       Async async = context.async();

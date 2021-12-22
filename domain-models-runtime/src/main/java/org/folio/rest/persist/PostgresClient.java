@@ -2219,9 +2219,7 @@ public class PostgresClient {
     boolean returnCount, boolean setId, List<FacetField> facets,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    String distinctOn = null;
-    boolean returnIdField = true;
-    get(table, clazz, fields, filter, returnCount, returnIdField, facets, distinctOn, replyHandler);
+    get(table, clazz, fields, filter, returnCount, true, facets, null, replyHandler);
   }
 
   <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
@@ -3800,7 +3798,7 @@ public class PostgresClient {
         final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
         final Matcher matcher = pattern.matcher(allLines[i]);
         if(matcher.find()){
-          /** password argument indicated in the create user / role statement */
+          /* password argument indicated in the create user / role statement */
           String newPassword = createPassword(matcher.group(1));
           allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
         }
