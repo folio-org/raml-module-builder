@@ -27,34 +27,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 #### [RMB-885](https://issues.folio.org/browse/RMB-885)
 
-The following PostgresClient methods have been removed:
+The `PostgresClient.streamGet` method without `PostgresClientStreamResult` parameter has been removed because it doesn't return totalCount and consumes too much memory. Use one of the other `PostgresClient.streamGet` methods with `PostgresClientStreamResult`.
 
-```java
-
-<T> void streamGet(String table, T entity, String fieldName,
-   CQLWrapper filter, boolean returnIdField, String distinctOn,
-   Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler)
-
-<T> void get(String table, Class<T> clazz, String fieldName, String where,
-   boolean returnCount, boolean returnIdField, boolean setId,
-   Handler<AsyncResult<Results<T>>> replyHandler)
-
-<T> void get(String table, Class<T> clazz, String fieldName, String where,
-   boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
-   Handler<AsyncResult<Results<T>>> replyHandler)
-
-<T> void get(String table, Class<T> clazz, String fieldName, String where,
-   boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
-   Handler<AsyncResult<Results<T>>> replyHandler)
-
-<T> void get(String table, Class<T> clazz, String[] fields, String filter,
-   boolean returnCount, boolean setId,
-   Handler<AsyncResult<Results<T>>> replyHandler)
-
-<T> void get(String table, Class<T> clazz, String filter,
-   boolean returnCount, boolean setId,
-   Handler<AsyncResult<Results<T>>> replyHandler)
-```
+`PostgresClient.get` methods with `String where` or `String filter` parameter have been removed to reduce SQL injection issues. Use `PostgresClient.get` methods with `CQLWrapper` or `Criterion` parameter instead.
 
 ## Version 33.2
 
