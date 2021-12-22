@@ -255,7 +255,7 @@ public class PostgresClient {
    *   this is never null
    */
   public static String getConfigFilePath(){
-    if(configPath == null){
+    if (configPath == null){
       configPath = POSTGRES_LOCALHOST_CONFIG;
     }
     return configPath;
@@ -316,12 +316,11 @@ public class PostgresClient {
    * that should have been set via the admin api to decode it and use that to connect
    * note that in embedded mode (such as unit tests) the postgres embedded is started before the
    * verticle is deployed*/
-  private static String decodePassword(String password) throws Exception {
+  static String decodePassword(String password) throws Exception {
     String key = AES.getSecretKey();
-    if(key != null){
+    if (key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
-      String decoded = AES.decryptPassword(password, sk);
-      return decoded;
+      return AES.decryptPassword(password, sk);
     }
     /* no key , so nothing to decode */
     return password;
@@ -332,14 +331,13 @@ public class PostgresClient {
    * password as the actual password for the tenant user in the DB.
    * In order to then know the password - you need to take the tenant id
    * and encrypt it with the secret key and then you have the tenant's password */
-  private static String createPassword(String password) throws Exception {
+  static String createPassword(String password) throws Exception {
     String key = AES.getSecretKey();
-    if(key != null){
+    if (key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
-      String newPassword = AES.encryptPasswordAsBase64(password, sk);
-      return newPassword;
+      return AES.encryptPasswordAsBase64(password, sk);
     }
-    /** no key , so nothing to encrypt, the password will be the tenant id */
+    /* no key , so nothing to encrypt, the password will be the tenant id */
     return password;
   }
 
@@ -414,7 +412,7 @@ public class PostgresClient {
         clients.add(postgresClient);
       }
     });
-    clients.forEach(client -> client.closeClient());
+    clients.forEach(PostgresClient::closeClient);
   }
 
   /**
@@ -456,7 +454,7 @@ public class PostgresClient {
 
   private void init() throws Exception {
 
-    /** check if in pom.xml this prop is declared in order to work with encrypted
+    /* check if in pom.xml this prop is declared in order to work with encrypted
      * passwords for postgres embedded - this is a dev mode only feature */
     String secretKey = System.getProperty("postgres_secretkey_4_embeddedmode");
 
@@ -1645,77 +1643,8 @@ public class PostgresClient {
     .onComplete(replyHandler);
   }
 
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnCount
-   * @param returnIdField
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param replyHandler
-   * @deprecated use get with CQLWrapper or Criterion instead
-   */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
-      boolean returnCount, boolean returnIdField, boolean setId,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null /* facets */, replyHandler);
-  }
-
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnCount
-   * @param returnIdField
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param facets
-   * @param replyHandler
-   * @deprecated use get with CQLWrapper or Criterion instead
-   */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
-      boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, null /*distinctOn*/, replyHandler);
-  }
-
-/**
- *
- * @param <T>
- * @param table
- * @param clazz
- * @param fieldName
- * @param where
- * @param returnCount
- * @param returnIdField
- * @param setId - unused, the database trigger will always set jsonb->'id' automatically
- * @param facets
- * @param distinctOn
- * @param replyHandler
- * @deprecated use get with CQLWrapper or Criterion instead
- */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
-    boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
-    Handler<AsyncResult<Results<T>>> replyHandler) {
-
-    CQLWrapper wrapper = new CQLWrapper().setWhereClause(where);
-    withConn(conn
-      -> conn.get(table, clazz, fieldName, wrapper, returnCount, returnIdField, facets, distinctOn))
-    .onComplete(replyHandler);
-  }
-
   static class QueryHelper {
-
     String table;
-    List<FacetField> facets;
     String selectQuery;
     String countQuery;
     int offset;
@@ -1734,44 +1663,6 @@ public class PostgresClient {
     }
   }
 
-  /**
-   * Streamed GET with CQLWrapper (T variant, no facets)
-   * @param <T>
-   * @param table
-   * @param entity
-   * @param fieldName usually "jsonb"
-   * @param filter usually CQL query
-   * @param returnIdField
-   * @param distinctOn may be null
-   * @param streamHandler called for each record
-   * @param replyHandler called when query is complete
-   * @deprecated This function is deprecated because either you'll have to
-   * buffer whole HTTP buffer in memory to produce HTTP status; or you'll have to
-   * return a fake error. Furthermore, this API does not provide totalCount
-   * Use streamGet with {@link PostgresClientStreamResult} instead.
-   * {@link #streamGet(java.lang.String, java.lang.Object, java.lang.String,
-   *         org.folio.rest.persist.cql.CQLWrapper, boolean, java.lang.String,
-   *         io.vertx.core.Handler, io.vertx.core.Handler)}
-   */
-  @Deprecated
-  @SuppressWarnings({"squid:S00107"})  // has more than 7 parameters
-  public <T> void streamGet(String table, T entity, String fieldName,
-    CQLWrapper filter, boolean returnIdField, String distinctOn,
-    Handler<T> streamHandler, Handler<AsyncResult<Void>> replyHandler) {
-
-    Class<T> clazz = (Class<T>) entity.getClass();
-    streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn,
-      res -> {
-        if (res.failed()) {
-          replyHandler.handle(Future.failedFuture(res.cause()));
-          return;
-        }
-        PostgresClientStreamResult<T> streamResult = res.result();
-        streamResult.handler(streamHandler);
-        streamResult.endHandler(x -> replyHandler.handle(Future.succeededFuture()));
-        streamResult.exceptionHandler(e -> replyHandler.handle(Future.failedFuture(e)));
-      });
-  }
 
   /**
    * Stream GET with CQLWrapper, no facets {@link org.folio.rest.persist.PostgresClientStreamResult}
@@ -1870,7 +1761,7 @@ public class PostgresClient {
    * @param distinctOn may be null
    * @param facets for no facets: null or Collections.emptyList()
    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
-   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
+   * @return AsyncResult; on success with result {@link PostgresClientStreamResult}
    */
   @SuppressWarnings({"squid:S00107"})    // Method has >7 parameters
   public <T> Future<PostgresClientStreamResult<T>> streamGet(String table, Class<T> clazz, String fieldName,
@@ -1911,7 +1802,7 @@ public class PostgresClient {
    * @param table - table to query
    * @param clazz - class of objects to be returned
    * @param filter - which records to select
-   * @param streamHandler - contains {@link ResultInfo} and handlers to process the stream
+   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
    */
   public <T> Future<Void> streamGet(String table, Class<T> clazz, CQLWrapper filter,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
@@ -1929,7 +1820,7 @@ public class PostgresClient {
    * @param returnIdField - if the id field should also be returned, must be true for facets
    * @param distinctOn - database column to calculate the number of distinct values for, null or empty string for none
    * @param facets - fields to calculate counts for
-   * @param streamHandler - contains {@link ResultInfo} and handlers to process the stream
+   * @param replyHandler AsyncResult; on success with result {@link PostgresClientStreamResult}
    */
   public <T> Future<Void> streamGet(String table, Class<T> clazz, CQLWrapper filter, String fieldName,
       boolean returnIdField, String distinctOn, List<FacetField> facets,
@@ -2312,7 +2203,7 @@ public class PostgresClient {
    * @param returnCount - whether to calculate totalRecords
    *            (the number of records that match when disabling offset and limit)
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param factes - fields to calculate counts for
+   * @param facets - fields to calculate counts for
    * @return {@link Results} with the entities found
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
@@ -2328,9 +2219,7 @@ public class PostgresClient {
     boolean returnCount, boolean setId, List<FacetField> facets,
     Handler<AsyncResult<Results<T>>> replyHandler) {
 
-    String distinctOn = null;
-    boolean returnIdField = true;
-    get(table, clazz, fields, filter, returnCount, returnIdField, facets, distinctOn, replyHandler);
+    get(table, clazz, fields, filter, returnCount, true, facets, null, replyHandler);
   }
 
   <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
@@ -2349,52 +2238,6 @@ public class PostgresClient {
     withConn(conn
       -> conn.get(table, clazz, fieldName, filter, returnCount, returnIdField, facets, distinctOn))
     .onComplete(replyHandler);
-  }
-
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fields
-   * @param filter
-   * @param returnCount
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param replyHandler
-   * @deprecated use get with CQLWrapper or Criterion instead
-   */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String[] fields, String filter,
-      boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    String where = "";
-    if(filter != null){
-      where = filter;
-    }
-    String fieldsStr = Arrays.toString(fields);
-    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
-  }
-
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param filter
-   * @param returnCount
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param replyHandler
-   * @deprecated use get with CQLWrapper or Criterion instead
-   */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String filter,
-      boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    String where = "";
-    if(filter != null){
-      where = filter;
-    }
-    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, where, returnCount, setId, replyHandler);
   }
 
   /**
@@ -2558,22 +2401,6 @@ public class PostgresClient {
 
     withConn(sqlConnection, conn -> conn.get(table, clazz, filter, returnCount, facets))
     .onComplete(replyHandler);
-  }
-
-  @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
-  <T> void get(AsyncResult<SQLConnection> sqlConnection, String table, Class<T> clazz,
-    String fieldName, Criterion filter, boolean returnCount, boolean returnIdField,
-    List<FacetField> facets, Handler<AsyncResult<Results<T>>> replyHandler) {
-
-    CQLWrapper cqlWrapper = new CQLWrapper(filter);
-    if (sqlConnection == null) {
-      get(table, clazz, fieldName, cqlWrapper, returnCount,
-        returnIdField, facets, null, replyHandler);
-    } else {
-      withConn(sqlConnection, conn -> conn.get(table, clazz, fieldName, cqlWrapper, returnCount,
-        returnIdField, facets, null))
-      .onComplete(replyHandler);
-    }
   }
 
   /**
@@ -2967,7 +2794,7 @@ public class PostgresClient {
   ) throws IOException, InstantiationException, IllegalAccessException, InvocationTargetException {
     int columnIndex = row.getColumnIndex(DEFAULT_JSONB_FIELD_NAME);
     Object jo = columnIndex == -1 ? null : row.getValue(columnIndex);
-    Object o = null;
+    Object o;
     resultsHelper.facet = false;
 
     if (!isAuditFlavored && jo != null) {
@@ -3970,8 +3797,8 @@ public class PostgresClient {
       if (allLines[i].toUpperCase().matches("^\\s*(CREATE USER|CREATE ROLE).*") && AES.getSecretKey() != null) {
         final Pattern pattern = Pattern.compile("PASSWORD\\s*'(.+?)'\\s*", Pattern.CASE_INSENSITIVE);
         final Matcher matcher = pattern.matcher(allLines[i]);
-        if(matcher.find()){
-          /** password argument indicated in the create user / role statement */
+        if (matcher.find()){
+          /* password argument indicated in the create user / role statement */
           String newPassword = createPassword(matcher.group(1));
           allLines[i] = matcher.replaceFirst(" PASSWORD '" + newPassword +"' ");
         }

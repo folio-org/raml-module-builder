@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 34.0](#version-340)
 * [Version 33.2](#version-332)
 * [Version 33.1](#version-331)
 * [Version 33.0](#version-330)
@@ -20,6 +21,15 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 34.0
+
+
+#### [RMB-885](https://issues.folio.org/browse/RMB-885)
+
+The `PostgresClient.streamGet` method without `PostgresClientStreamResult` parameter has been removed because it doesn't return totalCount and consumes too much memory. Use one of the other `PostgresClient.streamGet` methods with `PostgresClientStreamResult`.
+
+`PostgresClient.get` methods with `String where` or `String filter` parameter have been removed to reduce SQL injection issues. Use `PostgresClient.get` methods with `CQLWrapper` or `Criterion` parameter instead.
 
 ## Version 33.2
 
