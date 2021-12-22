@@ -45,6 +45,8 @@ import io.vertx.sqlclient.impl.RowDesc;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
+import org.folio.rest.security.AES;
+import org.folio.rest.security.AESTest;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.PostgresTester;
@@ -763,4 +765,14 @@ public class PostgresClientTest {
     assertThat(e.getCause(), is(instanceOf(ClassNotFoundException.class)));
   }
 
+  @Test
+  public void postgresClientAES() throws Exception {
+    AES.setSecretKey(null);
+    assertThat(PostgresClient.createPassword(AESTest.PASSWORD), is(AESTest.PASSWORD));
+    assertThat(PostgresClient.decodePassword(AESTest.ENCRYPTED_PASSWORD_BASE64), is(AESTest.ENCRYPTED_PASSWORD_BASE64));
+    AES.setSecretKey(AESTest.SECRET_KEY);
+    assertThat(PostgresClient.createPassword(AESTest.PASSWORD), is(AESTest.ENCRYPTED_PASSWORD_BASE64));
+    assertThat(PostgresClient.decodePassword(AESTest.ENCRYPTED_PASSWORD_BASE64), is(AESTest.PASSWORD));
+    AES.setSecretKey(null);
+  }
 }

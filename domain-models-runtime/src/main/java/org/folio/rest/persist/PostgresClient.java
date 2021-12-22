@@ -316,7 +316,7 @@ public class PostgresClient {
    * that should have been set via the admin api to decode it and use that to connect
    * note that in embedded mode (such as unit tests) the postgres embedded is started before the
    * verticle is deployed*/
-  private static String decodePassword(String password) throws Exception {
+  static String decodePassword(String password) throws Exception {
     String key = AES.getSecretKey();
     if (key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
@@ -331,7 +331,7 @@ public class PostgresClient {
    * password as the actual password for the tenant user in the DB.
    * In order to then know the password - you need to take the tenant id
    * and encrypt it with the secret key and then you have the tenant's password */
-  private static String createPassword(String password) throws Exception {
+  static String createPassword(String password) throws Exception {
     String key = AES.getSecretKey();
     if (key != null){
       SecretKey sk = AES.getSecretKeyObject(key);
