@@ -1713,35 +1713,6 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void getByIdGetConnectionFails(TestContext context) {
-    postgresClientGetConnectionFails().get(FOO, StringPojo.class, "sql", true, false, context.asyncAssertFailure());
-  }
-
-  @Test
-  public void getByIdNullConnection(TestContext context) {
-    postgresClientNullConnection().get(FOO, StringPojo.class, "sql", true, false, context.asyncAssertFailure());
-  }
-
-  @Test
-  public void getByIdUsingSqlPrimaryKey(TestContext context) {
-    Async async = context.async();
-    String uuid = randomUuid();
-    postgresClient = createFoo(context);
-    postgresClient.save(FOO, uuid, xPojo, context.asyncAssertSuccess(id -> {
-      String sql = "WHERE id='" + id + "'";
-      postgresClient.get(FOO, StringPojo.class, sql, true, false, context.asyncAssertSuccess(results -> {
-        try {
-          assertThat(results.getResults(), hasSize(1));
-          assertThat(results.getResults().get(0).key, is("x"));
-          async.complete();
-        } catch (Exception e) {
-          context.fail(e);
-        }
-      }));
-    }));
-  }
-
-  @Test
   public void getByIdAsString(TestContext context) {
     Async async = context.async();
     String uuid = randomUuid();
@@ -3734,39 +3705,6 @@ public class PostgresClientIT {
     .onComplete(context.asyncAssertSuccess());
   }
 
-  @Test
-  public void getDistinctOn(TestContext context) throws IOException {
-    Async async = context.async();
-    final String tableDefiniton = "id UUID PRIMARY KEY , jsonb JSONB NOT NULL, distinct_test_field TEXT";
-    createTableWithPoLines(context, MOCK_POLINES_TABLE, tableDefiniton);
-
-    String distinctOn = "jsonb->>'order_format'";
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", true, false,
-      false, null, distinctOn, handler -> {
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(4, resultInfo.getTotalRecords());
-        async.complete();
-      });
-    async.awaitSuccess();
-
-    String whereClause = "WHERE jsonb->>'order_format' = 'Other'";
-    Async async2 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, true, false,
-      false, null, distinctOn, handler -> {
-        ResultInfo resultInfo = handler.result().getResultInfo();
-        context.assertEquals(1, resultInfo.getTotalRecords());
-        try {
-          List<Object> objs = handler.result().getResults();
-          ObjectMapper mapper = new ObjectMapper();
-          context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
-            new JsonObject(mapper.writeValueAsString(objs.get(0))).getString("id"));
-        } catch (Exception ex) {
-          context.fail(ex);
-        }
-        async2.complete();
-      });
-    async2.awaitSuccess();
-  }
 
   @Test
   public void getDistinctOnWithFacets(TestContext context) throws IOException, FieldException  {
@@ -3779,8 +3717,10 @@ public class PostgresClientIT {
     String distinctOn = "jsonb->>'order_format'";
     //with facets and return count
     Async async1 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", "", true, false,
-      false, facets, distinctOn, handler -> {
+    CQLWrapper wrapper = new CQLWrapper();
+
+    postgresClient.get(MOCK_POLINES_TABLE, Poline.class, new String [] { "*" }, wrapper, true, false, facets, distinctOn,
+        handler -> {
         ResultInfo resultInfo = handler.result().getResultInfo();
         context.assertEquals(4, resultInfo.getTotalRecords());
         List<Facet> retFacets = resultInfo.getFacets();
@@ -3788,33 +3728,6 @@ public class PostgresClientIT {
         async1.complete();
       });
     async1.awaitSuccess();
-
-    String whereClause =  "WHERE jsonb->>'order_format' = 'Other'";
-
-    //with facets and where clause RMB-355
-    Async async2 = context.async();
-    postgresClient.get(MOCK_POLINES_TABLE, Object.class, "*", whereClause, true, false,
-      false, facets, distinctOn, handler -> {
-        try {
-          ResultInfo resultInfo = handler.result().getResultInfo();
-          context.assertEquals(1, resultInfo.getTotalRecords());
-          List<Object> objs = handler.result().getResults();
-          ObjectMapper mapper = new ObjectMapper();
-          context.assertEquals("70fb4e66-cdf1-11e8-a8d5-f2801f1b9fd1",
-            new JsonObject(mapper.writeValueAsString(objs.get(0))).getString("id"));
-
-          List<Facet> retFacets = resultInfo.getFacets();
-          context.assertEquals(1, retFacets.size());
-          context.assertEquals("edition", retFacets.get(0).getType());
-          context.assertEquals(1, retFacets.get(0).getFacetValues().size());
-          context.assertEquals(1, retFacets.get(0).getFacetValues().get(0).getCount());
-          context.assertEquals("First edition", retFacets.get(0).getFacetValues().get(0).getValue());
-        } catch (Exception ex) {
-          context.fail(ex);
-        }
-        async2.complete();
-      });
-    async2.awaitSuccess();
   }
 
   private void assertCQLWrapper(TestContext context, Function<CQLWrapper,Future<Results<StringPojo>>> function) {

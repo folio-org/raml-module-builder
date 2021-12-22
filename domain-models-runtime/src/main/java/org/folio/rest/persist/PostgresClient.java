@@ -1645,77 +1645,8 @@ public class PostgresClient {
     .onComplete(replyHandler);
   }
 
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnCount
-   * @param returnIdField
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param replyHandler
-   * @deprecated use get with CQLWrapper or Criterion instead
-   */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
-      boolean returnCount, boolean returnIdField, boolean setId,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, null /* facets */, replyHandler);
-  }
-
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fieldName
-   * @param where
-   * @param returnCount
-   * @param returnIdField
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param facets
-   * @param replyHandler
-   * @deprecated use get with CQLWrapper or Criterion instead
-   */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
-      boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    get(table, clazz, fieldName, where, returnCount, returnIdField, setId, facets, null /*distinctOn*/, replyHandler);
-  }
-
-/**
- *
- * @param <T>
- * @param table
- * @param clazz
- * @param fieldName
- * @param where
- * @param returnCount
- * @param returnIdField
- * @param setId - unused, the database trigger will always set jsonb->'id' automatically
- * @param facets
- * @param distinctOn
- * @param replyHandler
- * @deprecated use get with CQLWrapper or Criterion instead
- */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String fieldName, String where,
-    boolean returnCount, boolean returnIdField, boolean setId, List<FacetField> facets, String distinctOn,
-    Handler<AsyncResult<Results<T>>> replyHandler) {
-
-    CQLWrapper wrapper = new CQLWrapper().setWhereClause(where);
-    withConn(conn
-      -> conn.get(table, clazz, fieldName, wrapper, returnCount, returnIdField, facets, distinctOn))
-    .onComplete(replyHandler);
-  }
-
   static class QueryHelper {
-
     String table;
-    List<FacetField> facets;
     String selectQuery;
     String countQuery;
     int offset;
@@ -2349,52 +2280,6 @@ public class PostgresClient {
     withConn(conn
       -> conn.get(table, clazz, fieldName, filter, returnCount, returnIdField, facets, distinctOn))
     .onComplete(replyHandler);
-  }
-
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param fields
-   * @param filter
-   * @param returnCount
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param replyHandler
-   * @deprecated use get with CQLWrapper or Criterion instead
-   */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String[] fields, String filter,
-      boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    String where = "";
-    if(filter != null){
-      where = filter;
-    }
-    String fieldsStr = Arrays.toString(fields);
-    get(table, clazz, fieldsStr.substring(1, fieldsStr.length()-1), where, returnCount, true, setId, replyHandler);
-  }
-
-  /**
-   *
-   * @param <T>
-   * @param table
-   * @param clazz
-   * @param filter
-   * @param returnCount
-   * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param replyHandler
-   * @deprecated use get with CQLWrapper or Criterion instead
-   */
-  @Deprecated
-  public <T> void get(String table, Class<T> clazz, String filter,
-      boolean returnCount, boolean setId,
-      Handler<AsyncResult<Results<T>>> replyHandler) {
-    String where = "";
-    if(filter != null){
-      where = filter;
-    }
-    get(table, clazz, new String[]{DEFAULT_JSONB_FIELD_NAME}, where, returnCount, setId, replyHandler);
   }
 
   /**
