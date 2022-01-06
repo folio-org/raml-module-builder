@@ -1,3 +1,9 @@
+## 33.2.4 2022-01-06
+
+Fixes:
+
+* [RMB-893](https://issues.folio.org/browse/RMB-893) Bump dependencies: Vert.x 4.2.3, log4j 2.17.1, etc.
+
 ## 33.2.3 2021-12-20
 
 Fixes:
