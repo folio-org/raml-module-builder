@@ -302,7 +302,7 @@ public class DemoRamlRestTest {
     books = Json.decodeValue(buf, Books.class);
     context.assertEquals(2, books.getTotalRecords());
     context.assertEquals(1, books.getResultInfo().getDiagnostics().size());
-    context.assertTrue(books.getResultInfo().getDiagnostics().get(0).getMessage().contains("Cannot deserialize instance of"));
+    context.assertTrue(books.getResultInfo().getDiagnostics().get(0).getMessage().contains("Cannot deserialize"));
     context.assertEquals(2, books.getResultInfo().getTotalRecords());
     context.assertEquals(0, books.getBooks().size());
 
