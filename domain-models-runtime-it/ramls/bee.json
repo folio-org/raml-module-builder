@@ -11,6 +11,10 @@
       "description": "name",
       "type": "string"
     },
+    "length": {
+      "type": "integer",
+      "minimum": 0
+    },
     "metadata": {
       "description" : "metadata",
       "$ref": "raml-util/schemas/metadata.schema",
