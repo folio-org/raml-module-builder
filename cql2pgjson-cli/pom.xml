@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>33.2.4-SNAPSHOT</version>
+    <version>33.2.5-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -20,7 +20,7 @@
     <dependency>
       <groupId>commons-cli</groupId>
       <artifactId>commons-cli</artifactId>
-      <version>1.4</version>
+      <version>1.5.0</version>
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
