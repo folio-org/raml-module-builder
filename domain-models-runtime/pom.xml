@@ -57,7 +57,23 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-web-client</artifactId>
     </dependency>
-     <!-- It is needed for SCRAM-SHA-256 authentication in postgres https://github.com/eclipse-vertx/vertx-sql-client/blob/master/vertx-pg-client/src/main/asciidoc/index.adoc#sasl-scram-sha-256-authentication-mechanism -->
+    <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-micrometer-metrics</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-influx</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.micrometer</groupId>
+      <artifactId>micrometer-registry-jmx</artifactId>
+    </dependency>
+    <!-- It is needed for SCRAM-SHA-256 authentication in postgres https://github.com/eclipse-vertx/vertx-sql-client/blob/master/vertx-pg-client/src/main/asciidoc/index.adoc#sasl-scram-sha-256-authentication-mechanism -->
     <dependency>
       <groupId>com.ongres.scram</groupId>
       <artifactId>client</artifactId>
@@ -140,7 +156,6 @@
     <dependency>
       <groupId>pl.pragmatists</groupId>
       <artifactId>JUnitParams</artifactId>
-      <version>1.1.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
