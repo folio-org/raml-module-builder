@@ -4,13 +4,17 @@ import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
 import java.util.UUID;
-
+import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-
+import org.junit.jupiter.api.TestMethodOrder;
 import io.vertx.core.json.JsonObject;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class BeesApiTest extends ApiTestBase {
+
   @Test
+  @Order(1)
   void getPostGetPutGetDeleteGetAudit() {
     given(r).
     when().get("/bees/bees/").
@@ -63,6 +67,16 @@ public class BeesApiTest extends ApiTestBase {
           "beeHistories.findAll { it.operation == \"I\" }.beeHistory.name", hasItems("Willy"),
           "beeHistories.findAll { it.operation == \"U\" }.beeHistory.name", hasItems("Maya"),
           "beeHistories.findAll { it.operation == \"D\" }.beeHistory.name", hasItems("Maya"));
+  }
+
+  @Test
+  void minimum() {
+    JsonObject foo = new JsonObject().put("length", -1);
+    given(r).body(foo.encode()).
+    when().post("/bees/bees").
+    then().
+      statusCode(422).
+      body("errors[0].code", is("javax.validation.constraints.DecimalMin.message"));
   }
 
   @Test

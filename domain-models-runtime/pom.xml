@@ -32,6 +32,12 @@
     <dependency>
       <groupId>org.glassfish.jersey.media</groupId>
       <artifactId>jersey-media-json-jackson</artifactId>
+      <exclusions>
+        <exclusion> <!-- we already get javax.ws.rs:javax.ws.rs-api via domain-models-api-aspects -->
+          <groupId>jakarta.ws.rs</groupId>
+          <artifactId>jakarta.ws.rs-api</artifactId>
+        </exclusion>
+      </exclusions>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.core</groupId>
