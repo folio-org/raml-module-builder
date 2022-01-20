@@ -4009,11 +4009,11 @@ public class PostgresClient {
   }
 
   /**
-   * @return the PostgreSQL schema name for the tenantId and the module name of this PostgresClient.
-   *   A PostgreSQL schema name is of the form tenant_module and is used to address tables:
-   *   "SELECT * FROM tenant_module.table"
+   * The PostgreSQL schema name for the tenantId and the module name of this PostgresClient.
+   * A PostgreSQL schema name is of the form tenant_module and is used to address tables:
+   * "SELECT * FROM tenant_module.table"
    */
-  String getSchemaName() {
+  public String getSchemaName() {
     return schemaName;
   }
 
