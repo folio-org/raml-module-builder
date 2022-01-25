@@ -42,7 +42,7 @@ language trait and adds totalRecords to the pageable trait:
 * https://github.com/folio-org/raml/pull/140/files
 
 Therefore you need to change the parameters of your methods that implement the RAML generated interfaces -
-remove the lang parameter, and add the `String totalRecords` parameter before the `int limit` parameter.
+remove the lang parameter, and add the `String totalRecords` parameter before the `int offset` parameter.
 The compile will fail unless this is done.
 
 Examples:
