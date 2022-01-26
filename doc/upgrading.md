@@ -35,8 +35,12 @@ The `PostgresClient.streamGet` method without `PostgresClientStreamResult` param
 
 #### [RMB-718](https://issues.folio.org/browse/RMB-718), [FOLIO-3351](https://issues.folio.org/browse/FOLIO-3351)
 
-Update the submodule that sources https://github.com/folio-org/raml to the latest version. This removes the
-language trait and adds totalRecords to the pageable trait:
+If the module intends to adopt the new totalRecords query parameter as part of this upgrade
+then update the submodule that sources https://github.com/folio-org/raml to the latest version.
+
+This is an optional step and NOT required to upgrade to 33.2, it is only necessary for using the new parameter.
+
+This removes the language trait and adds totalRecords to the pageable trait:
 
 * https://github.com/folio-org/raml/pull/141/files
 * https://github.com/folio-org/raml/pull/140/files
@@ -62,8 +66,6 @@ Replace
 by
 
 `public void postMyitems(Myitem entity, Map<String, String> okapiHeaders,`
-
-Note: Upgrading the raml submodule is not required for RMB 33.2, it can be postponed.
 
 ## Version 33.1
 
