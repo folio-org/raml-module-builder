@@ -180,7 +180,11 @@ public final class RestRouting {
       error.getParameters().add(p);
       error.setMessage(cv.getMessage());
       String messageTemplate = cv.getMessageTemplate();
-      error.setCode(messageTemplate.substring(1, messageTemplate.length() - 1));  // strip {}
+      if (messageTemplate.startsWith("{") && messageTemplate.endsWith("}")) {
+        // strip enclosing {}
+        messageTemplate = messageTemplate.substring(1, messageTemplate.length() - 1);
+      }
+      error.setCode(messageTemplate);
       error.setType(DomainModelConsts.VALIDATION_FIELD_ERROR);
       //return the error if the validation is requested on a specific field
       //and that field fails validation. if another field fails validation
