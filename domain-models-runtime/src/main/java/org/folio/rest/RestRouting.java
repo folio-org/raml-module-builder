@@ -30,6 +30,7 @@ import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.model.Parameter;
+import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.client.exceptions.ResponseException;
@@ -179,7 +180,11 @@ public final class RestRouting {
       error.getParameters().add(p);
       error.setMessage(cv.getMessage());
       String messageTemplate = cv.getMessageTemplate();
-      error.setCode(messageTemplate.substring(1, messageTemplate.length() - 1));  // strip {}
+      if (messageTemplate.startsWith("{") && messageTemplate.endsWith("}")) {
+        // strip enclosing {}
+        messageTemplate = messageTemplate.substring(1, messageTemplate.length() - 1);
+      }
+      error.setCode(messageTemplate);
       error.setType(DomainModelConsts.VALIDATION_FIELD_ERROR);
       //return the error if the validation is requested on a specific field
       //and that field fails validation. if another field fails validation
@@ -433,7 +438,10 @@ public final class RestRouting {
   static void invoke(Method method, Object[] params, Object o, RoutingContext rc,
                      Map<String, String> headers, Handler<AsyncResult<Response>> resultHandler) {
 
-    headers.forEach(FolioLoggingContext::put);
+    FolioLoggingContext.put(FolioLoggingContext.TENANT_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_HEADER_TENANT));
+    FolioLoggingContext.put(FolioLoggingContext.REQUEST_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_REQUESTID_HEADER));
+    FolioLoggingContext.put(FolioLoggingContext.USER_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_USERID_HEADER));
+    FolioLoggingContext.put(FolioLoggingContext.MODULE_ID_LOGGING_VAR_NAME, PostgresClient.getModuleName());
 
     withRequestId(rc, () -> LOGGER.info("invoking {}", method.getName()));
 

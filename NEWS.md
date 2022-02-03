@@ -1,6 +1,13 @@
-## 33.2.4 2022-01-06
+## 33.2.5 2022-02-03
 
 Fixes:
+
+* [RMB-890](https://issues.folio.org/browse/RMB-890) No context parameters logged
+* Upgrade to Vert.x 4.2.4 with [fixes](https://github.com/vert-x3/wiki/wiki/4.2.4-Release-Notes#vertx)
+
+## 33.2.4 2022-01-06
+
+Fixes
 
 * [RMB-893](https://issues.folio.org/browse/RMB-893) Bump dependencies: Vert.x 4.2.3, log4j 2.17.1, etc.
 
