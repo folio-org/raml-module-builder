@@ -1,3 +1,9 @@
+## 33.2.5 2022-02-03
+
+Fixes:
+
+* [RMB-890](https://issues.folio.org/browse/RMB-890) No context parameters logged
+
 ## 33.2.4 2022-01-06
 
 Fixes:
