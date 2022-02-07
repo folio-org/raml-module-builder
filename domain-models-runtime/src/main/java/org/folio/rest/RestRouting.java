@@ -505,7 +505,8 @@ public final class RestRouting {
     });
   }
 
-  static String getOkapiHeaders(MultiMap mm, Map<String, String> headers) {
+  static Map<String, String> getOkapiHeaders(MultiMap mm) {
+    CaseInsensitiveMap<String, String> headers = new CaseInsensitiveMap<>();
     Consumer<Map.Entry<String, String>> consumer = entry -> {
       String headerKey = entry.getKey().toLowerCase();
       if (headerKey.startsWith(RestVerticle.OKAPI_HEADER_PREFIX)) {
@@ -513,7 +514,7 @@ public final class RestRouting {
       }
     };
     mm.forEach(consumer);
-    return mm.get(XOkapiHeaders.TENANT);
+    return headers;
   }
 
   /**
@@ -663,8 +664,8 @@ public final class RestRouting {
 
   static void handleRequest(RoutingContext rc, Class<?> aClass, JsonObject ret, Method method, Pattern pattern) {
     long start = System.nanoTime();
-    Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
-    String tenantId = getOkapiHeaders(rc.request().headers(), okapiHeaders);
+    Map<String, String> okapiHeaders = getOkapiHeaders(rc.request().headers());
+    String tenantId = okapiHeaders.get(XOkapiHeaders.TENANT);
     if (tenantId == null && !rc.request().path().startsWith("/admin")) {
       endRequestWithError(rc, 400, true,
           MESSAGES.getMessage("en", MessageConsts.UnableToProcessRequest) + " Tenant must be set");

@@ -12,7 +12,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.MultiMap;
-import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.rest.jaxrs.model.Errors;
@@ -163,16 +162,15 @@ public class RestRoutingTest {
   @Test
   void getOkapiHeaders() {
     MultiMap v = MultiMap.caseInsensitiveMultiMap();
-    Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
-    assertThat(RestRouting.getOkapiHeaders(v, okapiHeaders), is(nullValue()));
+    Map<String, String> okapiHeaders = RestRouting.getOkapiHeaders(v);
+    assertThat(okapiHeaders.keySet(), empty());
 
     v.set("x-Okapi-ToKen", "mytoken");
     v.set("X-okapi", "1");
     v.set("other", "2");
     v.set("x-Okapi-tenant", "mytenant");
 
-    okapiHeaders = new CaseInsensitiveMap<>();
-    assertThat(RestRouting.getOkapiHeaders(v, okapiHeaders), is("mytenant"));
+    okapiHeaders = RestRouting.getOkapiHeaders(v);
     assertThat(okapiHeaders.keySet(), containsInAnyOrder("x-okapi-token", "x-okapi", "x-okapi-tenant"));
     assertThat(okapiHeaders.get(XOkapiHeaders.TENANT), is("mytenant"));
     assertThat(okapiHeaders.get(XOkapiHeaders.TOKEN), is("mytoken"));
