@@ -597,34 +597,4 @@ public class TenantLoading {
   public TenantLoading add(String path) {
     return add(path, path);
   }
-
-  /**
-   * Adds files in directory with key, lead, Id content
-   *
-   * @param key Tenant Init parameter key (loadSample, loadPreference, ..)
-   * @param lead Directory lead
-   * @param filePath Directory below lead
-   * @param uriPath URI path. Without leading /.
-   * @deprecated Use withKey, withLead, withIdContent, add
-   */
-  @Deprecated
-  public void addJsonIdContent(String key, String lead, String filePath,
-      String uriPath) {
-    withKey(key).withLead(lead).withIdContent().add(filePath, uriPath);
-  }
-
-  /**
-   * Adds files in directory with key, lead, idBaseName
-   *
-   * @param key Tenant Init parameter key (loadSample, loadPreference, ..)
-   * @param lead Directory lead
-   * @param filePath Directory below lead
-   * @param uriPath URI path. Without leading /.
-   * @deprecated Use withKey, withLead, withIdBasename, add
-   */
-  @Deprecated
-  public void addJsonIdBasename(String key, String lead, String filePath,
-      String uriPath) {
-    withKey(key).withLead(lead).withIdBasename().add(filePath, uriPath);
-  }
 }

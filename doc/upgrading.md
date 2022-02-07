@@ -24,6 +24,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 34.0
 
+#### [RMB-883](https://issues.folio.org/browse/RMB-883)
+
+TenantLoading methods `addJsonIdContent` and `addJsonIdBasename`
+are removed.
 
 #### [RMB-885](https://issues.folio.org/browse/RMB-885)
 
