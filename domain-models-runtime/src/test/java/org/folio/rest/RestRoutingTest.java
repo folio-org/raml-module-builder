@@ -10,9 +10,9 @@ import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
-import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.junit.jupiter.api.Test;
 import io.vertx.core.Future;

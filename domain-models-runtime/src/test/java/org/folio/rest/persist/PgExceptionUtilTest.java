@@ -9,7 +9,7 @@ import io.vertx.pgclient.PgException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import org.folio.rest.testing.UtilityClassTester;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.junit.Test;
 
 public class PgExceptionUtilTest {

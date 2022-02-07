@@ -5,8 +5,8 @@ import static org.junit.Assert.assertEquals;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.rest.RestVerticle;
-import org.folio.rest.testing.UtilityClassTester;
 import org.junit.Test;
 
 public class TenantToolTest {
