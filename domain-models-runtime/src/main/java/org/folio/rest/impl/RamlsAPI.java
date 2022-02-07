@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.annotations.Validate;
 import org.folio.rest.jaxrs.resource.Ramls;
 import org.folio.rest.resource.DomainModelConsts;
@@ -27,7 +28,6 @@ public class RamlsAPI implements Ramls {
 
   private static final Pattern INCLUDE_MATCH_PATTERN = Pattern.compile("(?<=!include ).*");
 
-  private static final String OKAPI_URL_HEADER = "x-okapi-url";
   /** resource path (jar, classes), not a file system path */
   private static final String RAMLS_PATH =
     (System.getProperty("raml_files", DomainModelConsts.SOURCES_DEFAULT) + '/').replace('\\', '/');
@@ -53,7 +53,7 @@ public class RamlsAPI implements Ramls {
             )
           );
         } else {
-          String okapiUrl = okapiHeaders.get(OKAPI_URL_HEADER);
+          String okapiUrl = okapiHeaders.get(XOkapiHeaders.URL);
           String raml = getRamlByPath(path, okapiUrl);
           if (raml != null) {
             asyncResultHandler.handle(

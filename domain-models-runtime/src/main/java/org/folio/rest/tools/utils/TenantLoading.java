@@ -33,6 +33,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.okapi.common.GenericCompositeFuture;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.util.PercentCodec;
@@ -371,14 +372,14 @@ public class TenantLoading {
   private Future<Integer> perform0(TenantAttributes ta, Map<String, String> headers,
                                    Vertx vertx, int recordsLoaded) {
 
-    String okapiUrl = headers.get("X-Okapi-Url-to");
+    String okapiUrl = headers.get(XOkapiHeaders.URL_TO);
     if (okapiUrl == null) {
-      log.warn("TenantLoading.perform No X-Okapi-Url-to header");
-      okapiUrl = headers.get("X-Okapi-Url");
+      log.warn("TenantLoading.perform No " + XOkapiHeaders.URL_TO + " header");
+      okapiUrl = headers.get(XOkapiHeaders.URL);
     }
     if (okapiUrl == null) {
-      log.warn("TenantLoading.perform No X-Okapi-Url header");
-      return Future.failedFuture("No X-Okapi-Url header");
+      log.warn("TenantLoading.perform No " + XOkapiHeaders.URL + " header");
+      return Future.failedFuture("No " + XOkapiHeaders.URL + " header");
     }
     WebClient httpClient = WebClient.create(vertx);
     Future<Integer> future = Future.succeededFuture(recordsLoaded);

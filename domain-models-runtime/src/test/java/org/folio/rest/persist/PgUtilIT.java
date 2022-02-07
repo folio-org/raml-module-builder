@@ -21,6 +21,8 @@ import java.util.UUID;
 
 import javax.ws.rs.core.Response;
 
+import io.vertx.pgclient.PgException;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
@@ -57,7 +59,6 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.RoutingContext;
-import io.vertx.pgclient.PgException;
 import junit.framework.AssertionFailedError;
 
 @RunWith(VertxUnitRunner.class)
@@ -73,7 +74,7 @@ public class PgUtilIT {
   @Rule
   public final ExpectedException exception = ExpectedException.none();
   /** If we start and stop our own embedded postgres */
-  static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
+  static private final Map<String,String> okapiHeaders = Collections.singletonMap(XOkapiHeaders.TENANT, "testtenant");
   static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
   static private Vertx vertx;
 

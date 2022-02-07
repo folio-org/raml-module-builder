@@ -119,6 +119,11 @@ public class DemoRamlRestTest {
   }
 
   @Test
+  public void adminOkWithoutTenant(TestContext context) {
+    checkURLs(context, null,"http://localhost:" + port + "/admin/health", 200, "text/plain");
+  }
+
+  @Test
   public void date(TestContext context) {
     checkURLs(context, "http://localhost:" + port + "/rmbtests/books?publicationDate=&author=me", 400);
   }
