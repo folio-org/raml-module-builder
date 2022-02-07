@@ -7,7 +7,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.Base64;
 import javax.crypto.SecretKey;
-import org.folio.rest.testing.UtilityClassTester;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.junit.Test;
 
 public final class AESTest {

@@ -4,7 +4,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-import org.folio.rest.testing.UtilityClassTester;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.junit.jupiter.api.Test;
 
 class ResourceUtilsTest {

@@ -2,7 +2,6 @@ package org.folio.rest;
 
 import static org.folio.rest.jaxrs.model.CalendarPeriodsServicePointIdCalculateopeningGetUnit.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.emptyArray;
 import static org.hamcrest.Matchers.is;
@@ -15,9 +14,9 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.MultiMap;
 import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
-import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.junit.jupiter.api.Test;
 import io.vertx.core.Future;

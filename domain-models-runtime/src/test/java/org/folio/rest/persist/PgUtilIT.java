@@ -23,6 +23,7 @@ import javax.ws.rs.core.Response;
 
 import io.vertx.pgclient.PgException;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Error;
@@ -34,7 +35,6 @@ import org.folio.rest.jaxrs.model.Users;
 import org.folio.rest.jaxrs.model.Users.PostUsersResponse;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
-import org.folio.rest.testing.UtilityClassTester;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;

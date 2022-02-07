@@ -194,7 +194,7 @@ public class TenantLoadingTest {
   @Test
   public void testOKaddJsonIdContent(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, "1", "2"));
   }
 
@@ -212,7 +212,7 @@ public class TenantLoadingTest {
   @Test
   public void testNoOkapiUrlTo(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     tl.perform(tenantAttributes(), Map.of(), vertx, context.asyncAssertFailure(cause ->
       context.assertEquals("No X-Okapi-Url header", cause.getMessage())
     ));
@@ -224,7 +224,7 @@ public class TenantLoadingTest {
     headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port + 1));
 
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     tl.perform(tenantAttributes(), headers, vertx, context.asyncAssertFailure());
   }
 
@@ -256,7 +256,7 @@ public class TenantLoadingTest {
   @Test
   public void testokWithAcceptStatus(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     putStatus = 500;
     tl.withAcceptStatus(500);
     tl.perform(tenantAttributes(), headers(), vertx, context.asyncAssertSuccess());
@@ -265,14 +265,14 @@ public class TenantLoadingTest {
   @Test
   public void testPostOk(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, "1", "2"));
   }
 
   @Test
   public void testPostOk400(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     notFoundStatus = 400; // so that GET will return 400 and we can POST
     tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, "1", "2"));
   }
@@ -311,21 +311,21 @@ public class TenantLoadingTest {
   @Test
   public void testBadUriPath(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data1");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data1");
     tl.perform(tenantAttributes(), headers(), vertx, context.asyncAssertFailure());
   }
 
   @Test
   public void testDataPathDoesNotExist(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data1", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data1", "data");
     tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, new String [] {}));
   }
 
   @Test
   public void testDataPathDoesNotExist2(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-none", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-none").withIdContent().add("data", "data");
     tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, new String [] {}));
   }
 
@@ -338,7 +338,7 @@ public class TenantLoadingTest {
       .withParameters(parameters);
 
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     tl.perform(tenantAttributes, headers(), vertx, assertIds(context, new String [] {}));
   }
 
@@ -351,21 +351,21 @@ public class TenantLoadingTest {
       .withParameters(parameters);
 
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     tl.perform(tenantAttributes, headers(), vertx, assertIds(context, new String [] {}));
   }
 
   @Test
   public void testFailNoIdInData(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdContent("loadRef", "tenant-load-ref", "data-w-id", "data");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data-w-id", "data");
     tl.perform(tenantAttributes(), headers(), vertx, context.asyncAssertFailure());
   }
 
   @Test
   public void testOKIdBasename(TestContext context) {
     TenantLoading tl = new TenantLoading();
-    tl.addJsonIdBasename("loadRef", "tenant-load-ref", "data-w-id", "data/%d");
+    tl.withKey("loadRef").withLead("tenant-load-ref").withIdBasename().add("data-w-id", "data/%d");
     tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, "number 1"));
   }
 
