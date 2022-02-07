@@ -1,7 +1,7 @@
 
 # Raml-Module-Builder
 
-Copyright (C) 2016-2021 The Open Library Foundation
+Copyright (C) 2016-2022 The Open Library Foundation
 
 [ClassPath.java](domain-models-api-aspects/src/main/java/org/folio/rest/tools/utils/ClassPath.java) and
 [ClassPathTest.java](domain-models-api-aspects/src/test/java/org/folio/rest/tools/utils/ClassPathTest.java)
