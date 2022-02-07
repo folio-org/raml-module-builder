@@ -40,6 +40,11 @@ from `okapi-testing`. It has same API. Just import
    </dependency>
 ```
 
+#### [RMB-883](https://issues.folio.org/browse/RMB-883)
+
+TenantLoading methods `addJsonIdContent` and `addJsonIdBasename`
+are removed.
+
 #### [RMB-885](https://issues.folio.org/browse/RMB-885)
 
 The `PostgresClient.streamGet` method without `PostgresClientStreamResult` parameter has been removed because it doesn't return totalCount and consumes too much memory. Use one of the other `PostgresClient.streamGet` methods with `PostgresClientStreamResult`.
