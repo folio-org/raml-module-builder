@@ -9,7 +9,7 @@ import io.vertx.core.json.JsonObject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import org.folio.rest.testing.UtilityClassTester;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.junit.jupiter.api.Test;
 
 class LoadConfsTest {

@@ -14,10 +14,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Metadata;
 import org.folio.rest.jaxrs.model.User;
-import org.folio.rest.testing.UtilityClassTester;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

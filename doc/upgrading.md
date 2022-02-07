@@ -24,6 +24,22 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 34.0
 
+#### [RMB-815](https://issues.folio.org/browse/RMB-815)
+
+
+`UtilityClassTester` no longer part of RMB. Use `UtilityClassTester`
+from `okapi-testing`. It has same API. Just import
+`org.folio.okapi.testing.UtilityClassTester` and extend `pom.xml` with:
+
+```
+   <dependency>
+     <groupId>org.folio.okapi</groupId>
+     <artifactId>okapi-testing</artifactId>
+     <version>4.12.0</version>
+     <scope>test</scope>
+   </dependency>
+```
+
 #### [RMB-883](https://issues.folio.org/browse/RMB-883)
 
 TenantLoading methods `addJsonIdContent` and `addJsonIdBasename`
