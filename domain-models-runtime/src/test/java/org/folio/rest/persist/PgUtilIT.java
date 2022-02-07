@@ -22,6 +22,7 @@ import java.util.UUID;
 import javax.ws.rs.core.Response;
 
 import io.vertx.pgclient.PgException;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.jaxrs.model.Error;
@@ -73,7 +74,7 @@ public class PgUtilIT {
   @Rule
   public final ExpectedException exception = ExpectedException.none();
   /** If we start and stop our own embedded postgres */
-  static private final Map<String,String> okapiHeaders = Collections.singletonMap("x-okapi-tenant", "testtenant");
+  static private final Map<String,String> okapiHeaders = Collections.singletonMap(XOkapiHeaders.TENANT, "testtenant");
   static private final String schema = PostgresClient.convertToPsqlStandard("testtenant");
   static private Vertx vertx;
 

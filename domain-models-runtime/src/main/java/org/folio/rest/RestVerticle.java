@@ -24,6 +24,7 @@ import io.vertx.ext.web.handler.StaticHandler;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.client.HttpClientFactory;
@@ -33,11 +34,11 @@ import org.folio.rest.tools.utils.LogUtil;
 
 public class RestVerticle extends AbstractVerticle {
 
-  public static final String        OKAPI_HEADER_TENANT             = "x-okapi-tenant";
-  public static final String        OKAPI_HEADER_TOKEN              = "x-okapi-token";
+  public static final String        OKAPI_HEADER_TENANT             = XOkapiHeaders.TENANT;
+  public static final String        OKAPI_HEADER_TOKEN              = XOkapiHeaders.TOKEN;
   public static final String        OKAPI_HEADER_PREFIX             = "x-okapi";
-  public static final String        OKAPI_USERID_HEADER             = "X-Okapi-User-Id";
-  public static final String        OKAPI_REQUESTID_HEADER          = "X-Okapi-Request-Id";
+  public static final String        OKAPI_USERID_HEADER             = XOkapiHeaders.USER_ID;
+  public static final String        OKAPI_REQUESTID_HEADER          = XOkapiHeaders.REQUEST_ID;
   public static final String        STREAM_ID                       =  "STREAMED_ID";
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final String        STREAM_ABORT                    =  "STREAMED_ABORT";

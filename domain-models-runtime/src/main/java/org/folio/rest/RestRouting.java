@@ -25,6 +25,7 @@ import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.ThreadContext;
 import org.folio.HttpStatus;
 import org.folio.dbschema.ObjectMapperTool;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.okapi.common.logging.FolioLoggingContext;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
@@ -464,7 +465,7 @@ public final class RestRouting {
   }
 
   private static void handleStream(Method method2Run, RoutingContext rc, Object instance,
-                                   String[] tenantId, Map<String, String> okapiHeaders,
+                                   String tenantId, Map<String, String> okapiHeaders,
                                    JsonObject params, Object[] paramArray, long start) {
     final int[] uploadParamPosition = new int[]{-1};
     params.forEach(param -> {
@@ -492,7 +493,7 @@ public final class RestRouting {
       okapiHeaders.put(RestVerticle.STREAM_COMPLETE, String.valueOf(rc.hashCode()));
       invoke(method2Run, paramArray, instance, rc, okapiHeaders, v ->
         //all data has been stored in memory - not necessarily all processed
-        sendResponse(rc, v, start, tenantId[0])
+        sendResponse(rc, v, start, tenantId)
       );
     });
     request.exceptionHandler(event -> {
@@ -504,18 +505,15 @@ public final class RestRouting {
     });
   }
 
-  static void getOkapiHeaders(RoutingContext rc, Map<String, String> headers, String[] tenantId) {
-    MultiMap mm = rc.request().headers();
+  static String getOkapiHeaders(MultiMap mm, Map<String, String> headers) {
     Consumer<Map.Entry<String, String>> consumer = entry -> {
-      String headerKey = entry.getKey().toLowerCase(); // should be changed and headers should be multiMap and not Map
+      String headerKey = entry.getKey().toLowerCase();
       if (headerKey.startsWith(RestVerticle.OKAPI_HEADER_PREFIX)) {
-        if (headerKey.equalsIgnoreCase(RestVerticle.OKAPI_HEADER_TENANT)) {
-          tenantId[0] = entry.getValue();
-        }
         headers.put(headerKey, entry.getValue());
       }
     };
     mm.forEach(consumer);
+    return mm.get(XOkapiHeaders.TENANT);
   }
 
   /**
@@ -666,16 +664,15 @@ public final class RestRouting {
   static void handleRequest(RoutingContext rc, Class<?> aClass, JsonObject ret, Method method, Pattern pattern) {
     long start = System.nanoTime();
     Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
-    String []tenantId = new String[]{null};
-    getOkapiHeaders(rc, okapiHeaders, tenantId);
-    if (tenantId[0] == null && !rc.request().path().startsWith("/admin")) {
+    String tenantId = getOkapiHeaders(rc.request().headers(), okapiHeaders);
+    if (tenantId == null && !rc.request().path().startsWith("/admin")) {
       endRequestWithError(rc, 400, true,
           MESSAGES.getMessage("en", MessageConsts.UnableToProcessRequest) + " Tenant must be set");
       return;
     }
     Object instanceTmp;
     try {
-      instanceTmp = construct(rc.vertx(), tenantId[0], aClass);
+      instanceTmp = construct(rc.vertx(), tenantId, aClass);
     } catch (Exception e) {
       LOGGER.error(e.getMessage(), e);
       endRequestWithError(rc, 500, true, "Server error");
@@ -716,7 +713,7 @@ public final class RestRouting {
           return;
         }
         try {
-          invoke(method, paramArray, instance, rc, okapiHeaders, v -> sendResponse(rc, v, start, tenantId[0]));
+          invoke(method, paramArray, instance, rc, okapiHeaders, v -> sendResponse(rc, v, start, tenantId));
         } catch (Exception e1) {
           withRequestId(rc, () -> LOGGER.error(e1.getMessage(), e1));
           rc.response().end();

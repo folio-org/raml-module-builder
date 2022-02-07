@@ -17,6 +17,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.rest.RestVerticle;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.client.exceptions.PopulateTemplateException;
 import org.folio.rest.tools.client.exceptions.PreviousRequestException;
@@ -48,7 +50,6 @@ public class HttpModuleClient2 implements HttpClientInterface {
   private static final String ACCEPT = "Accept";
   private static final String APP_JSON_CTYPE = "application/json";
   private static final String APP_JSON_ACCEPT = "application/json";
-  private static final String X_OKAPI_HEADER = "x-okapi-tenant";
   private static final Pattern TAG_REGEX = Pattern.compile("\\{(.+?)\\}");
 
   private static final Logger log = LogManager.getLogger(HttpModuleClient2.class);
@@ -110,7 +111,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
   }
 
   private void setDefaultHeaders(){
-    headers.put(X_OKAPI_HEADER, tenantId);
+    headers.put(XOkapiHeaders.TENANT, tenantId);
     headers.put(CTYPE, APP_JSON_CTYPE);
     headers.put(ACCEPT, APP_JSON_ACCEPT);
   }
@@ -325,7 +326,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
   private void mergeHeaders(Map<String, String >headers1,  MultiMap headers2, String endpoint){
     Consumer<Map.Entry<String,String>> consumer = entry -> {
       String headerKey = entry.getKey().toLowerCase();
-      if(headerKey.startsWith("x-okapi")){
+      if (headerKey.startsWith(RestVerticle.OKAPI_HEADER_PREFIX)) {
         headers1.put(headerKey, entry.getValue());
       }
     };

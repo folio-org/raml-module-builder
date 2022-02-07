@@ -2,6 +2,8 @@ package org.folio.rest;
 
 import static org.folio.rest.jaxrs.model.CalendarPeriodsServicePointIdCalculateopeningGetUnit.*;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.emptyArray;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.empty;
@@ -10,6 +12,9 @@ import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.vertx.core.MultiMap;
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
+import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.testing.UtilityClassTester;
@@ -21,6 +26,7 @@ import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Null;
 import javax.ws.rs.core.Response;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 public class RestRoutingTest {
@@ -153,5 +159,24 @@ public class RestRoutingTest {
         is(arrayContaining("abc", "def", "ghi")));
     assertThat(RestRouting.matchPath("/%2F%3F%2B%23/12%2334", Pattern.compile("^/([^/]+)/([^/]+)$")),
         is(arrayContaining("/?+#", "12#34")));
+  }
+
+  @Test
+  void getOkapiHeaders() {
+    MultiMap v = MultiMap.caseInsensitiveMultiMap();
+    Map<String, String> okapiHeaders = new CaseInsensitiveMap<>();
+    assertThat(RestRouting.getOkapiHeaders(v, okapiHeaders), is(nullValue()));
+
+    v.set("x-Okapi-ToKen", "mytoken");
+    v.set("X-okapi", "1");
+    v.set("other", "2");
+    v.set("x-Okapi-tenant", "mytenant");
+
+    okapiHeaders = new CaseInsensitiveMap<>();
+    assertThat(RestRouting.getOkapiHeaders(v, okapiHeaders), is("mytenant"));
+    assertThat(okapiHeaders.keySet(), containsInAnyOrder("x-okapi-token", "x-okapi", "x-okapi-tenant"));
+    assertThat(okapiHeaders.get(XOkapiHeaders.TENANT), is("mytenant"));
+    assertThat(okapiHeaders.get(XOkapiHeaders.TOKEN), is("mytoken"));
+    assertThat(okapiHeaders.get("x-okapi"), is("1"));
   }
 }
