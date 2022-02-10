@@ -79,6 +79,12 @@
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-jmx</artifactId>
     </dependency>
+    <dependency>  <!-- needed for SSL connections to PostgreSQL -->
+      <groupId>io.netty</groupId>
+      <artifactId>netty-tcnative-boringssl-static</artifactId>
+      <classifier>linux-x86_64</classifier>
+      <scope>runtime</scope>
+    </dependency>
     <!-- It is needed for SCRAM-SHA-256 authentication in postgres https://github.com/eclipse-vertx/vertx-sql-client/blob/master/vertx-pg-client/src/main/asciidoc/index.adoc#sasl-scram-sha-256-authentication-mechanism -->
     <dependency>
       <groupId>com.ongres.scram</groupId>
@@ -202,6 +208,11 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

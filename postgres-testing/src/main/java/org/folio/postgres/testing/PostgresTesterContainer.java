@@ -7,6 +7,8 @@ import org.testcontainers.containers.PostgreSQLContainer;
 
 public class PostgresTesterContainer implements PostgresTester {
 
+  static public final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
+
   private PostgreSQLContainer<?> postgreSQLContainer;
   private String dockerImageName;
 
@@ -22,12 +24,12 @@ public class PostgresTesterContainer implements PostgresTester {
    *  Create postgres container with default image Postgres 12.
    */
   public PostgresTesterContainer() {
-    this("postgres:12-alpine");
+    this(DEFAULT_IMAGE_NAME);
   }
 
   // S2095: Resources should be closed
   // We can't close in start. As this whole class is Closeable!
-  @java.lang.SuppressWarnings({"squid:S2095"})
+  @java.lang.SuppressWarnings({"squid:S2095", "resource"})
   /**
    * Start the container.
    */
