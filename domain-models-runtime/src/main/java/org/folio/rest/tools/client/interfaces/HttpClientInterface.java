@@ -7,7 +7,6 @@ import java.util.function.Function;
 
 import org.folio.rest.tools.client.BuildCQL;
 import org.folio.rest.tools.client.Response;
-import org.folio.rest.tools.client.RollBackURL;
 
 import com.google.common.cache.CacheStats;
 
@@ -19,14 +18,6 @@ import io.vertx.core.http.HttpMethod;
  *
  */
 public interface HttpClientInterface {
-
-  CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint,
-      Map<String, String> headers, RollBackURL rollbackURL, boolean cachable, BuildCQL bCql)
-      throws Exception;
-
-  CompletableFuture<Response> request(HttpMethod method, String endpoint,
-      Map<String, String> headers, RollBackURL rollbackURL, boolean cachable, BuildCQL bCql)
-      throws Exception;
 
   CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint,
       Map<String, String> headers) throws Exception;
@@ -53,8 +44,6 @@ public interface HttpClientInterface {
       throws Exception;
 
   CompletableFuture<Response> request(String endpoint, boolean cache) throws Exception;
-
-  CompletableFuture<Response> request(String endpoint, RollBackURL rbURL) throws Exception;
 
   CompletableFuture<Response> request(String endpoint, BuildCQL cql) throws Exception;
 

@@ -12,7 +12,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.client.BuildCQL;
 import org.folio.rest.tools.client.Response;
-import org.folio.rest.tools.client.RollBackURL;
 import org.folio.rest.tools.client.interfaces.HttpClientInterface;
 
 import com.google.common.cache.CacheStats;
@@ -135,22 +134,6 @@ public class HttpClientMock2 implements HttpClientInterface {
 
   @Override
   public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint,
-      Map<String, String> headers, RollBackURL rollbackURL, boolean cachable, BuildCQL bCql)
-      throws Exception {
-
-    return getCF(method, endpoint);
-
-  }
-
-  @Override
-  public CompletableFuture<Response> request(HttpMethod method, String endpoint,
-      Map<String, String> headers, RollBackURL rollbackURL, boolean cachable, BuildCQL bCql)
-      throws Exception {
-    return getCF(method, endpoint);
-  }
-
-  @Override
-  public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint,
       Map<String, String> headers) throws Exception {
     return getCF(method, endpoint);
   }
@@ -200,12 +183,6 @@ public class HttpClientMock2 implements HttpClientInterface {
 
   @Override
   public CompletableFuture<Response> request(String endpoint, boolean cache) throws Exception {
-    return getCF(HttpMethod.GET, endpoint);
-
-  }
-
-  @Override
-  public CompletableFuture<Response> request(String endpoint, RollBackURL rbURL) throws Exception {
     return getCF(HttpMethod.GET, endpoint);
 
   }
