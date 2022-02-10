@@ -45,6 +45,11 @@ from `okapi-testing`. It has same API. Just import
 TenantLoading methods `addJsonIdContent` and `addJsonIdBasename`
 are removed.
 
+#### [RMB-884](https://issues.folio.org/browse/RMB-884)
+
+Class `RollBackURL' removed - including methods in interface
+`HttpClientInterface` using this class.
+
 #### [RMB-885](https://issues.folio.org/browse/RMB-885)
 
 The `PostgresClient.streamGet` method without `PostgresClientStreamResult` parameter has been removed because it doesn't return totalCount and consumes too much memory. Use one of the other `PostgresClient.streamGet` methods with `PostgresClientStreamResult`.
