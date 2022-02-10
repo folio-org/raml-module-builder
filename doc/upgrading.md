@@ -24,6 +24,20 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 34.0
 
+#### [RMB-856](https://issues.folio.org/browse/RMB-856)
+
+RMB starts with default value of MaxFormAttributeSize of 8192, rather
+than 32768. Modules that rely on higher value, such as mod-login-saml,
+should set proper value in InitAPI hook.
+
+```
+   @Override
+   public void init(Vertx vertx, Context context, Handler<AsyncResult<Boolean>> handler) {
+     RestVerticle.getHttpServerOptions().setMaxFormAttributeSize(64 * 1024);
+     ..
+
+```
+
 #### [RMB-815](https://issues.folio.org/browse/RMB-815)
 
 

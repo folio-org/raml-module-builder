@@ -619,6 +619,7 @@ public class InitAPIs implements InitAPI {
 }
 ```
 
+The init may also modify HTTP server options by using `RestVerticle.getHttpServerOptions`.
 
 ## Adding code to run periodically
 
