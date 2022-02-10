@@ -139,8 +139,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
     }
   }
 
-  @Override
-  public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
+  public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers,
       boolean cachable, BuildCQL bCql) throws Exception {
 
     if(bCql != null){
@@ -161,87 +160,77 @@ public class HttpModuleClient2 implements HttpClientInterface {
     if(autoCloseConnections){
       handler.webClient = webClient;
     }
-    if(rollbackURL != null){
-      handler.rollbackURL = rollbackURL;
-    }
-
     request(method, data, endpoint, headers, cachable, handler, cf);
 
     return cf;
   }
 
-  @Override
-  public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers, RollBackURL rollbackURL,
+  public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers,
       boolean cachable, BuildCQL bCql) throws Exception {
 
-      return request(method, null, endpoint, headers, rollbackURL,cachable, bCql);
+      return request(method, null, endpoint, headers, cachable, bCql);
   }
 
   @Override
   public CompletableFuture<Response> request(HttpMethod method, Buffer data, String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(method, data, endpoint, headers, null, false, null);
+    return request(method, data, endpoint, headers,  false, null);
   }
 
   @Override
   public CompletableFuture<Response> request(HttpMethod method, Object pojo, String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(method, Buffer.buffer(PostgresClient.pojo2JsonObject(pojo).encode()), endpoint, headers, null, false, null);
+    return request(method, Buffer.buffer(PostgresClient.pojo2JsonObject(pojo).encode()), endpoint, headers, false, null);
   }
 
   @Override
   public CompletableFuture<Response> request(HttpMethod method, String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(method, endpoint, headers, null, false, null);
+    return request(method, endpoint, headers, false, null);
   }
 
   @Override
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, boolean cache, BuildCQL cql)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, cache, cql);
+    return request(HttpMethod.GET, endpoint, headers, cache, cql);
   }
 
   @Override
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, boolean cache)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, cache, null);
+    return request(HttpMethod.GET, endpoint, headers, cache, null);
   }
 
   @Override
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers, BuildCQL cql)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, false, cql);
+    return request(HttpMethod.GET, endpoint, headers, false, cql);
   }
 
   @Override
   public CompletableFuture<Response> request(String endpoint, Map<String, String> headers)
       throws Exception {
-    return request(HttpMethod.GET, endpoint, headers, null, false, null);
+    return request(HttpMethod.GET, endpoint, headers, false, null);
   }
 
   @Override
   public CompletableFuture<Response> request(String endpoint, boolean cache, BuildCQL cql) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, cache, cql);
+    return request(HttpMethod.GET, endpoint, null, cache, cql);
   }
 
   @Override
   public CompletableFuture<Response> request(String endpoint, boolean cache) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, cache, null);
-  }
-
-  @Override
-  public CompletableFuture<Response> request(String endpoint, RollBackURL rbURL) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, rbURL, false, null);
+    return request(HttpMethod.GET, endpoint, null, cache, null);
   }
 
   @Override
   public CompletableFuture<Response> request(String endpoint, BuildCQL cql) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, false, cql);
+    return request(HttpMethod.GET, endpoint, null, false, cql);
   }
 
   @Override
   public CompletableFuture<Response> request(String endpoint) throws Exception {
-    return request(HttpMethod.GET, endpoint, null, null, false, null);
+    return request(HttpMethod.GET, endpoint, null, false, null);
   }
 
   /**
