@@ -37,7 +37,6 @@ class PostgresClientSslTest {
   static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>(PostgresTesterContainer.getDefaultImageName());
   static final String SERVER_CRT = ResourceUtil.asString("ssl/server.crt");
-  static final String SERVER_CRT_EXPIRED = ResourceUtil.asString("ssl/server-expired.crt");
   static final String SERVER_CRT_FOLIO = ResourceUtil.asString("ssl/server-folio.org.crt");
 
   static void exec(String... command) {
