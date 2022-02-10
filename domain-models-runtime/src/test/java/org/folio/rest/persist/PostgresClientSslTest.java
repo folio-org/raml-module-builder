@@ -35,7 +35,7 @@ class PostgresClientSslTest {
   static final String CONF_BAK_PATH = "/var/lib/postgresql/data/postgresql.conf.bak";
   @Container
   static final PostgreSQLContainer<?> POSTGRES =
-      new PostgreSQLContainer<>(PostgresTesterContainer.getDefaultImageName());
+      new PostgreSQLContainer<>(PostgresTesterContainer.DEFAULT_IMAGE_NAME);
   static final String SERVER_CRT = ResourceUtil.asString("ssl/server.crt");
   static final String SERVER_CRT_FOLIO = ResourceUtil.asString("ssl/server-folio.org.crt");
 
@@ -77,7 +77,7 @@ class PostgresClientSslTest {
     map.put("DB_USERNAME", POSTGRES.getUsername());
     map.put("DB_PASSWORD", POSTGRES.getPassword());
     if (serverCrt != null) {
-      map.put("DB_SERVERPEM", serverCrt);
+      map.put("DB_SERVER_PEM", serverCrt);
     }
     return map;
   }

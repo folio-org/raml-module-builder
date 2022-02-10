@@ -118,7 +118,7 @@ public class PostgresClient {
   private static final String    HOST      = "host";
   private static final String    PORT      = "port";
   private static final String    DATABASE  = "database";
-  private static final String    SERVER_PEM = "serverPem";
+  private static final String    SERVER_PEM = "server_pem";
   private static final String    POSTGRES_TESTER = "postgres_tester";
 
   private static final String    GET_STAT_METHOD = "get";

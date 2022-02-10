@@ -11,7 +11,7 @@ public enum Envs {
   DB_USERNAME,
   DB_PASSWORD,
   DB_DATABASE,
-  DB_SERVERPEM,
+  DB_SERVER_PEM,
   DB_QUERYTIMEOUT,
   DB_CHARSET,
   DB_MAXPOOLSIZE,
@@ -45,7 +45,7 @@ public enum Envs {
 
   private static String configKey(Envs envs) {
     switch (envs) {
-    case DB_SERVERPEM:               return "serverPem";
+    case DB_SERVER_PEM:              return "server_pem";
     case DB_QUERYTIMEOUT:            return "queryTimeout";
     case DB_MAXPOOLSIZE:             return "maxPoolSize";
     case DB_MAXSHAREDPOOLSIZE:       return "maxSharedPoolSize";
