@@ -49,7 +49,8 @@ public class RestVerticle extends AbstractVerticle {
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static String             deploymentId                     = "";
 
-  private static HttpServerOptions httpServerOptions = new HttpServerOptions();
+  private static HttpServerOptions httpServerOptions = new HttpServerOptions()
+      .setCompressionSupported(true);
   private String packageOfImplementations;
 
   @Override
@@ -81,9 +82,6 @@ public class RestVerticle extends AbstractVerticle {
     // example:
     // http://localhost:8181/apidocs/index.html?raml=raml/_patrons.raml
     router.route("/apidocs/*").handler(StaticHandler.create("apidocs"));
-
-    // default options for server; may be changed in init hook
-    httpServerOptions.setCompressionSupported(true);
 
     RestRouting.populateRoutes(router, packageOfImplementations)
         .compose(x -> runHook())
