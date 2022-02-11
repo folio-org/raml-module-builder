@@ -45,11 +45,12 @@ public class RestVerticle extends AbstractVerticle {
 
   public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
 
-  private static final int FORM_ATTRIBUTE_SIZE_MAX = 32768;
   private static final String       HTTP_PORT_SETTING               = "http.port";
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static String             deploymentId                     = "";
 
+  private static HttpServerOptions httpServerOptions = new HttpServerOptions()
+      .setCompressionSupported(true);
   private String packageOfImplementations;
 
   @Override
@@ -81,27 +82,20 @@ public class RestVerticle extends AbstractVerticle {
     // example:
     // http://localhost:8181/apidocs/index.html?raml=raml/_patrons.raml
     router.route("/apidocs/*").handler(StaticHandler.create("apidocs"));
-    // startup http server on port 8181 to serve documentation
 
-    //if client includes an Accept-Encoding header which includes
-    //the supported compressions - deflate or gzip.
-    HttpServerOptions serverOptions = new HttpServerOptions();
-    serverOptions.setCompressionSupported(true);
-    serverOptions.setMaxFormAttributeSize(FORM_ATTRIBUTE_SIZE_MAX);
-
-    HttpServer server = vertx.createHttpServer(serverOptions);
-    String portS = System.getProperty(HTTP_PORT_SETTING);
-    int port;
-    if (portS != null) {
-      port = Integer.parseInt(portS);
-      config().put(HTTP_PORT_SETTING, port);
-    } else {
-      // we are here if port was not passed via cmd line
-      port = config().getInteger(HTTP_PORT_SETTING, 8081);
-    }
     RestRouting.populateRoutes(router, packageOfImplementations)
         .compose(x -> runHook())
         .compose(x -> {
+          HttpServer server = vertx.createHttpServer(httpServerOptions);
+          String portS = System.getProperty(HTTP_PORT_SETTING);
+          int port;
+          if (portS != null) {
+            port = Integer.parseInt(portS);
+            config().put(HTTP_PORT_SETTING, port);
+          } else {
+            // we are here if port was not passed via cmd line
+            port = config().getInteger(HTTP_PORT_SETTING, 8081);
+          }
           log.info("Listening port {}", port);
           return server.requestHandler(router).listen(port);
         })
@@ -298,5 +292,15 @@ public class RestVerticle extends AbstractVerticle {
 
   public static String getDeploymentId(){
     return deploymentId;
+  }
+
+  /**
+   * Get HTTP server options to allow modification of defaults.
+   *
+   * <p>Modifying this can only be done in InitAPI hook.
+   * @return options.
+   */
+  public static HttpServerOptions getHttpServerOptions() {
+    return httpServerOptions;
   }
 }
