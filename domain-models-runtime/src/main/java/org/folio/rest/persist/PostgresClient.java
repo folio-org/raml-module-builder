@@ -3,16 +3,22 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
+import io.netty.handler.ssl.OpenSsl;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.core.net.JdkSSLEngineOptions;
+import io.vertx.core.net.OpenSSLEngineOptions;
+import io.vertx.core.net.PemTrustOptions;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
+import io.vertx.pgclient.SslMode;
 import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
@@ -112,6 +118,7 @@ public class PostgresClient {
   private static final String    HOST      = "host";
   private static final String    PORT      = "port";
   private static final String    DATABASE  = "database";
+  private static final String    SERVER_PEM = "server_pem";
   private static final String    POSTGRES_TESTER = "postgres_tester";
 
   private static final String    GET_STAT_METHOD = "get";
@@ -448,6 +455,25 @@ public class PostgresClient {
     String database = sqlConfig.getString(DATABASE);
     if (database != null) {
       pgConnectOptions.setDatabase(database);
+    }
+    String serverPem = sqlConfig.getString(SERVER_PEM);
+    if (serverPem != null) {
+      pgConnectOptions.setSslMode(SslMode.VERIFY_FULL);
+      pgConnectOptions.setHostnameVerificationAlgorithm("HTTPS");
+      pgConnectOptions.setPemTrustOptions(
+          new PemTrustOptions().addCertValue(Buffer.buffer(serverPem)));
+      pgConnectOptions.setEnabledSecureTransportProtocols(Collections.singleton("TLSv1.3"));
+      if (OpenSSLEngineOptions.isAvailable()) {
+        pgConnectOptions.setOpenSslEngineOptions(new OpenSSLEngineOptions());
+      } else {
+        pgConnectOptions.setJdkSslEngineOptions(new JdkSSLEngineOptions());
+        log.error("Cannot run OpenSSL, using slow JDKSSL. Is netty-tcnative-boringssl-static for windows-x86_64, "
+            + "osx-x86_64 or linux-x86_64 installed? https://netty.io/wiki/forked-tomcat-native.html "
+            + "Is libc6-compat installed (if required)? https://github.com/pires/netty-tcnative-alpine");
+      }
+      log.debug("Enforcing SSL encryption for PostgreSQL connections, "
+          + "requiring TLSv1.3 with server name certificate, "
+          + "using " + (OpenSSLEngineOptions.isAvailable() ? "OpenSSL " + OpenSsl.versionString() : "JDKSSL"));
     }
     return pgConnectOptions;
   }
