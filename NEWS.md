@@ -1,3 +1,9 @@
+## 33.2.6 2022-02-18
+
+Fixes:
+
+* [RMB-898](https://issues.folio.org/browse/RMB-898) Update Vertx (to 4.2.5) and other dependencies
+
 ## 33.2.5 2022-02-03
 
 Fixes:

@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>33.2.6-SNAPSHOT</version>
+    <version>33.2.7-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-maven-plugin</artifactId>
   <description>Domain Model Generator that reads RAML files and writes Java files</description>
@@ -31,7 +31,7 @@
     <dependency>
       <groupId>org.apache.maven.plugin-tools</groupId>
       <artifactId>maven-plugin-annotations</artifactId>
-      <version>3.6.0</version>
+      <version>3.6.4</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
