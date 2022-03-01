@@ -197,8 +197,8 @@ public class PostgresClientTest {
     assertThat("myuser", is(options.getUser()));
     assertThat("mypassword", is(options.getPassword()));
     assertThat("mydatabase", is(options.getDatabase()));
-    assertThat("reconnectAttempts", is(options.getReconnectAttempts()));
-    assertThat("reconnectInterval", is(options.getReconnectInterval()));
+    assertThat(2, is(options.getReconnectAttempts()));
+    assertThat(1000L, is(options.getReconnectInterval()));
     // TODO: enable when available in vertx-sql-client/vertx-pg-client
     // https://issues.folio.org/browse/RMB-657
     // assertThat(1000, is(options.getConnectionReleaseDelay()));
