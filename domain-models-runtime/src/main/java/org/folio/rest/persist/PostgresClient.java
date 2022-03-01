@@ -456,14 +456,17 @@ public class PostgresClient {
     if (database != null) {
       pgConnectOptions.setDatabase(database);
     }
-    Integer reconnectAttempts = sqlConfig.getInteger("reconnectAttempts");
-    if (reconnectAttempts != null) {
-      pgConnectOptions.setReconnectAttempts(reconnectAttempts);
-    }
-    Integer reconnectInterval = sqlConfig.getInteger("reconnectInterval");
-    if (reconnectInterval != null) {
-      pgConnectOptions.setReconnectInterval(reconnectInterval);
-    }
+//    Integer reconnectAttempts = sqlConfig.getInteger("reconnectAttempts");
+//    if (reconnectAttempts != null) {
+//      pgConnectOptions.setReconnectAttempts(reconnectAttempts);
+//    }
+//    Integer reconnectInterval = sqlConfig.getInteger("reconnectInterval");
+//    if (reconnectInterval != null) {
+//      pgConnectOptions.setReconnectInterval(reconnectInterval);
+//    }
+
+    pgConnectOptions.setReconnectAttempts(3);
+    pgConnectOptions.setReconnectInterval(1000);
 
     String serverPem = sqlConfig.getString(SERVER_PEM);
     if (serverPem != null) {
