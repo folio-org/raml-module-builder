@@ -456,6 +456,15 @@ public class PostgresClient {
     if (database != null) {
       pgConnectOptions.setDatabase(database);
     }
+    Integer reconnectAttempts = sqlConfig.getInteger("reconnectAttempts");
+    if (reconnectAttempts != null) {
+      pgConnectOptions.setReconnectAttempts(reconnectAttempts);
+    }
+    Integer reconnectInterval = sqlConfig.getInteger("reconnectInterval");
+    if (reconnectInterval != null) {
+      pgConnectOptions.setReconnectInterval(reconnectInterval);
+    }
+
     String serverPem = sqlConfig.getString(SERVER_PEM);
     if (serverPem != null) {
       pgConnectOptions.setSslMode(SslMode.VERIFY_FULL);
