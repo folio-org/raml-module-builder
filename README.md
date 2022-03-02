@@ -358,6 +358,8 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_MAXPOOLSIZE
  - DB_MAXSHAREDPOOLSIZE
  - DB_CONNECTIONRELEASEDELAY
+ - DB_RECONNECTATTEMPTS
+ - DB_RECONNECTINTERVAL
  - DB_EXPLAIN_QUERY_THRESHOLD
 
 The first five are mandatory, the others are optional.
@@ -371,6 +373,8 @@ The environment variable `DB_MAXPOOLSIZE` sets the maximum number of concurrent 
 The environment variable `DB_MAXSHAREDPOOLSIZE` sets the maximum number of concurrent connections that one module instance opens. They are only opened if needed. If all connections are in use further requests will wait until one connection becomes free. This way one tenant may block other tenants. If the variable is set `DB_MAXPOOLSIZE` is ignored and all connections are shared across tenants.
 
 The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. A connection becomes idle if the query ends, it is not idle if it is waiting for a response. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
+
+`DB_RECONNECTATTEMPTS` and `DB_RECONNECTINTERVAL` set the maximum number of retries after a connect to the database fails, and how many milliseconds to wait before the next reconnect. Reconnecting is disabled by default.
 
 The environment variable `DB_EXPLAIN_QUERY_THRESHOLD` is not observed by
 Postgres itself, but is a value - in milliseconds - that triggers query

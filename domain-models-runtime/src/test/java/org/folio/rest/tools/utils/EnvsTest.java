@@ -27,6 +27,8 @@ public class EnvsTest {
     map.put("DB_QUERYTIMEOUT", "8");
     map.put("DB_MAXPOOLSIZE", "5");
     map.put("DB_CONNECTIONRELEASEDELAY", "12345");
+    map.put("DB_RECONNECTATTEMPTS", "3");
+    map.put("DB_RECONNECTINTERVAL", "2000");
     map.put("DB_EXPLAIN_QUERY_THRESHOLD", "100");
     // we dropped support for dot form. check that it is ignored
     map.put("db.username", "superwoman");
@@ -61,6 +63,16 @@ public class EnvsTest {
   }
 
   @Test
+  public void reconnectAttempts() {
+    assertEquals("3", Envs.getEnv(Envs.DB_RECONNECTATTEMPTS));
+  }
+
+  @Test
+  public void reconnectInterval() {
+    assertEquals("2000", Envs.getEnv(Envs.DB_RECONNECTINTERVAL));
+  }
+
+  @Test
   public void database() {
     assertNull(Envs.getEnv(Envs.DB_DATABASE));
   }
@@ -73,11 +85,13 @@ public class EnvsTest {
   @Test
   public void allDBConfs() {
     JsonObject json = Envs.allDBConfs();
-    assertEquals(5, json.size());
+    assertEquals(7, json.size());
     assertEquals("example.com", json.getValue("host"));
     assertEquals(Integer.valueOf(8), json.getValue("queryTimeout"));
     assertEquals(Integer.valueOf(5), json.getValue("maxPoolSize"));
     assertEquals(Integer.valueOf(12345), json.getValue("connectionReleaseDelay"));
+    assertEquals(Integer.valueOf(3), json.getValue("reconnectAttempts"));
+    assertEquals(Long.valueOf(2000), json.getValue("reconnectInterval"));
     assertEquals(Long.valueOf(100), json.getValue(Envs.DB_EXPLAIN_QUERY_THRESHOLD.name()));
   }
 
