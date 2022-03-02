@@ -17,6 +17,8 @@ public enum Envs {
   DB_MAXPOOLSIZE,
   DB_MAXSHAREDPOOLSIZE,
   DB_CONNECTIONRELEASEDELAY,
+  DB_RECONNECTATTEMPTS,
+  DB_RECONNECTINTERVAL,
   DB_EXPLAIN_QUERY_THRESHOLD;
 
   private static Map<String, String> env = System.getenv();
@@ -50,6 +52,8 @@ public enum Envs {
     case DB_MAXPOOLSIZE:             return "maxPoolSize";
     case DB_MAXSHAREDPOOLSIZE:       return "maxSharedPoolSize";
     case DB_CONNECTIONRELEASEDELAY:  return "connectionReleaseDelay";
+    case DB_RECONNECTATTEMPTS:       return "reconnectAttempts";
+    case DB_RECONNECTINTERVAL:       return "reconnectInterval";
     case DB_EXPLAIN_QUERY_THRESHOLD: return envs.name();
     default:                         return envs.name().substring(3).toLowerCase();
     }
@@ -63,7 +67,9 @@ public enum Envs {
       case DB_MAXPOOLSIZE:
       case DB_MAXSHAREDPOOLSIZE:
       case DB_CONNECTIONRELEASEDELAY:
+      case DB_RECONNECTATTEMPTS:
         return Integer.parseInt(value);
+      case DB_RECONNECTINTERVAL:
       case DB_EXPLAIN_QUERY_THRESHOLD:
         return Long.parseLong(value);
       default:

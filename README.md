@@ -359,6 +359,8 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_MAXPOOLSIZE
  - DB_MAXSHAREDPOOLSIZE
  - DB_CONNECTIONRELEASEDELAY
+ - DB_RECONNECTATTEMPTS
+ - DB_RECONNECTINTERVAL
  - DB_EXPLAIN_QUERY_THRESHOLD
 
 The first five are mandatory, the others are optional.
@@ -374,6 +376,8 @@ The environment variable `DB_MAXSHAREDPOOLSIZE` sets the maximum number of concu
 Use `DB_SERVER_PEM` (or `server_pem` in the JSON config) to set SSL/TLS certificate(s) in PEM format to validate the PostgreSQL server certificate, this can be the server certificate, the root CA certificate, or the chain of the intermediate CA and the CA certificate. Defaults to none allowing unencrypted connection only. If set requires a TLSv1.3 connection and a valid server certificate, and rejects unencrypted connections.
 
 The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. A connection becomes idle if the query ends, it is not idle if it is waiting for a response. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
+
+`DB_RECONNECTATTEMPTS` and `DB_RECONNECTINTERVAL` set the maximum number of retries after a connect to the database fails, and how many milliseconds to wait before the next reconnect. Reconnecting is disabled by default.
 
 The environment variable `DB_EXPLAIN_QUERY_THRESHOLD` is not observed by
 Postgres itself, but is a value - in milliseconds - that triggers query
