@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
 import static org.hamcrest.Matchers.is;
 import static org.junit.jupiter.api.Assertions.*;
@@ -62,6 +63,22 @@ class PomReaderTest {
     PomReader pom = PomReader.INSTANCE;
 
     assertThrows(NullPointerException.class, () -> pom.readIt(null, "pom/pom-sample.xml"));
+  }
+
+  @Test
+  void readBadModuleName() {
+    PomReader pom = PomReader.INSTANCE;
+
+    Throwable t = assertThrows(IllegalArgumentException.class, () -> pom.readIt("src/test/resources/pom/pom-007.xml", null));
+    assertThat(t.getMessage(), containsString("does not match"));
+  }
+
+  @Test
+  void readBadLongName() {
+    PomReader pom = PomReader.INSTANCE;
+
+    Throwable t = assertThrows(IllegalArgumentException.class, () -> pom.readIt("src/test/resources/pom/pom-long-name.xml", null));
+    assertThat(t.getMessage(), containsString("exceed"));
   }
 
   @Test

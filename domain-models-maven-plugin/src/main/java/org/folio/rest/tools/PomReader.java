@@ -27,6 +27,9 @@ public enum PomReader {
 
   INSTANCE;
 
+  private static final String MODULE_PATTERN_STRING = "^[a-z][-_a-z0-9]*$";
+  private static final int MODULE_MAX_LENGTH = 31;
+
   private String moduleName = null;
   private String version = null;
   private Properties props = null;
@@ -84,6 +87,14 @@ public enum PomReader {
     }
     version = version.replaceAll("-.*", "");
 
+    if (!moduleName.matches(MODULE_PATTERN_STRING)) {
+      throw new IllegalArgumentException("Invalid module name \"" + moduleName
+          + "\" does not match " + MODULE_PATTERN_STRING);
+    }
+    if (moduleName.length() > MODULE_MAX_LENGTH) {
+      throw new IllegalArgumentException("Invalid module name \"" + moduleName
+          + "\" must not exceed " + MODULE_MAX_LENGTH + " characters");
+    }
     moduleName = moduleName.replaceAll("-", "_");
     props = model.getProperties();
     dependencies = model.getDependencies();
