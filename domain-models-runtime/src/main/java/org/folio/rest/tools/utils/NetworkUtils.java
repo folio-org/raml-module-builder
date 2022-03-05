@@ -1,13 +1,7 @@
 package org.folio.rest.tools.utils;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
-import java.net.URL;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
@@ -45,51 +39,6 @@ public class NetworkUtils {
       } catch (IOException e) {
           return false;
       }
-  }
-
-  public static byte[] object2Bytes(Object obj) throws Exception {
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutput out = null;
-    try {
-      out = new ObjectOutputStream(bos);
-      out.writeObject(obj);
-      byte[] bytes = bos.toByteArray();
-      return bytes;
-    } finally {
-      try {
-        if (out != null) { out.close(); }
-      } catch (IOException ex) {/*ignore*/}
-      try {
-        bos.close();
-      } catch (IOException ex) {/*ignore*/}
-    }
-  }
-
-  public static String readURL(String path) throws Exception {
-    URL url = new URL(path);
-    BufferedReader in = null;
-    StringBuffer content = new StringBuffer();
-    String input;
-    try {
-      in = new BufferedReader(new InputStreamReader(url.openStream()));
-      while ((input = in.readLine()) != null)
-        content.append(input);
-      return content.toString();
-    } finally {
-      if(in != null){
-        in.close();
-      }
-    }
-  }
-
-  public static boolean isValidURL(String path){
-    try {
-      new URL(path);
-      return true;
-    }
-    catch(Exception e){
-      return false;
-    }
   }
 
 }
