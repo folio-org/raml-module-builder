@@ -2,29 +2,33 @@ package org.folio.rest.tools.utils;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.URL;
+import java.util.PrimitiveIterator.OfInt;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
  * @author shale
  *
  */
-public class NetworkUtils {
+public final class NetworkUtils {
+
+  private NetworkUtils() {
+    throw new UnsupportedOperationException("Don't instantiate utility class");
+  }
 
   @SuppressWarnings("java:S2245")//Suppress "Weak Cryptography" warning, ThreadLocalRandom is good enough for finding a free port
   public static int nextFreePort() {
-    int maxTries = 10000;
-    int port = ThreadLocalRandom.current().nextInt(49152 , 65535);
-    while (true) {
-        if (isLocalPortFree(port)) {
-            return port;
-        } else {
-            port = ThreadLocalRandom.current().nextInt(49152 , 65535);
-        }
-        maxTries--;
-        if(maxTries == 0){
-          return 8081;
-        }
+    return nextFreePort(10000, ThreadLocalRandom.current().ints(49152 , 65535).iterator());
+  }
+
+  static int nextFreePort(int maxTries, OfInt portsToTry) {
+    for (int i = 0; i < maxTries; i++) {
+      int port = portsToTry.nextInt();
+      if (isLocalPortFree(port)) {
+        return port;
+      }
     }
+    return 8081;
   }
 
   /**
