@@ -177,12 +177,6 @@
     </dependency>
     <dependency>
       <groupId>org.folio</groupId>
-      <artifactId>testing</artifactId>
-      <version>${project.parent.version}</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.folio</groupId>
       <artifactId>postgres-testing</artifactId>
       <version>${project.parent.version}</version>
       <scope>test</scope>

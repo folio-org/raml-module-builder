@@ -68,12 +68,6 @@
       <scope>test</scope>
     </dependency>
 
-    <dependency>
-      <groupId>org.folio</groupId>
-      <artifactId>testing</artifactId>
-      <version>${project.parent.version}</version>
-    </dependency>
-
   </dependencies>
 
   <build>
