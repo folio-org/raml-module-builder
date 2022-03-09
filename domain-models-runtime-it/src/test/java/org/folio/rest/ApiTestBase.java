@@ -94,6 +94,7 @@ public class ApiTestBase {
         .when().get(location + "?wait=5000")
         .then()
         .statusCode(200)
+        .body("complete", is(true))
         .body("error", is(nullValue()));
   }
 

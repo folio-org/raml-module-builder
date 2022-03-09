@@ -40,7 +40,8 @@ BEGIN
     -- normalize using ::timestamptz, convert to '+00' time zone and remove time zone string
     createdDate = input::timestamptz AT TIME ZONE '+00';
   END IF;
-  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdDate}', to_jsonb(createdDate));
+  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdDate}', to_jsonb(to_char(createdDate, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')));
+  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,updatedDate}', to_jsonb(to_char(createdDate, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')));
   NEW.creation_date = createdDate;
   NEW.created_by = NEW.jsonb->'metadata'->>'createdByUserId';
   RETURN NEW;
@@ -68,16 +69,33 @@ CREATE TRIGGER set_${table.tableName}_md_trigger BEFORE INSERT ON ${myuniversity
 -- Overwrite createdDate and createdByUserId by the values stored in creation_date and created_by.
 CREATE OR REPLACE FUNCTION ${myuniversity}_${mymodule}.set_${table.tableName}_md_json()
 RETURNS TRIGGER AS $$
+DECLARE
+  input text;
+  updatedDate timestamp;
 BEGIN
   if NEW.creation_date IS NULL then
     RETURN NEW;
   end if;
 
-  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdDate}', to_jsonb(NEW.creation_date));
+  NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdDate}', to_jsonb(to_char(NEW.creation_date, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')));
   if NEW.created_by IS NULL then
     NEW.jsonb = NEW.jsonb #- '{metadata,createdByUserId}';
   else
     NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,createdByUserId}', to_jsonb(NEW.created_by));
+  end if;
+
+  input = NEW.jsonb->'metadata'->>'updatedDate';
+  if input IS NOT NULL then
+    -- time stamp without time zone?
+    IF (input::timestamp::timestamptz = input::timestamptz) THEN
+      -- updatedDate already has no time zone, normalize using ::timestamp
+      updatedDate = input::timestamp;
+    ELSE
+      -- updatedDate has a time zone string
+      -- normalize using ::timestamptz, convert to '+00' time zone and remove time zone string
+      updatedDate = input::timestamptz AT TIME ZONE '+00';
+    END IF;
+    NEW.jsonb = jsonb_set(NEW.jsonb, '{metadata,updatedDate}', to_jsonb(to_char(updatedDate, 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')));
   end if;
   RETURN NEW;
 END;

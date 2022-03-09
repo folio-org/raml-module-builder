@@ -3,6 +3,7 @@ package org.folio.rest.impl;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.matchesRegex;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -204,6 +205,20 @@ public class TenantAPIIT {
     return book[0];
   }
 
+  private void assertDateFormat(TestContext context, String bookId) {
+    Async async = context.async();
+    String sql = "SELECT jsonb FROM " + table + " WHERE id ='" + bookId + "'";
+    PostgresClient postgresClient = PgUtil.postgresClient(vertx.getOrCreateContext(), okapiHeaders);
+    postgresClient.select(sql, context.asyncAssertSuccess(rowSet -> {
+      JsonObject metadata = rowSet.iterator().next().getJsonObject(0).getJsonObject("metadata");
+      String dateFormatPattern = "\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z";
+      assertThat(metadata.getString("createdDate"), matchesRegex(dateFormatPattern));
+      assertThat(metadata.getString("updatedDate"), matchesRegex(dateFormatPattern));
+      async.complete();
+    }));
+    async.await(500 /* ms */);
+  }
+
   private String utc(Date date) {
     if (date == null) {
       return null;
@@ -229,13 +244,17 @@ public class TenantAPIIT {
     String date4tz = "2022-04-21T22:20:21.555+03";
 
     Book book = insert(context, "createdDate", date1, "createdByUserId", "foo");
-    assertMetadata(book, date1, "foo", null, null);
+    assertMetadata(book, date1, "foo", date1, null);
+    assertDateFormat(context, book.getId());
     book = update(context, book.getId(), "updatedDate", date2, "updatedByUserId", "bar");
     assertMetadata(book, date1, "foo", date2, "bar");
+    assertDateFormat(context, book.getId());
     book = update(context, book.getId(), "updatedDate", date3, "updatedByUserId", null);
     assertMetadata(book, date1, "foo", date3, null);
+    assertDateFormat(context, book.getId());
     book = update(context, book.getId(), "updatedDate", date4tz, "updatedByUserId", "bin");
     assertMetadata(book, date1, "foo", date4, "bin");
+    assertDateFormat(context, book.getId());
 
     // RMB-320: all metadata is populated, updating with empty metadata caused trigger failure:
     // null value in column "jsonb" violates not-null constraint
@@ -243,7 +262,7 @@ public class TenantAPIIT {
     assertThat(book.getMetadata(), is(nullValue()));
 
     book = insert(context, "createdDate", date1tz);
-    assertMetadata(book, date1, null, null, null);
+    assertMetadata(book, date1, null, date1, null);
     book = update(context, book.getId(), "createdDate", date3, "createdByUserId", "foo",
                                          "updatedDate", date2, "updatedByUserId", "baz");
     assertMetadata(book, date1, null, date2, "baz");
