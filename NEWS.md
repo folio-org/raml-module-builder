@@ -1,3 +1,9 @@
+## 33.2.7 2022-03-08
+
+Fix:
+
+* [RMB-901](https://issues.folio.org/browse/RMB-901) Set reconnectAttempts and reconnectInterval for PgConnectOptions
+
 ## 33.2.6 2022-02-18
 
 Fixes:

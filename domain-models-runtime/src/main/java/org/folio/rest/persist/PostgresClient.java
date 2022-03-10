@@ -114,6 +114,8 @@ public class PostgresClient {
   private static final String    HOST      = "host";
   private static final String    PORT      = "port";
   private static final String    DATABASE  = "database";
+  private static final String    RECONNECT_ATTEMPTS = "reconnectAttempts";
+  private static final String    RECONNECT_INTERVAL = "reconnectInterval";
   private static final String    POSTGRES_TESTER = "postgres_tester";
 
   private static final String    GET_STAT_METHOD = "get";
@@ -452,6 +454,14 @@ public class PostgresClient {
     String database = sqlConfig.getString(DATABASE);
     if (database != null) {
       pgConnectOptions.setDatabase(database);
+    }
+    Integer reconnectAttempts = sqlConfig.getInteger(RECONNECT_ATTEMPTS);
+    if (reconnectAttempts != null) {
+      pgConnectOptions.setReconnectAttempts(reconnectAttempts);
+    }
+    Long reconnectInterval = sqlConfig.getLong(RECONNECT_INTERVAL);
+    if (reconnectInterval != null) {
+      pgConnectOptions.setReconnectInterval(reconnectInterval);
     }
     return pgConnectOptions;
   }

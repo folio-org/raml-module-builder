@@ -178,24 +178,34 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void testPgConnectOptionsFull() {
-    JsonObject conf = new JsonObject()
-        .put("host", "myhost")
-        .put("port", 5433)
-        .put("username", "myuser")
-        .put("password", "mypassword")
-        .put("database", "mydatabase")
-        .put("connectionReleaseDelay", 1000);
-
-    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
-    assertThat("myhost", is(options.getHost()));
-    assertThat(5433, is(options.getPort()));
-    assertThat("myuser", is(options.getUser()));
-    assertThat("mypassword", is(options.getPassword()));
-    assertThat("mydatabase", is(options.getDatabase()));
-    // TODO: enable when available in vertx-sql-client/vertx-pg-client
-    // https://issues.folio.org/browse/RMB-657
-    // assertThat(1000, is(options.getConnectionReleaseDelay()));
+  public void testPgConnectOptionsFull() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+          ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+      assertThat(options.getHost(), is("myhost"));
+      assertThat(options.getPort(), is(5433));
+      assertThat(options.getUser(), is("myuser"));
+      assertThat(options.getPassword(), is("mypassword"));
+      assertThat(options.getDatabase(), is("mydatabase"));
+      // TODO: enable when available in vertx-sql-client/vertx-pg-client
+      // https://issues.folio.org/browse/RMB-657
+      // assertThat(options.getConnectionReleaseDelay(), is(1000));
+      assertThat(options.getReconnectAttempts(), is(3));
+      assertThat(options.getReconnectInterval(), is(2000L));
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
   }
 
   @Test
