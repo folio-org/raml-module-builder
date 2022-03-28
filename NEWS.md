@@ -1,3 +1,9 @@
+## 33.2.8 2022-03-28
+
+Fix:
+
+* [RMB-907](https://issues.folio.org/browse/RMB-907) jackson-databind 2.13.2.1, Vert.x 4.2.6, log4j 2.17.2 (CVE-2020-36518)
+
 ## 33.2.7 2022-03-08
 
 Fix:
