@@ -131,6 +131,7 @@ END $$;
     </#if>
   </#if>
 <#else>
+  <#if table.mode != "delete">
     <#-- The table has not changed, but we always check all its indexes and foreign keys
          because they may have changed. -->
     <#include "indexes.ftl">
@@ -138,6 +139,7 @@ END $$;
     
     <#-- Always check optimistic locking configuration -->
     <#include "optimistic_locking.ftl">
+  </#if>
 </#if>
 </#list>
 

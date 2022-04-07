@@ -1,0 +1,21 @@
+{
+  "tables": [
+    {
+      "tableName": "job_execution_progress",
+      "fromModuleVersion": "mod-source-record-manager-3.3.0",
+      "withMetadata": false,
+      "mode": "delete",
+      "foreignKeys": [
+        {
+          "fieldName": "jobExecutionId",
+          "targetTable": "job_executions"
+        },
+        {
+          "fieldName": "jobExecutionId2",
+          "targetTable": "job_executions",
+          "tOps": "DELETE"
+        }
+      ]
+    }
+  ]
+}
