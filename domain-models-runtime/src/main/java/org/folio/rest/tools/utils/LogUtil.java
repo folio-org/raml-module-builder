@@ -152,7 +152,7 @@ public class LogUtil {
     ctx.updateLoggers();
   }
 
-  private static Level getLog4jLevel(String level) {
+  static Level getLog4jLevel(String level) {
     if (level == null) {
       return Level.INFO;
     }
