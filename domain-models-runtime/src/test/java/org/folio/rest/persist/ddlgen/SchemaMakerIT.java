@@ -257,6 +257,14 @@ public class SchemaMakerIT extends PostgresClientITBase {
     assertThat(countConstraints(context), is(1));
   }
 
+  @Test
+  @SuppressWarnings({"squid:S2699"})  // "Tests should include assertions", we expect no exception
+  public void deleteTableWithoutCreatingForeignKey(TestContext context) {
+    runSchema(context, TenantOperation.CREATE, "schemaInstanceItem.json");
+    // expect no Exception: https://issues.folio.org/browse/RMB-908
+    runSchema(context, TenantOperation.UPDATE, "delete.json");
+  }
+
   private void assertSelectSingle(TestContext context, String sql, String expected) {
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
     postgresClient.selectSingle(sql, context.asyncAssertSuccess(result -> {
@@ -393,7 +401,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
     runSchema(context, TenantOperation.UPDATE, "schema.json");
     assertThat("indexdef after suppressed update", indexdef(context, "foo"), is(indexdef));
   }
-  
+
   @Test
   public void canCreateOptimisticLockingTrigger(TestContext context) {
     runSchema(context, TenantOperation.CREATE, "schemaWithOptimisticLocking.json");
@@ -434,7 +442,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
     execute(context, "UPDATE tab_ol_fail SET jsonb=jsonb_set(jsonb, '{" + olVersion + "}', to_jsonb('5'::text))");
     assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(5));
   }
-  
+
   private static void executeAndExpectFailure(TestContext context, String sqlStatement, String ... errMessages) {
       PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
       postgresClient.execute(sqlStatement, context.asyncAssertFailure(cause -> {
