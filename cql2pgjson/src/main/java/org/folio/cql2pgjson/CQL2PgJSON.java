@@ -207,7 +207,8 @@ public class CQL2PgJSON {
         return InitDbTableResult.AUDIT_TABLE_FOUND;
       }
     }
-    logger.log(Level.SEVERE, "loadDbSchema loadDbSchema(): Table {0} NOT FOUND", tname);
+    logger.log(Level.WARNING, "loadDbSchema loadDbSchema(): "
+        + "No configuration for table {0} found, using defaults", tname);
     return InitDbTableResult.NOT_FOUND;
   }
 
