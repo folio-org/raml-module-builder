@@ -902,7 +902,7 @@ public class CQL2PgJSON {
     }
     String sql = "get_tsvector(" + indexText + ") " + "@@ " + tsTerm.toString();
 
-    logger.info("index {} generated SQL {}", new Object[]{indexText, sql});
+    logger.info("full text index {} generated SQL {}", indexText, sql);
     return sql;
   }
 
