@@ -2227,9 +2227,9 @@ Get log level of all classes:
 
 (GET) `http://localhost:8081/admin/loglevel`
 
-Change log level of all classes to FINE:
+Change log level of all classes to INFO:
 
-(PUT) `http://localhost:8081/admin/loglevel?level=FINE`
+(PUT) `http://localhost:8081/admin/loglevel?level=INFO`
 
 A `java_package` parameter can also be passed to change the log level of a specific package. For example:
 
@@ -2335,7 +2335,7 @@ For the monitoring APIs exposed by the runtime framework, changing the log level
 
 ```java
     AdminClient aClient = new AdminClient("http://localhost:" + 8083, "myuniversityId", "sometoken");
-    aClient.putLoglevel(Level.FINE, "org.folio",  apiResponse -> {
+    aClient.putLoglevel(Level.INFO, "org.folio",  apiResponse -> {
       System.out.println(apiResponse.statusCode());
     });
 ```

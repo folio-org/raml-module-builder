@@ -16,8 +16,8 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
-import java.util.logging.Logger;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.cql2pgjson.exception.CQL2PgJSONException;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -41,7 +41,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   private static  CQL2PgJSON cql2pgjsonRespectCase;
   private static CQL2PgJSON cql2pgjsonRespectAccents;
   private static CQL2PgJSON cql2pgjsonRespectBoth;
-  private static Logger logger = Logger.getLogger(CQL2PgJSONTest.class.getName());
+  private static Logger logger = LogManager.getLogger(CQL2PgJSONTest.class);
   private static CQL2PgJSON cql2pgJson;
 
   /**
@@ -110,7 +110,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       sql = "select " + blob + "->'name' from " + tablename + " " + sqlSelect;
       logger.info("select: CQL --> SQL: " + cql + " --> " + sql);
       runSqlFile(sqlFile);
-      logger.fine("select: sqlfile done");
+      logger.debug("select: sqlfile done");
       String actualNames = "";
       try ( Statement statement = conn.createStatement();
             ResultSet result = statement.executeQuery(sql) ) {
@@ -123,19 +123,19 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
         }
       }
       if (! expectedNames.equals(actualNames)) {
-        logger.fine("select: Test FAILURE on " + cql + "#" + expectedNames);
+        logger.debug("select: Test FAILURE on " + cql + "#" + expectedNames);
       }
-      logger.fine("select: Got names [" + actualNames + "], expected [" + expectedNames + "]");
+      logger.debug("select: Got names [" + actualNames + "], expected [" + expectedNames + "]");
       assertEquals("CQL: " + cql + ", SQL: " + sql, expectedNames, actualNames);
     } catch (QueryValidationException | SQLException e) {
-      logger.fine("select: " + e.getClass().getSimpleName()
+      logger.debug("select: " + e.getClass().getSimpleName()
         + " for query " + cql + " : " + e.getMessage());
       if (! expectedNames.startsWith("!")) {
         throw new RuntimeException(sql != null ? sql : cql, e);
       }
       assertThat(e.toString(), containsString(expectedNames.substring(1).trim()));
     }
-    logger.fine("select: done with " + cql);
+    logger.debug("select: done with " + cql);
   }
 
   public void select(String sqlFile, String testcase) {
@@ -181,7 +181,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
       cql2pgJson.toSql(cql).getWhere();
     } catch (Throwable e) {
       if (!clazz.isInstance(e)) {
-        logger.fine("Wrong exception. Expected " + clazz + ". " + "but got " + e);
+        logger.debug("Wrong exception. Expected " + clazz + ". " + "but got " + e);
         throw new RuntimeException(e);
       }
       for (String s : contains) {
@@ -932,11 +932,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 })
   public void basicFT(String testcase)
     throws IOException, FieldException, ServerChoiceIndexesException {
-    logger.fine("basicFT: " + testcase);
+    logger.debug("basicFT: " + testcase);
     rejectLower = ! testcase.contains("==") && ! testcase.contains("<>");  // == and <> use LIKE with lower()
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email", "status"));
     select(aCql2pgJson, testcase);
-    logger.fine("basicFT: " + testcase + " OK ");
+    logger.debug("basicFT: " + testcase + " OK ");
   }
 
   @Test
@@ -962,11 +962,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name adj \"Long Lea\"                 #",})
   public void allAnyAdjFT(String testcase)
     throws IOException, FieldException, ServerChoiceIndexesException {
-    logger.fine("allFT: " + testcase);
+    logger.debug("allFT: " + testcase);
     rejectLower = true;
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data", Arrays.asList("name", "email"));
     select(aCql2pgJson, testcase);
-    logger.fine("allFT: " + testcase + " OK ");
+    logger.debug("allFT: " + testcase + " OK ");
   }
 
   @Test
@@ -998,12 +998,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contactInformation.phone == 0912212 #"
     })
   public void arrayFT(String testcase) throws IOException, CQL2PgJSONException {
-    logger.fine("arrayFT():" + testcase);
+    logger.debug("arrayFT():" + testcase);
     rejectLower = ! testcase.contains("==");  // == uses LIKE with lower()
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
       "users.user_data", Arrays.asList("name"));
     select(aCql2pgJson, "array.sql", testcase);
-    logger.fine("arrayFT(): " + testcase + " OK");
+    logger.debug("arrayFT(): " + testcase + " OK");
   }
 
   @Test
@@ -1039,11 +1039,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "contactInformation.phone == /@type=home 09122* # b"
     })
   public void arrayRelationModifiers(String testcase) throws IOException, CQL2PgJSONException {
-    logger.fine("arrayRelationModifiers():" + testcase);
+    logger.debug("arrayRelationModifiers():" + testcase);
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
       "users.user_data", Arrays.asList("name"));
     select(aCql2pgJson, "array.sql", testcase);
-    logger.fine("arrayRelationModifiers(): " + testcase + " OK");
+    logger.debug("arrayRelationModifiers(): " + testcase + " OK");
   }
 
   @Ignore("Need to sort out the array stuff first")
@@ -1059,12 +1059,12 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name==*a* sortBy address.zip                  # Ka Keller; Jo Jane; Lea Long",
    })
   public void sortFT(String testcase) throws IOException, CQL2PgJSONException {
-    logger.fine("sortFT():" + testcase);
+    logger.debug("sortFT():" + testcase);
     rejectLower = true;
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON(
       "users.user_data", Arrays.asList("name"));
     select(aCql2pgJson, testcase);
-    logger.fine("sortFT(): " + testcase + " OK");
+    logger.debug("sortFT(): " + testcase + " OK");
     select(testcase);
   }
 
@@ -1089,11 +1089,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "groups.name = first   # Ka Keller "
   })
   public void subFT(String testcase) throws IOException, CQL2PgJSONException {
-    logger.fine("subFT():" + testcase);
+    logger.debug("subFT():" + testcase);
     rejectLower = true;
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("users.user_data");
     select(aCql2pgJson, testcase);
-    logger.fine("subFT(): " + testcase + " OK");
+    logger.debug("subFT(): " + testcase + " OK");
   }
 
   /* TODO: More complex subqueries, on instances, holdings, and items.
@@ -1150,11 +1150,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
    */ //
   })
   public void instanceSubFT(String testcase) throws IOException, CQL2PgJSONException {
-    logger.fine("instanceSubFT():" + testcase);
+    logger.debug("instanceSubFT():" + testcase);
     rejectLower = true;
     CQL2PgJSON aCql2pgJson = new CQL2PgJSON("instances.jsonb");
     select(aCql2pgJson, "instances.sql", testcase);
-    logger.fine("instanceSubFT(): " + testcase + " OK");
+    logger.debug("instanceSubFT(): " + testcase + " OK");
   }
 
   /*

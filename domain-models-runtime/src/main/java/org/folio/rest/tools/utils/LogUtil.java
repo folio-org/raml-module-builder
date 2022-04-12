@@ -1,7 +1,6 @@
 package org.folio.rest.tools.utils;
 
 import java.util.Collection;
-import java.util.Enumeration;
 import java.util.function.Function;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -112,8 +111,6 @@ public class LogUtil {
   public static JsonObject updateLogConfiguration(String packageName, String level){
 
     JsonObject updatedLoggers = new JsonObject();
-
-    //log4j logs
     LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
     Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
 
@@ -126,19 +123,6 @@ public class LogUtil {
       }
     });
 
-    //JUL logs
-    java.util.logging.LogManager manager = java.util.logging.LogManager.getLogManager();
-    Enumeration<String> julLogs = manager.getLoggerNames();
-    while (julLogs.hasMoreElements()) {
-      String log = julLogs.nextElement();
-      if(log != null && packageName != null && (log.startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
-        java.util.logging.Logger logger = manager.getLogger(log);
-        if(logger != null){
-          logger.setLevel(java.util.logging.Level.parse(level));
-          updatedLoggers.put(logger.getName(), logger.getLevel().getName());
-        }
-      }
-    }
     return updatedLoggers;
   }
 
@@ -149,8 +133,6 @@ public class LogUtil {
   public static JsonObject getLogConfiguration(){
 
     JsonObject loggers = new JsonObject();
-
-    //log4j logs
     LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
     Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
     allLoggers.forEach( log -> {
@@ -158,19 +140,6 @@ public class LogUtil {
         loggers.put(log.getName(), log.getLevel().toString());
       }
     });
-
-    //JUL logs
-    java.util.logging.LogManager manager = java.util.logging.LogManager.getLogManager();
-    Enumeration<String> loggerNames = manager.getLoggerNames();
-    while (loggerNames.hasMoreElements()) {
-      String log = loggerNames.nextElement();
-      if(log != null){
-        java.util.logging.Logger jul = manager.getLogger(log);
-        if(jul != null && jul.getLevel() != null && jul.getName() != null){
-          loggers.put(jul.getName(), jul.getLevel().getName());
-        }
-      }
-    }
 
     return loggers;
   }
@@ -183,22 +152,22 @@ public class LogUtil {
     ctx.updateLoggers();
   }
 
-  private static Level getLog4jLevel(String level){
-    if(level.equalsIgnoreCase("SEVERE")){
-      return Level.ERROR;
-    }
-    else if(level.equalsIgnoreCase("WARNING")){
-      return Level.WARN;
-    }
-    else if(level.equalsIgnoreCase("INFO")){
+  private static Level getLog4jLevel(String level) {
+    if (level == null) {
       return Level.INFO;
     }
-    else if(level.equalsIgnoreCase("FINE")){
-      return Level.DEBUG;
+    Level result = Level.toLevel(level, null);
+    if (result != null) {
+      return result;
     }
-    else if(level.equalsIgnoreCase("FINER") || level.equalsIgnoreCase("FINEST")){
-      return Level.TRACE;
+    // for backwards compatibility convert JUL levels to log4j levels
+    switch (level.toUpperCase()) {
+      case "SEVERE":  return Level.ERROR;
+      case "WARNING": return Level.WARN;
+      case "FINE":    return Level.DEBUG;
+      case "FINER":
+      case "FINEST":  return Level.TRACE;
+      default:        return Level.INFO;
     }
-    return Level.INFO;
   }
 }

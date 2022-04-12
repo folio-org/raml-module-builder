@@ -7,12 +7,12 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
 import org.folio.cql2pgjson.exception.FieldException;
 import org.folio.cql2pgjson.exception.QueryValidationException;
@@ -62,7 +62,7 @@ public class CQL2PgJSON {
    * Must conform to SQL identifier requirements (characters, not a keyword), or properly
    * quoted using double quotes.
    */
-  private static Logger logger = Logger.getLogger(CQL2PgJSON.class.getName());
+  private static Logger logger = LogManager.getLogger(CQL2PgJSON.class);
 
   private static final String JSONB_COLUMN_NAME = "jsonb";
 
@@ -173,10 +173,10 @@ public class CQL2PgJSON {
         schemaPath = "templates/db_scripts/schema.json";
       }
       String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
-      logger.log(Level.FINE, "loadDbSchema: Loaded {0} OK", schemaPath);
+      logger.info("loadDbSchema: Loaded {} OK", schemaPath);
       dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
     } catch (IOException ex) {
-      logger.log(Level.SEVERE, "No schema.json found", ex);
+      logger.error("No schema.json found", ex);
     }
   }
 
@@ -189,7 +189,7 @@ public class CQL2PgJSON {
 
   InitDbTableResult initDbTable() {
     if (jsonField == null) {
-      logger.log(Level.SEVERE, "loadDbSchema(): No primary table name, can not load");
+      logger.error("loadDbSchema(): No primary table name, can not load");
       return InitDbTableResult.NO_PRIMARY_TABLE_NAME;
     }
     // Remove the json blob field name, usually ".jsonb", but in tests also
@@ -207,8 +207,8 @@ public class CQL2PgJSON {
         return InitDbTableResult.AUDIT_TABLE_FOUND;
       }
     }
-    logger.log(Level.WARNING, "loadDbSchema loadDbSchema(): "
-        + "No configuration for table {0} found, using defaults", tname);
+    logger.warn("loadDbSchema loadDbSchema(): "
+        + "No configuration for table {} found, using defaults", tname);
     return InitDbTableResult.NOT_FOUND;
   }
 
@@ -441,7 +441,7 @@ public class CQL2PgJSON {
       && node.getRightOperand().getClass() == CQLTermNode.class) {
       CQLTermNode r = (CQLTermNode) (node.getRightOperand());
       if ("*".equals(r.getTerm()) && "=".equals(r.getRelation().getBase())) {
-        logger.log(Level.FINE, "pgFT(): Simplifying =* OR =* ");
+        logger.debug("pgFT(): Simplifying =* OR =* ");
         return pg(node.getLeftOperand());
       }
     }
@@ -800,11 +800,11 @@ public class CQL2PgJSON {
     final String indexText = vals.getIndexText();
 
     if (CqlAccents.RESPECT_ACCENTS == modifiers.getCqlAccents()) {
-      logger.log(Level.WARNING, "Ignoring /respectAccents modifier for FT search {0}", indexText);
+      logger.warn("Ignoring /respectAccents modifier for FT search {}", indexText);
     }
 
     if (CqlCase.RESPECT_CASE == modifiers.getCqlCase()) {
-      logger.log(Level.WARNING, "Ignoring /respectCase modifier for FT search {0}", indexText);
+      logger.warn("Ignoring /respectCase modifier for FT search {}", indexText);
     }
 
     // Clean the term. Remove stand-alone ' *', not valid word.
@@ -827,7 +827,7 @@ public class CQL2PgJSON {
 
     if (! dbIndex.hasFullTextIndex() && ! "true".equals(sql)) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
-      logger.log(Level.WARNING, "Doing FT search without index for {0}", s);
+      logger.warn("Doing FT search without index for {}", s);
     }
 
     return sql;
@@ -902,7 +902,7 @@ public class CQL2PgJSON {
     }
     String sql = "get_tsvector(" + indexText + ") " + "@@ " + tsTerm.toString();
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[]{indexText, sql});
+    logger.info("index {} generated SQL {}", new Object[]{indexText, sql});
     return sql;
   }
 
@@ -950,16 +950,16 @@ public class CQL2PgJSON {
     if (Cql2SqlUtil.hasCqlWildCard(node.getTerm())) {  // FIXME: right truncation "abc*" works with index/uniqueIndex
       if (! dbIndex.hasGinIndex() && ! dbIndex.hasLikeIndex()) {
         String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
-        logger.log(Level.WARNING, "Doing wildcard LIKE search without index for {0}", s);
+        logger.warn("Doing wildcard LIKE search without index for {}", s);
       }
     } else {
       if (schemaIndex == null) {
         String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexText, node.toCQL(), sql);
-        logger.log(Level.WARNING, "Doing LIKE search without index for {0}", s);
+        logger.warn("Doing LIKE search without index for {}", s);
       }
     }
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexText, sql});
+    logger.info("index {} generated SQL {}", indexText, sql);
     return sql;
   }
 
@@ -991,10 +991,10 @@ public class CQL2PgJSON {
 
     if (! dbIndex.hasIndex() && ! dbIndex.hasFullTextIndex() && ! dbIndex.hasLikeIndex()) {
       String s = String.format("%s, CQL >>> SQL: %s >>> %s", indexMod, node.toCQL(), sql);
-      logger.log(Level.WARNING, "Doing SQL query without index for {0}", s);
+      logger.warn("Doing SQL query without index for {}", s);
     }
 
-    logger.log(Level.FINE, "index {0} generated SQL {1}", new Object[] {indexMod, sql});
+    logger.info("index {} generated SQL {}", indexMod, sql);
     return sql;
   }
 
