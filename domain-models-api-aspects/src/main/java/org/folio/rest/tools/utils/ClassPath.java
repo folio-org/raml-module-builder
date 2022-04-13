@@ -41,19 +41,19 @@ import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.apache.commons.collections4.MultiMapUtils;
 import org.apache.commons.collections4.SetValuedMap;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 
 public class ClassPath {
 
-  private static final Logger log = Logger.getLogger(ClassPath.class.getName());
+  private static final Logger log = LogManager.getLogger(ClassPath.class);
 
   private static final String CLASS_FILE_NAME_EXTENSION = ".class";
   private static final Predicate<ClassInfo> IS_TOP_LEVEL = info -> info.className.indexOf('$') == -1;
@@ -338,7 +338,7 @@ public class ClassPath {
           return;
         }
       } catch (SecurityException e) {
-        log.finer(() -> "Cannot access " + file + ": " + e.getMessage());
+        log.debug(() -> "Cannot access " + file + ": " + e.getMessage());
         return;
       }
 
@@ -392,7 +392,7 @@ public class ClassPath {
             url = getClassPathEntry(jarFile, path);
           } catch (MalformedURLException e) {
             // Ignore bad entry
-            log.log(Level.SEVERE, "Invalid Class-Path entry: " + path);
+            log.error("Invalid Class-Path entry: {}", path);
             continue;
           }
           if (url.getProtocol().equals("file")) {
@@ -454,7 +454,7 @@ public class ClassPath {
             urls.add(new URL("file", null, new File(entry).getAbsolutePath()));
           }
         } catch (MalformedURLException e) {
-          log.log(Level.SEVERE, "Malformed classpath entry: " + entry, e);
+          log.error(() -> "Malformed classpath entry: " + entry, e);
         }
       }
 
@@ -535,7 +535,7 @@ public class ClassPath {
       File[] files = directory.listFiles();
 
       if (files == null) {
-        log.log(Level.SEVERE, "Cannot read directory " + directory);
+        log.error("Cannot read directory {}", directory);
         // IO error, just skip the directory
         return;
       }

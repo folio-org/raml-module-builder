@@ -5,16 +5,13 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import java.util.logging.Logger;
 import org.junit.Test;
 
 public class AnnotationGrabberTest {
-  private static final Logger log = Logger.getLogger(AnnotationGrabberTest.class.getName());
 
   @Test
   public void generateMappings() throws Exception {
     JsonObject mappings = AnnotationGrabber.generateMappings(null);
-    log.info(mappings.encodePrettily());
     JsonObject unittests = mappings.getJsonObject("unittests");
     assertThat(unittests.getString("class"), is("org.folio.rest.jaxrs.resource.TestResource"));
     JsonArray books = unittests.getJsonArray("^unittestsbooks/?$");

@@ -11,15 +11,14 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.ws.rs.DefaultValue;
 import javax.ws.rs.HeaderParam;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.utils.ClassPath;
 
 import io.vertx.core.json.JsonArray;
@@ -49,7 +48,7 @@ public class AnnotationGrabber {
   public static final String  CONTENT_TYPE           = "Content-Type";
   public static final String  CLIENT_GEN_PACKAGE     = "org.folio.rest.client";
 
-  private static final Logger log = Logger.getLogger(AnnotationGrabber.class.getName());
+  private static final Logger log = LogManager.getLogger(AnnotationGrabber.class);
 
   // ^http.*?//.*?/apis/patrons/.*?/fines/.*
   // ^http.*?\/\/.*?\/apis\/patrons\/?(.+?)*
@@ -189,7 +188,7 @@ public class AnnotationGrabber {
           clientGrabber.generateClass(classSpecificMapping);
         }
       } catch (Exception e) {
-        log.log(Level.SEVERE, e.getMessage(), e);
+        log.error(e.getMessage(), e);
       }
     });
     return globalClassMapping;

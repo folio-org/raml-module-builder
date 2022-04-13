@@ -26,7 +26,6 @@ import static java.nio.file.Files.createDirectory;
 import static java.nio.file.Files.createFile;
 import static java.nio.file.Files.createSymbolicLink;
 import static java.nio.file.Files.createTempDirectory;
-import static java.util.logging.Level.WARNING;
 import static org.assertj.core.api.Assertions.*;
 
 import java.io.ByteArrayInputStream;
@@ -56,15 +55,16 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import junit.framework.TestCase;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.utils.ClassPath.ClassInfo;
 import org.folio.rest.tools.utils.ClassPath.ResourceInfo;
 
 /** Functional tests of {@link ClassPath}. */
 public class ClassPathTest extends TestCase {
-  private static final Logger log = Logger.getLogger(ClassPathTest.class.getName());
+  private static final Logger log = LogManager.getLogger(ClassPathTest.class);
   private static final String PATH_SEPARATOR = "path.separator";
   private static final String JAVA_CLASS_PATH = "java.class.path";
 
@@ -598,7 +598,7 @@ public class ClassPathTest extends TestCase {
       .sorted((file1, file2) -> file2.compareTo(file1))
       .forEachOrdered(File::delete);
     } catch (IOException e) {
-      log.log(WARNING, "Failure cleaning up test directory", e);
+      log.warn("Failure cleaning up test directory", e);
     }
   }
 }

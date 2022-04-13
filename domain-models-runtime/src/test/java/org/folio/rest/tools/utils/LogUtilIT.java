@@ -9,6 +9,7 @@ import io.vertx.core.http.HttpServerRequest;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.net.impl.SocketAddressImpl;
 import io.vertx.ext.web.RoutingContext;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
@@ -17,6 +18,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 // renaming to LogUtilTest fails on Jenkins
 class LogUtilIT {
@@ -72,6 +75,27 @@ class LogUtilIT {
     when(routingContext.request().remoteAddress()).thenReturn(new SocketAddressImpl("remoteAddress"));
     LogUtil.formatStatsLogMessage(routingContext, 5, "beeUni", "aBody");
     assertThat(message(), is("remoteAddress null null null null -1 -1 5 tid=beeUni null aBody"));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+      "ERROR,   ERROR",
+      "error,   ERROR",
+      "error,   ERROR",
+      "SEVERE,  ERROR",
+      "severe,  ERROR",
+      "WARN,    WARN",
+      "WARNING, WARN",
+      "INFO,    INFO",
+      "DEBUG,   DEBUG",
+      "FINE,    DEBUG",
+      "FINER,   TRACE",
+      "FINEST,  TRACE",
+      "FOO,     INFO",
+      ",        INFO",  // null
+  })
+  void getLog4jLevel(String level, String expectedLevel) {
+    assertThat(LogUtil.getLog4jLevel(level), is(Level.getLevel(expectedLevel)));
   }
 
   private static class Appender extends AbstractAppender {
