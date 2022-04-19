@@ -21,7 +21,7 @@
                 USING ERRCODE = '23F09', TABLE = '${table.tableName}', SCHEMA = '${myuniversity}_${mymodule}';
         END IF;
         NEW.jsonb = jsonb_set(NEW.jsonb, '{${ol_version}}',
-            to_jsonb(COALESCE((OLD.jsonb->>'${ol_version}')::numeric + 1, 1)));
+            to_jsonb(COALESCE(((OLD.jsonb->>'${ol_version}')::numeric + 1) % 2147483648, 1)));
     END CASE;
     RETURN NEW;
   END;
