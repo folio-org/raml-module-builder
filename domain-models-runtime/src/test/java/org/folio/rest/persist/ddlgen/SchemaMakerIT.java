@@ -429,10 +429,10 @@ public class SchemaMakerIT extends PostgresClientITBase {
       }
     });
     assertThat("tab_ol_off has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(2));
-    assertThat("tab_ol_log has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_log")), is(2));
+    assertThat("tab_ol_log has version 2", selectInteger(context, String.format(sql, olVersion, "tab_ol_log")), is(2));
     assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(1));
     // update version as provided if table has no optimistic locking configuration
-    assertThat("tab_ol_none has no version", selectInteger(context, String.format(sql, olVersion, "tab_ol_none")), is(2));
+    assertThat("tab_ol_none has version 2", selectInteger(context, String.format(sql, olVersion, "tab_ol_none")), is(2));
     // test insert with OFF
     execute(context, "DELETE from tab_ol_off");
     execute(context, "INSERT INTO tab_ol_off SELECT md5('abc')::uuid, jsonb_build_object('" + olVersion + "', 5)");
@@ -441,6 +441,22 @@ public class SchemaMakerIT extends PostgresClientITBase {
     runSchema(context, TenantOperation.UPDATE, "schemaWithOptimisticLocking2.json");
     execute(context, "UPDATE tab_ol_fail SET jsonb=jsonb_set(jsonb, '{" + olVersion + "}', to_jsonb('5'::text))");
     assertThat("tab_ol_fail has version 1", selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(5));
+    // disable optimistic locking
+    runSchema(context, TenantOperation.UPDATE, "schemaWithOptimisticLocking3.json");
+    // start value for overflow/wrap around at Integer.MAX_VALUE = 2147483647
+    tables.forEach(table -> {
+      execute(context, "TRUNCATE " + table);
+      execute(context, "INSERT INTO " + table +
+          " SELECT md5(username)::uuid, json_build_object('_version', 2147483647, 'id', md5(username)::uuid)" +
+          " FROM (SELECT '" + table + "' AS username) AS subquery");
+    });
+    runSchema(context, TenantOperation.UPDATE, "schemaWithOptimisticLocking.json");
+    tables.forEach(table -> execute(context, "UPDATE " + table + " SET jsonb=jsonb"));
+    assertThat(selectInteger(context, String.format(sql, olVersion, "tab_ol_none")), is(2147483647));
+    assertThat(selectInteger(context, String.format(sql, olVersion, "tab_ol_off")), is(2147483647));
+    assertThat(selectInteger(context, String.format(sql, olVersion, "tab_ol_log")), is(0));
+    assertThat(selectInteger(context, String.format(sql, olVersion, "tab_ol_fail")), is(0));
+
   }
 
   private static void executeAndExpectFailure(TestContext context, String sqlStatement, String ... errMessages) {
