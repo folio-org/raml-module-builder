@@ -103,7 +103,7 @@ public final class PgUtil {
    * 3 = <code>users</code>
    */
   private static final Pattern KEY_NOT_PRESENT_PATTERN = Pattern.compile(
-      "^Key \\(([^=]+)\\)=\\((.*)\\) is not present in table \"(.*)\".$");
+      "^Key [(]([^=]+)[)]=[(](.*)[)] is not present in table \"(.*)\".$");
   /**
    * Assume this String:
    * <p>
@@ -118,7 +118,7 @@ public final class PgUtil {
    * 3 = <code>referencing</code>
    */
   private static final Pattern KEY_STILL_REFERENCED_PATTERN = Pattern.compile(
-      "^Key \\(([^=]+)\\)=\\((.*)\\) is still referenced from table \"(.*)\".$");
+      "^Key [(]([^=]+)[(]=[(](.*)[(] is still referenced from table \"(.*)\".$");
   /** Number of records to read from the sort index in getWithOptimizedSql and generateOptimizedSql method */
   private static int optimizedSqlSize = 10000;
 
