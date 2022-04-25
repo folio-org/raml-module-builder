@@ -1,8 +1,15 @@
+## 33.2.9 2022-04-22
+
+Fix:
+
+* [RMB-911](https://issues.folio.org/browse/RMB-911) Optimistic locking \_version overflow
+* [RMB-907](https://issues.folio.org/browse/RMB-907) jackson-databind 2.13.2.1 (CVE-2020-36518)
+
 ## 33.2.8 2022-03-28
 
 Fix:
 
-* [RMB-907](https://issues.folio.org/browse/RMB-907) jackson-databind 2.13.2.1, Vert.x 4.2.6, log4j 2.17.2 (CVE-2020-36518)
+* [RMB-907](https://issues.folio.org/browse/RMB-907) Vert.x 4.2.6, log4j 2.17.2
 
 ## 33.2.7 2022-03-08
 
