@@ -143,6 +143,8 @@ public class PostgresClient {
   private static final MultiKeyMap<Object, PostgresClient> CONNECTION_POOL =
       MultiKeyMap.multiKeyMap(new HashedMap<>());
 
+  @SuppressWarnings("squid:S5852") // "Using slow regular expression is security sensitive"
+  // This works on static SQL provided by the developer, not on runtime provided SQL, therefore it is safe.
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
       // \\B = a non-word boundary, the first $ must not be part of an identifier (foo$bar$baz)
       Pattern.compile("[^\\n\\r]*?\\B(\\$\\w*\\$).*?\\1[^\\n\\r]*", Pattern.DOTALL);
