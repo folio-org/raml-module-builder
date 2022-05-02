@@ -49,6 +49,25 @@ public class TenantAPI implements Tenant {
     return PostgresClient.getInstance(context.owner());
   }
 
+  Future<Void> requirePostgres(Context context, String minNum, String minVersion) {
+    return
+        postgresClient(context)
+        .select("SELECT current_setting('server_version_num') AS num, current_setting('server_version') AS version")
+        .map(rowSet -> {
+          String num = rowSet.iterator().next().getString("num");
+          String version = rowSet.iterator().next().getString("version");
+          if (minNum.compareTo(num) > 0) {
+            throw new UnsupportedOperationException(
+                "Expected PostgreSQL server version " + minVersion + " or later but found " + version);
+          }
+          return null;
+        });
+  }
+
+  Future<Void> requirePostgres12(Context context) {
+    return requirePostgres(context, "120000", "12.0");
+  }
+
   Future<Boolean> tenantExists(Context context, String tenantId){
     /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
     return postgresClient(context).select(
@@ -207,7 +226,8 @@ public class TenantAPI implements Tenant {
     job.setComplete(false);
 
     String location = "/_/tenant/" + id;
-    tenantExists(context, tenantId)
+    requirePostgres12(context)
+        .compose(x -> tenantExists(context, tenantId))
         .compose(exists -> sqlFile(context, tenantId, tenantAttributes, exists))
         .onFailure(cause -> {
           log.error(cause.getMessage(), cause);
