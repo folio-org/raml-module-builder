@@ -461,7 +461,7 @@ public class PostgresClientIT {
     postgresClient = createA(context, TENANT);
     JsonObject configuration = postgresClient.getConnectionConfig().copy()
         .put("maxPoolSize", maxPoolSize);
-    postgresClient.setClient(PostgresClient.createPgPool(vertx, configuration));
+    postgresClient.setClient(PostgresClient.createPgPool(vertx, configuration, PostgresClient.DATABASE_MODE.WRITER));
     List<Future> futures = new ArrayList<>();
     for (int i=0; i<maxPoolSize; i++) {
       futures.add(Future.<RowSet<Row>>future(promise ->
