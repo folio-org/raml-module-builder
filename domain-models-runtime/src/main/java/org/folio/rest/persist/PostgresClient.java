@@ -4042,7 +4042,7 @@ public class PostgresClient {
   /**
    * @return the tenantId of this PostgresClient
    */
-  String getTenantId() {
+  public String getTenantId() {
     return tenantId;
   }
 
