@@ -140,10 +140,14 @@ public class PostgresClient {
    * Used only if {@link #sharedPgPool} is true.
    */
   private static final Map<Vertx,PgPool> PG_POOLS = new HashMap<>();
+
+  /**
+   * Used only if {@link #sharedPgPool} is true.
+   */
+  private static final Map<Vertx,PgPool> PG_POOLS_READER = new HashMap<>();
+
   /** map (Vertx, String tenantId) to PostgresClient */
   private static final MultiKeyMap<Object, PostgresClient> CONNECTION_POOL =
-      MultiKeyMap.multiKeyMap(new HashedMap<>());
-  private static final MultiKeyMap<Object, PostgresClient> CONNECTION_POOL_READER =
       MultiKeyMap.multiKeyMap(new HashedMap<>());
 
   private static final Pattern POSTGRES_DOLLAR_QUOTING =
@@ -158,8 +162,15 @@ public class PostgresClient {
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
+  /**
+   * PgPool client that is initialized with mainly the database writer instance's connection string.
+   * */
   private PgPool client;
-  private PgPool clientReader;
+  /**
+   * PgPool client that is initialized with mainly the database reader instance's connection string.
+   * When there is no reader instance, then this client should be initialized with the writer's connection string
+   * **/
+  private PgPool readClient;
   private final String tenantId;
   private final String schemaName;
 
@@ -355,22 +366,34 @@ public class PostgresClient {
   }
 
   /**
-   * This instance's PgPool for database connections.
+   * This instance's Reader PgPool for database connections which is instantiated with the database reader
+   * connections string, whereas getClient() returns the PgPool instance which is instantiated with the database writer
+   * connection string that would do non-reading operations.
    *
    * Take care to execute "SET ROLE ..." when {@link #sharedPgPool} is true; consider using
    * one of the with... methods that automatically execute "SET ROLE ...".
    *
-   * @see #withConnection(Function)
-   * @see #withConn(Function)
+   * @see #withReadConnection(Function)
+   * @see #withReadConn(Function)
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
+   * @see #getClient()
    */
   PgPool getReaderClient() {
-    return clientReader;
+    return readClient;
   }
 
   /**
-   * This instance's PgPool for database connections.
+   * Set this instance's Reader PgPool that can connect to Postgres.
+   * @param readClient  the new client
+   */
+  void setReaderClient(PgPool readClient) {
+    this.readClient = readClient;
+  }
+
+  /**
+   * This instance's PgPool for database connections. It is instantiated with the "write" db instance's
+   * connection string and is responsible for executing all the non-read queries (upsert & delete)
    *
    * Take care to execute "SET ROLE ..." when {@link #sharedPgPool} is true; consider using
    * one of the with... methods that automatically execute "SET ROLE ...".
@@ -379,6 +402,7 @@ public class PostgresClient {
    * @see #withConn(Function)
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
+   * @see #getReaderClient()
    */
   PgPool getClient() {
     return client;
@@ -393,15 +417,28 @@ public class PostgresClient {
   }
 
   /**
-   * Close the SQL client of this PostgresClient instance.
+   * Close the SQL writer and reader clients of this PostgresClient instance in succession.
    * This is idempotent: additional close invocations are always successful.
    */
   public Future<Void> closeClient() {
-    if (client == null) {
+    return closeClient(client)
+        .compose(
+            x -> closeClient(readClient)
+        );
+  }
+
+
+
+  /**
+   * Close the SQL client of this PostgresClient instance.
+   * This is idempotent: additional close invocations are always successful.
+   */
+  public Future<Void> closeClient(PgPool theClient) {
+    if (theClient == null) {
       return Future.succeededFuture();
     }
-    PgPool clientToClose = client;
-    client = null;
+    PgPool clientToClose = theClient;
+    theClient = null;
     CONNECTION_POOL.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
     if (sharedPgPool) {
       return Future.succeededFuture();
@@ -526,10 +563,10 @@ public class PostgresClient {
 
     if (sharedPgPool) {
       client = PG_POOLS.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, HOST));
-      clientReader = PG_POOLS.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, HOST_READER));
+      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, HOST_READER));
     } else {
       client = createPgPool(vertx, postgreSQLClientConfig, HOST);
-      clientReader = createPgPool(vertx, postgreSQLClientConfig, HOST_READER);
+      readClient = createPgPool(vertx, postgreSQLClientConfig, HOST_READER);
     }
   }
 
@@ -2287,7 +2324,19 @@ public class PostgresClient {
     String fieldName = fieldsStr.substring(1, fieldsStr.length() - 1);
     get(table, clazz, fieldName, filter, returnCount, returnIdField, facets, distinctOn, replyHandler);
   }
-
+/**
+ * Return records that match the {@link CQLWrapper} filter using the readonly PgConnection
+ * @param table - table to query
+ * @param clazz - class of objects to be returned
+ * @param fieldName - fieldnName to query
+ * @param filter - which records to match
+ * @param returnCount - whether to calculate totalRecords
+ *            (the number of records that match when disabling offset and limit)
+ * @param returnIdField -
+ * @param facets
+ * @param distinctOn
+ * @param replyHandler - return {@link Results} with the entities found
+ **/
   <T> void get(String table, Class<T> clazz, String fieldName, CQLWrapper filter,
     boolean returnCount, boolean returnIdField, List<FacetField> facets, String distinctOn,
     Handler<AsyncResult<Results<T>>> replyHandler) {
@@ -2362,7 +2411,7 @@ public class PostgresClient {
    * @param filter - which records to match
    * @param returnCount - whether to calculate totalRecords
    *            (the number of records that match when disabling offset and limit)
-   * @param factes - fields to calculate counts for
+   * @param facets - fields to calculate counts for
    * @return {@link Results} with the entities found
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, CQLWrapper filter,
@@ -2388,6 +2437,7 @@ public class PostgresClient {
   }
 
   /**
+   * Return records that match the {@link Criterion} filter using the readonly PgConnection
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    */
   public <T> void get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
@@ -2420,7 +2470,7 @@ public class PostgresClient {
    * @param filter - see Criterion class
    * @param returnCount - whether to return the amount of records matching the query
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
-   * @param factes - fields to calculate counts for
+   * @param facets - fields to calculate counts for
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
       List<FacetField> facets) {
@@ -2443,6 +2493,7 @@ public class PostgresClient {
   }
 
   /**
+   * Get with readonly connection
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    */
   @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
@@ -2478,7 +2529,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id.
+   * Get the jsonb by id using the readonly connection
    * @param conn  if provided, the connection to use;
    *              if null, a new connection is created and automatically released afterwards;
    *              if failed, the replyHandler is failed
@@ -2510,7 +2561,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a String.
+   * Get the jsonb by id with the readonly connection and return it as a String
    * @param table  the table to search in
    * @param id  the value of the id field
    * @return the JSON encoded as a String
@@ -2598,7 +2649,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id and return it as a pojo of type T.
+   * Get the jsonb by id with the readonly connectino and return it as a pojo of type T.
    * @param table  the table to search in
    * @param id  the value of the id field
    * @param clazz  the type of the pojo
@@ -2647,7 +2698,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get jsonb by id for a list of ids.
+   * Get jsonb by id with the readonly connection for a list of ids.
    * <p>
    * The result is a map of all found records where the key is the id
    * and the value is the jsonb.
@@ -3005,7 +3056,7 @@ public class PostgresClient {
   }
 
   /**
-   * Run a select query.
+   * Run a select query using the readonly connection.
    *
    * <p>To update see {@link #execute(String, Handler)}.
    *  @param sql - the sql query to run
@@ -3077,7 +3128,7 @@ public class PostgresClient {
   }
 
   /**
-   * Run a parameterized/prepared select query.
+   * Run a parameterized/prepared select query using the readonly connection.
    *
    * <p>To update see {@link #execute(String, Tuple, Handler)}.
    *
@@ -3116,7 +3167,7 @@ public class PostgresClient {
   }
 
   /**
-   * Run a select query and return the first record, or null if there is no result.
+   * Run a select query with the readonly connection and return the first record, or null if there is no result.
    *
    * <p>To update see {@link #execute(String, Handler)}.
    *
@@ -3155,7 +3206,8 @@ public class PostgresClient {
   }
 
   /**
-   * Run a parameterized/prepared select query and return the first record, or null if there is no result.
+   * Run a parameterized/prepared select query with the readonly connection
+   * and return the first record, or null if there is no result.
    *
    * <p>To update see {@link #execute(String, Handler)}.
    *
@@ -3328,35 +3380,31 @@ public class PostgresClient {
   }
 
   /**
-   * Get vertx-pg-client connection
-   *
-   * @see #withConn(Function)
-   * @see #withConnection(Function)
-   * @see #withTrans(Function)
-   * @see #withTransaction(Function)
+   * Get vertx-pg-client connection using the Writer client
    */
   public Future<PgConnection> getConnection() {
-    Future<SqlConnection> future = getClient().getConnection();
-    if (! sharedPgPool) {
-      return future.map(sqlConnection -> (PgConnection) sqlConnection);
-    }
-    // running the "SET ROLE ..." query adds about 1.5 ms execution time
-    String sql = DEFAULT_SCHEMA.equals(tenantId) ? "SET ROLE NONE" : "SET ROLE '" + schemaName + "'";
-    return future.compose(sqlConnection ->
-        sqlConnection.query(sql).execute()
-        .map((PgConnection) sqlConnection));
+    return getConnection(getClient());
   }
+
+  /**
+   * Get read-only vertx-pg-client connection using the Reader client
+   */
+  public Future<PgConnection> getReadConnection() {
+    return getConnection(getReaderClient());
+  }
+
 
   /**
    * Get vertx-pg-client connection
    *
+   * @param client pgPool (read or write) client
    * @see #withConn(Function)
    * @see #withConnection(Function)
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
    */
-  public Future<PgConnection> getReadConnection() {
-    Future<SqlConnection> future = getReaderClient().getConnection();
+  public Future<PgConnection> getConnection(PgPool client) {
+    Future<SqlConnection> future = client.getConnection();
     if (! sharedPgPool) {
       return future.map(sqlConnection -> (PgConnection) sqlConnection);
     }
@@ -3366,7 +3414,6 @@ public class PostgresClient {
         sqlConnection.query(sql).execute()
             .map((PgConnection) sqlConnection));
   }
-
   /**
    * Get Vert.x {@link PgConnection}.
    *
@@ -3380,10 +3427,10 @@ public class PostgresClient {
   }
 
   /**
-   * Get Vert.x {@link PgConnection}.
+   * Get readonly Vert.x {@link PgConnection}.
    *
-   * @see #withConn(Function)
-   * @see #withConnection(Function)
+   * @see #withReadConn(Function)
+   * @see #withReadConnection(Function)
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
    */
@@ -3414,18 +3461,20 @@ public class PostgresClient {
    *
    * <p>Use closeAndHandleResult as replyHandler, for example:
    *
-   * <pre>getSQLConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
+   * <pre>getSQLReadConnection(conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
    *
    * <p>Or avoid this method and use the preferred {@link #withConn(Function)}.
    *
-   * @see #withConn(Function)
-   * @see #withConnection(Function)
+   * @see #withReadConn(Function)
+   * @see #withReadConnection(Function)
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
    */
   void getSQLReadConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLReadConnection(0, handler);
   }
+
+
   /**
    * Don't forget to close the connection!
    *
@@ -3474,12 +3523,12 @@ public class PostgresClient {
    *
    * <p>Use closeAndHandleResult as replyHandler, for example:
    *
-   * <pre>getSQLConnection(timeout, conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
+   * <pre>getSQLReadConnection(timeout, conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
    *
    * <p>Or avoid this method and use the preferred {@link #withConn(int, Function)}.
    *
-   * @see #withConn(Function)
-   * @see #withConnection(Function)
+   * @see #withReadConn(Function)
+   * @see #withReadConnection(Function)
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
    */
@@ -3610,8 +3659,8 @@ public class PostgresClient {
   }
 
   /**
-   * Get a {@link PgConnection} from the pool and execute the given function.
-   * <p>Similar to {@link PgPool#withConnection(Function)} but with RMB specific {@link Conn}.
+   * Get a readonly {@link PgConnection} from the pool and execute the given function.
+   * <p>Similar to {@link PgPool#withConnection(Function)} but with RMB specific readonly {@link Conn}.
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
@@ -3621,7 +3670,7 @@ public class PostgresClient {
    * @param function code to execute
    */
   public <T> Future<T> withReadConn(Function<Conn, Future<T>> function) {
-    return withConn(0, function);
+    return withReadConn(0, function);
   }
 
   /**
@@ -3642,7 +3691,7 @@ public class PostgresClient {
 
   /**
    * Execute the given function on a {@link Conn} and with query timeout.
-   * <p>Similar to {@link #withConnection(Function)} but with RMB specific {@link Conn}.
+   * <p>Similar to readonly {@link #withConnection(Function)} but with RMB specific readonly {@link Conn}.
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
@@ -3676,6 +3725,17 @@ public class PostgresClient {
   }
 
   /**
+   * Take the connection from the {@link SQLConnection}, wrap it into a {@link Conn} and execute the function.
+   *
+   * @return the result from the function, the failure of sqlConnection or any thrown Throwable.
+   */
+  @SuppressWarnings("squid:S1181")  // suppress "Throwable and Error should not be caught"
+  // because a Future also handles Throwable, this is required for asynchronous reporting
+  public <T> Future<T> withReadConn(AsyncResult<SQLConnection> sqlConnection, Function<Conn, Future<T>> function) {
+    return withConn(sqlConnection, function);
+  }
+
+  /**
    * Get a {@link PgConnection} from the pool and execute the given function.
    * <p>Similar to {@link PgPool#withConnection(Function)}
    * <ul>
@@ -3694,7 +3754,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get a {@link PgConnection} from the pool and execute the given function.
+   * Get a readonly {@link PgConnection} from the pool and execute the given function.
    * <p>Similar to {@link PgPool#withConnection(Function)}
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
