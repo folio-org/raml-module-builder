@@ -70,6 +70,11 @@ public class PostgresClientTest {
 
   private static final int DEFAULT_LIMIT = 10;
 
+  private static final String HOST = "host";
+  private static final String HOST_READER = "hostReader";
+  private static final String POST = "post";
+  private static final String POST_READER = "postReader";
+
   @Before
   public void initConfig() {
     oldConfigFilePath = PostgresClient.getConfigFilePath();
@@ -168,7 +173,7 @@ public class PostgresClientTest {
   @Test
   public void testPgConnectOptionsEmpty() {
     JsonObject conf = new JsonObject();
-    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, HOST);
     assertThat("localhost", is(options.getHost()));
     assertThat(5432, is(options.getPort()));
     assertThat("user", is(options.getUser()));
@@ -193,7 +198,7 @@ public class PostgresClientTest {
           "DB_RECONNECTINTERVAL", "2000"
           ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
-      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, HOST);
       assertThat(options.getHost(), is("myhost"));
       assertThat(options.getPort(), is(5433));
       assertThat(options.getUser(), is("myuser"));

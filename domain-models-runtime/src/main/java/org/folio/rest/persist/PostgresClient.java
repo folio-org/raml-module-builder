@@ -118,6 +118,7 @@ public class PostgresClient {
   private static final String    HOST      = "host";
   private static final String    HOST_READER = "hostReader";
   private static final String    PORT      = "port";
+  private static final String    PORT_READER = "portReader";
   private static final String    DATABASE  = "database";
   private static final String    RECONNECT_ATTEMPTS = "reconnectAttempts";
   private static final String    RECONNECT_INTERVAL = "reconnectInterval";
@@ -438,7 +439,6 @@ public class PostgresClient {
       return Future.succeededFuture();
     }
     PgPool clientToClose = theClient;
-    theClient = null;
     CONNECTION_POOL.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
     if (sharedPgPool) {
       return Future.succeededFuture();
@@ -459,7 +459,7 @@ public class PostgresClient {
    * The number of PgPool instances in use.
    */
   static int getConnectionPoolSize() {
-    return sharedPgPool ? PG_POOLS.size() : CONNECTION_POOL.size();
+    return sharedPgPool ? PG_POOLS.size() + PG_POOLS_READER.size(): CONNECTION_POOL.size();
   }
 
   /**
@@ -490,6 +490,8 @@ public class PostgresClient {
     }
     PG_POOLS.values().forEach(PgPool::close);
     PG_POOLS.clear();
+    PG_POOLS_READER.values().forEach(PgPool::close);
+    PG_POOLS_READER.clear();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, String desiredHost) {
@@ -498,7 +500,12 @@ public class PostgresClient {
     if (host != null) {
       pgConnectOptions.setHost(host);
     }
-    Integer port = sqlConfig.getInteger(PORT);
+
+    Integer port;
+    port = desiredHost.equalsIgnoreCase(HOST_READER) ?
+        sqlConfig.getInteger(PORT_READER) :
+        sqlConfig.getInteger(PORT);
+
     if (port != null) {
       pgConnectOptions.setPort(port);
     }
