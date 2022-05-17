@@ -421,24 +421,29 @@ public class PostgresClient {
    * Close the SQL writer and reader clients of this PostgresClient instance in succession.
    * This is idempotent: additional close invocations are always successful.
    */
-  public Future<Void> closeClient() {
-    return closeClient(client)
-        .compose(
-            x -> closeClient(readClient)
-        );
+  public Future<Void> closeReadClient() {
+    readClient = null;
+    return closeClient(readClient);
   }
 
-
+  /**
+   * Close the SQL writer and reader clients of this PostgresClient instance in succession.
+   * This is idempotent: additional close invocations are always successful.
+   */
+  public Future<Void> closeWritelient() {
+    client = null;
+    return closeClient(client);
+  }
 
   /**
    * Close the SQL client of this PostgresClient instance.
    * This is idempotent: additional close invocations are always successful.
    */
-  public Future<Void> closeClient(PgPool theClient) {
-    if (theClient == null) {
+  public Future<Void> closeClient(PgPool clientToClose) {
+    if (clientToClose == null) {
       return Future.succeededFuture();
     }
-    PgPool clientToClose = theClient;
+
     CONNECTION_POOL.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
     if (sharedPgPool) {
       return Future.succeededFuture();
@@ -452,7 +457,8 @@ public class PostgresClient {
    * @param whenDone invoked with the close result
    */
   public void closeClient(Handler<AsyncResult<Void>> whenDone) {
-    closeClient().onComplete(whenDone);
+    closeReadClient().onComplete(whenDone);
+    closeWritelient().onComplete(whenDone);
   }
 
   /**
@@ -477,7 +483,8 @@ public class PostgresClient {
         clients.add(postgresClient);
       }
     });
-    clients.forEach(PostgresClient::closeClient);
+    clients.forEach(PostgresClient::closeReadClient);
+    clients.forEach(PostgresClient::closeWritelient);
   }
 
   /**
@@ -486,29 +493,43 @@ public class PostgresClient {
   public static void closeAllClients() {
     // copy of values() because closeClient will delete them from CONNECTION_POOL
     for (PostgresClient client : CONNECTION_POOL.values().toArray(new PostgresClient [0])) {
-      client.closeClient();
+      client.closeReadClient();
+      client.closeWritelient();
     }
+
     PG_POOLS.values().forEach(PgPool::close);
     PG_POOLS.clear();
     PG_POOLS_READER.values().forEach(PgPool::close);
     PG_POOLS_READER.clear();
   }
 
-  static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, String desiredHost) {
+  static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, boolean isReader) {
     PgConnectOptions pgConnectOptions = new PgConnectOptions();
-    String host = sqlConfig.getString(desiredHost);
+    String hostToResolve = HOST;
+    String portToResolve = PORT;
+
+    if (isReader)
+    {
+       hostToResolve = HOST_READER;
+       portToResolve = PORT_READER ;
+    }
+
+    String host = sqlConfig.getString(hostToResolve);
     if (host != null) {
       pgConnectOptions.setHost(host);
     }
 
     Integer port;
-    port = desiredHost.equalsIgnoreCase(HOST_READER) ?
-        sqlConfig.getInteger(PORT_READER) :
-        sqlConfig.getInteger(PORT);
+    port = sqlConfig.getInteger(portToResolve);
 
     if (port != null) {
       pgConnectOptions.setPort(port);
     }
+
+    if (isReader && (host == null || port == null)){
+      return null;
+    }
+
     String username = sqlConfig.getString(USERNAME);
     if (username != null) {
       pgConnectOptions.setUser(username);
@@ -569,16 +590,22 @@ public class PostgresClient {
     logPostgresConfig();
 
     if (sharedPgPool) {
-      client = PG_POOLS.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, HOST));
-      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, HOST_READER));
+      client = PG_POOLS.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, false));
+      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, true));
     } else {
-      client = createPgPool(vertx, postgreSQLClientConfig, HOST);
-      readClient = createPgPool(vertx, postgreSQLClientConfig, HOST_READER);
+      client = createPgPool(vertx, postgreSQLClientConfig, false);
+      readClient = createPgPool(vertx, postgreSQLClientConfig, true);
     }
+
+    readClient = readClient != null ? readClient : client;
   }
 
-  static PgPool createPgPool(Vertx vertx, JsonObject configuration, String desiredHost) {
-    PgConnectOptions connectOptions = createPgConnectOptions(configuration, desiredHost);
+  static PgPool createPgPool(Vertx vertx, JsonObject configuration, Boolean isReader) {
+    PgConnectOptions connectOptions = createPgConnectOptions(configuration, isReader);
+
+    if (connectOptions == null) {
+      return null;
+    }
 
     PoolOptions poolOptions = new PoolOptions();
     poolOptions.setMaxSize(
@@ -3496,43 +3523,47 @@ public class PostgresClient {
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
    */
-  void getSQLConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
-    getConnection(res -> {
-      if (res.failed()) {
-        handler.handle(Future.failedFuture(res.cause()));
-        return;
+  void getSQLConnection(AsyncResult<PgConnection> res, int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
+    if (res.failed()) {
+      handler.handle(Future.failedFuture(res.cause()));
+      return;
+    }
+
+    PgConnection pgConnection = res.result();
+
+    if (queryTimeout == 0) {
+      handler.handle(Future.succeededFuture(new SQLConnection(pgConnection, null, null)));
+      return;
+    }
+
+    long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
+      if (ar.succeeded()) {
+        log.warn(
+            String.format("Cancelling request due to timeout after : %d ms",
+                queryTimeout));
+      } else {
+        log.warn("Failed to send cancelling request", ar.cause());
       }
+    }));
 
-      PgConnection pgConnection = res.result();
-
-      if (queryTimeout == 0) {
-        handler.handle(Future.succeededFuture(new SQLConnection(pgConnection, null, null)));
-        return;
-      }
-
-      long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
-        if (ar.succeeded()) {
-          log.warn(
-              String.format("Cancelling request due to timeout after : %d ms",
-                  queryTimeout));
-        } else {
-          log.warn("Failed to send cancelling request", ar.cause());
-        }
-      }));
-
-      SQLConnection sqlConnection = new SQLConnection(pgConnection, null, timerId);
-      handler.handle(Future.succeededFuture(sqlConnection));
-    });
+    SQLConnection sqlConnection = new SQLConnection(pgConnection, null, timerId);
+    handler.handle(Future.succeededFuture(sqlConnection));
   }
 
   /**
-   * Don't forget to close the connection!
+   * Get the SQL Write connection
    *
-   * <p>Use closeAndHandleResult as replyHandler, for example:
-   *
-   * <pre>getSQLReadConnection(timeout, conn -> execute(conn, sql, params, closeAndHandleResult(conn, replyHandler)))</pre>
-   *
-   * <p>Or avoid this method and use the preferred {@link #withConn(int, Function)}.
+   * @see #withReadConn(Function)
+   * @see #withReadConnection(Function)
+   * @see #withTrans(Function)
+   * @see #withTransaction(Function)
+   */
+  void getSQLConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
+    getConnection(res -> getSQLConnection(res, queryTimeout, handler));
+  }
+
+  /**
+   * Get the SQL Read connection
    *
    * @see #withReadConn(Function)
    * @see #withReadConnection(Function)
@@ -3540,32 +3571,7 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    */
   void getSQLReadConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
-    getReadConnection(res -> {
-      if (res.failed()) {
-        handler.handle(Future.failedFuture(res.cause()));
-        return;
-      }
-
-      PgConnection pgConnection = res.result();
-
-      if (queryTimeout == 0) {
-        handler.handle(Future.succeededFuture(new SQLConnection(pgConnection, null, null)));
-        return;
-      }
-
-      long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
-        if (ar.succeeded()) {
-          log.warn(
-              String.format("Cancelling request due to timeout after : %d ms",
-                  queryTimeout));
-        } else {
-          log.warn("Failed to send cancelling request", ar.cause());
-        }
-      }));
-
-      SQLConnection sqlConnection = new SQLConnection(pgConnection, null, timerId);
-      handler.handle(Future.succeededFuture(sqlConnection));
-    });
+    getReadConnection(res -> getSQLConnection(res, queryTimeout, handler));
   }
 
   /**
