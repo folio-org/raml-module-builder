@@ -116,9 +116,9 @@ public class PostgresClient {
   private static final String    PASSWORD = "password";
   private static final String    USERNAME = "username";
   private static final String    HOST      = "host";
-  private static final String    HOST_READER = "hostReader";
+  private static final String    HOST_READER = "host_reader";
   private static final String    PORT      = "port";
-  private static final String    PORT_READER = "portReader";
+  private static final String    PORT_READER = "port_reader";
   private static final String    DATABASE  = "database";
   private static final String    RECONNECT_ATTEMPTS = "reconnectAttempts";
   private static final String    RECONNECT_INTERVAL = "reconnectInterval";

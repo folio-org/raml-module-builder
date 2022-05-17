@@ -71,9 +71,9 @@ public class PostgresClientTest {
   private static final int DEFAULT_LIMIT = 10;
 
   private static final String HOST = "host";
-  private static final String HOST_READER = "hostReader";
+  private static final String HOST_READER = "host_reader";
   private static final String POST = "post";
-  private static final String POST_READER = "postReader";
+  private static final String POST_READER = "post_reader";
 
   @Before
   public void initConfig() {
@@ -207,6 +207,36 @@ public class PostgresClientTest {
       // TODO: enable when available in vertx-sql-client/vertx-pg-client
       // https://issues.folio.org/browse/RMB-657
       // assertThat(options.getConnectionReleaseDelay(), is(1000));
+      assertThat(options.getReconnectAttempts(), is(3));
+      assertThat(options.getReconnectInterval(), is(2000L));
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testPgConnectOptionsWithReaderConfig() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_HOST_READER", "myhost_reader",
+          "DB_PORT_READER", "12345",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, HOST_READER);
+      assertThat(options.getHost(), is("myhost_reader"));
+      assertThat(options.getPort(), is(12345));
+      assertThat(options.getUser(), is("myuser"));
+      assertThat(options.getPassword(), is("mypassword"));
+      assertThat(options.getDatabase(), is("mydatabase"));
       assertThat(options.getReconnectAttempts(), is(3));
       assertThat(options.getReconnectInterval(), is(2000L));
     } finally {
