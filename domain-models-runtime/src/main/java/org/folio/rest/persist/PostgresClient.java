@@ -437,6 +437,10 @@ public class PostgresClient {
   }
 
   public Future<Void> closeClient(){
+    if (client == null){
+      return Future.succeededFuture();
+    }
+
     PgPool clientToClose = client;
     PgPool readClientToClose = client == readClient ? null : readClient;
     client = null;
