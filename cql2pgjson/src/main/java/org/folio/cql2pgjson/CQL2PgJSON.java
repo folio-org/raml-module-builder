@@ -808,7 +808,7 @@ public class CQL2PgJSON {
     }
 
     // Clean the term. Remove stand-alone ' *', not valid word.
-    String term = node.getTerm().replaceAll(" +\\*", "").trim();
+    String term = node.getTerm().replaceAll(" +[*]", "").trim();
     Index schemaIndex = null;
     if (targetTable != null) {
       schemaIndex = DbSchemaUtils.getIndex(index, targetTable.getFullTextIndex());

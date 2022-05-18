@@ -4,6 +4,7 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.matchesRegex;
+import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
@@ -280,6 +281,13 @@ public class TenantAPIIT {
   }
 
   @Test
+  public void requirePostgres(TestContext context) {
+    new TenantAPI().requirePostgres(vertx.getOrCreateContext(), "990000", "99.0")
+    .onComplete(context.asyncAssertFailure(
+        e -> assertThat(e.getMessage(), startsWith("Expected PostgreSQL server version 99.0 or later"))));
+  }
+
+  @Test
   public void previousSchemaSqlExistsTrue(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI();
     String tenantId = TenantTool.tenantId(okapiHeaders);
@@ -314,6 +322,11 @@ public class TenantAPIIT {
       }
 
       @Override
+      Future<Void> requirePostgres12(Context context) {
+        return Future.succeededFuture();
+      }
+
+      @Override
       Future<Boolean> tenantExists(Context context, String tenantId) {
         return Future.succeededFuture(false);
       }
@@ -335,6 +348,11 @@ public class TenantAPIIT {
       @Override
       PostgresClient postgresClient(Context context) {
         return postgresClient;
+      }
+
+      @Override
+      Future<Void> requirePostgres12(Context context) {
+        return Future.succeededFuture();
       }
 
       @Override
