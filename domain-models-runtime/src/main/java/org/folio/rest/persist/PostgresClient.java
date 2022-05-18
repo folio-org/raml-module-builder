@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
 import io.netty.handler.ssl.OpenSsl;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -435,6 +436,15 @@ public class PostgresClient {
     return closeClient(client);
   }
 
+  public Future<Void> closeClient(){
+    PgPool clientToClose = client;
+    PgPool readClientToClose = client == readClient ? null : readClient;
+    client = null;
+    readClient = null;
+    return CompositeFuture.all(closeClient(clientToClose), closeClient(readClientToClose))
+        .mapEmpty();
+  }
+
   /**
    * Close the SQL client of this PostgresClient instance.
    * This is idempotent: additional close invocations are always successful.
@@ -457,8 +467,11 @@ public class PostgresClient {
    * @param whenDone invoked with the close result
    */
   public void closeClient(Handler<AsyncResult<Void>> whenDone) {
+    closeClient().onComplete(whenDone);
+    /*
     closeReadClient().onComplete(whenDone);
     closeWritelient().onComplete(whenDone);
+     */
   }
 
   /**
@@ -483,8 +496,12 @@ public class PostgresClient {
         clients.add(postgresClient);
       }
     });
+    clients.forEach(PostgresClient::closeClient);
+    /*
     clients.forEach(PostgresClient::closeReadClient);
     clients.forEach(PostgresClient::closeWritelient);
+    */
+
   }
 
   /**
@@ -493,8 +510,11 @@ public class PostgresClient {
   public static void closeAllClients() {
     // copy of values() because closeClient will delete them from CONNECTION_POOL
     for (PostgresClient client : CONNECTION_POOL.values().toArray(new PostgresClient [0])) {
+      client.closeClient();
+      /*
       client.closeReadClient();
       client.closeWritelient();
+       */
     }
 
     PG_POOLS.values().forEach(PgPool::close);
