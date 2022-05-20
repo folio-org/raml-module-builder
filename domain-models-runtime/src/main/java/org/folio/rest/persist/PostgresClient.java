@@ -29,6 +29,8 @@ import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
+
+
 import java.io.IOException;
 import java.lang.StackWalker.Option;
 import java.lang.reflect.InvocationTargetException;
@@ -425,17 +427,33 @@ public class PostgresClient {
    * This is idempotent: additional close invocations are always successful.
    */
   public Future<Void> closeReadClient() {
+    if (readClient == null) {
+      return Future.succeededFuture();
+    }
+    PgPool clientToClose = readClient;
     readClient = null;
-    return closeClient(readClient);
+    CONNECTION_POOL.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
+    if (sharedPgPool) {
+      return Future.succeededFuture();
+    }
+    return clientToClose.close();
   }
 
   /**
    * Close the SQL writer and reader clients of this PostgresClient instance in succession.
    * This is idempotent: additional close invocations are always successful.
    */
-  public Future<Void> closeWritelient() {
+  public Future<Void> closeWriteClient() {
+    if (client == null) {
+      return Future.succeededFuture();
+    }
+    PgPool clientToClose = client;
     client = null;
-    return closeClient(client);
+    CONNECTION_POOL.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
+    if (sharedPgPool) {
+      return Future.succeededFuture();
+    }
+    return clientToClose.close();
   }
 
   public Future<Void> closeClient(){
@@ -447,8 +465,13 @@ public class PostgresClient {
     PgPool readClientToClose = client == readClient ? null : readClient;
     client = null;
     readClient = null;
+
+    closeClient(clientToClose);
+    return closeClient(readClientToClose);
+    /*
     return CompositeFuture.all(closeClient(clientToClose), closeClient(readClientToClose))
         .mapEmpty();
+    */
   }
 
   /**
@@ -473,11 +496,11 @@ public class PostgresClient {
    * @param whenDone invoked with the close result
    */
   public void closeClient(Handler<AsyncResult<Void>> whenDone) {
-    closeClient().onComplete(whenDone);
-    /*
+    //closeClient().onComplete(whenDone);
+
     closeReadClient().onComplete(whenDone);
-    closeWritelient().onComplete(whenDone);
-     */
+    closeWriteClient().onComplete(whenDone);
+
   }
 
   /**
@@ -502,12 +525,10 @@ public class PostgresClient {
         clients.add(postgresClient);
       }
     });
-    clients.forEach(PostgresClient::closeClient);
-    /*
-    clients.forEach(PostgresClient::closeReadClient);
-    clients.forEach(PostgresClient::closeWritelient);
-    */
+   // clients.forEach(PostgresClient::closeClient);
 
+    clients.forEach(PostgresClient::closeReadClient);
+    clients.forEach(PostgresClient::closeWriteClient);
   }
 
   /**
@@ -1197,7 +1218,7 @@ public class PostgresClient {
    * Update the entities using a single transaction, the id property is used for matching.
    * @param table  table to update
    * @param entities  each array element is a String with the content for the JSONB field of table
-   * @param repylHandler  one {@link RowSet} per array element with {@link RowSet#rowCount()} information
+   * @param replyHandler  one {@link RowSet} per array element with {@link RowSet#rowCount()} information
    */
   public void updateBatch(String table, JsonArray entities, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     updateBatch(table, entities).onComplete(replyHandler);
@@ -1620,7 +1641,7 @@ public class PostgresClient {
    * @param table - table to update
    * @param section - see UpdateSection class
    * @param when - Criterion object
-   * @param replyHandler
+   * @param returnUpdatedIds
    *
    */
   public Future<RowSet<Row>> update(String table, UpdateSection section, Criterion when, boolean returnUpdatedIds) {
@@ -1756,7 +1777,7 @@ public class PostgresClient {
 
   /**
    * Delete as part of a transaction
-   * @param conn where to run, can be within a transaction
+   * @param sqlConnection where to run, can be within a transaction
    * @param table table name without schema
    * @param filter which records to delete
    * @param replyHandler empty {@link RowSet} with {@link RowSet#rowCount()} information
