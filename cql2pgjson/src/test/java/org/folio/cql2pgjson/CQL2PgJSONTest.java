@@ -800,12 +800,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "id=*,                                       true",
-    "id=\"\",                                    true",
+    "id=*,    true",
+    "id=\"\", false /* id == invalid UUID */",  // exact (field) match, empty string never matches UUID
     "groupId=*,                                  (groupId BETWEEN '00000000-0000-0000-0000-000000000000' "
                                                            + "AND 'ffffffff-ffff-ffff-ffff-ffffffffffff')",
-    "groupId=\"\",                               (groupId BETWEEN '00000000-0000-0000-0000-000000000000' "
-                                                           + "AND 'ffffffff-ffff-ffff-ffff-ffffffffffff')",
+    "groupId=\"\",                               false /* groupId == invalid UUID */",
     "id=\"11111111-1111-1111-1111-111111111111\",              id='11111111-1111-1111-1111-111111111111'",
     "id=\"2*\",                                       (id BETWEEN '20000000-0000-0000-0000-000000000000' "
                                                            + "AND '2fffffff-ffff-ffff-ffff-ffffffffffff')",
@@ -850,8 +849,9 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=11111111-1111-1111-1111-11111111111    #",
     "id=11111111-1111-1111-1111-1111111111111  #",
     "id=11111111-1111-1111-1111-111111111111-1 #",
-    "id=\"\"                                   # Jo Jane; Ka Keller; Lea Long",
-    "id<>\"\"                                  #",
+    "id=\"\"                                   #",    // exact match, empty string never matches UUID
+    "id==\"\"                                  #",
+    "id<>\"\"                                  # Jo Jane; Ka Keller; Lea Long",
     "id=1*                                     # Jo Jane",
     "id=1**                                    # Jo Jane",
     "id=1***                                   # Jo Jane",
