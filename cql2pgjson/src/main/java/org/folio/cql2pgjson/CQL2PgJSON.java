@@ -609,9 +609,6 @@ public class CQL2PgJSON {
           + "UUID " + columnName + " only supports '=', '==', and '<>' (possibly with right truncation)");
     }
 
-    if (StringUtils.isEmpty(term)) {
-      term = "*";
-    }
     if ("*".equals(term) && "id".equals(columnName)) {
       return equals ? "true" : "false";  // no need to check
       // since id is a mandatory field, so
