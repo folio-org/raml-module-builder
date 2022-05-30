@@ -25,6 +25,7 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.ws.rs.core.Response;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.ObjectMapperTool;
@@ -918,17 +919,16 @@ public final class PgUtil {
     }
   }
 
-    /**
-    * Delete records by CQL.
-    * @param table  the table that contains the records
-    * @param cql  the CQL query for filtering the records
-    * @param okapiHeaders  http headers provided by okapi
-    * @param vertxContext  the current context
-    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
-    *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
-    * @param asyncResultHandler  where to return the result created by the responseDelegateClass
-    */
-  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+  /**
+   * Delete records by CQL.
+   * @param table  the table that contains the records
+   * @param cql  the CQL query for filtering the records, required
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @param asyncResultHandler  where to return the result created by the responseDelegateClass
+   */
   public static void delete(String table,
       String cql,
       Map<String, String> okapiHeaders, Context vertxContext,
@@ -937,17 +937,16 @@ public final class PgUtil {
     delete(table, cql, okapiHeaders, vertxContext, responseDelegateClass).onComplete(asyncResultHandler);
   }
 
-   /**
+  /**
    * Delete records by CQL.
-    * @param table  the table that contains the records
-    * @param cql  the CQL query for filtering the records
-    * @param okapiHeaders  http headers provided by okapi
-    * @param vertxContext  the current context
-    * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
-*    must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
-    * @return future where to return the result created by the responseDelegateClass
-    */
-  @SuppressWarnings({"unchecked", "squid:S107"})     // Method has >7 parameters
+   * @param table  the table that contains the records
+   * @param cql  the CQL query for filtering the records, required
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseDelegateClass  the ResponseDelegate class generated as defined by the RAML file,
+   *     must have these methods:  respond204(), respond400WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return future where to return the result created by the responseDelegateClass
+   */
   public static Future<Response> delete(String table,
       String cql,
       Map<String, String> okapiHeaders, Context vertxContext,
@@ -972,6 +971,10 @@ public final class PgUtil {
     }
 
     try {
+      if (StringUtils.isBlank(cql)) {
+        return response("query with CQL expression is required", respond400, respond500);
+      }
+
       CQL2PgJSON cql2pgJson = new CQL2PgJSON(table + "." + JSON_COLUMN);
       CQLWrapper cqlWrapper = new CQLWrapper(cql2pgJson, cql, -1, -1);
       PreparedCQL preparedCql = new PreparedCQL(table, cqlWrapper, okapiHeaders);
@@ -1003,7 +1006,7 @@ public final class PgUtil {
     }
   }
 
-    /**
+  /**
    * Get a record by id.
    *
    * <p>All exceptions are caught and reported via the asyncResultHandler.
