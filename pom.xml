@@ -30,8 +30,8 @@
     <aspectj.version>1.9.7</aspectj.version>
     <junit-jupiter-version>5.8.1</junit-jupiter-version>
     <maven.version>3.8.4</maven.version>
-    <vertx.version>4.2.6</vertx.version>
-    <micrometer.version>1.6.3</micrometer.version>  <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
+    <vertx.version>4.3.1</vertx.version>
+    <micrometer.version>1.8.4</micrometer.version>  <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -54,14 +54,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>31.0.1-jre</version>
-      </dependency>
-      <dependency>
-        <groupId>com.fasterxml.jackson</groupId>
-        <artifactId>jackson-bom</artifactId> <!-- remove for vertx >= 4.2.7 -->
-        <version>2.13.2.20220324</version> <!-- jackson-databind 2.13.2.1 fixing https://nvd.nist.gov/vuln/detail/CVE-2020-36518 -->
-        <type>pom</type>
-        <scope>import</scope>
+        <version>31.1-jre</version>
       </dependency>
       <dependency>
         <groupId>io.vertx</groupId>
@@ -80,7 +73,7 @@
       <dependency>
         <groupId>io.rest-assured</groupId>
         <artifactId>rest-assured</artifactId>
-        <version>4.5.1</version>
+        <version>5.1.0</version>
       </dependency>
       <dependency>
         <groupId>javax.el</groupId>
@@ -171,13 +164,10 @@
       </dependency>
       <dependency>
         <groupId>org.mockito</groupId>
-        <artifactId>mockito-core</artifactId>
-        <version>4.3.1</version>
-      </dependency>
-      <dependency>
-        <groupId>org.mockito</groupId>
-        <artifactId>mockito-junit-jupiter</artifactId>
-        <version>4.3.1</version>
+        <artifactId>mockito-bom</artifactId>
+        <version>4.6.0</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>org.glassfish.jersey.media</groupId>
@@ -192,7 +182,7 @@
       <dependency>
         <groupId>org.hibernate.validator</groupId>
         <artifactId>hibernate-validator</artifactId>
-        <version>6.2.2.Final</version>
+        <version>6.2.3.Final</version>
         <exclusions>
           <exclusion> <!-- we have javax.validation:validation-api providing the same classes -->
             <groupId>jakarta.validation</groupId>
@@ -208,7 +198,12 @@
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-common</artifactId>
-        <version>4.12.0</version>
+        <version>4.14.1</version>
+      </dependency>
+      <dependency>
+        <groupId>org.folio.okapi</groupId>
+        <artifactId>okapi-testing</artifactId>
+        <version>4.14.1</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -218,7 +213,7 @@
       <dependency>
         <groupId>org.testcontainers</groupId>
         <artifactId>testcontainers-bom</artifactId>
-        <version>1.16.2</version>
+        <version>1.17.2</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -280,6 +275,7 @@
           <version>2.22.2</version>
           <configuration>
             <useSystemClassLoader>false</useSystemClassLoader>
+            <classesDirectory>${project.build.outputDirectory}</classesDirectory>
           </configuration>
           <executions>
             <execution>
@@ -361,6 +357,13 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
         <version>3.1.2</version>
+        <dependencies>
+          <dependency>
+            <groupId>com.puppycrawl.tools</groupId>
+            <artifactId>checkstyle</artifactId>
+            <version>10.3</version>
+          </dependency>
+        </dependencies>
         <executions>
           <execution>
             <id>verify-style</id>
