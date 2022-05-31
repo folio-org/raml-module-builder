@@ -1,3 +1,15 @@
+## 33.2.10 2022-05-31
+
+Fixes:
+
+* [RMB-913](https://issues.folio.org/browse/RMB-913) Fail if PostgreSQL version is too old
+* [RMB-914](https://issues.folio.org/browse/RMB-914) Update raml-util to avoid localhost fetch RMB-914
+* [RMB-915](https://issues.folio.org/browse/RMB-915) public PostgresClient#getTenantId()
+* [RMB-917](https://issues.folio.org/browse/RMB-917) id == "", foreignKeyId == "" should never match
+* [RMB-918](https://issues.folio.org/browse/RMB-918) Fix Jakarta Expression Language validation (CVE-2021-28170)
+* [RMB-919](https://issues.folio.org/browse/RMB-919) Delete by CQL rejects missing or empty CQL
+* [RMB-920](https://issues.folio.org/browse/RMB-920) Upgrade dependencies: Vert.x 4.3.1, ...
+
 ## 33.2.9 2022-04-22
 
 Fix:
