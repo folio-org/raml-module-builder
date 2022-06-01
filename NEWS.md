@@ -1,7 +1,44 @@
 ## 34.0.0 2021-12-03
 
-New features:
+Breaking changes:
  * [RMB 817](https://issues.folio.org/browse/RMB-817) Remove broken PostgresClient.get(String table, Object entity, ...) methods
+ * [RMB-759](https://issues.folio.org/browse/RMB-759) Consistent format for createdDate and updatedDate metadata
+ * [RMB-815](https://issues.folio.org/browse/RMB-815) Remove UtilityClassTester
+ * [RMB-817](https://issues.folio.org/browse/RMB-817) Remove broken PostgresClient.get(String table, Object entity, ...) methods
+ * [RMB-883](https://issues.folio.org/browse/RMB-883) Delete deprecated TenantLoading.addJsonIdContent, .addJsonIdBasename
+ * [RMB-884](https://issues.folio.org/browse/RMB-884) Delete deprecated RollBackURL
+ * [RMB-885](https://issues.folio.org/browse/RMB-885) Delete deprecated PostgresClient.get, .streamGet methods
+ * [RMB-904](https://issues.folio.org/browse/RMB-904) Remove unused object2Bytes, readURL, isValidURL in NetworkUtils
+
+New features:
+ * [RMB-546](https://issues.folio.org/browse/RMB-546) Support TLS/SSL connections to Postgres
+ * [RMB-547](https://issues.folio.org/browse/RMB-547) PostgreSQL SSL CA Certificate configuration option 
+ * [RMB-817](https://issues.folio.org/browse/RMB-817) Make maxFormAttributeSize configurable
+ * [RMB-886](https://issues.folio.org/browse/RMB-886) TenantLoading withPostIgnore(), no overwrite on upgrade
+ * [RMB-887](https://issues.folio.org/browse/RMB-887) deadlock in saveBatch, updateBatch, upsertBatch
+ * [RMB-897](https://issues.folio.org/browse/RMB-897) Use org.folio.okapi.common.XOkapiHeaders
+ * [RMB-910](https://issues.folio.org/browse/RMB-910) Replace JUL logging by log4j logging
+
+Bug fixes:
+ * [RMB-888](https://issues.folio.org/browse/RMB-888) Log4j 2.15.0 fixing remote execution (CVE-2021-44228)
+ * [RMB-889](https://issues.folio.org/browse/RMB-889) Log4j 2.16.0 disabling JDNI and lookups (CVE-2021-44228)
+ * [RMB-890](https://issues.folio.org/browse/RMB-890) No context parameters logged
+ * [RMB-891](https://issues.folio.org/browse/RMB-891) Log4j 2.17.0 fixing self-referential lookups in MDC (CVE-2021-45105)
+ * [RMB-893](https://issues.folio.org/browse/RMB-893) Bump dependencies: Vert.x 4.2.3, log4j 2.17.1, etc.
+ * [RMB-894](https://issues.folio.org/browse/RMB-894) Exclude duplicate dependencies
+ * [RMB-898](https://issues.folio.org/browse/RMB-898) Update Vertx (to 4.2.5) and other dependencies
+ * [RMB-901](https://issues.folio.org/browse/RMB-901) Set reconnectAttempts and reconnectInterval for PgConnectOptions
+ * [RMB-907](https://issues.folio.org/browse/RMB-907) Vert.x 4.2.6, log4j 2.17.2, jackson-databind 2.13.2.1 (CVE-2020-36518)
+ * [RMB-908](https://issues.folio.org/browse/RMB-908) Skip indexes, foreign key, OL of deleted table
+ * [RMB-909](https://issues.folio.org/browse/RMB-909) Wording of warning about missing table configuration
+ * [RMB-911](https://issues.folio.org/browse/RMB-911) Optimistic locking \_version overflow
+ * [RMB-913](https://issues.folio.org/browse/RMB-913) Fail if PostgreSQL version is too old
+ * [RMB-914](https://issues.folio.org/browse/RMB-914) Update raml-util to avoid localhost fetch RMB-914
+ * [RMB-915](https://issues.folio.org/browse/RMB-915) public PostgresClient#getTenantId()
+ * [RMB-917](https://issues.folio.org/browse/RMB-917) id == "", foreignKeyId == "" should never match
+ * [RMB-918](https://issues.folio.org/browse/RMB-918) Fix Jakarta Expression Language validation (CVE-2021-28170)
+ * [RMB-919](https://issues.folio.org/browse/RMB-919) Delete by CQL rejects missing or empty CQL
+ * [RMB-920](https://issues.folio.org/browse/RMB-920) Upgrade dependencies: Vert.x 4.3.1, ...
 
 ## 33.2.0 2021-11-30
 

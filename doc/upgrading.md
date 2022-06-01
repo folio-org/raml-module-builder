@@ -65,6 +65,34 @@ The `PostgresClient.streamGet` method without `PostgresClientStreamResult` param
 
 `PostgresClient.get` methods with `String where` or `String filter` parameter have been removed to reduce SQL injection issues. Use `PostgresClient.get` methods with `CQLWrapper` or `Criterion` parameter instead.
 
+#### [RMB-759](https://issues.folio.org/browse/RMB-759)
+
+The format of metadata.createdDate and metadata.updatedDate has changed.
+
+Old:
+
+```
+"metadata": {
+  "createdDate": "2020-10-19T09:31:31.529",
+  "updatedDate": "2020-10-19T09:31:31.529+00:00",
+  "createdByUserId": "ba6baf95-bf14-4020-b44c-0cad269fb5c9",
+  "updatedByUserId": "ba6baf95-bf14-4020-b44c-0cad269fb5c9"
+}
+```
+
+New:
+
+```
+"metadata": {
+  "createdDate": "2020-10-19T09:31:31.529Z",
+  "updatedDate": "2020-10-19T09:31:31.529Z",
+  "createdByUserId": "ba6baf95-bf14-4020-b44c-0cad269fb5c9",
+  "updatedByUserId": "ba6baf95-bf14-4020-b44c-0cad269fb5c9"
+}
+```
+
+This may cause some unit tests to fail, use java.time.Instant and compare Instants to be format agnostic.
+
 ## Version 33.2
 
 #### [RMB-718](https://issues.folio.org/browse/RMB-718), [FOLIO-3351](https://issues.folio.org/browse/FOLIO-3351)
