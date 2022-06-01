@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>33.2.10-SNAPSHOT</version>
+    <version>33.2.11-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -89,7 +89,13 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>42.3.2</version>
+      <version>42.3.6</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.folio.okapi</groupId>
+      <artifactId>okapi-testing</artifactId>
       <scope>test</scope>
     </dependency>
 

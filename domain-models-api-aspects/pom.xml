@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>33.2.10-SNAPSHOT</version>
+    <version>33.2.11-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-api-aspects</artifactId>
 
@@ -40,7 +40,7 @@
     </dependency>
     <dependency>
       <groupId>org.glassfish</groupId>
-      <artifactId>javax.el</artifactId>
+      <artifactId>jakarta.el</artifactId>
     </dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
@@ -57,7 +57,7 @@
     <dependency>
       <groupId>org.javassist</groupId>
       <artifactId>javassist</artifactId>
-      <version>3.28.0-GA</version>
+      <version>3.29.0-GA</version>
     </dependency>
 
     <!-- test dependencies -->
