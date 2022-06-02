@@ -29,7 +29,6 @@ import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 
-
 import java.io.IOException;
 import java.lang.StackWalker.Option;
 import java.lang.reflect.InvocationTargetException;
@@ -422,44 +421,13 @@ public class PostgresClient {
   }
 
   /**
-   * Close the SQL writer and reader clients of this PostgresClient instance in succession.
+   * Close the SQL client of this PostgresClient instance.
    * This is idempotent: additional close invocations are always successful.
    */
-  public Future<Void> closeReadClient() {
-    if (readClient == null) {
-      return Future.succeededFuture();
-    }
-    PgPool clientToClose = readClient;
-    readClient = null;
-    CONNECTION_POOL.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
-    if (sharedPgPool) {
-      return Future.succeededFuture();
-    }
-    return clientToClose.close();
-  }
-
-  /**
-   * Close the SQL writer and reader clients of this PostgresClient instance in succession.
-   * This is idempotent: additional close invocations are always successful.
-   */
-  public Future<Void> closeWriteClient() {
+  public Future<Void> closeClient() {
     if (client == null) {
       return Future.succeededFuture();
     }
-    PgPool clientToClose = client;
-    client = null;
-    CONNECTION_POOL.removeMultiKey(vertx, tenantId);  // remove (vertx, tenantId, this) entry
-    if (sharedPgPool) {
-      return Future.succeededFuture();
-    }
-    return clientToClose.close();
-  }
-
-  public Future<Void> closeClient(){
-    if (client == null) {
-      return Future.succeededFuture();
-    }
-
     PgPool clientToClose = client;
     PgPool readClientToClose = client == readClient ? null : readClient;
     client = null;
@@ -470,11 +438,7 @@ public class PostgresClient {
     return closeClient(readClientToClose);
   }
 
-  /**
-   * Close the SQL client of this PostgresClient instance.
-   * This is idempotent: additional close invocations are always successful.
-   */
-  public Future<Void> closeClient(PgPool clientToClose) {
+  private Future<Void> closeClient(PgPool clientToClose) {
     if (clientToClose == null) {
       return Future.succeededFuture();
     }
