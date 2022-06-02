@@ -29,7 +29,7 @@ public final class TenantTool {
    */
   public static String tenantId(Map<String, String> headers) {
     String tenant = null;
-    for (var entry : headers.entrySet()) {
+    for (Map.Entry<String,String> entry : headers.entrySet()) {
       if (entry.getKey().equalsIgnoreCase(RestVerticle.OKAPI_HEADER_TENANT)) {
         tenant = entry.getValue();
         break;
