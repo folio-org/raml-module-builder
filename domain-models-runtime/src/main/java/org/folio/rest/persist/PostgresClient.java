@@ -457,7 +457,7 @@ public class PostgresClient {
   }
 
   public Future<Void> closeClient(){
-    if (client == null){
+    if (client == null) {
       return Future.succeededFuture();
     }
 
@@ -466,12 +466,9 @@ public class PostgresClient {
     client = null;
     readClient = null;
 
+    // this method may be called when Vert.x is not using event loop, so no compose. Just wait for the one!
     closeClient(clientToClose);
     return closeClient(readClientToClose);
-    /*
-    return CompositeFuture.all(closeClient(clientToClose), closeClient(readClientToClose))
-        .mapEmpty();
-    */
   }
 
   /**
@@ -496,11 +493,7 @@ public class PostgresClient {
    * @param whenDone invoked with the close result
    */
   public void closeClient(Handler<AsyncResult<Void>> whenDone) {
-    //closeClient().onComplete(whenDone);
-
-    closeReadClient().onComplete(whenDone);
-    closeWriteClient().onComplete(whenDone);
-
+    closeClient().onComplete(whenDone);
   }
 
   /**
@@ -525,10 +518,7 @@ public class PostgresClient {
         clients.add(postgresClient);
       }
     });
-   // clients.forEach(PostgresClient::closeClient);
-
-    clients.forEach(PostgresClient::closeReadClient);
-    clients.forEach(PostgresClient::closeWriteClient);
+    clients.forEach(PostgresClient::closeClient);
   }
 
   /**
@@ -538,10 +528,6 @@ public class PostgresClient {
     // copy of values() because closeClient will delete them from CONNECTION_POOL
     for (PostgresClient client : CONNECTION_POOL.values().toArray(new PostgresClient [0])) {
       client.closeClient();
-      /*
-      client.closeReadClient();
-      client.closeWritelient();
-       */
     }
 
     PG_POOLS.values().forEach(PgPool::close);
