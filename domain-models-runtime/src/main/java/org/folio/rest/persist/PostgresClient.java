@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
 import io.netty.handler.ssl.OpenSsl;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
