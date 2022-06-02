@@ -860,4 +860,19 @@ public class PostgresClientTest {
     assertThat(PostgresClient.decodePassword(AESTest.ENCRYPTED_PASSWORD_BASE64), is(AESTest.PASSWORD));
     AES.setSecretKey(null);
   }
+
+  @Test
+  public void getReaderClientReturnsDesiredPgPoolClient() {
+    PostgresClient pgClient  = mock(PostgresClient.class);
+
+    JsonObject config = new JsonObject();
+    config.put("DB_PORT_READER", "5433")
+          .put("DB_HOST_READER", "myReaderHost.com")
+          .put("DB_USERNAME", "myuser")
+          .put("DB_PASSWORD", "mypassword");
+
+    PgPool readClient = PostgresClient.createPgPool(Vertx.vertx(), config, true);
+    pgClient.setReaderClient(readClient);
+    assertThat(pgClient.getReaderClient(), is(readClient));
+  }
 }
