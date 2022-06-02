@@ -28,6 +28,13 @@ public final class TenantTool {
    * @return the tenantId for the headers, returns the default "folio_shared" if undefined
    */
   public static String tenantId(Map<String, String> headers) {
-    return calculateTenantId(headers.get(RestVerticle.OKAPI_HEADER_TENANT));
+    String tenant = null;
+    for (var entry : headers.entrySet()) {
+      if (entry.getKey().equalsIgnoreCase(RestVerticle.OKAPI_HEADER_TENANT)) {
+        tenant = entry.getValue();
+        break;
+      }
+    }
+    return calculateTenantId(tenant);
   }
 }
