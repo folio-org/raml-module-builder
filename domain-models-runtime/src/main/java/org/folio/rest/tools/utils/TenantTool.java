@@ -1,7 +1,7 @@
 package org.folio.rest.tools.utils;
 
 import java.util.Map;
-
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.folio.rest.RestVerticle;
 
 /**
@@ -24,8 +24,10 @@ public final class TenantTool {
   }
 
   /**
-   * @param headers HTTP headers to use, may be empty, but not null
-   * @return the tenantId for the headers, returns the default "folio_shared" if undefined
+   * Return the tenantId if available in the headers, or the default "folio_shared" if undefined.
+   *
+   * @param headers HTTP headers to use, may be empty, but not null; the keys of the map must be case insensitive,
+   *    for example {@link CaseInsensitiveMap}
    */
   public static String tenantId(Map<String, String> headers) {
     return calculateTenantId(headers.get(RestVerticle.OKAPI_HEADER_TENANT));
