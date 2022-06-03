@@ -415,6 +415,27 @@ public class PgUtilIT {
   }
 
   @Test
+  public void deleteByCQLWithoutCql(TestContext testContext) {
+    PgUtil.delete("users", null,
+        null, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "query with CQL expression is required"));
+  }
+
+  @Test
+  public void deleteByCQLWithEmptyCql(TestContext testContext) {
+    PgUtil.delete("users", "",
+        null, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "query with CQL expression is required"));
+  }
+
+  @Test
+  public void deleteByCQLWithWhitespaceCql(TestContext testContext) {
+    PgUtil.delete("users", "\t\n \t\n ",
+        null, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
+        asyncAssertSuccess(testContext, 400, "query with CQL expression is required"));
+  }
+
+  @Test
   public void deleteByCQLOK(TestContext testContext) {
     PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
     insert(testContext, pg, "delete_a",  1);
@@ -454,7 +475,6 @@ public class PgUtilIT {
 
   @Test
   public void deleteByCQLSyntaxError(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
     PgUtil.delete("users",  "username==",
         okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 400, "expected index or term, got EOF"));
@@ -462,7 +482,6 @@ public class PgUtilIT {
 
   @Test
   public void deleteByCQLBadTable(TestContext testContext) {
-    PostgresClient pg = PostgresClient.getInstance(vertx, "testtenant");
     PgUtil.delete("users1",  "username==delete_test",
         okapiHeaders, vertx.getOrCreateContext(), Users.DeleteUsersByUserIdResponse.class,
         asyncAssertSuccess(testContext, 400, "relation \"testtenant_raml_module_builder.users1\" does not exist"));
