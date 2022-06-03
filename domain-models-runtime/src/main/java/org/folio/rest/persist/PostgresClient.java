@@ -1931,7 +1931,7 @@ public class PostgresClient {
   public <T> Future<Void> streamGet(String table, Class<T> clazz, CQLWrapper filter,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    return withTrans(conn -> conn.streamGet(table, clazz, filter, replyHandler));
+    return withReadTrans(conn -> conn.streamGet(table, clazz, filter, replyHandler));
   }
 
   /**
@@ -1950,7 +1950,7 @@ public class PostgresClient {
       boolean returnIdField, String distinctOn, List<FacetField> facets,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler) {
 
-    return withTrans(conn -> conn.streamGet(table, clazz, fieldName, filter,
+    return withReadTrans(conn -> conn.streamGet(table, clazz, fieldName, filter,
         returnIdField, distinctOn, facets, replyHandler));
   }
 
@@ -3322,7 +3322,7 @@ public class PostgresClient {
    * @param chunkSize cursor fetch size
    */
   public Future<Void> selectStream(String sql, Tuple params, int chunkSize, Handler<RowStream<Row>> rowStreamHandler) {
-    return withTrans(trans -> trans.selectStream(sql, params, chunkSize, rowStreamHandler));
+    return withReadTrans(trans -> trans.selectStream(sql, params, chunkSize, rowStreamHandler));
   }
 
   /**
@@ -3586,6 +3586,14 @@ public class PostgresClient {
     return withTrans(0, function);
   }
 
+  /**
+   * Execute the given function within a transaction (read only).
+   * <p>Similar {@link #withTrans(Function)}
+   */
+  public <T> Future<T> withReadTrans(Function<Conn, Future<T>> function) {
+    return withReadTransaction(pgConnection -> withTimeout(pgConnection, 0, function));
+  }
+
   private <T> Future<T> withTimeout(PgConnection pgConnection, int queryTimeout,
       Function<Conn, Future<T>> function) {
     if (queryTimeout == 0) {
@@ -3637,19 +3645,31 @@ public class PostgresClient {
    * @param function code to execute
    */
   public <T> Future<T> withTransaction(Function<PgConnection, Future<T>> function) {
-    return getConnection()
-      .flatMap(conn -> conn
-        .begin()
-        .flatMap(tx -> function
-          .apply(conn)
-          .compose(
-            res -> tx
-              .commit()
-              .flatMap(v -> Future.succeededFuture(res)),
-            err -> tx
-              .rollback()
-              .compose(v -> Future.failedFuture(err), failure -> Future.failedFuture(err))))
-        .onComplete(ar -> conn.close()));
+    return withTransaction(getConnection(), function);
+  }
+
+  /**
+   * Execute the given function within a transaction using reader connection.
+   * <p>Similar to {@link #withTransaction(Function)}
+   */
+  public <T> Future<T> withReadTransaction(Function<PgConnection, Future<T>> function) {
+    return withTransaction(getReadConnection(), function);
+  }
+
+  <T> Future<T> withTransaction(Future<PgConnection> fPgConnection, Function<PgConnection, Future<T>> function) {
+    return fPgConnection
+        .flatMap(conn -> conn
+            .begin()
+            .flatMap(tx -> function
+                .apply(conn)
+                .compose(
+                    res -> tx
+                        .commit()
+                        .flatMap(v -> Future.succeededFuture(res)),
+                    err -> tx
+                        .rollback()
+                        .compose(v -> Future.failedFuture(err), failure -> Future.failedFuture(err))))
+            .onComplete(ar -> conn.close()));
   }
 
   /**
