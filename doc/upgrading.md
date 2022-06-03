@@ -97,7 +97,8 @@ This may cause some unit tests to fail, use java.time.Instant and compare Instan
 
 Unit tests that pass X-Okapi-Tenant header into TenantTool.tenantId must
 use a case insensitive map. Replace `Map.of("x-okapi-tenant", "foo")`
-with a `org.apache.commons.collections4.map.CaseInsensitiveMap`.
+with `new CaseInsensitiveMap<>(Map.of("x-okapi-tenant", "foo"))` after
+`import org.apache.commons.collections4.map.CaseInsensitiveMap`.
 
 ## Version 33.2
 
