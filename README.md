@@ -23,6 +23,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Get started with a sample working module](#get-started-with-a-sample-working-module)
 * [Command-line options](#command-line-options)
 * [Environment Variables](#environment-variables)
+* [Read and write database instances setup](#read-and-write-database-instances-setup)
 * [Local development server](#local-development-server)
 * [Creating a new module](#creating-a-new-module)
     * [Step 1: Create new project directory layout](#step-1-create-new-project-directory-layout)
@@ -208,7 +209,7 @@ queryParameters:
 
 From this snippet, an interface (`BibInterface.java`) is generated based on the paths (each path+verb pair generates a method).  This is documented with the examples from your RAML.
 
-Additionally, an object (`Bib.java`) is generated based on the JSON Schema provided.  An example of this may be found in the [A Little More on Validation](#a-little-more-on-validation) section.  
+Additionally, an object (`Bib.java`) is generated based on the JSON Schema provided.  An example of this may be found in the [A Little More on Validation](#a-little-more-on-validation) section.
 
 The following is an example of the interface method signature that would be generated:
 
@@ -353,6 +354,8 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_USERNAME
  - DB_PASSWORD
  - DB_DATABASE
+ - DB_HOST_READER
+ - DB_PORT_READER
  - DB_SERVER_PEM
  - DB_QUERYTIMEOUT
  - DB_CHARSET
@@ -393,7 +396,16 @@ The EXPLAIN ANALYZE - is only performed for PostgresClient.get,
 PostgresClient.select and PostgresClient.join. Not for methods such
 as PostgresClient.getById or PostgresClient.streamGet.
 
+The environment variable `DB_HOST_READER` sets the read database host's URI, if there is a reader instance.
+
+The environment variable `DB_PORT_READER` sets the read database host's port, if there is a reader instance. It is to be used when `DB_HOST_READER` is set.
+
 See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables) section of the Okapi Guide for more information on how to deploy environment variables to RMB modules via Okapi.
+
+## Read and write database instances setup
+RMB supports separating read and write requests to a database reade and write instance, respectively. By default the write instance is used for reading as well, but optionally a read instance can be used for performance efficiency.
+
+To configure the read instance, set its host and port using the `DB_HOST_READER` and `DB_PORT_READER` environment variables. If either of these variables are not set then it will default to use the writer instance.
 
 ## Local development server
 
