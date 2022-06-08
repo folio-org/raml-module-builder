@@ -93,6 +93,13 @@ New:
 
 This may cause some unit tests to fail, use java.time.Instant and compare Instants to be format agnostic.
 
+#### [RMB-944](https://issues.folio.org/browse/RMB-944)
+
+Unit tests that pass X-Okapi-Tenant header into TenantTool.tenantId must
+use a case insensitive map. Replace `Map.of("x-okapi-tenant", "foo")`
+with `new CaseInsensitiveMap<>(Map.of("x-okapi-tenant", "foo"))` after
+`import org.apache.commons.collections4.map.CaseInsensitiveMap`.
+
 ## Version 33.2
 
 #### [RMB-718](https://issues.folio.org/browse/RMB-718), [FOLIO-3351](https://issues.folio.org/browse/FOLIO-3351)
