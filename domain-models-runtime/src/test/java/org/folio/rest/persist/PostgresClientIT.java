@@ -461,7 +461,7 @@ public class PostgresClientIT {
     postgresClient = createA(context, TENANT);
     JsonObject configuration = postgresClient.getConnectionConfig().copy()
         .put("maxPoolSize", maxPoolSize);
-    postgresClient.setClient(PostgresClient.createPgPool(vertx, configuration));
+    postgresClient.setClient(PostgresClient.createPgPool(vertx, configuration, false));
     List<Future> futures = new ArrayList<>();
     for (int i=0; i<maxPoolSize; i++) {
       futures.add(Future.<RowSet<Row>>future(promise ->
@@ -666,6 +666,12 @@ public class PostgresClientIT {
   public void updateX(TestContext context) {
     createFoo(context)
       .update(FOO, xPojo, randomUuid(), context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void getByIdNullConnection(TestContext context) {
+    postgresReadClientNullConnection()
+        .getById(FOO, "id").onComplete(context.asyncAssertFailure());
   }
 
   @Test
@@ -2008,6 +2014,22 @@ public class PostgresClientIT {
       throw new RuntimeException(e);
     }
   }
+
+  /**
+   * @return a PostgresClient where getReadConnection(handler) invokes the handler with
+   * a null result value and success status.
+   */
+  private PostgresClient postgresReadClientNullConnection() {
+    PgPool client = new PgPoolBase();
+    try {
+      PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
+      postgresClient.setReaderClient(client);
+      return postgresClient;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
 
   /**
    * @return a PostgresClient where getConnection(handler) invokes the handler with a failure.

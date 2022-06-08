@@ -247,7 +247,7 @@ public class DemoRamlRestTest {
   @Test
   public void getBookWithRoutingContext(TestContext context)  throws Exception {
     Buffer buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=nullpointer%3Dtrue", 500);
-    context.assertEquals("java.lang.NullPointerException", buf.toString());
+    context.assertTrue(buf.toString().contains("java.lang.NullPointerException"));
 
     Books books;
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test", 200);

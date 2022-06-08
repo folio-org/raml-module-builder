@@ -31,6 +31,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
+import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
@@ -69,6 +70,11 @@ public class PostgresClientTest {
   private static final int DEFAULT_OFFSET = 0;
 
   private static final int DEFAULT_LIMIT = 10;
+
+  private static final String HOST = "host";
+  private static final String HOST_READER = "host_reader";
+  private static final String POST = "post";
+  private static final String POST_READER = "post_reader";
 
   @Before
   public void initConfig() {
@@ -168,7 +174,7 @@ public class PostgresClientTest {
   @Test
   public void testPgConnectOptionsEmpty() {
     JsonObject conf = new JsonObject();
-    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, false);
     assertThat("localhost", is(options.getHost()));
     assertThat(5432, is(options.getPort()));
     assertThat("user", is(options.getUser()));
@@ -193,7 +199,7 @@ public class PostgresClientTest {
           "DB_RECONNECTINTERVAL", "2000"
           ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
-      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf);
+      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, false);
       assertThat(options.getHost(), is("myhost"));
       assertThat(options.getPort(), is(5433));
       assertThat(options.getUser(), is("myuser"));
@@ -204,6 +210,75 @@ public class PostgresClientTest {
       // assertThat(options.getConnectionReleaseDelay(), is(1000));
       assertThat(options.getReconnectAttempts(), is(3));
       assertThat(options.getReconnectInterval(), is(2000L));
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testPgConnectOptionsWithReaderConfig() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_HOST_READER", "myhost_reader",
+          "DB_PORT_READER", "12345",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, true);
+      assertThat(options.getHost(), is("myhost_reader"));
+      assertThat(options.getPort(), is(12345));
+      assertThat(options.getUser(), is("myuser"));
+      assertThat(options.getPassword(), is("mypassword"));
+      assertThat(options.getDatabase(), is("mydatabase"));
+      assertThat(options.getReconnectAttempts(), is(3));
+      assertThat(options.getReconnectInterval(), is(2000L));
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testPgConnectOptionsWithMissingReaderPort() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_HOST_READER", "myhost_reader",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, true);
+      assertNull(options);
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testGettingPgPoolWithMissingReaderHost() throws Exception {
+    try {
+      JsonObject config = new JsonObject();
+      config.put("DB_PORT_READER", "5433")
+            .put("DB_USERNAME", "myuser")
+            .put("DB_PASSWORD", "mypassword");
+
+      PgPool pgPool = PostgresClient.createPgPool(Vertx.vertx(), config, true);
+      assertNull(pgPool);
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());

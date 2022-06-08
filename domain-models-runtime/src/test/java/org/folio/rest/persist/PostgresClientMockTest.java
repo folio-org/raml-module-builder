@@ -40,7 +40,7 @@ public class PostgresClientMockTest {
     when(mockPgConnection.preparedQuery(anyString())).thenReturn(mockPreparedQuery);
     PgPool mockPgPool = mock(PgPool.class);
     when(mockPgPool.getConnection()).thenReturn(Future.succeededFuture(mockPgConnection));
-    when(pc.getClient()).thenReturn(mockPgPool);
+    when(pc.getReaderClient()).thenReturn(mockPgPool);
     SQLConnection mockSQLConnection = new SQLConnection(mockPgConnection, null, null);
     AsyncResult<SQLConnection> mockConn = Future.succeededFuture(mockSQLConnection);
     // tests
