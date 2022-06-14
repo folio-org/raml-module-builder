@@ -49,7 +49,7 @@ from `okapi-testing`. It has same API. Just import
    <dependency>
      <groupId>org.folio.okapi</groupId>
      <artifactId>okapi-testing</artifactId>
-     <version>4.12.0</version>
+     <version>4.14.1</version>
      <scope>test</scope>
    </dependency>
 ```
@@ -99,6 +99,7 @@ Unit tests that pass X-Okapi-Tenant header into TenantTool.tenantId must
 use a case insensitive map. Replace `Map.of("x-okapi-tenant", "foo")`
 with `new CaseInsensitiveMap<>(Map.of("x-okapi-tenant", "foo"))` after
 `import org.apache.commons.collections4.map.CaseInsensitiveMap`.
+This avoids failures caused by fall-back tenant id `folio_shared`.
 
 ## Version 33.2
 
