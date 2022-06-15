@@ -1,3 +1,9 @@
+## 33.2.11 2022-06-15
+
+Fixes:
+
+* [RMB-925](https://issues.folio.org/browse/RMB-925) Revert Postgres 12 version check (RMB-913)
+
 ## 33.2.10 2022-05-31
 
 Fixes:
