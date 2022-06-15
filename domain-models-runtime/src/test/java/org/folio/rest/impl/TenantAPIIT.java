@@ -281,10 +281,35 @@ public class TenantAPIIT {
   }
 
   @Test
-  public void requirePostgres(TestContext context) {
-    new TenantAPI().requirePostgres(vertx.getOrCreateContext(), "990000", "99.0")
+  public void requirePostgresSuccess(TestContext context) {
+    new TenantAPI().requirePostgres(vertx.getOrCreateContext(), 99000, "9.9")
+    .onComplete(context.asyncAssertSuccess());
+  }
+
+  @Test
+  public void requirePostgresFail(TestContext context) {
+    new TenantAPI().requirePostgres(vertx.getOrCreateContext(), 990000, "99.0")
     .onComplete(context.asyncAssertFailure(
         e -> assertThat(e.getMessage(), startsWith("Expected PostgreSQL server version 99.0 or later"))));
+  }
+
+  @Test
+  public void requireCustomPostgresFail(TestContext textContext) {
+    Context context = vertx.getOrCreateContext();
+    context.putLocal("postgres_min_version_num", "1000000");
+    context.putLocal("postgres_min_version", "100.0");
+    new TenantAPI().requirePostgresVersion(context)
+    .onComplete(textContext.asyncAssertFailure(
+        e -> assertThat(e.getMessage(), startsWith("Expected PostgreSQL server version 100.0 or later"))));
+  }
+
+  @Test
+  public void requireCustomPostgresSuccess(TestContext textContext) {
+    Context context = vertx.getOrCreateContext();
+    context.putLocal("postgres_min_version_num", "100000");
+    context.putLocal("postgres_min_version", "10.0");
+    new TenantAPI().requirePostgresVersion(context)
+    .onComplete(textContext.asyncAssertSuccess());
   }
 
   @Test
@@ -322,7 +347,7 @@ public class TenantAPIIT {
       }
 
       @Override
-      Future<Void> requirePostgres12(Context context) {
+      Future<Void> requirePostgresVersion(Context context) {
         return Future.succeededFuture();
       }
 
@@ -351,7 +376,7 @@ public class TenantAPIIT {
       }
 
       @Override
-      Future<Void> requirePostgres12(Context context) {
+      Future<Void> requirePostgresVersion(Context context) {
         return Future.succeededFuture();
       }
 
