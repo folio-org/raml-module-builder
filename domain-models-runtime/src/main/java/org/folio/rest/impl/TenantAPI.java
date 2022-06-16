@@ -49,14 +49,15 @@ public class TenantAPI implements Tenant {
     return PostgresClient.getInstance(context.owner());
   }
 
-  Future<Void> requirePostgres(Context context, String minNum, String minVersion) {
+  Future<Void> requirePostgres(Context context, int minNum, String minVersion) {
     return
         postgresClient(context)
-        .select("SELECT current_setting('server_version_num') AS num, current_setting('server_version') AS version")
+        .select("SELECT current_setting('server_version_num')::int AS num, "
+            + "current_setting('server_version') AS version")
         .map(rowSet -> {
-          String num = rowSet.iterator().next().getString("num");
+          int num = rowSet.iterator().next().getInteger("num");
           String version = rowSet.iterator().next().getString("version");
-          if (minNum.compareTo(num) > 0) {
+          if (minNum > num) {
             throw new UnsupportedOperationException(
                 "Expected PostgreSQL server version " + minVersion + " or later but found " + version);
           }
@@ -64,8 +65,21 @@ public class TenantAPI implements Tenant {
         });
   }
 
-  Future<Void> requirePostgres12(Context context) {
-    return requirePostgres(context, "120000", "12.0");
+  private String getLocalString(Context context, String key) {
+    Object object = context.getLocal(key);
+    if (object == null) {
+      return null;
+    }
+    return object.toString();
+  }
+
+  Future<Void> requirePostgresVersion(Context context) {
+    String minNum = getLocalString(context, "postgres_min_version_num");
+    String min = getLocalString(context, "postgres_min_version");
+    if (minNum == null || min == null) {
+      return requirePostgres(context, 120000, "12.0");
+    }
+    return requirePostgres(context, Integer.parseInt(minNum), min);
   }
 
   Future<Boolean> tenantExists(Context context, String tenantId){
@@ -226,7 +240,7 @@ public class TenantAPI implements Tenant {
     job.setComplete(false);
 
     String location = "/_/tenant/" + id;
-    requirePostgres12(context)
+    requirePostgresVersion(context)
         .compose(x -> tenantExists(context, tenantId))
         .compose(exists -> sqlFile(context, tenantId, tenantAttributes, exists))
         .onFailure(cause -> {
