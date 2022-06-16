@@ -290,7 +290,7 @@ public class TenantAPIIT {
   public void requirePostgresFail(TestContext context) {
     new TenantAPI().requirePostgres(vertx.getOrCreateContext(), 987654, "98.76.54")
     .onComplete(context.asyncAssertFailure(
-        e -> assertThat(e.getMessage(), startsWith("Expected PostgreSQL server version 99.99.99 or later"))));
+        e -> assertThat(e.getMessage(), startsWith("Expected PostgreSQL server version 98.76.54 or later"))));
   }
 
   @Test
