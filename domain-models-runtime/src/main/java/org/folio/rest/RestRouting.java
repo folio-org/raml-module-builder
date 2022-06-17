@@ -3,7 +3,6 @@ package org.folio.rest;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
-import com.google.common.base.Joiner;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -116,16 +115,12 @@ public final class RestRouting {
   }
 
   /**
-   * Copy the headers from source to destination. Join several headers of same key using "; ".
+   * Copy the headers from source to destination; same key may be repeated.
    */
-  private static void copyHeadersJoin(MultivaluedMap<String, String> source, MultiMap destination) {
+  private static void copyHeaders(MultivaluedMap<String, String> source, MultiMap destination) {
     for (Map.Entry<String, List<String>> entry : source.entrySet()) {
-      String jointValue = Joiner.on("; ").join(entry.getValue());
-      try {
-        destination.add(entry.getKey(), jointValue);
-      } catch (IllegalArgumentException e) {
-        throw new IllegalArgumentException(
-            e.getMessage() + ": " + entry.getKey() + " - " + jointValue, e);
+      for (String value : entry.getValue()) {
+        destination.add(entry.getKey(), value);
       }
     }
   }
@@ -577,7 +572,7 @@ public final class RestRouting {
 
       response.setStatusCode(statusCode);
 
-      copyHeadersJoin(responseFromResult.getStringHeaders(), response.headers());
+      copyHeaders(responseFromResult.getStringHeaders(), response.headers());
 
       entity = responseFromResult.getEntity();
 
