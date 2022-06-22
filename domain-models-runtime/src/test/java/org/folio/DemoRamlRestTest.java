@@ -649,7 +649,9 @@ public class DemoRamlRestTest {
           if (tmp != null) {
             location.append(tmp);
           }
+          response.headers().forEach((k, v) -> log.info("HEADERS {}={}", k, v));
         }
+
         context.assertTrue(true);
       } else {
         log.info(" ---------------xxxxxx-1------------------- {}", responseData.toString());
