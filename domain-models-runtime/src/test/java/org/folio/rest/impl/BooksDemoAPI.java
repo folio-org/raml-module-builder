@@ -65,7 +65,7 @@ public class BooksDemoAPI implements Rmbtests {
     PostRmbtestsBooksResponse response = PostRmbtestsBooksResponse.respond201WithApplicationJson(stream, headers);
 
     MultivaluedMap<String, Object> stringHeaders = response.getHeaders();
-    stringHeaders.add("Set-Cookie", "a=1");
+    stringHeaders.add("Set-Cookie", "a=1; HttpOnly; Max-Age=123");
     stringHeaders.add("Set-Cookie", "b=2");
 
     asyncResultHandler.handle(Future.succeededFuture(response));
