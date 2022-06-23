@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import io.restassured.matcher.RestAssuredMatchers;
 import io.vertx.core.AsyncResult;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
@@ -264,21 +265,7 @@ public class DemoRamlRestTest {
     buf = checkURLs(context, "http://localhost:" + port + "/rmbtests/test?query=a%3D", 400);
     context.assertTrue(buf.toString().contains("expected index or term, got EOF"));
 
-    Data d = new Data();
-    d.setAuthor("a");
-    d.setGenre("g");
-    d.setDescription("description1");
-    d.setTitle("title");
-    d.setDatetime(new Datetime());
-    d.setLink("link");
-
-    Book b = new Book();
-    b.setData(d);
-    b.setStatus(0);
-    b.setSuccess(true);
-
-    ObjectMapper om = new ObjectMapper();
-    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    String book = getValidBook("description1");
 
     postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201,
       HttpMethod.POST, null, TENANT, false);
@@ -290,8 +277,7 @@ public class DemoRamlRestTest {
     context.assertEquals(1, books.getResultInfo().getTotalRecords());
     context.assertEquals(1, books.getBooks().size());
 
-    d.setDescription("description2");
-    book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    book = getValidBook("description2");
     postData(context, "http://localhost:" + port + "/rmbtests/test", Buffer.buffer(book), 201,
       HttpMethod.POST, "application/json", TENANT, false);
 
@@ -342,6 +328,41 @@ public class DemoRamlRestTest {
     for (int i=0; i<10; i++) {
       given().spec(tenant).when().get("/rmbtests/test?query=()").then().statusCode(400);
     }
+  }
+
+  String getValidBook(String description) throws JsonProcessingException {
+    Data d = new Data();
+    d.setAuthor("a");
+    d.setGenre("g");
+    d.setDescription(description);
+    d.setTitle("title");
+    d.setDatetime(new Datetime());
+    d.setLink("link");
+
+    Book b = new Book();
+    b.setData(d);
+    b.setStatus(0);
+    b.setSuccess(true);
+
+    ObjectMapper om = new ObjectMapper();
+    return om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+  }
+  /**
+   * Check that all Set-Cookie entries are returned.
+   *
+   * <p>See {@link org.folio.rest.impl.BooksDemoAPI#postRmbtestsBooks}
+   * @throws JsonProcessingException
+   */
+  @Test
+  public void testMultiHeaders() throws JsonProcessingException {
+    String book = getValidBook("description");
+    given()
+        .spec(tenant).header("Content-Type", "application/json")
+        .body(book).post("/rmbtests/books")
+        .then()
+        .statusCode(201)
+        .cookie("a", RestAssuredMatchers.detailedCookie().value("1").maxAge(123L).httpOnly(true))
+        .cookie("b", RestAssuredMatchers.detailedCookie().value("2").maxAge(-1L).httpOnly(false));
   }
 
   @Test

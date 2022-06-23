@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import org.folio.SlimBook;
 import org.folio.cql2pgjson.CQL2PgJSON;
@@ -56,11 +57,18 @@ public class BooksDemoAPI implements Rmbtests {
   public void postRmbtestsBooks(org.folio.rest.jaxrs.model.Book entity, Map<String, String> okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext)  {
     OutStream stream = new OutStream();
+
     PostRmbtestsBooksResponse.HeadersFor201 headers =
         PostRmbtestsBooksResponse.headersFor201().withLocation("/dummy/location");
     stream.setData(entity);
-    asyncResultHandler.handle(Future.succeededFuture(PostRmbtestsBooksResponse.
-      respond201WithApplicationJson( stream , headers)));
+
+    PostRmbtestsBooksResponse response = PostRmbtestsBooksResponse.respond201WithApplicationJson(stream, headers);
+
+    MultivaluedMap<String, Object> stringHeaders = response.getHeaders();
+    stringHeaders.add("Set-Cookie", "a=1; HttpOnly; Max-Age=123");
+    stringHeaders.add("Set-Cookie", "b=2");
+
+    asyncResultHandler.handle(Future.succeededFuture(response));
   }
 
   @Validate
