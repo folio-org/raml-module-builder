@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import io.restassured.matcher.RestAssuredMatchers;
 import io.vertx.core.AsyncResult;
 import io.vertx.ext.web.client.HttpRequest;
 import io.vertx.ext.web.client.HttpResponse;
@@ -344,6 +345,38 @@ public class DemoRamlRestTest {
     }
   }
 
+  /**
+   * Check that all Set-Cookie entries are returned.
+   *
+   * <p>See {@link org.folio.rest.impl.BooksDemoAPI#postRmbtestsBooks}
+   * @throws JsonProcessingException
+   */
+  @Test
+  public void testMultiHeaders() throws JsonProcessingException {
+    Data d = new Data();
+    d.setAuthor("a");
+    d.setGenre("g");
+    d.setDescription("description");
+    d.setTitle("title");
+    d.setDatetime(new Datetime());
+    d.setLink("link");
+
+    Book b = new Book();
+    b.setData(d);
+    b.setStatus(0);
+    b.setSuccess(true);
+
+    ObjectMapper om = new ObjectMapper();
+    String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
+    given()
+        .spec(tenant).header("Content-Type", "application/json")
+        .body(book).post("/rmbtests/books")
+        .then()
+        .statusCode(201)
+        .cookie("a", RestAssuredMatchers.detailedCookie().value("1"))
+        .cookie("b", RestAssuredMatchers.detailedCookie().value("2"));
+  }
+
   @Test
   public void testForm(TestContext context) {
     String v = "x".repeat(1025); // 1024 is max size for Vert.x 4.0.2
@@ -649,9 +682,7 @@ public class DemoRamlRestTest {
           if (tmp != null) {
             location.append(tmp);
           }
-          response.headers().forEach((k, v) -> log.info("HEADERS {}={}", k, v));
         }
-
         context.assertTrue(true);
       } else {
         log.info(" ---------------xxxxxx-1------------------- {}", responseData.toString());
