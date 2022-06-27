@@ -1,3 +1,11 @@
+## 34.1.0 2022-06-16
+
+New feature:
+ * [RMB-926](https://issues.folio.org/browse/RMB-926) Minimum PostgreSQL version: make configurable, fix int comparison
+
+Documentation:
+ * [RMB-922](https://issues.folio.org/browse/RMB-922) Migrate to case insensitive x-okapi-tenant header
+
 ## 34.0.0 2021-12-03
 
 Breaking changes:
