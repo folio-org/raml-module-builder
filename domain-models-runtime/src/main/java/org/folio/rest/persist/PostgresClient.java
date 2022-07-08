@@ -3386,7 +3386,7 @@ public class PostgresClient {
   void selectStream(AsyncResult<SQLConnection> sqlConnection, String sql, Tuple params, int chunkSize,
       Handler<AsyncResult<RowStream<Row>>> replyHandler) {
 
-    withConn(sqlConnection, conn -> conn.selectStream(sql, params, chunkSize, rowStream -> {
+    withReadConn(sqlConnection, conn -> conn.selectStream(sql, params, chunkSize, rowStream -> {
       replyHandler.handle(Future.succeededFuture(rowStream));
     })).onFailure(t -> replyHandler.handle(Future.failedFuture(t)));
   }
