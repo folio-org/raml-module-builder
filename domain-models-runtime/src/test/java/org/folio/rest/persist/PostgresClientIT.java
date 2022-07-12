@@ -2840,10 +2840,10 @@ public class PostgresClientIT {
 
   @Test
   public void selectReadSql(TestContext context) {
-    createNumbers(context, 7, 8, 9)
+    createNumbers(context, 10, 11, 12)
         .selectRead("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
             5, context.asyncAssertSuccess(select -> {
-              context.assertEquals("7, 9",  intsAsString(select));
+              context.assertEquals("10, 11, 12",  intsAsString(select));
             }));
   }
 
