@@ -2842,7 +2842,7 @@ public class PostgresClientIT {
   public void selectReadSql(TestContext context) {
     createNumbers(context, 10, 11, 12)
         .selectRead("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
-            5, context.asyncAssertSuccess(select -> {
+            200, context.asyncAssertSuccess(select -> {
               context.assertEquals("10, 11, 12",  intsAsString(select));
             }));
   }
