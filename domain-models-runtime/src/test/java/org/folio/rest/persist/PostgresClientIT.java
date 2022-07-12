@@ -108,9 +108,11 @@ public class PostgresClientIT {
 
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
+   /*
     final String os = System.getProperty("os.name").toLowerCase();
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
+    */
   }
 
   @BeforeClass
@@ -2841,7 +2843,7 @@ public class PostgresClientIT {
   @Test
   public void selectReadSql(TestContext context) {
     createNumbers(context, 10, 11, 12)
-        .selectRead("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+        .selectRead("SELECT i FROM numbers WHERE i IN (10, 11, 12) ORDER BY i",
             200, context.asyncAssertSuccess(select -> {
               context.assertEquals("10, 11, 12",  intsAsString(select));
             }));
