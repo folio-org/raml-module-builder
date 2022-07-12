@@ -108,11 +108,9 @@ public class PostgresClientIT {
 
   @BeforeClass
   public static void doesNotCompleteOnWindows() {
-   /*
     final String os = System.getProperty("os.name").toLowerCase();
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
     org.junit.Assume.assumeFalse(os.contains("win")); // RMB-261
-    */
   }
 
   @BeforeClass
