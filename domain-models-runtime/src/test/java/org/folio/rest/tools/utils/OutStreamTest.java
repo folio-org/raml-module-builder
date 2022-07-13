@@ -9,12 +9,24 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.After;
+import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class OutStreamTest {
   private Charset oldDefaultCharset;
 
+  private static int major;
+
+  @BeforeClass
+  public static void beforeClass() {
+    String version = System.getProperty("java.version");
+    int dot = version.indexOf('.');
+    major = Integer.parseInt(version.substring(0, dot));
+  }
+
   private void setDefaultCharset(Charset charset) {
+    Assume.assumeTrue(major < 17);
     if (oldDefaultCharset == null) {
       oldDefaultCharset = Charset.defaultCharset();
     }
@@ -83,6 +95,11 @@ public class OutStreamTest {
     catch (Exception e) {
       throw new RuntimeException(e);
     }
+  }
+
+  @Test
+  public void defaultCharset() {
+    testBytes();
   }
 
   @Test
