@@ -1398,8 +1398,7 @@ public class PgUtilIT {
     async.awaitSuccess(10000 /* ms */);
     return userdataCollection;
   }
-  private UserdataCollection searchForDataUnoptimizedNoClass(String cql, int offset, int limit, TestContext testContext) {
-    UserdataCollection userdataCollection = new UserdataCollection();
+  private void searchForDataUnoptimizedNoClass(String cql, int offset, int limit, TestContext testContext) {
     Async async = testContext.async();
     PgUtil.get(
         "users", User.class, Object.class, cql, offset, limit, okapiHeaders,
@@ -1408,10 +1407,9 @@ public class PgUtilIT {
           async.complete();
     }));
     async.awaitSuccess(10000 /* ms */);
-    return userdataCollection;
   }
-  private UserdataCollection searchForDataUnoptimizedNo500(String cql, int offset, int limit, TestContext testContext) {
-    UserdataCollection userdataCollection = new UserdataCollection();
+
+  private void searchForDataUnoptimizedNo500(String cql, int offset, int limit, TestContext testContext) {
     Async async = testContext.async();
     PgUtil.get(
         "users", User.class, UserdataCollection.class, cql, offset, limit, okapiHeaders,
@@ -1419,8 +1417,8 @@ public class PgUtilIT {
           async.complete();
     }));
     async.awaitSuccess(10000 /* ms */);
-    return userdataCollection;
   }
+
   private UserdataCollection searchForData(String cql, int offset, int limit, TestContext testContext) {
     UserdataCollection userdataCollection = new UserdataCollection();
     Async async = testContext.async();
