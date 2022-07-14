@@ -3085,7 +3085,9 @@ public class PostgresClient {
   }
 
   /**
-   * Run an SQL statement that updates data and returns data, for example {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
+   * Run an SQL statement that updates data and returns data,
+   * for example {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
+   *
    * @see #selectRead(String, int, Handler)
    * @see #execute(String, Handler)
    * @param sql - the sql query to run
@@ -3171,7 +3173,8 @@ public class PostgresClient {
   }
 
   /**
-   * Run an prepared/parameterized SQL statement that updates data and returns data, for example {@code SELECT nextval($1)} or {@code UPDATE ... RETURNING ...}.
+   * Run an prepared/parameterized SQL statement that updates data and returns data,
+   * for example {@code SELECT nextval($1)} or {@code UPDATE ... RETURNING ...}.
    *
    * @param sql  The sql query to run.
    * @param params  The parameters for the placeholders in sql.
@@ -3223,7 +3226,8 @@ public class PostgresClient {
   }
 
   /**
-   * Run an SQL statement that may write data and returns data, for example {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
+   * Run an SQL statement that may write data and returns data,
+   * for example {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
    *
    * @param sql  The sql query to run.
    * @param replyHandler  The query result or the failure.
