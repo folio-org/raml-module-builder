@@ -3085,7 +3085,9 @@ public class PostgresClient {
   }
 
   /**
-   * <p>To update see {@link #execute(String, Handler)}.
+   * Run an SQL statement that updates data and returns data, for example {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
+   * @see #selectRead(String, int, Handler)
+   * @see #execute(String, Handler)
    * @param sql - the sql query to run
    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param replyHandler the query result or the failure
@@ -3096,11 +3098,11 @@ public class PostgresClient {
         );
   }
 
-
   /**
-   * Method use to exclusively execute read statements from the database
-   * <p>To update see {@link #execute(String, Handler)}.
-   *  @param sql - the sql query to run
+   * Execute a read-only SQL statement that returns data.
+   * @see #select(String, int, Handler)
+   * @see #execute(String, Handler)
+   * @param sql - the sql query to run
    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param replyHandler the query result or the failure
    */
@@ -3169,11 +3171,13 @@ public class PostgresClient {
   }
 
   /**
-   * <p>To update see {@link #execute(String, Tuple, Handler)}.
+   * Run an prepared/parameterized SQL statement that updates data and returns data, for example {@code SELECT nextval($1)} or {@code UPDATE ... RETURNING ...}.
    *
    * @param sql  The sql query to run.
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
+   * @see #selectRead(String, Tuple, Handler)
+   * @see #execute(String, Tuple, Handler)
    */
   public void select(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     getSQLConnection(conn -> select(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
@@ -3219,24 +3223,20 @@ public class PostgresClient {
   }
 
   /**
-   *
-   * <p>To update see {@link #execute(String, Handler)}.
+   * Run an SQL statement that may write data and returns data, for example {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
    *
    * @param sql  The sql query to run.
    * @param replyHandler  The query result or the failure.
+   * @see #selectSingleRead(String, Handler)
    */
   public void selectSingle(String sql, Handler<AsyncResult<Row>> replyHandler) {
     getSQLConnection(conn -> selectSingle(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
-
   /**
-   * Executes a SELECT query on the readonly connection and return the first record, or null if there is no result.
-   *
-   * <p>To update see {@link #execute(String, Handler)}.
-   *
    * @param sql  The sql query to run.
    * @param replyHandler  The query result or the failure.
+   * @see #selectSingle(String, Handler)
    */
   public void selectSingleRead(String sql, Handler<AsyncResult<Row>> replyHandler) {
     getSQLReadConnection(conn -> selectSingle(conn, sql, closeAndHandleResult(conn, replyHandler)));
@@ -3270,14 +3270,14 @@ public class PostgresClient {
   }
 
   /**
-   * Run a parameterized/prepared select query
-   * and return the first record, or null if there is no result.
-   *
-   * <p>To update see {@link #execute(String, Handler)}.
+   * Run an SQL statement that may write data and returns data, for example
+   * {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
+   * The first record is returned, or null if there is no result.
    *
    * @param sql  The sql query to run.
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
+   * @see #selectSingleRead(String, Tuple, Handler)
    */
   public void selectSingle(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
     getSQLConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
@@ -3287,7 +3287,7 @@ public class PostgresClient {
    * Run a parameterized/prepared select query with the readonly connection
    * and return the first record, or null if there is no result.
    *
-   * <p>To update see {@link #execute(String, Handler)}.
+   * @see #selectSingle(String, Tuple, Handler)
    *
    * @param sql  The sql query to run.
    * @param params  The parameters for the placeholders in sql.
@@ -3296,7 +3296,6 @@ public class PostgresClient {
   public void selectSingleRead(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
     getSQLReadConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
   }
-
 
   /**
    * Run a parameterized/prepared select query and return the first record, or null if there is no result.
