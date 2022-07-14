@@ -2522,7 +2522,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get with readonly connection
+   * Returns records selected by {@link Criterion} filter.
    * @param setId - unused, the database trigger will always set jsonb->'id' automatically
    */
   @SuppressWarnings({"squid:S00107"})   // Method has more than 7 parameters
@@ -2536,7 +2536,7 @@ public class PostgresClient {
       return;
     }
 
-    withReadConn(sqlConnection, conn -> conn.get(table, clazz, filter, returnCount, facets))
+    withConn(sqlConnection, conn -> conn.get(table, clazz, filter, returnCount, facets))
     .onComplete(replyHandler);
   }
 
@@ -3494,7 +3494,6 @@ public class PostgresClient {
     return getConnection(getReaderClient());
   }
 
-
   /**
    * Get vertx-pg-client connection
    *
@@ -3822,17 +3821,6 @@ public class PostgresClient {
       log.error(e.getMessage(), e);
       return Future.failedFuture(e);
     }
-  }
-
-  /**
-   * Take the connection from the {@link SQLConnection}, wrap it into a {@link Conn} and execute the function.
-   *
-   * @return the result from the function, the failure of sqlConnection or any thrown Throwable.
-   */
-  @SuppressWarnings("squid:S1181")  // suppress "Throwable and Error should not be caught"
-  // because a Future also handles Throwable, this is required for asynchronous reporting
-  public <T> Future<T> withReadConn(AsyncResult<SQLConnection> sqlConnection, Function<Conn, Future<T>> function) {
-    return withConn(sqlConnection, function);
   }
 
   /**
