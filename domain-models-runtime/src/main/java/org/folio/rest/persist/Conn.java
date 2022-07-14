@@ -991,6 +991,14 @@ public class Conn {
    *     .compose(x -> ...
    * </pre>
    *
+   * <p>Use withReadTrans if all SQL queries are read-only (no nextval(), no UPDATE, ...):</p>
+   *
+   * <pre>
+   *  postgresClient.withReadTrans(conn ->
+   *     conn.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5), 100,
+   *         rowStream -> rowStream.handler(row -> task.process(row))));
+   * </pre>
+   *
    * @param params arguments for {@code $} placeholders in {@code sql}
    * @param chunkSize cursor fetch size
    */
@@ -1020,6 +1028,14 @@ public class Conn {
    *     .compose(x -> conn.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5),
    *         rowStream -> rowStream.handler(row -> task.process(row))))
    *     .compose(x -> ...
+   * </pre>
+   *
+   * <p>Use withReadTrans if all SQL queries are read-only (no nextval(), no UPDATE, ...):</p>
+   *
+   * <pre>
+   * postgresClient.withReadTrans(conn ->
+   *     conn.selectStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5),
+   *         rowStream -> rowStream.handler(row -> task.process(row))));
    * </pre>
    *
    * @param params arguments for {@code $} placeholders in {@code sql}
