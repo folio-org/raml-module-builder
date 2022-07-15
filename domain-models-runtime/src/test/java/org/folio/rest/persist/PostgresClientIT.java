@@ -2830,6 +2830,24 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectReadParam(TestContext context) {
+    createNumbers(context, 7, 8, 9)
+        .selectRead("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+            Tuple.of(7, 9, 11), context.asyncAssertSuccess(select -> {
+              context.assertEquals("7, 9",  intsAsString(select));
+            }));
+  }
+
+  @Test
+  public void selectReadSql(TestContext context) {
+    createNumbers(context, 10, 11, 12)
+        .selectRead("SELECT i FROM numbers WHERE i IN (10, 11, 12) ORDER BY i",
+            200, context.asyncAssertSuccess(select -> {
+              context.assertEquals("10, 11, 12",  intsAsString(select));
+            }));
+  }
+
+  @Test
   public void selectParamTrans(TestContext context) {
     postgresClient = createNumbers(context, 11, 12, 13);
     postgresClient.startTx(asyncAssertTx(context, trans -> {
@@ -2857,6 +2875,15 @@ public class PostgresClientIT {
     .selectStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(), 2,
         rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
     .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23]"))));
+  }
+
+  @Test
+  public void selectReadStreamChunkSize(TestContext context) {
+    List<Integer> list = new ArrayList<>();
+    createNumbers(context, 21, 22, 23)
+        .selectReadStream("SELECT i FROM numbers WHERE i IN (21, 23, 25) ORDER BY i", Tuple.tuple(), 2,
+            rowStream -> rowStream.handler(row -> list.add(row.getInteger(0))))
+        .onComplete(context.asyncAssertSuccess(x -> assertThat(list.toString(), is("[21, 23]"))));
   }
 
   @Test
@@ -2938,6 +2965,15 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void selectSingleRead(TestContext context) {
+    postgresClient = createNumbers(context, 41, 42, 43);
+    postgresClient.selectSingleRead("SELECT i FROM numbers WHERE i IN (41, 43, 45) ORDER BY i",
+        context.asyncAssertSuccess(select -> {
+          context.assertEquals(41, select.getInteger(0));
+        }));
+  }
+
+  @Test
   public void selectSingleFuture(TestContext context) {
     postgresClient = createNumbers(context, 41, 42, 43);
     postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN (41, 43, 45) ORDER BY i")
@@ -2962,6 +2998,16 @@ public class PostgresClientIT {
   public void selectSingleParam(TestContext context) {
     postgresClient = createNumbers(context, 51, 52, 53);
     postgresClient.selectSingle("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
+        Tuple.of(51, 53, 55),
+        context.asyncAssertSuccess(select -> {
+          context.assertEquals(51, select.getInteger(0));
+        }));
+  }
+
+  @Test
+  public void selectSingleReadParam(TestContext context) {
+    postgresClient = createNumbers(context, 51, 52, 53);
+    postgresClient.selectSingleRead("SELECT i FROM numbers WHERE i IN ($1, $2, $3) ORDER BY i",
         Tuple.of(51, 53, 55),
         context.asyncAssertSuccess(select -> {
           context.assertEquals(51, select.getInteger(0));

@@ -168,12 +168,12 @@ public class PostgresClient {
   private JsonObject postgreSQLClientConfig = null;
   /**
    * PgPool client that is initialized with mainly the database writer instance's connection string.
-   * */
+   */
   private PgPool client;
   /**
    * PgPool client that is initialized with mainly the database reader instance's connection string.
    * When there is no reader instance, then this client should be initialized with the writer's connection string
-   * **/
+   */
   private PgPool readClient;
   private final String tenantId;
   private final String schemaName;
@@ -504,10 +504,9 @@ public class PostgresClient {
     String hostToResolve = HOST;
     String portToResolve = PORT;
 
-    if (isReader)
-    {
+    if (isReader) {
        hostToResolve = HOST_READER;
-       portToResolve = PORT_READER ;
+       portToResolve = PORT_READER;
     }
 
     String host = sqlConfig.getString(hostToResolve);
@@ -522,7 +521,7 @@ public class PostgresClient {
       pgConnectOptions.setPort(port);
     }
 
-    if (isReader && (host == null || port == null)){
+    if (isReader && (host == null || port == null)) {
       return null;
     }
 
@@ -3086,17 +3085,33 @@ public class PostgresClient {
   }
 
   /**
-   * Run a select query using the readonly connection.
+   * Run an SQL statement that updates data and returns data,
+   * for example {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
    *
-   * <p>To update see {@link #execute(String, Handler)}.
-   *  @param sql - the sql query to run
+   * @see #selectRead(String, int, Handler)
+   * @see #execute(String, Handler)
+   * @param sql - the sql query to run
    * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
    * @param replyHandler the query result or the failure
    */
   public void select(String sql, int queryTimeout, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
-    getSQLReadConnection(queryTimeout,
+    getSQLConnection(queryTimeout,
         conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler))
         );
+  }
+
+  /**
+   * Execute a read-only SQL statement that returns data.
+   * @see #select(String, int, Handler)
+   * @see #execute(String, Handler)
+   * @param sql - the sql query to run
+   * @param queryTimeout query timeout in milliseconds, or 0 for no timeout
+   * @param replyHandler the query result or the failure
+   */
+  public void selectRead(String sql, int queryTimeout, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+    getSQLReadConnection(queryTimeout,
+        conn -> select(conn, sql, closeAndHandleResult(conn, replyHandler))
+    );
   }
 
   static void queryAndAnalyze(PgConnection conn, String sql, String statMethod,
@@ -3158,6 +3173,20 @@ public class PostgresClient {
   }
 
   /**
+   * Run an prepared/parameterized SQL statement that updates data and returns data,
+   * for example {@code SELECT nextval($1)} or {@code UPDATE ... RETURNING ...}.
+   *
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   * @see #selectRead(String, Tuple, Handler)
+   * @see #execute(String, Tuple, Handler)
+   */
+  public void select(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+    getSQLConnection(conn -> select(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
    * Run a parameterized/prepared select query using the readonly connection.
    *
    * <p>To update see {@link #execute(String, Tuple, Handler)}.
@@ -3166,7 +3195,7 @@ public class PostgresClient {
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
    */
-  public void select(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+  public void selectRead(String sql, Tuple params, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
     getSQLReadConnection(conn -> select(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -3197,14 +3226,23 @@ public class PostgresClient {
   }
 
   /**
-   * Run a select query with the readonly connection and return the first record, or null if there is no result.
-   *
-   * <p>To update see {@link #execute(String, Handler)}.
+   * Run an SQL statement that may write data and returns data,
+   * for example {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
    *
    * @param sql  The sql query to run.
    * @param replyHandler  The query result or the failure.
+   * @see #selectSingleRead(String, Handler)
    */
   public void selectSingle(String sql, Handler<AsyncResult<Row>> replyHandler) {
+    getSQLConnection(conn -> selectSingle(conn, sql, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
+   * @param sql  The sql query to run.
+   * @param replyHandler  The query result or the failure.
+   * @see #selectSingle(String, Handler)
+   */
+  public void selectSingleRead(String sql, Handler<AsyncResult<Row>> replyHandler) {
     getSQLReadConnection(conn -> selectSingle(conn, sql, closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -3236,16 +3274,30 @@ public class PostgresClient {
   }
 
   /**
+   * Run an SQL statement that may write data and returns data, for example
+   * {@code SELECT nextval('foo')} or {@code UPDATE ... RETURNING ...}.
+   * The first record is returned, or null if there is no result.
+   *
+   * @param sql  The sql query to run.
+   * @param params  The parameters for the placeholders in sql.
+   * @param replyHandler  The query result or the failure.
+   * @see #selectSingleRead(String, Tuple, Handler)
+   */
+  public void selectSingle(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
+    getSQLConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
+  }
+
+  /**
    * Run a parameterized/prepared select query with the readonly connection
    * and return the first record, or null if there is no result.
    *
-   * <p>To update see {@link #execute(String, Handler)}.
+   * @see #selectSingle(String, Tuple, Handler)
    *
    * @param sql  The sql query to run.
    * @param params  The parameters for the placeholders in sql.
    * @param replyHandler  The query result or the failure.
    */
-  public void selectSingle(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
+  public void selectSingleRead(String sql, Tuple params, Handler<AsyncResult<Row>> replyHandler) {
     getSQLReadConnection(conn -> selectSingle(conn, sql, params, closeAndHandleResult(conn, replyHandler)));
   }
 
@@ -3322,6 +3374,25 @@ public class PostgresClient {
    * @param chunkSize cursor fetch size
    */
   public Future<Void> selectStream(String sql, Tuple params, int chunkSize, Handler<RowStream<Row>> rowStreamHandler) {
+    return withTrans(trans -> trans.selectStream(sql, params, chunkSize, rowStreamHandler));
+  }
+
+  /**
+   * Get a stream of the results of the {@code sql} read-only query (no nextval(), no UPDATE, etc..)
+   * using the readonly connection.
+   *
+   * Sample usage:
+   *
+   * <pre>
+   * postgresClient.selectReadStream("SELECT i FROM numbers WHERE i > $1", Tuple.tuple(5), 100,
+   *         rowStream -> rowStream.handler(row -> task.process(row))))
+   * .compose(x -> ...
+   * </pre>
+   *
+   * @param params arguments for {@code $} placeholders in {@code sql}
+   * @param chunkSize cursor fetch size
+   */
+  public Future<Void> selectReadStream(String sql, Tuple params, int chunkSize, Handler<RowStream<Row>> rowStreamHandler) {
     return withReadTrans(trans -> trans.selectStream(sql, params, chunkSize, rowStreamHandler));
   }
 
@@ -3461,8 +3532,8 @@ public class PostgresClient {
    *
    * @see #withReadConn(Function)
    * @see #withReadConnection(Function)
-   * @see #withTrans(Function)
-   * @see #withTransaction(Function)
+   * @see #withReadTrans(Function)
+   * @see #withReadTransaction(Function)
    */
   public void getReadConnection(Handler<AsyncResult<PgConnection>> replyHandler) {
     getReadConnection().onComplete(replyHandler);
@@ -3482,10 +3553,10 @@ public class PostgresClient {
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
    */
-
   void getSQLConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLConnection(0, handler);
   }
+
   /**
    * Don't forget to close the connection!
    *
@@ -3497,8 +3568,8 @@ public class PostgresClient {
    *
    * @see #withReadConn(Function)
    * @see #withReadConnection(Function)
-   * @see #withTrans(Function)
-   * @see #withTransaction(Function)
+   * @see #withReadTrans(Function)
+   * @see #withReadTransaction(Function)
    */
   void getSQLReadConnection(Handler<AsyncResult<SQLConnection>> handler) {
     getSQLReadConnection(0, handler);
@@ -3549,8 +3620,8 @@ public class PostgresClient {
   /**
    * Get the SQL Write connection
    *
-   * @see #withReadConn(Function)
-   * @see #withReadConnection(Function)
+   * @see #withConn(Function)
+   * @see #withConnection(Function)
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
    */
@@ -3563,8 +3634,8 @@ public class PostgresClient {
    *
    * @see #withReadConn(Function)
    * @see #withReadConnection(Function)
-   * @see #withTrans(Function)
-   * @see #withTransaction(Function)
+   * @see #withReadTrans(Function)
+   * @see #withReadTransaction(Function)
    */
   void getSQLReadConnection(int queryTimeout, Handler<AsyncResult<SQLConnection>> handler) {
     getReadConnection(res -> getSQLConnection(res, queryTimeout, handler));
