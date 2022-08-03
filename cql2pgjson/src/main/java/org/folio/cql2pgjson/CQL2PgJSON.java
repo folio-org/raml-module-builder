@@ -598,8 +598,12 @@ public class CQL2PgJSON {
       }
       return columnName + comparator + "'" + term + "'";
     case "==":
-    case "=":
+      if ("".equals(term)) {
+        return "false";
+      }
       comparator = "=";
+      break;
+    case "=":
       break;
     case "<>":
       equals = false;
@@ -609,10 +613,21 @@ public class CQL2PgJSON {
           + "UUID " + columnName + " only supports '=', '==', and '<>' (possibly with right truncation)");
     }
 
-    if ("*".equals(term) && "id".equals(columnName)) {
-      return equals ? "true" : "false";  // no need to check
-      // since id is a mandatory field, so
-      // "all that have id" is the same as "all records"
+    if ("".equals(term)) {
+      // id="" is true per docs, id<>"" is true because no id is an empty string
+      if ("id".equals(columnName)) {
+        return "true";
+      }
+      // name="" is true if name is defined per docs, name<>"" is true if name is defined
+      return columnName + " IS NOT NULL";
+    }
+
+    if ("*".equals(term)) {
+      if ("id".equals(columnName)) {
+        // id is mandatory field, records with defined id are all records
+        return equals ? "true" : "false";
+      }
+      return equals ? (columnName + " IS NOT NULL") : "false";
     }
 
     if (!term.contains("*")) { // exact match
@@ -620,7 +635,7 @@ public class CQL2PgJSON {
         // avoid SQL injection, don't put term into comment
         return equals
             ? "false /* " + columnName + " == invalid UUID */"
-            : "true /* "  + columnName + " <> invalid UUID */";
+            : columnName + " IS NOT NULL /* "  + columnName + " <> invalid UUID */";
       }
       return columnName.replace('.', '_') + comparator + "'" + term + "'";
     }
@@ -638,7 +653,7 @@ public class CQL2PgJSON {
     if (!uuidPattern.matcher(lo).matches() || !uuidPattern.matcher(hi).matches()) {
       // avoid SQL injection, don't put term into comment
       return equals ? "false /* " + columnName + " == invalid UUID */"
-                    : "true /* "  + columnName + " <> invalid UUID */";
+                    : columnName + " IS NOT NULL /* "  + columnName + " <> invalid UUID */";
     }
     return equals ? "(" + columnName +     " BETWEEN '" + lo + "' AND '" + hi + "')"
                   : "(" + columnName + " NOT BETWEEN '" + lo + "' AND '" + hi + "')";
