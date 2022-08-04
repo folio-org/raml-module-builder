@@ -800,11 +800,21 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
 
   @Test
   @Parameters({
-    "id=*,    true",
-    "id=\"\", false /* id == invalid UUID */",  // exact (field) match, empty string never matches UUID
-    "groupId=*,                                  (groupId BETWEEN '00000000-0000-0000-0000-000000000000' "
-                                                           + "AND 'ffffffff-ffff-ffff-ffff-ffffffffffff')",
-    "groupId=\"\",                               false /* groupId == invalid UUID */",
+    // id=* matches all records, special case mentioned in RMB docs
+    // name="" matches all records where name is defined, special case mentioned in RMB docs
+    // name=="" matches all records where name is defined and empty, mentioned in RMB docs
+    "id=*,     true",
+    "id=\"\",  true",  // id is always defined, primary key
+    "id==*,    true",  // id is always defined, primary key
+    "id==\"\", false", // id is always defined and always not the empty string
+    "id<>*,    false",
+    "id<>\"\", true",
+    "groupId=*,                                  groupId IS NOT NULL",
+    "groupId=\"\",                               groupId IS NOT NULL",
+    "groupId==*,                                 groupId IS NOT NULL",
+    "groupId==\"\",                              false",
+    "groupId<>*,                                 false",
+    "groupId<>\"\",                              groupId IS NOT NULL",
     "id=\"11111111-1111-1111-1111-111111111111\",              id='11111111-1111-1111-1111-111111111111'",
     "id=\"2*\",                                       (id BETWEEN '20000000-0000-0000-0000-000000000000' "
                                                            + "AND '2fffffff-ffff-ffff-ffff-ffffffffffff')",
@@ -812,10 +822,11 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
                                                            + "AND '22222222-ffff-ffff-ffff-ffffffffffff')",
     "groupId=\"22222222*\",                      (groupId BETWEEN '22222222-0000-0000-0000-000000000000' "
                                                            + "AND '22222222-ffff-ffff-ffff-ffffffffffff')",
+    "groupId==\"22222222*\",                     (groupId BETWEEN '22222222-0000-0000-0000-000000000000' "
+                                                           + "AND '22222222-ffff-ffff-ffff-ffffffffffff')",
   })
   public void idColumnRelation(String cql, String expectedSql) throws QueryValidationException {
     assertEquals(expectedSql, cql2pgJson.toSql(cql).getWhere());
-    assertEquals(expectedSql, cql2pgJson.toSql(cql.replace("=", "==")).getWhere());
   }
 
   @Test
@@ -849,7 +860,7 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id=11111111-1111-1111-1111-11111111111    #",
     "id=11111111-1111-1111-1111-1111111111111  #",
     "id=11111111-1111-1111-1111-111111111111-1 #",
-    "id=\"\"                                   #",    // exact match, empty string never matches UUID
+    "id=\"\"                                   # Jo Jane; Ka Keller; Lea Long", // ="" matches if id is defined (per docs)
     "id==\"\"                                  #",
     "id<>\"\"                                  # Jo Jane; Ka Keller; Lea Long",
     "id=1*                                     # Jo Jane",
@@ -881,6 +892,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "id>=11111111-1111-111w-1111-111111111112  # ! Invalid UUID after 'id>='",
     "id=/masked         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier masked",
     "id=/regexp         11111111-1111-1111-1111-111111111111   # ! Unsupported modifier regexp",
+    "groupId=\"\"                                              # Jo Jane; Ka Keller; Lea Long", // ="" matches all per docs
+    "groupId==\"\"                                             #",
     "groupId=           77777777-7777-7777-7777-777777777777   # Jo Jane",
     "groupId<>          77777777-7777-7777-7777-777777777777   # Ka Keller; Lea Long",
   })
