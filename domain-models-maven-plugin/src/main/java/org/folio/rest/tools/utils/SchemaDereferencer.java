@@ -82,7 +82,7 @@ public class SchemaDereferencer {
           + value.getClass().getName() + ": " + value);
     }
     String file = (String) value;
-    if (hasUriScheme(file)) {
+    if (hasUriScheme(file) || hasSelfReference(file)) {
       return;
     }
     jsonObject.put("$ref", toFileUri(basePathFile, file));
@@ -105,5 +105,9 @@ public class SchemaDereferencer {
   static String toFileUri(Path basePathFile, String file) {
     Path absolutePath = basePathFile.resolveSibling(file).normalize();
     return absolutePath.toUri().toString();
+  }
+
+  private static boolean hasSelfReference(String refValue) {
+    return refValue.contains("#");
   }
 }

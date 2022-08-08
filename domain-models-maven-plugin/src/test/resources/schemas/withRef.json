@@ -1,0 +1,803 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "field": {
+      "type": "string",
+      "description": "Field name of the mapping",
+      "enum": [
+        "ACCESS_PROVIDER",
+        "ACQUISITION_METHOD",
+        "LOOKUP_ACQUISITION_UNIT_DEFAULT_ACQ_UNIT_NAME",
+        "LOOKUP_ACQUISITION_UNIT_BY_VENDOR_ACC_NUMBER",
+        "ACTIVATED",
+        "ACTIVATION_DUE",
+        "ADDITIONAL_COST",
+        "AGGREMENT_ID",
+        "ALERTS",
+        "APPROVED",
+        "ASSIGNED_TO",
+        "BILL_TO",
+        "CANCELLATION_RESTRICTION",
+        "CANCELLATION_RESTRICTION_NOTE",
+        "CLAIMED",
+        "CLAIM_GRACE",
+        "CLAIM_SENT",
+        "COLLECTION",
+        "CONTRIBUTOR",
+        "CONTRIBUTOR_NAME_TYPE",
+        "CREATE_INVENTORY",
+        "CURRENCY",
+        "DATE_ORDERED",
+        "DESCRIPTION",
+        "DISCOUNT",
+        "DISCOUNT_TYPE",
+        "DONOR",
+        "EDITION",
+        "ENCUMBRANCE",
+        "EXCHANGE_RATE",
+        "EXPECTED_ACTIVATION",
+        "EXPECTED_RECEIPT_DATE",
+        "EXPENSE_CLASS",
+        "FUND_ID",
+        "FUND_CODE",
+        "FUND_PERCENTAGE",
+        "LICENSE_CODE",
+        "LICENSE_DESCRIPTION",
+        "LICENSE_REFERENCE",
+        "LINKED_PACKAGE",
+        "LIST_UNIT_PRICE",
+        "LIST_UNIT_PRICE_ELECTRONIC",
+        "LOCATION",
+        "MANUAL_PO",
+        "MATERIAL_SUPPLIER",
+        "MATERIAL_TYPE",
+        "NOTES",
+        "NOTE_FROM_VENDOR",
+        "ORDER_TYPE",
+        "PACKAGE_DESIGNATION",
+        "PO_LINE_DESCRIPTION",
+        "PO_LINE_ESTIMATED_PRICE",
+        "PO_LINE_ORDER_FORMAT",
+        "PO_LINE_PAYMENT_STATUS",
+        "PO_LINE_RECEIPT_STATUS",
+        "PREFIX",
+        "PRODUCT_ID",
+        "PRODUCT_ID_TYPE",
+        "PRODUCT_QUALIFIER",
+        "PUBLICATION_DATE",
+        "PUBLISHER",
+        "PURCHASE_ORDER_ID",
+        "QUANTITY_ELECTRONIC",
+        "QUANTITY_PHYSICAL",
+        "RECEIPT_DATE",
+        "RECEIPT_DUE",
+        "RECEIVING_NOTE",
+        "ONGOING_IS_SUBSCRIPTION",
+        "ONGOING_DATE",
+        "ONGOING_INTERVAL",
+        "ONGOING_MANUAL",
+        "ONGOING_REVIEW_PERIOD",
+        "ONGOING_NOTES",
+        "ONGOING_REVIEW_DATE",
+        "RECEIVING_WORKFLOW",
+        "REPORTING_CODE",
+        "REPORTING_DESCRIPTION",
+        "REQUESTER",
+        "RE_ENCUMBER",
+        "RUSH",
+        "SELECTOR",
+        "SHIP_TO",
+        "SOURCE",
+        "SUBSCRIPTION_FROM",
+        "SUBSCRIPTION_INTERVAL",
+        "SUBSCRIPTION_TO",
+        "SUFFIX",
+        "TAGS",
+        "TITLE",
+        "TOTAL_ESTIMATED_PRICE",
+        "TOTAL_ITEMS",
+        "TRIAL",
+        "USER_LIMIT",
+        "URL",
+        "VENDOR",
+        "VENDOR_ACCOUNT",
+        "VENDOR_INSTRUCTIONS",
+        "VENDOR_REF_NO",
+        "VENDOR_REF_NO_TYPE",
+        "VOLUMES",
+        "WORKFLOW_STATUS"
+      ],
+      "javaEnums": [
+        {
+          "name": "ACCESS_PROVIDER",
+          "title": "poLine.eresource.accessProvider",
+          "description": "UUID of the access provider"
+        },
+        {
+          "name": "ACQUISITION_METHOD",
+          "title": "poLine.eresource.acquisitionMethod",
+          "description": "UUID of the acquisition method for this purchase order line"
+        },
+        {
+          "name": "LOOKUP_ACQUISITION_UNIT_DEFAULT_ACQ_UNIT_NAME",
+          "title": "po.acqUnitIds",
+          "description": "Acquisition unit UUIDs associated with this organizations account"
+        },
+        {
+          "name": "LOOKUP_ACQUISITION_UNIT_BY_VENDOR_ACC_NUMBER",
+          "title": "po.acqUnitIds",
+          "description": "Acquisition unit ids associated with this purchase order"
+        },
+        {
+          "name": "ACTIVATED",
+          "title": "poLine.eresource.activated",
+          "description": "Whether or not this resource is activated"
+        },
+        {
+          "name": "ACTIVATION_DUE",
+          "title": "poLine.eresource.activationDue",
+          "description": "Number of days until activation, from date of order placement"
+        },
+        {
+          "name": "ADDITIONAL_COST",
+          "title": "poLine.cost.additionalCost",
+          "description": "Lump sum that is added to the total estimated price - not affected by discount"
+        },
+        {
+          "name": "AGGREMENT_ID",
+          "title": "poLine.agreementId",
+          "description": "UUID of the agreement this purchase order line is related to"
+        },
+        {
+          "name": "ALERTS",
+          "title": "poLine.alerts",
+          "description": "Alerts associated with this purchase order line"
+        },
+        {
+          "name": "APPROVED",
+          "title": "po.approved",
+          "description": "Whether or not the purchase order has been approved"
+        },
+        {
+          "name": "ASSIGNED_TO",
+          "title": "po.assignedTo",
+          "description": "The UUID format string"
+        },
+        {
+          "name": "BILL_TO",
+          "title": "po.billTo",
+          "description": "The bill to Id UUID format"
+        },
+        {
+          "name": "CANCELLATION_RESTRICTION",
+          "title": "poLine.cancellationRestriction",
+          "description": " Whether or not there are cancellation restrictions for this purchase order line"
+        },
+        {
+          "name": "CANCELLATION_RESTRICTION_NOTE",
+          "title": "poLine.cancellationRestrictionNote",
+          "description": "Free-form notes related to cancellation restrictions"
+        },
+        {
+          "name": "CLAIMED",
+          "title": "poLine.claims.claimed",
+          "description": "Whether or not this purchase order line has been claimed"
+        },
+        {
+          "name": "CLAIM_GRACE",
+          "title": "poLine.claims.grace",
+          "description": "The number of days after the expected receipt date during which claims should not be processed"
+        },
+        {
+          "name": "CLAIM_SENT",
+          "title": "poLine.claims.sent",
+          "description": "Date a claim was sent"
+        },
+        {
+          "name": "COLLECTION",
+          "title": "poLine.collection",
+          "description": "Whether or not this purchase order line is for a collection"
+        },
+        {
+          "name": "CONTRIBUTOR",
+          "title": "poLine.contributors.contributor",
+          "description": "The name of a contributor to the material"
+        },
+        {
+          "name": "CONTRIBUTOR_NAME_TYPE",
+          "title": "poLine.contributors.contributorNameTypeId",
+          "description": "UUID of the contributor type"
+        },
+        {
+          "name": "CREATE_INVENTORY",
+          "title": "poLine.physical.createInventory",
+          "description": "Shows what inventory objects need to be created for physical resource"
+        },
+        {
+          "name": "CURRENCY",
+          "title": "poLine.cost.currency",
+          "description": "An ISO currency code"
+        },
+        {
+          "name": "DATE_ORDERED",
+          "title": "po.dateOrdered",
+          "description": "Date and time when purchase order was opened"
+        },
+        {
+          "name": "DESCRIPTION",
+          "title": "poLine.description",
+          "description": "Description of the material"
+        },
+        {
+          "name": "DISCOUNT",
+          "title": "poLine.cost.discount",
+          "description": "Percentage (0 to 100) or amount (positive number) that is subtracted from the list price time"
+        },
+        {
+          "name": "DISCOUNT_TYPE",
+          "title": "poLine.cost.discountType",
+          "description": "Percentage or amount discount type"
+        },
+        {
+          "name": "DONOR",
+          "title": "poLine.donor",
+          "description": "The donor contributing to this purchase order line"
+        },
+        {
+          "name": "EDITION",
+          "title": "poLine.edition",
+          "description": "edition of the material"
+        },
+        {
+          "name": "ENCUMBRANCE",
+          "title": "poLine.fundDistribution.encumbrance",
+          "description": "The encumbrance Id UUID format"
+        },
+        {
+          "name": "EXCHANGE_RATE",
+          "title": "poLine.cost.exchangeRate",
+          "description": "Exchange rate"
+        },
+        {
+          "name": "EXPECTED_ACTIVATION",
+          "title": "poLine.eresource.expectedActivation",
+          "description": "Expected date the resource will be activated"
+        },
+        {
+          "name": "EXPECTED_RECEIPT_DATE",
+          "title": "poLine.physical.expectedReceiptDate",
+          "description": "Vendor agreed date prior to the Receipt Due date item is expected to be received by"
+        },
+        {
+          "name": "EXPENSE_CLASS",
+          "title": "poLine.fundDistribution.expenseClassId",
+          "description": "The expense class Id UUID format"
+        },
+        {
+          "name": "FUND_ID",
+          "title": "poLine.fundDistribution.fundId",
+          "description": "The fund Id UUID format"
+        },
+        {
+          "name": "FUND_CODE",
+          "title": "poLine.fundDistribution.code",
+          "description": "Fund code format"
+        },
+        {
+          "name": "FUND_PERCENTAGE",
+          "title": "poLine.fundDistribution.distributionType",
+          "description": "Percentage or amount type of the value property"
+        },
+        {
+          "name": "LICENSE_CODE",
+          "title": "poLine.eresource.license.code",
+          "description": "License code"
+        },
+        {
+          "name": "LICENSE_DESCRIPTION",
+          "title": "poLine.eresource.license.description",
+          "description": "License description"
+        },
+        {
+          "name": "LICENSE_REFERENCE",
+          "title": "poLine.eresource.license.reference",
+          "description": "License reference"
+        },
+        {
+          "name": "LINKED_PACKAGE",
+          "title": "poLine.packagePoLineId",
+          "description": "The package poLine Id UUID format"
+        },
+        {
+          "name": "LIST_UNIT_PRICE",
+          "title": "poLine.cost.listUnitPrice",
+          "description": "The per-item list price for physical or resources of 'Other' order format"
+        },
+        {
+          "name": "LIST_UNIT_PRICE_ELECTRONIC",
+          "title": "poLine.cost.listUnitPriceElectronic",
+          "description": "The e-resource per-item list price"
+        },
+        {
+          "name": "LOCATION",
+          "title": "poLine.locations.locationId",
+          "description": "UUID of the (inventory) location record"
+        },
+        {
+          "name": "MANUAL_PO",
+          "title": "po.manualPo",
+          "description": "If true, order cannot be sent automatically, e.g. via EDI"
+        },
+        {
+          "name": "MATERIAL_SUPPLIER",
+          "title": "poLine.physical.materialSupplier",
+          "description": "UUID of the material supplier record"
+        },
+        {
+          "name": "MATERIAL_TYPE",
+          "title": "poLine.physical.materialType",
+          "description": "UUID of the material Type"
+        },
+        {
+          "name": "NOTES",
+          "title": "po.notes",
+          "description": "Free-form notes associated with this purchase order"
+        },
+        {
+          "name": "NOTE_FROM_VENDOR",
+          "title": "poLine.vendorDetail.noteFromVendor",
+          "description": "Free-form notes from the vendor"
+        },
+        {
+          "name": "ORDER_TYPE",
+          "title": "po.orderType",
+          "description": "The purchase order type"
+        },
+        {
+          "name": "PACKAGE_DESIGNATION",
+          "title": "poLine.isPackage",
+          "description": "Indicates that this POL is for a package"
+        },
+        {
+          "name": "PO_LINE_DESCRIPTION",
+          "title": "poLine.poLineDescription",
+          "description": "Purchase order line description"
+        },
+        {
+          "name": "PO_LINE_ESTIMATED_PRICE",
+          "title": "poLine.cost.poLineEstimatedPrice",
+          "description": "The calculated total estimated price for this purchase order line: list price time quantities minus discount amount plus additional cost"
+        },
+        {
+          "name": "PO_LINE_ORDER_FORMAT",
+          "title": "poLine.orderFormat",
+          "description": "he purchase order line format"
+        },
+        {
+          "name": "PO_LINE_PAYMENT_STATUS",
+          "title": "poLine.paymentStatus",
+          "description": "Payment/Receipt status"
+        },
+        {
+          "name": "PO_LINE_RECEIPT_STATUS",
+          "title": "poLine.receiptStatus",
+          "description": "The purchase order line receipt status"
+        },
+        {
+          "name": "PREFIX",
+          "title": "po.poNumberPrefix",
+          "description": "Purchase order number prefix"
+        },
+        {
+          "name": "PRODUCT_ID",
+          "title": "poLine.details.productIds.productId",
+          "description": "The actual product identifier"
+        },
+        {
+          "name": "PRODUCT_ID_TYPE",
+          "title": "poLine.details.productIds.productIdType",
+          "description": "The UUID corresponding to the type of product id"
+        },
+        {
+          "name": "PRODUCT_QUALIFIER",
+          "title": "poLine.details.productIds.qualifier",
+          "description": "Information about the binding, format, volume numbers, part of a set, publisher, distributor, etc. which might be enclosed in parenthesis"
+        },
+        {
+          "name": "PUBLICATION_DATE",
+          "title": "poLine.publicationDate",
+          "description": "Date (year) of the material's publication"
+        },
+        {
+          "name": "PUBLISHER",
+          "title": "poLine.publisher",
+          "description": "Publisher of the material"
+        },
+        {
+          "name": "PURCHASE_ORDER_ID",
+          "title": "poLine.purchaseOrderId",
+          "description": "UUID of this parent purchase order"
+        },
+        {
+          "name": "QUANTITY_ELECTRONIC",
+          "title": "poLine.cost.quantityElectronic",
+          "description": "Quantity of electronic items in this purchase order line"
+        },
+        {
+          "name": "QUANTITY_PHYSICAL",
+          "title": "poLine.cost.quantityPhysical",
+          "description": "Quantity of physical items or resources of 'Other' order format in this purchase order line"
+        },
+        {
+          "name": "RECEIPT_DATE",
+          "title": "poLine.receiptDate",
+          "description": "Date the purchase order line was received"
+        },
+        {
+          "name": "RECEIPT_DUE",
+          "title": "poLine.receiptDue",
+          "description": "Date item should be received by"
+        },
+        {
+          "name": "RECEIVING_NOTE",
+          "title": "poLine.details.receivingNote",
+          "description": "Notes regarding receiving instructions"
+        },
+        {
+          "name": "ONGOING_IS_SUBSCRIPTION",
+          "title": "po.ongoing.isSubscription",
+          "description": "Whether or not this is a subscription"
+        },
+        {
+          "name": "ONGOING_DATE",
+          "title": "po.ongoing.renewalDate",
+          "description": "The date this Ongoing PO's order lines were renewed"
+        },
+        {
+          "name": "ONGOING_INTERVAL",
+          "title": "po.ongoing.interval",
+          "description": "Renewal interval (in days)"
+        },
+        {
+          "name": "ONGOING_MANUAL",
+          "title": "po.ongoing.manualRenewal",
+          "description": "Whether or not this is a manual renewal"
+        },
+        {
+          "name": "ONGOING_REVIEW_PERIOD",
+          "title": "po.ongoing.reviewPeriod",
+          "description": "Time prior to renewal where changes can be made to subscription"
+        },
+        {
+          "name": "ONGOING_NOTES",
+          "title": "po.ongoing.notes",
+          "description": "Notes associated with the Ongoing order"
+        },
+        {
+          "name": "ONGOING_REVIEW_DATE",
+          "title": "po.ongoing.reviewDate",
+          "description": "Date when Order has to be reviewed"
+        },
+        {
+          "name": "RECEIVING_WORKFLOW",
+          "title": "po.checkinItems",
+          "description": "If true this will toggle the Check-in workflow for details associated with this PO line"
+        },
+        {
+          "name": "REPORTING_CODE",
+          "title": "poLine.reportingCodes.code",
+          "description": "A reporting code"
+        },
+        {
+          "name": "REPORTING_DESCRIPTION",
+          "title": "poLine.reportingCodes.description",
+          "description": "Description of this reporting code"
+        },
+        {
+          "name": "REQUESTER",
+          "title": "poLine.requester",
+          "description": "Who requested this purchase order line"
+        },
+        {
+          "name": "RE_ENCUMBER",
+          "title": "poLine.reEncumber",
+          "description": "Indicates this purchase order should be re-encumbered each fiscal year. Only applies to ongoing orders"
+        },
+        {
+          "name": "RUSH",
+          "title": "poLine.rush",
+          "description": "Whether or not this is a rush order"
+        },
+        {
+          "name": "SELECTOR",
+          "title": "poLine.selector",
+          "description": "Who selected this material"
+        },
+        {
+          "name": "SHIP_TO",
+          "title": "po.shipTo",
+          "description": "The UUID format string"
+        },
+        {
+          "name": "SOURCE",
+          "title": "poLine.source",
+          "description": "The source of the Order"
+        },
+        {
+          "name": "SUBSCRIPTION_FROM",
+          "title": "poLine.details.subscriptionFrom",
+          "description": "The start date of the subscription"
+        },
+        {
+          "name": "SUBSCRIPTION_INTERVAL",
+          "title": "poLine.details.subscriptionInterval",
+          "description": "The subscription interval in days"
+        },
+        {
+          "name": "SUBSCRIPTION_TO",
+          "title": "poLine.details.subscriptionTo",
+          "description": "The end date of the subscription"
+        },
+        {
+          "name": "SUFFIX",
+          "title": "po.poNumberSuffix",
+          "description": "Purchase order number suffix"
+        },
+        {
+          "name": "TAGS",
+          "title": "poLine.tags.tagList",
+          "description": "List of tags"
+        },
+        {
+          "name": "TITLE",
+          "title": "poLine.titleOrPackage",
+          "description": "Title of the material"
+        },
+        {
+          "name": "TOTAL_ESTIMATED_PRICE",
+          "title": "po.totalEstimatedPrice",
+          "description": "Total estimated price of this purchase order"
+        },
+        {
+          "name": "TOTAL_ITEMS",
+          "title": "po.totalItems",
+          "description": "Total number of items included in the purchase order"
+        },
+        {
+          "name": "TRIAL",
+          "title": "poLine.eresource.trial",
+          "description": "Whether or not this is a trial"
+        },
+        {
+          "name": "USER_LIMIT",
+          "title": "poLine.eresource.userLimit",
+          "description": "The concurrent user-limit"
+        },
+        {
+          "name": "URL",
+          "title": "poLine.eresource.resourceUrl",
+          "description": "Electronic resource can be access via this URL"
+        },
+        {
+          "name": "VENDOR",
+          "title": "po.vendor",
+          "description": "The vendor Id UUID format"
+        },
+        {
+          "name": "VENDOR_ACCOUNT",
+          "title": "poLine.vendorDetail.vendorAccount",
+          "description": "The account number on the vendor's end associated with this purchase order line"
+        },
+        {
+          "name": "VENDOR_INSTRUCTIONS",
+          "title": "poLine.vendorDetail.instructions",
+          "description": "Special instructions for the vendor"
+        },
+        {
+          "name": "VENDOR_REF_NO",
+          "title": "poLine.vendorDetail.referenceNumbers.refNumber",
+          "description": "A reference number for this purchase order line"
+        },
+        {
+          "name": "VENDOR_REF_NO_TYPE",
+          "title": "poLine.vendorDetail.referenceNumbers.refNumberType",
+          "description": "The reference number type"
+        },
+        {
+          "name": "VOLUMES",
+          "title": "poLine.physical.volumes",
+          "description": "List of volumes included to the physical material"
+        },
+        {
+          "name": "WORKFLOW_STATUS",
+          "title": "po.workflowStatus",
+          "description": "Composite workflow status"
+        }
+      ]
+    },
+    "dataSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "XPath to the data for the field to map"
+        },
+        "translation": {
+          "enum": [
+            "lookupContributorNameTypeId",
+            "lookupExpenseClassId",
+            "lookupAcquisitionMethodIds",
+            "lookupAcquisitionUnitDefaultAcqUnitName",
+            "lookupLocationId",
+            "lookupMaterialTypeId",
+            "lookupFundId",
+            "lookupMock",
+            "lookupOrganization",
+            "lookupProductIdType",
+            "lookupBillTo",
+            "lookupShipTo",
+            "lookupSuffix",
+            "lookupPrefix",
+            "lookupLinkedPackage",
+            "lookupConfigAddress",
+            "separateISBNQualifier",
+            "truncateISBNQualifier",
+            "toBoolean",
+            "toDate",
+            "toDouble",
+            "toInteger"
+          ],
+          "javaEnums": [
+            {
+              "name": "LOOKUP_CONTRIBUTOR_NAME_TYPE_ID",
+              "title": "lookupContributorNameTypeId",
+              "description": "Lookup contributions UUID"
+            },
+            {
+              "name": "LOOKUP_EXPENSE_CLASS_ID",
+              "title": "lookupExpenseClassId",
+              "description": "Lookup expense class UUID"
+            },
+            {
+              "name": "LOOKUP_ACQUISITION_METHOD_IDS",
+              "title": "lookupAcquisitionMethodIds",
+              "description": "Lookup acquisition method UUIDs"
+            },
+            {
+              "name": "LOOKUP_ACQUISITION_UNIT_DEFAULT_ACQ_UNIT_NAME",
+              "title": "lookupAcquisitionUnitDefaultAcqUnitName",
+              "description": "Lookup acquisition unit UUIDs associated with this organizations account"
+            },
+            {
+              "name": "LOOKUP_LOCATION_ID",
+              "title": "lookupLocationId",
+              "description": "Lookup UUID of the (inventory) location record"
+            },
+            {
+              "name": "LOOKUP_MATERIAL_TYPE_ID",
+              "title": "lookupMaterialTypeId",
+              "description": "Lookup UUID of the material Type"
+            },
+            {
+              "name": "LOOKUP_FUND_ID",
+              "title": "lookupFundId",
+              "description": "Lookup fund UUID"
+            },
+            {
+              "name": "LOOKUP_MOCK",
+              "title": "lookupMock",
+              "description": "Lookup mock"
+            },
+            {
+              "name": "LOOKUP_ORGANIZATION",
+              "title": "lookupOrganization",
+              "description": "Lookup organization"
+            },
+            {
+              "name": "LOOKUP_PRODUCT_ID_TYPE",
+              "title": "lookupProductIdType",
+              "description": "Lookup UUID corresponding to the type of product id"
+            },
+            {
+              "name": "LOOKUP_BILL_TO",
+              "title": "lookupConfigAddress",
+              "description": "Lookup config address"
+            },
+            {
+              "name": "LOOKUP_SHIP_TO",
+              "title": "lookupConfigAddress",
+              "description": "Lookup config address"
+            },
+            {
+              "name": "LOOKUP_SUFFIX",
+              "title": "lookupSuffix",
+              "description": "Lookup suffix UUID for purchase order number"
+            },
+            {
+              "name": "LOOKUP_PREFIX",
+              "title": "lookupPrefix",
+              "description": "Lookup prefix UUID for purchase order number"
+            },
+            {
+              "name": "LOOKUP_LINKED_PACKAGE",
+              "title": "lookupLinkedPackage",
+              "description": "Lookup purchase order line UUID by order line number"
+            },
+            {
+              "name": "LOOKUP_CONFIG_ADDRESS",
+              "title": "lookupConfigAddress",
+              "description": "Lookup config address"
+            },
+            {
+              "name": "SEPARATE_ISBN_QUALIFIER",
+              "title": "separateISBNQualifier",
+              "description": "Separating the ISBN qualifier"
+            },
+            {
+              "name": "TRUNCATE_ISBN_QUALIFIER",
+              "title": "truncateISBNQualifier",
+              "description": "Truncation the ISBN qualifier"
+            },
+            {
+              "name": "TO_BOOLEAN",
+              "title": "toBoolean",
+              "description": "To boolean"
+            },
+            {
+              "name": "TO_DATE",
+              "title": "toDate",
+              "description": "To date"
+            },
+            {
+              "name": "TO_DOUBLE",
+              "title": "toDouble",
+              "description": "To double"
+            },
+            {
+              "name": "TO_INTEGER",
+              "title": "toInteger",
+              "description": "To integer"
+            }
+          ],
+          "description": "Method to translate the specified type"
+        },
+        "translateDefault": {
+          "type": "boolean",
+          "description": "Whether or not to translate the default value"
+        },
+        "combinator": {
+          "enum": [
+            "concat",
+            "multiply"
+          ],
+          "description": "Method to combine the specified type with other values"
+        },
+        "default": {
+          "type": "string",
+          "description": "default value"
+        },
+        "defaultMapping": {
+          "type": "#",
+          "description": "default value found from the mapping of another node"
+        },
+        "fromOtherField": {
+          "$ref": "#properties/field",
+          "description": "default value found from another field",
+          "$comment": "in the config json, the order of dataSource is important as this field refers to previous dataSource objects."
+        },
+        "dataSourceFieldName": {
+          "from": {
+            "type": "string",
+            "description": "GOBI field name"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "field"
+  ]
+}
