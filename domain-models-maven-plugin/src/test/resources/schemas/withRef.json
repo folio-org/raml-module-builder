@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "type": "object",
+  "properties": {
+    "field": {
+      "type": "string",
+      "description": "Field name of the mapping",
+      "enum": [
+        "ACCESS_PROVIDER"
+      ],
+      "javaEnums": [
+        {
+          "name": "ACCESS_PROVIDER",
+          "title": "poLine.eresource.accessProvider",
+          "description": "UUID of the access provider"
+        }
+      ]
+    },
+    "dataSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "XPath to the data for the field to map"
+        },
+        "translation": {
+          "enum": [
+            "lookupContributorNameTypeId"
+          ],
+          "javaEnums": [
+            {
+              "name": "LOOKUP_CONTRIBUTOR_NAME_TYPE_ID",
+              "title": "lookupContributorNameTypeId",
+              "description": "Lookup contributions UUID"
+            }
+          ],
+          "description": "Method to translate the specified type"
+        },
+        "translateDefault": {
+          "type": "boolean",
+          "description": "Whether or not to translate the default value"
+        },
+        "combinator": {
+          "enum": [
+            "concat",
+            "multiply"
+          ],
+          "description": "Method to combine the specified type with other values"
+        },
+        "default": {
+          "type": "string",
+          "description": "default value"
+        },
+        "defaultMapping": {
+          "type": "#",
+          "description": "default value found from the mapping of another node"
+        },
+        "fromOtherField": {
+          "$ref": "#properties/field",
+          "description": "default value found from another field",
+          "$comment": "in the config json, the order of dataSource is important as this field refers to previous dataSource objects."
+        },
+        "dataSourceFieldName": {
+          "from": {
+            "type": "string",
+            "description": "GOBI field name"
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "field"
+  ]
+}

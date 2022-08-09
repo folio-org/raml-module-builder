@@ -1,0 +1,16 @@
+#%RAML 1.0
+
+title: Jobs API
+baseUri: http://localhost:8081/v1
+version: v1
+
+types:
+  refs: !include withRef.json
+
+/ref-mapping:
+  displayName: OrderMappings
+  description: Order Mappings with refs
+  post:
+    body:
+      application/json:
+        schema: refs
