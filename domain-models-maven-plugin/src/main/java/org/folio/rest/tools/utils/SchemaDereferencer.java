@@ -108,6 +108,6 @@ public class SchemaDereferencer {
   }
 
   private static boolean hasSelfReference(String refValue) {
-    return refValue.contains("#");
+    return refValue.startsWith("#");
   }
 }
