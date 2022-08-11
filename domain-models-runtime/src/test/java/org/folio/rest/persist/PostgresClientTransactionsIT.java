@@ -422,7 +422,7 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     }
   }
 
-  class MonitorPgConnection implements PgConnection {
+  class MonitorPgConnection extends PgConnectionMock {
     final PgConnection conn;
     final AtomicInteger open;
     final AtomicInteger active;
@@ -491,11 +491,6 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     }
 
     @Override
-    public void begin(Handler<AsyncResult<Transaction>> handler) {
-      begin().onComplete(handler);
-    }
-
-    @Override
     public Future<Transaction> begin() {
       active.incrementAndGet();
       return conn.begin().map(trans -> new MonitorTransaction(trans, active));
@@ -519,11 +514,6 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     @Override
     public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
       return conn.preparedQuery(sql, options);
-    }
-
-    @Override
-    public void close(Handler<AsyncResult<Void>> handler) {
-      close().onComplete(handler);
     }
 
     @Override
