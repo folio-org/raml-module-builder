@@ -40,12 +40,10 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
-import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
@@ -57,7 +55,6 @@ import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.TransactionRollbackException;
 import io.vertx.sqlclient.Tuple;
 import io.vertx.sqlclient.impl.RowDesc;
-import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -2055,105 +2052,7 @@ public class PostgresClientIT {
    * throws an RuntimeException.
    */
   private PostgresClient postgresClientConnectionThrowsException() {
-    PgConnection pgConnection = new PgConnection() {
-      @Override
-      public PgConnection notificationHandler(Handler<PgNotification> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public int processId() {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public int secretKey() {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public Future<PreparedStatement> prepare(String s) {
-        return null;
-      }
-
-      @Override
-      public SqlConnection prepare(String sql, PrepareOptions options,
-          Handler<AsyncResult<PreparedStatement>> handler) {
-        return null;
-      }
-
-      @Override
-      public Future<PreparedStatement> prepare(String s, PrepareOptions prepareOptions) {
-        return null;
-      }
-
-      @Override
-      public PgConnection exceptionHandler(Handler<Throwable> handler) {
-        return null;
-      }
-
-      @Override
-      public PgConnection closeHandler(Handler<Void> handler) {
-        return null;
-      }
-
-      @Override
-      public void begin(
-          Handler<AsyncResult<Transaction>> handler) {
-
-      }
-
-      @Override
-      public Future<Transaction> begin() {
-        return null;
-      }
-
-      @Override
-      public boolean isSSL() {
-        return false;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-        close().onComplete(handler);
-      }
-
-      @Override
-      public Future<Void> close() {
-        return Future.succeededFuture();
-      }
-
-      @Override
-      public Query<RowSet<Row>> query(String s) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String s, PrepareOptions options) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        throw new RuntimeException();
-      }
-
-      @Override
-      public DatabaseMetadata databaseMetadata() {
-        throw new RuntimeException();
-      }
-    };
-
+    PgConnection pgConnection = new PgConnectionMock();
     PgPool client = new PgPoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
@@ -2174,82 +2073,7 @@ public class PostgresClientIT {
    * SQLConnection::queryWithParams will report a failure via the resultHandler.
    */
   private PostgresClient postgresClientQueryFails() {
-    PgConnection pgConnection = new PgConnection() {
-      @Override
-      public PgConnection notificationHandler(Handler<PgNotification> handler) {
-        return this;
-      }
-
-      @Override
-      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
-        handler.handle(Future.failedFuture("cancelRequestFails"));
-        return this;
-      }
-
-      @Override
-      public int processId() {
-        return 0;
-      }
-
-      @Override
-      public int secretKey() {
-        return 0;
-      }
-
-      @Override
-      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-        prepare(s).onComplete(handler);
-        return null;
-      }
-
-      @Override
-      public Future<PreparedStatement> prepare(String s) {
-        return Future.failedFuture("preparedFails");
-      }
-
-      @Override
-      public SqlConnection prepare(String sql, PrepareOptions options,
-          Handler<AsyncResult<PreparedStatement>> handler) {
-        prepare(sql, options).onComplete(handler);
-        return null;
-      }
-
-      @Override
-      public Future<PreparedStatement> prepare(String sql, PrepareOptions options) {
-        return prepare(sql);
-      }
-
-      @Override
-      public PgConnection exceptionHandler(Handler<Throwable> handler) {
-        return null;
-      }
-
-      @Override
-      public PgConnection closeHandler(Handler<Void> handler) {
-        return null;
-      }
-
-      @Override
-      public void begin(
-          Handler<AsyncResult<Transaction>> handler) {
-
-      }
-
-      @Override
-      public Future<Transaction> begin() {
-        return null;
-      }
-
-      @Override
-      public boolean isSSL() {
-        return false;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-
-      }
-
+    PgConnection pgConnection = new PgConnectionMock() {
       @Override
       public Query<RowSet<Row>> query(String s)
       {
@@ -2286,16 +2110,6 @@ public class PostgresClientIT {
       public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
         throw new RuntimeException("queryFails");
       }
-
-      @Override
-      public Future<Void> close() {
-        return null;
-      }
-
-      @Override
-      public DatabaseMetadata databaseMetadata() {
-        return null;
-      }
     };
 
     PgPool client = new PgPoolBase() {
@@ -2317,105 +2131,7 @@ public class PostgresClientIT {
    * @return a PostgresClient where invoking SQLConnection::queryWithParams will return null ResultSet
    */
   private PostgresClient postgresClientQueryReturnBadResults() {
-    PgConnection pgConnection = new PgConnection() {
-      @Override
-      public PgConnection notificationHandler(Handler<PgNotification> handler) {
-        return null;
-      }
-
-      @Override
-      public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
-        return this;
-      }
-
-      @Override
-      public int processId() {
-        return 0;
-      }
-
-      @Override
-      public int secretKey() {
-        return 0;
-      }
-
-      @Override
-      public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-        return null;
-      }
-
-      @Override
-      public Future<PreparedStatement> prepare(String s) {
-        return null;
-      }
-
-      @Override
-      public SqlConnection prepare(String sql, PrepareOptions options,
-          Handler<AsyncResult<PreparedStatement>> handler) {
-        return null;
-      }
-
-      @Override
-      public Future<PreparedStatement> prepare(String sql, PrepareOptions options) {
-        return null;
-      }
-
-      @Override
-      public PgConnection exceptionHandler(Handler<Throwable> handler) {
-        return null;
-      }
-
-      @Override
-      public PgConnection closeHandler(Handler<Void> handler) {
-        return null;
-      }
-
-      @Override
-      public void begin(
-          Handler<AsyncResult<Transaction>> handler) {
-
-      }
-
-      @Override
-      public Future<Transaction> begin() {
-        return null;
-      }
-
-      @Override
-      public boolean isSSL() {
-        return false;
-      }
-
-      @Override
-      public void close(Handler<AsyncResult<Void>> handler) {
-
-      }
-
-      @Override
-      public Query<RowSet<Row>> query(String s) {
-        return null;
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-        return null;
-      }
-
-      @Override
-      public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
-        return preparedQuery(sql);
-      }
-
-      @Override
-      public Future<Void> close() {
-
-        return null;
-      }
-
-      @Override
-      public DatabaseMetadata databaseMetadata() {
-        return null;
-      }
-    };
+    PgConnection pgConnection = new PgConnectionMock();
     PgPool client = new PgPoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
