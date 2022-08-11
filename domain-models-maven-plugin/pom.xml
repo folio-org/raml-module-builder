@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>34.1.1-SNAPSHOT</version>
+    <version>34.1.1</version>
   </parent>
   <artifactId>domain-models-maven-plugin</artifactId>
   <description>Domain Model Generator that reads RAML files and writes Java files</description>
