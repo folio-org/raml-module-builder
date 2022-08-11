@@ -1,3 +1,8 @@
+## 34.0.1 2022-08-11
+
+Bug fix:
+ * [RMB-934](https://issues.folio.org/browse/RMB-934) Vert.x 4.3.3 fixing disabled SSL in 4.3.0/4.3.1
+
 ## 34.0.0 2021-12-03
 
 Breaking changes:
