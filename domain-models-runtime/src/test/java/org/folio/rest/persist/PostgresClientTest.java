@@ -30,20 +30,13 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgNotification;
 import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
-import io.vertx.sqlclient.PrepareOptions;
-import io.vertx.sqlclient.PreparedQuery;
-import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.SqlResult;
-import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.impl.RowDesc;
-import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.security.AES;
@@ -391,86 +384,13 @@ public class PostgresClientTest {
     assertThat(setterMethodName, is("setTestField"));
   }
 
-  public class FakeSqlConnection implements PgConnection {
+  public class FakeSqlConnection extends PgConnectionMock {
     final AsyncResult<RowSet<Row>> asyncResult;
     final boolean failExplain;
 
     FakeSqlConnection(AsyncResult<RowSet<Row>> result, boolean failExplain) {
       this.asyncResult = result;
       this.failExplain = failExplain;
-    }
-
-    @Override
-    public PgConnection notificationHandler(Handler<PgNotification> handler) {
-      return this;
-    }
-
-    @Override
-    public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
-      handler.handle(Future.failedFuture("not implemented"));
-      return this;
-    }
-
-    @Override
-    public int processId() {
-      return 0;
-    }
-
-    @Override
-    public int secretKey() {
-      return 0;
-    }
-
-    @Override
-    public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-      handler.handle(prepare(s));
-      return this;
-    }
-
-    @Override
-    public Future<PreparedStatement> prepare(String s) {
-      return Future.failedFuture("not implemented");
-    }
-
-    @Override
-    public SqlConnection prepare(String sql, PrepareOptions options, Handler<AsyncResult<PreparedStatement>> handler) {
-      return prepare(sql, handler);
-    }
-
-    @Override
-    public Future<PreparedStatement> prepare(String sql, PrepareOptions options) {
-      return prepare(sql);
-    }
-
-    @Override
-    public PgConnection exceptionHandler(Handler<Throwable> handler) {
-      return this;
-    }
-
-    @Override
-    public PgConnection closeHandler(Handler<Void> handler) {
-      return null;
-    }
-
-    @Override
-    public void begin(
-        Handler<AsyncResult<Transaction>> handler) {
-
-    }
-
-    @Override
-    public Future<Transaction> begin() {
-      return null;
-    }
-
-    @Override
-    public boolean isSSL() {
-      return false;
-    }
-
-    @Override
-    public void close(Handler<AsyncResult<Void>> handler) {
-
     }
 
     @Override
@@ -512,26 +432,6 @@ public class PostgresClientTest {
           return null;
         }
       };
-    }
-
-    @Override
-    public PreparedQuery<RowSet<Row>> preparedQuery(String s) {
-      return null;
-    }
-
-    @Override
-    public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
-      return null;
-    }
-
-    @Override
-    public Future<Void> close() {
-      return Future.succeededFuture();
-    }
-
-    @Override
-    public DatabaseMetadata databaseMetadata() {
-      return null;
     }
   }
 
