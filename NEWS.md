@@ -1,3 +1,8 @@
+## 34.0.2 2022-08-17
+
+Bug fix:
+ * [RMB-931](https://issues.folio.org/browse/RMB-931) Migrate date formatting in x\_set\_md and set\_x\_md\_json
+
 ## 34.0.1 2022-08-11
 
 Bug fix:
