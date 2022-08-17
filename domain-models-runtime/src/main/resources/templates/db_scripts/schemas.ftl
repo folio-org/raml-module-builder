@@ -136,7 +136,10 @@ END $$;
          because they may have changed. -->
     <#include "indexes.ftl">
     <#include "foreign_keys.ftl">
-    
+
+    <#-- metadata trigger has changed in RMB 34.0.0: https://issues.folio.org/browse/RMB-759 -->
+    <#include "metadata.ftl">
+
     <#-- Always check optimistic locking configuration -->
     <#include "optimistic_locking.ftl">
   </#if>
