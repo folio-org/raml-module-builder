@@ -92,19 +92,16 @@ public class TenantAPI implements Tenant {
   }
 
   /**
-   * @return previous Schema from rmb_internal.jsonb->>'schemaJson', or null if not exist.
+   * @return previous (currently stored) rmb_internal info; null if none exist
    */
-  Future<Schema> previousSchema(Context context, String tenantId, boolean tenantExists) {
+  Future<JsonObject> getRmbInternal(Context context, String tenantId, boolean tenantExists) {
     if (! tenantExists) {
       return Future.succeededFuture(null);
     }
-    String sql = "SELECT jsonb->>'schemaJson' " +
+    String sql = "SELECT jsonb " +
         "FROM " + PostgresClient.convertToPsqlStandard(tenantId) + ".rmb_internal";
     return postgresClient(context).selectSingle(sql)
-        .map(row -> {
-          String schemaString = row == null ? null : row.getString(0);
-          return schemaString == null ? null : ObjectMapperTool.readValue(schemaString, Schema.class);
-        })
+        .map(row -> row == null ? null : row.getJsonObject(0))
         .onFailure(e -> log.error(e.getMessage(), e));
   }
 
@@ -118,13 +115,14 @@ public class TenantAPI implements Tenant {
   /**
    * @param tenantExists false for initial installation, true for upgrading
    * @param tenantAttributes parameters like module version that may influence generated SQL
+   * @param previousVersion module version stored
    * @param previousSchema schema to upgrade from, may be null if unknown and on initial install
    * @return the SQL commands . 0 is immediate script (create, disable), 1 (optional) is update schema script.
    * @throws NoSchemaJsonException when templates/db_scripts/schema.json doesn't exist
    * @throws TemplateException when processing templates/db_scripts/schema.json fails
    */
   public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes tenantAttributes,
-      Schema previousSchema) throws IOException, TemplateException {
+      String previousVersion, Schema previousSchema) throws IOException, TemplateException {
 
     InputStream tableInput = TenantAPI.class.getClassLoader().getResourceAsStream(getTablePath());
     if (tableInput == null) {
@@ -134,13 +132,9 @@ public class TenantAPI implements Tenant {
     }
 
     TenantOperation op = TenantOperation.CREATE;
-    String previousVersion = null;
     String newVersion = tenantAttributes == null ? null : tenantAttributes.getModuleTo();
     if (tenantExists) {
       op = TenantOperation.UPDATE;
-      if (tenantAttributes != null) {
-        previousVersion = tenantAttributes.getModuleFrom();
-      }
     }
 
     SchemaMaker sMaker = new SchemaMaker(tenantId, PostgresClient.getModuleName(), op, previousVersion, newVersion);
@@ -167,10 +161,19 @@ public class TenantAPI implements Tenant {
   Future<String[]> sqlFile(Context context, String tenantId,
                            TenantAttributes tenantAttributes, boolean tenantExists) {
 
-    return previousSchema(context, tenantId, tenantExists)
-        .compose(previousSchema -> {
+    return getRmbInternal(context, tenantId, tenantExists)
+        .compose(result -> {
+          Schema schema = null;
+          String version = "0.0";
+          if (result != null) {
+            version = result.getString("moduleVersion");
+            String schemaString = result.getString("schemaJson");
+            if (schemaString != null) {
+              schema = ObjectMapperTool.readValue(schemaString, Schema.class);
+            }
+          }
           try {
-            String [] sqlFile = sqlFile(tenantId, tenantExists, tenantAttributes, previousSchema);
+            String [] sqlFile = sqlFile(tenantId, tenantExists, tenantAttributes, version, schema);
             return Future.succeededFuture(sqlFile);
           } catch (IOException e) {
             throw new UncheckedIOException(e);
