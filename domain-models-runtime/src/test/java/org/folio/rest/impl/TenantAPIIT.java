@@ -291,7 +291,7 @@ public class TenantAPIIT {
   public void previousSchemaSqlExistsTrue(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI();
     String tenantId = TenantTool.tenantId(okapiHeaders);
-    tenantAPI.previousSchema(vertx.getOrCreateContext(), tenantId, true)
+    tenantAPI.getRmbInternal(vertx.getOrCreateContext(), tenantId, true)
       .onComplete(context.asyncAssertFailure());
   }
 
@@ -303,9 +303,9 @@ public class TenantAPIIT {
     // only run create.ftl .. This makes previousSchema to find nothing on 2nd invocation
     tenantAPI.sqlFile(vertx.getOrCreateContext(), tenantId, null, false)
         .compose(files -> tenantAPI.postgresClient(vertx.getOrCreateContext()).runSQLFile(files[0], true))
-        .compose(x -> tenantAPI.previousSchema(vertx.getOrCreateContext(), tenantId, true)
-        .onComplete(context.asyncAssertSuccess(schema -> {
-          context.assertNull(schema);
+        .compose(x -> tenantAPI.getRmbInternal(vertx.getOrCreateContext(), tenantId, true)
+        .onComplete(context.asyncAssertSuccess(result -> {
+          context.assertNull(result.getString("schemaJson"));
           async.complete();
         })));
     async.await();
@@ -393,8 +393,8 @@ public class TenantAPIIT {
   public void postWithSqlFileIOException(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
-          throws IOException {
+      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity,
+          String previousVersion, Schema previousSchema) throws IOException {
         throw new IOException();
       }
     };
@@ -405,8 +405,8 @@ public class TenantAPIIT {
   public void postWithSqlFileTemplateException(TestContext context) {
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
-      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity, Schema previousSchema)
-          throws TemplateException {
+      public String [] sqlFile(String tenantId, boolean tenantExists, TenantAttributes entity,
+          String previousVersion, Schema previousSchema) throws TemplateException {
         throw new TemplateException(null);
       }
     };
