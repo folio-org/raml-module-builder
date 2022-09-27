@@ -10,8 +10,17 @@
       WHEN 'INSERT' THEN
           NEW.jsonb = jsonb_set(NEW.jsonb, '{${ol_version}}', to_jsonb(1));
       WHEN 'UPDATE' THEN
+        <#if table.withOptimisticLocking.name() != "FAIL">
+        IF NEW.jsonb->'${ol_version}' = '-1' THEN
+          IF OLD.jsonb->'${ol_version}' IS NULL THEN
+            NEW.jsonb = NEW.jsonb - '${ol_version}';
+          ELSE
+            NEW.jsonb = jsonb_set(NEW.jsonb, '{${ol_version}}', OLD.jsonb->'${ol_version}');
+          END IF;
+        END IF;
+        </#if>
         IF NEW.jsonb->'${ol_version}' IS DISTINCT FROM OLD.jsonb->'${ol_version}' THEN
-          <#if table.withOptimisticLocking.name() == "FAIL">
+          <#if table.withOptimisticLocking.name() == "FAIL" || table.withOptimisticLocking.name() == "FAIL_SUPPRESS">
             RAISE 'Cannot update record % because it has been changed (optimistic locking): '
           <#else>
             RAISE NOTICE 'Ignoring optimistic locking conflict while overwriting changed record %: '

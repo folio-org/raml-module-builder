@@ -11,6 +11,9 @@ public enum OptimisticLockingMode {
   LOG,
 
   @JsonProperty("failOnConflict")
-  FAIL
+  FAIL,
+
+  @JsonProperty("failOnConflictUnlessSuppressed")
+  FAIL_SUPPRESS
 
 }
