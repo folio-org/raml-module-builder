@@ -1424,6 +1424,7 @@ public final class PgUtil {
    *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
    * @return result created by responseClass
    */
+  @SuppressWarnings("squid:S107")  // Suppress "Method has 8 parameters, which is greater than 7 authorized."
   public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities,
       boolean upsert, boolean optimisticLocking,
       Map<String, String> okapiHeaders, Context vertxContext,

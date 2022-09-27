@@ -4,6 +4,7 @@ import static org.hamcrest.Matchers.*;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,12 +28,12 @@ class OptimisticLockingUtilTest {
 
   @Test
   void setVersionToMinusOne_null() throws ReflectiveOperationException {
-    OptimisticLockingUtil.setVersionToMinusOne(null);
+    assertDoesNotThrow(() -> OptimisticLockingUtil.setVersionToMinusOne(null));
   }
 
   @Test
   void setVersionToMinusOne_empty() throws ReflectiveOperationException {
-    OptimisticLockingUtil.setVersionToMinusOne(List.of());
+    assertDoesNotThrow(() -> OptimisticLockingUtil.setVersionToMinusOne(List.of()));
   }
 
   @Test
@@ -45,20 +46,25 @@ class OptimisticLockingUtilTest {
   }
 
   @Test
-  void setVersionToMinusOne_three() throws ReflectiveOperationException {
+  void setVersionToMinusOne_four() throws ReflectiveOperationException {
     String uuid1 = UUID.randomUUID().toString();
     String uuid2 = UUID.randomUUID().toString();
-    String uuid3 = UUID.randomUUID().toString();
+    String uuid4 = UUID.randomUUID().toString();
     User user1 = new User().withId(uuid1).withVersion(0);
     User user2 = new User().withId(uuid2).withVersion(Integer.MIN_VALUE);
-    User user3 = new User().withId(uuid3).withVersion(Integer.MAX_VALUE);
-    OptimisticLockingUtil.setVersionToMinusOne(List.of(user1, user2, user3));
+    User user4 = new User().withId(uuid4).withVersion(Integer.MAX_VALUE);
+    List<User> list = new ArrayList<>();
+    list.add(user1);
+    list.add(user2);
+    list.add(null);
+    list.add(user4);
+    OptimisticLockingUtil.setVersionToMinusOne(list);
     assertThat(user1.getVersion(), is(-1));
     assertThat(user2.getVersion(), is(-1));
-    assertThat(user3.getVersion(), is(-1));
+    assertThat(user4.getVersion(), is(-1));
     assertThat(user1.getId(), is(uuid1));
     assertThat(user2.getId(), is(uuid2));
-    assertThat(user3.getId(), is(uuid3));
+    assertThat(user4.getId(), is(uuid4));
   }
 
   class WrongMethods {
@@ -76,12 +82,12 @@ class OptimisticLockingUtilTest {
 
   @Test
   void unsetVersionIfMinusOne_null() throws ReflectiveOperationException {
-    OptimisticLockingUtil.unsetVersionIfMinusOne(null);
+    assertDoesNotThrow(() -> OptimisticLockingUtil.unsetVersionIfMinusOne(null));
   }
 
   @Test
   void unsetVersionIfMinusOne_empty() throws ReflectiveOperationException {
-    OptimisticLockingUtil.unsetVersionIfMinusOne(List.of());
+    assertDoesNotThrow(() -> OptimisticLockingUtil.unsetVersionIfMinusOne(List.of()));
   }
 
   @Test

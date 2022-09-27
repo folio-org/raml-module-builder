@@ -8,7 +8,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 public final class OptimisticLockingUtil {
-  public final static String DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING = "DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING";
+  public static final String DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING = "DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING";
   private static ZonedDateTime allowSuppressOptimistcLocking;
 
   static {
@@ -50,7 +50,6 @@ public final class OptimisticLockingUtil {
     // entity.getClass().getMethod("setMetadata", null)
     // is 20 times slower than this loop when not found because of throwing the exception
     for (Method method : entity.getClass().getMethods()) {
-      System.out.println(method.getName() + " " + method.getReturnType().getName());
       if (method.getName().equals("getVersion") &&
           method.getReturnType().equals(java.lang.Integer.class) &&
           method.getParameterCount() == 0) {
@@ -120,11 +119,9 @@ public final class OptimisticLockingUtil {
         continue;
       }
       Integer version = (Integer) getVersion.invoke(entity, (Object []) null);
-      if (version == null || version.intValue() != -1) {
-        continue;
+      if (Integer.valueOf(-1).equals(version)) {
+        setVersion.invoke(entity, (Object) null);
       }
-
-      setVersion.invoke(entity, (Object) null);
     }
   }
 
