@@ -1,3 +1,32 @@
+## 35.0.0 2022-09-30
+
+New features:
+ * [RMB-939](https://issues.folio.org/browse/RMB-939) failOnConflictUnlessSuppressed for optimistic locking
+ * [RMB-937](https://issues.folio.org/browse/RMB-937) Fix previous version used for migration scripts
+ * [RMB-348](https://issues.folio.org/browse/RMB-348) Add support for database read/write splitting to RAML Module Builder
+ * [RMB-926](https://issues.folio.org/browse/RMB-926) Minimum PostgreSQL version: make configurable, fix int comp
+
+Bug fixes:
+ * [RMB-940](https://issues.folio.org/browse/RMB-940) postgresql client 42.5.0 fixing SQL Injection CVE-2022-31197
+ * [RMB-937](https://issues.folio.org/browse/RMB-937) Fix previous version used for migration scripts
+ * [RMB-931](https://issues.folio.org/browse/RMB-931) Migrate date formatting in x\_set\_md and set\_x\_md\_json
+ * [RMB-934](https://issues.folio.org/browse/RMB-934) Vert.x 4.3.3 fixing disabled SSL in 4.3.0/4.3.1
+ * [RMB-933](https://issues.folio.org/browse/RMB-933) exclude self reference elements from URI encoding
+ * [RMB-932](https://issues.folio.org/browse/RMB-932) Broken empty string matching: uuidfield == ""
+ * [RMB-930](https://issues.folio.org/browse/RMB-930) Upgrade git-commit-id-plugin for JDK 17
+ * [RMB-927](https://issues.folio.org/browse/RMB-927) http: Do not join response headers
+ * [RMB-922](https://issues.folio.org/browse/RMB-922) Migrate to case insensitive x-okapi-tenant header
+
+## 34.1.2 2022-08-17
+
+Bug fix:
+ * [RMB-931](https://issues.folio.org/browse/RMB-931) Migrate date formatting in x\_set\_md and set\_x\_md\_json
+
+## 34.1.1 2022-08-11
+
+Bug fix:
+ * [RMB-934](https://issues.folio.org/browse/RMB-934) Vert.x 4.3.3 fixing disabled SSL in 4.3.0/4.3.1
+
 ## 34.1.0 2022-06-16
 
 New feature:
