@@ -13,6 +13,10 @@
       "withOptimisticLocking": "failOnConflict"
     },
     {
+      "tableName": "tab_ol_fail_suppress",
+      "withOptimisticLocking": "failOnConflictUnlessSuppressed"
+    },
+    {
       "tableName": "tab_ol_none"
     }
   ]

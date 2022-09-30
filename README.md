@@ -367,6 +367,7 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_RECONNECTATTEMPTS
  - DB_RECONNECTINTERVAL
  - DB_EXPLAIN_QUERY_THRESHOLD
+ - DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING
 
 The first five are mandatory, the others are optional.
 
@@ -401,6 +402,8 @@ as PostgresClient.getById or PostgresClient.streamGet.
 The environment variable `DB_HOST_READER` sets the read database host's URI, if there is a reader instance.
 
 The environment variable `DB_PORT_READER` sets the read database host's port, if there is a reader instance. It is to be used when `DB_HOST_READER` is set.
+
+`DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING` is a timestamp in the format `2022-12-31T23:59:59Z`. Setting it disables optimistic locking when sending a record that contains `"_version":-1` before that time, after that time `"_version":-1` is rejected. This applies only to tables with `failOnConflictUnlessSuppressed`, see below. The timestamp ensures that disabling this option cannot be forgotten. Suppressing optimistic locking is known to lead to data loss in some cases, don't use in production, you have been warned!
 
 See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables) section of the Okapi Guide for more information on how to deploy environment variables to RMB modules via Okapi.
 
@@ -1622,7 +1625,7 @@ For each **table** in `tables` property:
 14. `deleteFields` / `addFields` - delete (or add with a default value), a field at the specified path for all JSON entries in the table
 15. `populateJsonWithId` - This schema.json entry and the disable option is no longer supported. The primary key is always copied into `jsonb->'id'` on each insert and update.
 16. `pkColumnName` - No longer supported. The name of the primary key column is always `id` and is copied into `jsonb->'id'` in each insert and update. The method PostgresClient.setIdField(String) no longer exists.
-17. `withOptimisticLocking` - `off` (default), `logOnConflict`, or `failOnConflict`, for details see [Optimistic Locking section](#optimistic-locking) below
+17. `withOptimisticLocking` - `off` (default), `logOnConflict`, `failOnConflictUnlessSuppressed`, or `failOnConflict`, for details see [Optimistic Locking section](#optimistic-locking) below
 
 The **views** section is a bit more self explanatory, as it indicates a viewName and the two tables (and a column per table) to join by. In addition to that, you can indicate the join type between the two tables. For example:
 ```json
@@ -1956,10 +1959,11 @@ RMB is aware of the [metadata.schema](https://github.com/folio-org/raml/blob/ram
 
 ## Optimistic Locking
 
-RMB supports optimistic locking. By default it is disabled. Module developer can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. When either `failOnConflict` or `logOnConflict` attribute are specified, a database trigger will be created to auto populate the `_version` field in json on insert. On update a database trigger will check that the `_version` field is the same in the incoming record and in the database, and will then increment the `_version` field before updating the database record. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 409 HTTP response code if 409 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code. The client should never increment the `_version` property; only the trigger should increment it to ensure that the check and the increment are in the same transaction to avoid any race condition.
+RMB supports optimistic locking. By default it is disabled. Module developers can enable it by adding attribute `withOptimisticLocking` to the table definition in schema.json. The available options are listed below. Unless `off` is specified, a database trigger will be created to auto populate the `_version` field in json on insert. On update a database trigger will check that the `_version` field is the same in the incoming record and in the database, and will then increment the `_version` field before updating the database record. Note, `_version` field has to be defined in json to make this work. PgUtil reports a version conflict error as 409 HTTP response code if 409 is defined in RAML, otherwise, it will fall back to use 400 or 500 HTTP response code. The client should never increment the `_version` property; only the trigger should increment it to ensure that the check and the increment are in the same transaction to avoid any race condition.
 
 * `off` Optimistic Locking is disabled. The trigger is removed if it existed before.
 * `failOnConflict` Optimistic Locking is enabled. Version conflict will fail the transaction with a customized SQL error code 23F09.
+* `failOnConflictUnlessSuppressed` The same as `failOnConflict` but setting `_version` to `-1` is handled as if the current `_version` were provided. This must be enabled with the `DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING` enviroment variable, see above. To have one API with this suppression and one without for the same database table add code to the latter that removes the `_version` property if it is `-1`. Suppressing optimistic locking is known to lead to data loss in some cases, don't use in production, you have been warned!
 * `logOnConflict` Optimistic Locking is enabled but the conflicting update succeeds, the version conflict info is logged with a customized SQL error code 23F09. Consult [Vertx logging](https://vertx.io/docs/vertx-core/java/#_logging) and [PostgreSQL Errors and Messages](https://www.postgresql.org/docs/current/plpgsql-errors-and-messages.html) if `logOnConflict` doesn't log.
 
 Upsert fails when using `INSERT ... ON CONFLICT (id) DO UPDATE` because the `INSERT` trigger overwrites the `_version` property that the `UPDATE` trigger uses to detect optimistic locking conflicts. Instead use [RMB's `upsert` plpgsql function](domain-models-runtime/src/main/resources/templates/db_scripts/general_functions.ftl) or implement upsert using a transaction and `UPDATE ...; IF NOT FOUND THEN INSERT ...`

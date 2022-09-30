@@ -30,6 +30,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.utils.MetadataUtil;
+import org.folio.rest.tools.utils.OptimisticLockingUtil;
 import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.ValidationHelper;
@@ -1239,6 +1240,7 @@ public final class PgUtil {
   /**
    * Put entity to table.
    *
+   * <p>To enforce optimistic locking the version of entity is set to null if it is -1.
    * <p>All exceptions are caught and reported via the asyncResultHandler.
    *
    * @param table  table name
@@ -1255,12 +1257,13 @@ public final class PgUtil {
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> clazz,
       Handler<AsyncResult<Response>> asyncResultHandler) {
-      put(table,entity,id,okapiHeaders,vertxContext,clazz).onComplete(asyncResultHandler);
+    put(table,entity,id,okapiHeaders,vertxContext,clazz).onComplete(asyncResultHandler);
   }
 
   /**
    * Put entity to table.
    *
+   * <p>To enforce optimistic locking the version of entity is set to null if it is -1.
    * <p>All exceptions are caught and reported via the asyncResultHandler.
    *
    * @param table  table name
@@ -1295,6 +1298,7 @@ public final class PgUtil {
         return responseInvalidUuid(table + ".id", id, clazz, respond400, respond500);
       }
       setId(entity, id);
+      OptimisticLockingUtil.unsetVersionIfMinusOne(entity);
       final Promise<Response> promise = Promise.promise();
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       postgresClient.update(table, entity, id, reply -> {
@@ -1340,22 +1344,69 @@ public final class PgUtil {
 
   /**
    * Post a list of T entities to the database. Fail all if any of them fails.
+   *
+   * <p>To enforce optimistic locking each entity's version is set to null if it is -1.
+   *
    * @param table database table to store into
    * @param entities  the records to store
    * @param maxEntities  fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
- *     suggested value is from 100 ... 10000.
+   *     suggested value is from 100 ... 10000.
    * @param upsert  true to update records with the same id, false to fail all entities if one has an existing id
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
-  *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler where to return the result created by responseClass
    */
   public static <T> void postSync(String table, List<T> entities, int maxEntities, boolean upsert,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseClass,
       Handler<AsyncResult<Response>> asyncResultHandler) {
-    postSync(table, entities, maxEntities, upsert, okapiHeaders, vertxContext, responseClass).onComplete(asyncResultHandler);
+    postSync(table, entities, maxEntities, upsert, true, okapiHeaders, vertxContext, responseClass).onComplete(asyncResultHandler);
+  }
+
+  /**
+   * Post a list of T entities to the database. Fail all if any of them fails.
+   *
+   * <p>To enforce optimistic locking each entity's version is set to null if it is -1.
+   *
+   * @param table database table to store into
+   * @param entities  the records to store
+   * @param maxEntities  fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
+   *     suggested value is from 100 ... 10000.
+   * @param upsert  true to update records with the same id, false to fail all entities if one has an existing id
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
+   *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return future where to return the result created by responseClass
+   */
+  public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities, boolean upsert,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseClass) {
+    return postSync(table, entities, maxEntities, upsert, true, okapiHeaders, vertxContext, responseClass);
+  }
+
+  /**
+   * Post a list of T entities to the database using upsert and with optimistic locking disabled.
+   *
+   * <p>To enforce optimistic locking each entity's version is set to null if it is -1.
+   * <p>Fail all if any of them fails.
+   *
+   * @param table database table to store into
+   * @param entities  the records to store
+   * @param maxEntities  fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
+   *     suggested value is from 100 ... 10000.
+   * @param okapiHeaders  http headers provided by okapi
+   * @param vertxContext  the current context
+   * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
+   *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return result created by responseClass
+   */
+  public static <T> Future<Response> postSyncUnsafe(String table, List<T> entities, int maxEntities,
+      Map<String, String> okapiHeaders, Context vertxContext,
+      Class<? extends ResponseDelegate> responseClass) {
+    return postSync(table, entities, maxEntities, true, false, okapiHeaders, vertxContext, responseClass);
   }
 
   /**
@@ -1363,15 +1414,19 @@ public final class PgUtil {
    * @param table database table to store into
    * @param entities  the records to store
    * @param maxEntities  fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
- *     suggested value is from 100 ... 10000.
+   *     suggested value is from 100 ... 10000.
    * @param upsert  true to update records with the same id, false to fail all entities if one has an existing id
+   * @param optimisticLocking  If false and DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING allows this then optimistic locking is disabled.
+   *         Otherwise each entity's version is set to null if it is -1 to enforce optimistic locking.
    * @param okapiHeaders  http headers provided by okapi
    * @param vertxContext  the current context
    * @param responseClass  the ResponseDelegate class created from the RAML file with these methods:
-*               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
-   * @return future where to return the result created by responseClass
+   *               respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return result created by responseClass
    */
-  public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities, boolean upsert,
+  @SuppressWarnings("squid:S107")  // Suppress "Method has 8 parameters, which is greater than 7 authorized."
+  public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities,
+      boolean upsert, boolean optimisticLocking,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseClass) {
 
@@ -1393,11 +1448,21 @@ public final class PgUtil {
             + " records to prevent out of memory but got " + entities.size();
         return response(message, respond413, respond500);
       }
+
+      if (optimisticLocking) {
+        OptimisticLockingUtil.unsetVersionIfMinusOne(entities);
+      } else {
+        if (! OptimisticLockingUtil.isSuppressingOptimisticLockingAllowed()) {
+          return response("DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING environment variable doesn't allow "
+              + "to disable optimistic locking", respond413, respond500);
+        }
+        OptimisticLockingUtil.setVersionToMinusOne(entities);
+      }
+
       // RestVerticle populates a single record only, not an array of records
+      MetadataUtil.populateMetadata(entities, okapiHeaders);
 
       Promise<Response> promise = Promise.promise();
-
-      MetadataUtil.populateMetadata(entities, okapiHeaders);
       PostgresClient postgresClient = postgresClient(vertxContext, okapiHeaders);
       Handler<AsyncResult<RowSet<Row>>> replyHandler = result -> {
         if (result.failed()) {
