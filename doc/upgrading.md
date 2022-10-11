@@ -33,6 +33,16 @@ Modules that have been using a workaround for this bug may need to remove the wo
 
 Multiple HTTP response headers with the same key, for example "Set-Cookie", are no longer joined.
 
+### [RMB-945](https://issues.folio.org/browse/RMB-945] Vert.x 4.3.4
+
+There's a breaking change in RowDesc in vertx-pg-client 4.3.4:
+
+RMB <= 35.0.0 used with Vert.x >= 4.3.4 fails with this error:
+`java.lang.NoSuchMethodError: 'void io.vertx.sqlclient.impl.RowDesc.<init>(io.vertx.sqlclient.desc.ColumnDescriptor[])'
+
+RMB >= 35.0.1 used with Vert.x <= 4.3.3 fails with this error:
+`java.lang.NoSuchMethodError: 'void io.vertx.sqlclient.impl.RowDesc.<init>(java.util.List, java.util.List)'
+
 ## Version 34.0
 
 #### [RMB-856](https://issues.folio.org/browse/RMB-856)
