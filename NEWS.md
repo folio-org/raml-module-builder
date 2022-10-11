@@ -1,3 +1,8 @@
+## 35.0.1 2022-10-11
+
+Bug fixes:
+ * [RMB-945](https://issues.folio.org/browse/RMB-945) Vert.x 4.3.4, micrometer 1.9.4, log4j 2.19.0, okapi 4.14.5
+
 ## 35.0.0 2022-09-30
 
 New features:
