@@ -28,10 +28,10 @@
 
   <properties>
     <aspectj.version>1.9.7</aspectj.version>
-    <junit-jupiter-version>5.8.1</junit-jupiter-version>
+    <junit-jupiter-version>5.9.1</junit-jupiter-version>
     <maven.version>3.8.4</maven.version>
-    <vertx.version>4.3.3</vertx.version>
-    <micrometer.version>1.8.4</micrometer.version>  <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
+    <vertx.version>4.3.4</vertx.version>
+    <micrometer.version>1.9.4</micrometer.version>  <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -73,7 +73,7 @@
       <dependency>
         <groupId>io.rest-assured</groupId>
         <artifactId>rest-assured</artifactId>
-        <version>5.1.0</version>
+        <version>5.2.0</version>
       </dependency>
       <dependency>
         <groupId>javax.ws.rs</groupId>
@@ -103,7 +103,7 @@
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-bom</artifactId>
-        <version>2.17.2</version>
+        <version>2.19.0</version>
         <scope>import</scope>
         <type>pom</type>
       </dependency>
@@ -130,7 +130,7 @@
       <dependency>
         <groupId>org.assertj</groupId>
         <artifactId>assertj-core</artifactId>
-        <version>3.22.0</version>
+        <version>3.23.1</version>
       </dependency>
       <dependency>
         <groupId>org.junit.jupiter</groupId>
@@ -160,14 +160,14 @@
       <dependency>
         <groupId>org.mockito</groupId>
         <artifactId>mockito-bom</artifactId>
-        <version>4.6.0</version>
+        <version>4.8.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>org.glassfish.jersey.media</groupId>
         <artifactId>jersey-media-json-jackson</artifactId>
-        <version>2.35</version>
+        <version>2.37</version>
       </dependency>
       <dependency>
         <groupId>javax.validation</groupId>
@@ -177,7 +177,7 @@
       <dependency>
         <groupId>org.hibernate.validator</groupId>
         <artifactId>hibernate-validator</artifactId>
-        <version>6.2.3.Final</version>
+        <version>6.2.5.Final</version>
         <exclusions>
           <exclusion> <!-- we have javax.validation:validation-api providing the same classes -->
             <groupId>jakarta.validation</groupId>
@@ -193,12 +193,12 @@
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-common</artifactId>
-        <version>4.14.1</version>
+        <version>4.14.5</version>
       </dependency>
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-testing</artifactId>
-        <version>4.14.1</version>
+        <version>4.14.5</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -208,7 +208,7 @@
       <dependency>
         <groupId>org.testcontainers</groupId>
         <artifactId>testcontainers-bom</artifactId>
-        <version>1.17.2</version>
+        <version>1.17.4</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
