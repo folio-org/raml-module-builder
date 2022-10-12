@@ -54,7 +54,6 @@ import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.TransactionRollbackException;
 import io.vertx.sqlclient.Tuple;
-import io.vertx.sqlclient.impl.RowDesc;
 import org.apache.commons.io.IOUtils;
 import org.folio.cql2pgjson.CQL2PgJSON;
 import org.folio.cql2pgjson.exception.FieldException;
@@ -70,6 +69,7 @@ import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.helpers.LocalRowDesc;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.helpers.Poline;
 import org.folio.rest.persist.helpers.SimplePojo;
@@ -3964,20 +3964,12 @@ public class PostgresClientIT {
 
   @Test
   public void selectReturnOneRow(TestContext context) {
-    List<String> columns = new LinkedList<>();
-    columns.add("field");
-    RowDesc rowDesc = new RowDesc(columns);
-    List<Row> rows = new LinkedList<>();
-    Row row = new RowImpl(rowDesc);
-    row.addString("value");
-    rows.add(row);
-    RowSet rowSet = new LocalRowSet(1).withColumns(columns).withRows(rows);
-
-    Promise<RowSet<Row>> promise = Promise.promise();
-    promise.complete(rowSet);
-    PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
+    List<String> columns = List.of("field");
+    List<Row> rows = List.of(new RowImpl(new LocalRowDesc(columns)));
+    rows.get(0).addString("value");
+    RowSet<Row> rowSet = new LocalRowSet(1).withColumns(columns).withRows(rows);
+    PostgresClient.selectReturn(Future.succeededFuture(rowSet), context.asyncAssertSuccess(res ->
         context.assertEquals("value", res.getString(0))));
   }
-
 
 }

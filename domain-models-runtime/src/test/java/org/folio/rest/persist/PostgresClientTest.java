@@ -38,6 +38,7 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlResult;
 import io.vertx.sqlclient.impl.RowDesc;
 import org.folio.rest.persist.facets.FacetField;
+import org.folio.rest.persist.helpers.LocalRowDesc;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.security.AES;
 import org.folio.rest.security.AESTest;
@@ -354,12 +355,7 @@ public class PostgresClientTest {
     Double biz = 1.0;
     String [] baz = new String[] { "This", "is", "a", "test" };
 
-    List<String> rowColumns = new LinkedList<>();
-    rowColumns.add("foo");
-    rowColumns.add("bar");
-    rowColumns.add("biz");
-    rowColumns.add("baz");
-    RowDesc desc = new RowDesc(rowColumns);
+    RowDesc desc = new LocalRowDesc(List.of("foo", "bar", "biz", "baz"));
     Row row = new RowImpl(desc);
     row.addString(foo);
     row.addString(bar);
@@ -403,9 +399,8 @@ public class PostgresClientTest {
           if (s.startsWith("EXPLAIN") && failExplain) {
             handler.handle(Future.failedFuture("failExplain"));
           } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
-            List<String> columnNames = new LinkedList<>();
-            columnNames.add("COUNT");
-            RowDesc rowDesc = new RowDesc(columnNames);
+            List<String> columnNames = List.of("COUNT");
+            RowDesc rowDesc = new LocalRowDesc(columnNames);
             Row row = new RowImpl(rowDesc);
             row.addInteger(asyncResult.result().size());
             List<Row> rows = new LinkedList<>();
@@ -513,10 +508,8 @@ public class PostgresClientTest {
   }
 
   private RowSet<Row> getMockTestPojoResultSet(int total) {
-    List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
-      "id", "foo", "bar", "biz", "baz"
-    }));
-    RowDesc rowDesc = new RowDesc(columnNames);
+    List<String> columnNames = List.of("id", "foo", "bar", "biz", "baz");
+    RowDesc rowDesc = new LocalRowDesc(columnNames);
     List<Row> rows = new LinkedList<>();
     for (int i = 0; i < total; i++) {
       Row row = new RowImpl(rowDesc);
@@ -546,10 +539,8 @@ public class PostgresClientTest {
   }
 
   private RowSet<Row> getMockTestJsonbPojoResultSet(int total) {
-    List<String> columnNames = new ArrayList<String>(Arrays.asList(new String[] {
-      "jsonb"
-    }));
-    RowDesc rowDesc = new RowDesc(columnNames);
+    List<String> columnNames = List.of("jsonb");
+    RowDesc rowDesc = new LocalRowDesc(columnNames);
     List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
         "This", "is", "a", "test"
     }));
