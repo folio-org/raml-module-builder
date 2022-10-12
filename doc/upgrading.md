@@ -33,7 +33,7 @@ Modules that have been using a workaround for this bug may need to remove the wo
 
 Multiple HTTP response headers with the same key, for example "Set-Cookie", are no longer joined.
 
-### [RMB-945](https://issues.folio.org/browse/RMB-945] Vert.x 4.3.4
+### [RMB-945](https://issues.folio.org/browse/RMB-945) Vert.x 4.3.4
 
 There's a breaking change in RowDesc in vertx-pg-client 4.3.4:
 
