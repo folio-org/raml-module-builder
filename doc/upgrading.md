@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 35.0](#version-350)
 * [Version 34.0](#version-340)
 * [Version 33.2](#version-332)
 * [Version 33.1](#version-331)
@@ -21,6 +22,26 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 35.0
+
+### [RMB-932](https://issues.folio.org/browse/RMB-932) Broken empty string matching: uuidfield == ""
+
+Modules that have been using a workaround for this bug may need to remove the workaround.
+
+### [RMB-927](https://issues.folio.org/browse/RMB-927) http: Do not join response headers
+
+Multiple HTTP response headers with the same key, for example "Set-Cookie", are no longer joined.
+
+### [RMB-945](https://issues.folio.org/browse/RMB-945] Vert.x 4.3.4
+
+There's a breaking change in RowDesc in vertx-pg-client 4.3.4:
+
+RMB <= 35.0.0 used with Vert.x >= 4.3.4 fails with this error:
+`java.lang.NoSuchMethodError: 'void io.vertx.sqlclient.impl.RowDesc.<init>(io.vertx.sqlclient.desc.ColumnDescriptor[])'
+
+RMB >= 35.0.1 used with Vert.x <= 4.3.3 fails with this error:
+`java.lang.NoSuchMethodError: 'void io.vertx.sqlclient.impl.RowDesc.<init>(java.util.List, java.util.List)'
 
 ## Version 34.0
 
