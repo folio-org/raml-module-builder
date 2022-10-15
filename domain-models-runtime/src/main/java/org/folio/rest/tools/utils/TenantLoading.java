@@ -358,6 +358,7 @@ public class TenantLoading {
    *
    * @param millisMin the minimum time in milliseconds to sleep
    */
+  @SuppressWarnings("java:S2245")  // Using pseudorandom number generator Math.random() for sleep time is safe
   Future<Void> sleep(long millisMin) {
     long millis = (long) (millisMin + Math.random() * millisMin);
     Vertx vertx = VertxUtils.getVertxFromContextOrNew();
