@@ -235,7 +235,7 @@ public class TenantLoadingTest {
     TenantLoading tl = new TenantLoading() {
       Future<Void> sleep(long millis) {
         sleepCounter.countDown();
-        return Future.succeededFuture();  // speed up unit test by not sleeping
+        return super.sleep(1);  // speed up unit test by not sleeping
       }
     };
     tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
@@ -255,7 +255,7 @@ public class TenantLoadingTest {
     when(webClient.getAbs(anyString())).thenReturn(httpRequest);
     TenantLoading tl = new TenantLoading() {
       Future<Void> sleep(long millis) {
-        return Future.succeededFuture();  // speed up unit test by not sleeping
+        return super.sleep(1);  // speed up unit test by not sleeping
       }
     };
     tl.getWithRetry("url", new HashMap<>(), webClient)
