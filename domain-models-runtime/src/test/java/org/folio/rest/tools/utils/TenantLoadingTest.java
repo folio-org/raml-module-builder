@@ -4,9 +4,14 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.anyString;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.vertx.core.AsyncResult;
+import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.MultiMap;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
@@ -18,7 +23,10 @@ import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-
+import io.vertx.ext.web.client.HttpRequest;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.ext.web.client.impl.HttpResponseImpl;
 import java.net.MalformedURLException;
 import java.util.List;
 import java.util.HashMap;
@@ -223,9 +231,37 @@ public class TenantLoadingTest {
     Map<String, String> headers = new HashMap<String, String>();
     headers.put("X-Okapi-Url-to", "http://localhost:" + Integer.toString(port + 1));
 
-    TenantLoading tl = new TenantLoading();
+    Async sleepCounter = context.async(3);
+    TenantLoading tl = new TenantLoading() {
+      Future<Void> sleep(long millis) {
+        sleepCounter.countDown();
+        return Future.succeededFuture();  // speed up unit test by not sleeping
+      }
+    };
     tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
     tl.perform(tenantAttributes(), headers, vertx, context.asyncAssertFailure());
+  }
+
+  @Test
+  public void testGetWithRetry(TestContext context) {
+    Future<HttpResponse<Buffer>> response500 = Future.succeededFuture(
+        new HttpResponseImpl<Buffer>(null, 500, null, null, null, null, null, null));
+    Future<HttpResponse<Buffer>> response200 = Future.succeededFuture(
+        new HttpResponseImpl<Buffer>(null, 200, null, null, null, null, Buffer.buffer("Queen Anne's Lace"), null));
+    HttpRequest<Buffer> httpRequest = mock(HttpRequest.class);
+    when(httpRequest.headers()).thenReturn(MultiMap.caseInsensitiveMultiMap());
+    when(httpRequest.send()).thenReturn(response500, response500, response500, response200, response500);
+    WebClient webClient = mock(WebClient.class);
+    when(webClient.getAbs(anyString())).thenReturn(httpRequest);
+    TenantLoading tl = new TenantLoading() {
+      Future<Void> sleep(long millis) {
+        return Future.succeededFuture();  // speed up unit test by not sleeping
+      }
+    };
+    tl.getWithRetry("url", new HashMap<>(), webClient)
+    .onComplete(context.asyncAssertSuccess(result -> {
+      assertThat(result.bodyAsString(), is("Queen Anne's Lace"));
+    }));
   }
 
   @Test
@@ -273,7 +309,7 @@ public class TenantLoadingTest {
   public void testPostOk400(TestContext context) {
     TenantLoading tl = new TenantLoading();
     tl.withKey("loadRef").withLead("tenant-load-ref").withIdContent().add("data", "data");
-    notFoundStatus = 400; // so that GET will return 400 and we can POST
+    notFoundStatus = 404; // so that GET will return 404 and we can POST
     tl.perform(tenantAttributes(), headers(), vertx, assertIds(context, "1", "2"));
   }
 

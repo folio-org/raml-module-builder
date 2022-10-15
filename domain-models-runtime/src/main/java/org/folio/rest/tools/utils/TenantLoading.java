@@ -242,7 +242,7 @@ public class TenantLoading {
     }
   }
 
-  private static Future<Integer> loadURL(Map<String, String> headers, URL url,
+  private Future<Integer> loadURL(Map<String, String> headers, URL url,
                                       WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
 
     return getContent(url, loadingEntry)
@@ -276,7 +276,7 @@ public class TenantLoading {
   /**
    * Returns 1 on successful POST/PUT, 0 on 4xx HTTP status if strategy is POST_IGNORE
    */
-  private static Future<Integer> loadURL(Map<String, String> headers, String content, String id,
+  private Future<Integer> loadURL(Map<String, String> headers, String content, String id,
                                       WebClient httpClient, LoadingEntry loadingEntry, String endPointUrl) {
 
     if (loadingEntry.strategy == Strategy.RAW_POST_IGNORE) {
@@ -323,8 +323,7 @@ public class TenantLoading {
           });
     }
 
-    HttpRequest<Buffer> reqGet = httpClient.getAbs(idUrl.toString());
-    return sendWithXHeaders(reqGet, headers, null).compose(resGet -> {
+    return getWithRetry(idUrl.toString(), headers, httpClient).compose(resGet -> {
       HttpMethod method2 = (resGet.statusCode() == 200) ? HttpMethod.PUT : HttpMethod.POST;
       String url2 = (method2 == HttpMethod.PUT) ? idUrl.toString() : endPointUrl.replace("/%d", "");
       String finalContent = mergeVersion(method2, content, resGet);
@@ -335,7 +334,7 @@ public class TenantLoading {
         }
         String diag = "GET " + idUrl.toString()
           + RETURNED_STATUS + resGet.statusCode() + ": " + resGet.bodyAsString()
-          + " " + method2.name() + " " + url2
+          + "; " + method2.name() + " " + url2
           + RETURNED_STATUS + res2.statusCode() + ": " + res2.bodyAsString();
         log.error(diag);
         return Future.failedFuture(diag);
@@ -343,7 +342,45 @@ public class TenantLoading {
     });
   }
 
-  private static Future<Integer> loadData(String okapiUrl, Map<String, String> headers,
+  /**
+   * Execute GET url up to four times until the response code if 200 or 404,
+   * otherwise return failed Future.
+   */
+  Future<HttpResponse<Buffer>> getWithRetry(String url, Map<String,String> headers, WebClient webClient) {
+    return get(url, headers, webClient)
+        .recover(e -> sleep(1000).compose(x -> get(url, headers, webClient)))
+        .recover(e -> sleep(5000).compose(x -> get(url, headers, webClient)))
+        .recover(e -> sleep(10000).compose(x -> get(url, headers, webClient)));
+  }
+
+  /**
+   * Sleep a random time of the range millisMin to 2*millisMin.
+   *
+   * @param millisMin the minimum time in milliseconds to sleep
+   */
+  Future<Void> sleep(long millisMin) {
+    long millis = (long) (millisMin + Math.random() * millisMin);
+    Vertx vertx = VertxUtils.getVertxFromContextOrNew();
+    return Future.future(promise -> vertx.setTimer(millis, x -> promise.complete()));
+  }
+
+  /**
+   * Execute GET url, return response if status code is 200 or 404, otherwise return failed Future.
+   */
+  private static Future<HttpResponse<Buffer>> get(String url, Map<String,String> headers, WebClient webClient) {
+    return sendWithXHeaders(webClient.getAbs(url), headers, null)
+        .compose(response -> {
+          switch (response.statusCode()) {
+            case 200:
+            case 404:
+              return Future.succeededFuture(response);
+            default:
+              return Future.failedFuture(url + ": " + response.statusCode() + " " + response.bodyAsString());
+          }
+        });
+  }
+
+  private Future<Integer> loadData(String okapiUrl, Map<String, String> headers,
       LoadingEntry loadingEntry, WebClient httpClient) {
 
     String filePath = loadingEntry.lead;
