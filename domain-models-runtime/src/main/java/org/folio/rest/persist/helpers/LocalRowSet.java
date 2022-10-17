@@ -46,9 +46,9 @@ public class LocalRowSet implements RowSet<Row> {
       }
     }
     try {
-      return LocalRowDesc.class.getConstructor(new Class[] { List.class });
+      return LocalRowDesc.class.getConstructor(List.class);
     } catch (NoSuchMethodException | SecurityException e) {
-      throw new RuntimeException(e);
+      throw new UnsupportedOperationException(e);
     }
   }
 
@@ -56,7 +56,7 @@ public class LocalRowSet implements RowSet<Row> {
     try {
       return (RowDesc) ROW_DESC_CONSTRUCTOR.newInstance(columns);
     } catch (ReflectiveOperationException e) {
-      throw new RuntimeException(e);
+      throw new UnsupportedOperationException(e);
     }
   }
 
