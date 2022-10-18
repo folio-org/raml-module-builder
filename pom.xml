@@ -64,6 +64,15 @@
         <scope>import</scope>
       </dependency>
       <dependency>
+        <!-- Remove jackson-databind dependencyManagement entry when
+             vertx-stack-depchain sets jackson-databind version to >= 2.13.4.2
+             to fix Denial of Service (DoS) https://nvd.nist.gov/vuln/detail/CVE-2022-42003
+        -->
+        <groupId>com.fasterxml.jackson.core</groupId>
+        <artifactId>jackson-databind</artifactId>
+        <version>2.13.4.2</version>
+      </dependency>
+      <dependency>
         <groupId>io.micrometer</groupId>
         <artifactId>micrometer-bom</artifactId>
         <version>${micrometer.version}</version>
