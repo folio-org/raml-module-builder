@@ -3484,14 +3484,36 @@ public class PostgresClient {
    * Get vertx-pg-client connection using the Writer client
    */
   public Future<PgConnection> getConnection() {
-    return getConnection(getClient());
+    return getConnection(getClient())
+        .recover(e -> {
+          if (! "Timeout".equals(e.getMessage())) {
+            return Future.failedFuture(e);
+          }
+          return Future.failedFuture("Timeout for DB_HOST:DB_PORT="
+              + postgreSQLClientConfig.getString(HOST) + ":"
+              + postgreSQLClientConfig.getString(PORT));
+        });
   }
 
   /**
    * Get read-only vertx-pg-client connection using the Reader client
    */
   public Future<PgConnection> getReadConnection() {
-    return getConnection(getReaderClient());
+    return getConnection(getReaderClient())
+        .recover(e -> {
+          if (! "Timeout".equals(e.getMessage())) {
+            return Future.failedFuture(e);
+          }
+          if (postgreSQLClientConfig.containsKey(HOST_READER) &&
+              postgreSQLClientConfig.containsKey(PORT_READER)) {
+            return Future.failedFuture("Timeout for DB_HOST_READER:DB_PORT_READER="
+                + postgreSQLClientConfig.getString(HOST_READER) + ":"
+                + postgreSQLClientConfig.getString(PORT_READER));
+          }
+          return Future.failedFuture("Timeout for DB_HOST:DB_PORT="
+                + postgreSQLClientConfig.getString(HOST) + ":"
+                + postgreSQLClientConfig.getString(PORT));
+        });
   }
 
   /**

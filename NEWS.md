@@ -1,3 +1,8 @@
+## 35.0.2 2022-10-20
+
+Bug fixes:
+ * [RMB-949](https://issues.folio.org/browse/RMB-949) Report PostgreSQL URI on timeout
+
 ## 35.0.1 2022-10-11
 
 Bug fixes:
