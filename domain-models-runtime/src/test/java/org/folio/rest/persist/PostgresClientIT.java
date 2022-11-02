@@ -672,6 +672,24 @@ public class PostgresClientIT {
   }
 
   @Test
+  public void getByIdTimoutConnection(TestContext context) {
+    postgresClientGetConnectionTimeout()
+        .getById(FOO, "id").onComplete(context.asyncAssertFailure(e -> {
+          assertThat(e.getMessage(), is("Timeout for DB_HOST_READER:DB_PORT_READER=pg-ro:5433"));
+        }));
+  }
+
+  @Test
+  public void getByIdTimoutWriterConnection(TestContext context) {
+    PostgresClient postgresClient = postgresClientGetConnectionTimeout();
+    postgresClient.getConnectionConfig().remove("port_reader");
+    postgresClient
+        .getById(FOO, "id").onComplete(context.asyncAssertFailure(e -> {
+          assertThat(e.getMessage(), is("Timeout for DB_HOST:DB_PORT=pg-rw:5432"));
+        }));
+  }
+
+  @Test
   public void updateNullConnection1(TestContext context) {
     postgresClientNullConnection()
       .update(FOO, xPojo, randomUuid(), context.asyncAssertFailure());
@@ -681,6 +699,14 @@ public class PostgresClientIT {
   public void updateGetConnectionFails1(TestContext context) {
     postgresClientGetConnectionFails()
       .update(FOO, xPojo, randomUuid(), context.asyncAssertFailure());
+  }
+
+  @Test
+  public void updateTimoutConnection(TestContext context) {
+    postgresClientGetConnectionTimeout()
+        .update(FOO, xPojo, randomUuid()).onComplete(context.asyncAssertFailure(e -> {
+          assertThat(e.getMessage(), is("Timeout for DB_HOST:DB_PORT=pg-rw:5432"));
+        }));
   }
 
   @Test
@@ -2027,7 +2053,6 @@ public class PostgresClientIT {
     }
   }
 
-
   /**
    * @return a PostgresClient where getConnection(handler) invokes the handler with a failure.
    */
@@ -2040,6 +2065,31 @@ public class PostgresClientIT {
     };
     try {
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
+      postgresClient.setClient(client);
+      return postgresClient;
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  /**
+   * @return a PostgresClient where the client's getConnection() returns a "Timeout" failure.
+   */
+  private PostgresClient postgresClientGetConnectionTimeout() {
+    PgPool client = new PgPoolBase() {
+      @Override
+      public Future<SqlConnection> getConnection() {
+        return Future.failedFuture("Timeout");
+      }
+    };
+    try {
+      PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
+      postgresClient.getConnectionConfig()
+        .put("host", "pg-rw")
+        .put("port", "5432")
+        .put("host_reader", "pg-ro")
+        .put("port_reader", "5433");
+      postgresClient.setReaderClient(client);
       postgresClient.setClient(client);
       return postgresClient;
     } catch (Exception e) {
