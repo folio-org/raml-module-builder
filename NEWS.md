@@ -1,3 +1,8 @@
+## 35.0.3 2022-11-02
+
+Bug fixes:
+ * [RMB-948](https://issues.folio.org/browse/RMB-948) jackson-databind 2.13.4.2 fixing DoS CVE-2022-42003
+
 ## 35.0.2 2022-10-20
 
 Bug fixes:
