@@ -40,8 +40,14 @@ There's a breaking change in RowDesc in vertx-pg-client 4.3.4:
 RMB <= 35.0.0 used with Vert.x >= 4.3.4 fails with this error:
 `java.lang.NoSuchMethodError: 'void io.vertx.sqlclient.impl.RowDesc.<init>(io.vertx.sqlclient.desc.ColumnDescriptor[])'
 
-RMB >= 35.0.1 used with Vert.x <= 4.3.3 fails with this error:
+RMB 35.0.1, 35.0.2 and 35.0.3 used with Vert.x <= 4.3.3 fail with this error:
 `java.lang.NoSuchMethodError: 'void io.vertx.sqlclient.impl.RowDesc.<init>(java.util.List, java.util.List)'
+
+RMB >= 35.0.4 can be used with any Vert.x `4.3.*` version.
+
+### [RMB-952](https://issues.folio.org/browse/RMB-952) Deprecated .impl.RowDesc usage in LocalRowDesc
+
+Using io.vertx.sqlclient.impl.RowDesc in org.folio.rest.persist.helpers.LocalRowDesc is deprecated and will be removed in RMB 36.
 
 ## Version 34.0
 
