@@ -4,6 +4,10 @@ import io.vertx.sqlclient.desc.ColumnDescriptor;
 import io.vertx.sqlclient.impl.RowDesc;
 import java.util.List;
 
+/**
+ * @deprecated This class will no longer extend the Vert.x internal class {@link RowDesc} in RMB 36.0.0.
+ */
+@Deprecated
 public class LocalRowDesc extends RowDesc {
   public LocalRowDesc(ColumnDescriptor[] columnDescriptors) {
     super(columnDescriptors);
