@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS rmb_internal_analyze (
 DO $$
 BEGIN
   -- use advisory lock to prevent "tuple concurrently updated"
-  -- https://issues.folio.org/browse/RMB-744
+  -- https://issues.folio.org/browse/RMB-744 https://issues.folio.org/browse/RMB-944
   PERFORM pg_advisory_xact_lock(20201101, 1234567890);
   REVOKE ALL PRIVILEGES ON SCHEMA public FROM ${myuniversity}_${mymodule};
   REVOKE CREATE ON SCHEMA public FROM PUBLIC;
@@ -57,33 +57,54 @@ END $$;
   <#if mode.name() != "CREATE">
 -- Run upgrade of table: ${table.tableName} since table created in version ${(table.fromModuleVersion)!0}
   </#if>
-  <#if table.mode != "delete">
-    CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.tableName} (
-      id UUID PRIMARY KEY,
-      jsonb JSONB NOT NULL
-    );
-    <#if table.withAuditing == true>
-    CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.auditingTableName} (
-      id UUID PRIMARY KEY,
-      jsonb JSONB NOT NULL
-    );
-    </#if>
-    -- old trigger name
-    DROP TRIGGER IF EXISTS set_id_injson_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-    -- current trigger name
-    DROP TRIGGER IF EXISTS set_id_in_jsonb ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-    CREATE TRIGGER set_id_in_jsonb BEFORE INSERT OR UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
-      FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_id_in_jsonb();
-  <#else>
-    DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
-    <#if table.auditingTableName??>
-    DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.auditingTableName} CASCADE;
-    </#if>
-    -- drop function that updates foreign key fields
-    DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.update_${table.tableName}_references();
-    -- drop function that updates optimistic locking version
-    DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.${table.tableName}_set_ol_version() CASCADE;
-  </#if>
+
+  DO $$
+  BEGIN
+
+    -- use advisory lock to prevent "tuple concurrently updated"
+    -- https://issues.folio.org/browse/RMB-744 https://issues.folio.org/browse/RMB-944
+    PERFORM pg_advisory_xact_lock(20201101, 1234567890);
+
+    FOR i IN REVERSE 1000..1 LOOP
+      BEGIN
+
+      <#if table.mode != "delete">
+        CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.tableName} (
+          id UUID PRIMARY KEY,
+          jsonb JSONB NOT NULL
+        );
+        <#if table.withAuditing == true>
+        CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.${table.auditingTableName} (
+          id UUID PRIMARY KEY,
+          jsonb JSONB NOT NULL
+        );
+        </#if>
+        -- old trigger name
+        DROP TRIGGER IF EXISTS set_id_injson_${table.tableName} ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+        -- current trigger name
+        DROP TRIGGER IF EXISTS set_id_in_jsonb ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+        CREATE TRIGGER set_id_in_jsonb BEFORE INSERT OR UPDATE ON ${myuniversity}_${mymodule}.${table.tableName}
+          FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.set_id_in_jsonb();
+      <#else>
+        DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
+        <#if table.auditingTableName??>
+        DROP TABLE IF EXISTS ${myuniversity}_${mymodule}.${table.auditingTableName} CASCADE;
+        </#if>
+        -- drop function that updates foreign key fields
+        DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.update_${table.tableName}_references();
+        -- drop function that updates optimistic locking version
+        DROP FUNCTION IF EXISTS ${myuniversity}_${mymodule}.${table.tableName}_set_ol_version() CASCADE;
+      </#if>
+
+        EXIT;
+      EXCEPTION WHEN OTHERS THEN
+        IF i <= 1 THEN
+          RAISE;  -- rethrow exception because max number of retries have been reached
+        END IF;
+        -- otherwise retry until no other parallel transaction that also executes "IF EXISTS" interferes with us
+      END;
+    END LOOP;
+  END $$;
 
   <#if table.mode != "delete">
     <#-- if we are in delete table mode only the drop table casacade above is needed, skip everything else -->
