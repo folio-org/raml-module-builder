@@ -1,3 +1,12 @@
+## 35.0.4 2022-11-24
+
+Bug fixes:
+ * [RMB-955](https://issues.folio.org/browse/RMB-955) Set search\_path when doing "SET ROLE" for shared pool connection
+ * [RMB-944](https://issues.folio.org/browse/RMB-944) Migration "ERROR: tuple concurrently updated" on DROP TRIGGER
+ * [RMB-947](https://issues.folio.org/browse/RMB-947) LocalRowSet for RowDesc from both 4.3.3 and 4.3.4
+ * [RMB-952](https://issues.folio.org/browse/RMB-952) Deprecate .impl.RowDesc usage in LocalRowDesc
+ * [RMB-956](https://issues.folio.org/browse/RMB-956) Upgrade to Vert.x 4.3.5
+
 ## 35.0.3 2022-11-02
 
 Bug fixes:

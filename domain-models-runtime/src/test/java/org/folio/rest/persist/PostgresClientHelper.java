@@ -9,4 +9,11 @@ public final class PostgresClientHelper {
   public static final PgPool getClient(PostgresClient postgresClient) {
     return postgresClient.getClient();
   }
+
+  /**
+   * For testing only circumvent the package visibility of PostgresClient.sharedPgPool.
+   */
+  public static final void setSharedPgPool(boolean sharedPgPool) {
+    PostgresClient.sharedPgPool = sharedPgPool;
+  }
 }
