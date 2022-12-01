@@ -18,12 +18,14 @@ import java.util.TimeZone;
 import java.util.UUID;
 
 import org.folio.dbschema.Schema;
+import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Book;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.PgUtil;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.PostgresClientHelper;
 import org.folio.rest.tools.utils.TenantTool;
 import org.folio.rest.tools.utils.VertxUtils;
 import org.hamcrest.CoreMatchers;
@@ -32,6 +34,7 @@ import org.junit.rules.Timeout;
 import org.junit.runner.RunWith;
 import freemarker.template.TemplateException;
 import io.vertx.core.AsyncResult;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
@@ -40,6 +43,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.sqlclient.Row;
 
 @RunWith(VertxUnitRunner.class)
 public class TenantAPIIT {
@@ -60,6 +64,7 @@ public class TenantAPIIT {
   @AfterClass
   public static void afterClass() {
     vertx.close();
+    PostgresClientHelper.setSharedPgPool(false);
   }
 
 
@@ -87,36 +92,47 @@ public class TenantAPIIT {
     };
   }
 
-  public void tenantDeleteAsync(TestContext context) {
+  private Future<Void> tenantPurge(TestContext context, String tenant) {
     TenantAttributes tenantAttributes = new TenantAttributes();
     tenantAttributes.setPurge(true);
-    Async async = context.async();
     TenantAPI tenantAPI = new TenantAPI();
-    tenantAPI.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
-      context.assertEquals(204, res1.getStatus());
-      tenantAPI.tenantExists(vertx.getOrCreateContext(), tenantId)
-          .onComplete(context.asyncAssertSuccess(bool -> {
-            context.assertFalse(bool, "tenant exists after purge");
-            async.complete();
-          }));
-    }), vertx.getOrCreateContext());
+    return Future.future(promise ->
+      tenantAPI.postTenant(tenantAttributes, Map.of("X-Okapi-Tenant", tenant), onSuccess(context, res1 -> {
+        context.assertEquals(204, res1.getStatus());
+        tenantAPI.tenantExists(vertx.getOrCreateContext(), tenant)
+        .onComplete(context.asyncAssertSuccess(bool -> {
+          context.assertFalse(bool, "tenant exists after purge");
+          promise.complete();
+        }));
+      }), vertx.getOrCreateContext()));
+  }
+
+  private void tenantDeleteAsync(TestContext context) {
+    Async async = context.async();
+    tenantPurge(context, tenantId)
+    .onComplete(x -> async.complete());
     async.await();
   }
 
-  public String tenantPost(TestContext context) {
+  private String tenantPost(TestContext context) {
     return tenantPost(new TenantAPI(), context, null);
   }
 
-  public String tenantPost(TenantAPI api, TestContext context, TenantAttributes tenantAttributes) {
+  private String tenantPost(TenantAPI api, TestContext context, TenantAttributes tenantAttributes) {
+    return tenantPost(api, context, tenantAttributes, tenantId);
+  }
+
+  private String tenantPost(TenantAPI api, TestContext context, TenantAttributes tenantAttributes, String tenant) {
+    Map<String,String> headers = Map.of("X-Okapi-Tenant", tenant);
     Async async = context.async();
     StringBuilder id = new StringBuilder();
-    api.postTenant(tenantAttributes, okapiHeaders, onSuccess(context, res1 -> {
+    api.postTenant(tenantAttributes, headers, onSuccess(context, res1 -> {
       TenantJob job = (TenantJob) res1.getEntity();
       id.append(job.getId());
-      api.getTenantByOperationId(job.getId(), TIMER_WAIT, okapiHeaders, onSuccess(context, res2 -> {
+      api.getTenantByOperationId(job.getId(), TIMER_WAIT, headers, onSuccess(context, res2 -> {
         TenantJob o = (TenantJob) res2.getEntity();
         context.assertTrue(o.getComplete());
-        api.tenantExists(Vertx.currentContext(), tenantId)
+        api.tenantExists(Vertx.currentContext(), tenant)
             .onComplete(onSuccess(context, bool -> {
               context.assertTrue(bool, "tenant exists after post");
               async.complete();
@@ -656,5 +672,44 @@ public class TenantAPIIT {
     tenantAPI.postTenant(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
       assertThat(result.getStatus(), is(204));
     }), vertx.getOrCreateContext());
+  }
+
+  private Future<Row> assertCount(TestContext context, String tenant, int expectedCount) {
+    return PostgresClient.getInstance(vertx, tenant).selectSingle("SELECT count(*) from test_tenantapi")
+        .onComplete(context.asyncAssertSuccess(row -> assertThat(row.getInteger(0), is(expectedCount))));
+  }
+
+  /**
+   * Four parallel checks inspect four connections (idle or newly created).
+   */
+  private CompositeFuture assertCountFour(TestContext context, String tenant, int expectedCount) {
+    return GenericCompositeFuture.all(List.of(
+        assertCount(context, tenant, expectedCount),
+        assertCount(context, tenant, expectedCount),
+        assertCount(context, tenant, expectedCount),
+        assertCount(context, tenant, expectedCount)));
+  }
+
+  private void assertTenantPurge(TestContext context, String tenant1, String tenant2) {
+    PostgresClient.closeAllClients();
+    tenantPost(new TenantAPI(), context, null, tenant1);
+    tenantPost(new TenantAPI(), context, null, tenant2);
+    PostgresClient.getInstance(vertx, tenant1).execute("INSERT INTO test_tenantapi VALUES ('27f0857b-3165-4d5a-af77-229e4ad7921d', '{}')")
+    .compose(x -> assertCountFour(context, tenant1, 1))
+    .compose(x -> assertCountFour(context, tenant2, 0))
+    .compose(x -> tenantPurge(context, tenant2))
+    .compose(x -> assertCountFour(context, tenant1, 1))
+    .onComplete(context.asyncAssertSuccess());
+ }
+
+  @Test
+  public void postTenantPurgeSharedPool(TestContext context) {
+    PostgresClientHelper.setSharedPgPool(true);
+    assertTenantPurge(context, "tenant1", "tenant2");
+  }
+
+  @Test
+  public void postTenantPurgeTenantPools(TestContext context) {
+    assertTenantPurge(context, "tenant3", "tenant4");
   }
 }

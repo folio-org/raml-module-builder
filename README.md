@@ -1751,7 +1751,18 @@ When upgrading a module via the Tenant API, an index is deleted if either `"tOps
 ]
 ```
 
-##### Posting information
+#### Removing a table
+
+RMB removes a table and all related SQL functions on the next module upgrade if the table entry contains `"mode": "DELETE"`:
+
+```json
+  {
+    "tableName": "holdings_record",
+    "mode": "DELETE"
+  }
+```
+
+#### Posting information
 
 Posting a new tenant must include a body. The body should contain a JSON
 conforming to the
@@ -1765,7 +1776,7 @@ To disable a module indicate the existing version module in `module_from` and om
 The body may also hold a `parameters` property to specify per-tenant
 actions/info to be done during tenant creation/update.
 
-##### Encrypting Tenant passwords
+#### Encrypting Tenant passwords
 
 As of now (this may change in the future), securing a tenant's connection to the database via an encrypted password can be accomplished in the following way:
 
