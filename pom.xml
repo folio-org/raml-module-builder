@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>34.0.3-SNAPSHOT</version>
+  <version>34.0.4-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -30,8 +30,8 @@
     <aspectj.version>1.9.7</aspectj.version>
     <junit-jupiter-version>5.8.1</junit-jupiter-version>
     <maven.version>3.8.4</maven.version>
-    <vertx.version>4.3.3</vertx.version>
-    <micrometer.version>1.8.4</micrometer.version>  <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
+    <vertx.version>4.3.5</vertx.version>
+    <micrometer.version>1.9.5</micrometer.version>  <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->

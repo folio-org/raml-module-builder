@@ -355,8 +355,8 @@ public class PostgresClient {
   /**
    * This instance's PgPool for database connections.
    *
-   * Take care to execute "SET ROLE ..." when {@link #sharedPgPool} is true; consider using
-   * one of the with... methods that automatically execute "SET ROLE ...".
+   * Take care to execute "SET ROLE ...; SET SCHEMA ..." when {@link #sharedPgPool} is true; consider using
+   * one of the with... methods that automatically execute "SET ROLE ...; SET SCHEMA ...".
    *
    * @see #withConnection(Function)
    * @see #withConn(Function)
@@ -3321,8 +3321,11 @@ public class PostgresClient {
     if (! sharedPgPool) {
       return future.map(sqlConnection -> (PgConnection) sqlConnection);
     }
-    // running the "SET ROLE ..." query adds about 1.5 ms execution time
-    String sql = DEFAULT_SCHEMA.equals(tenantId) ? "SET ROLE NONE" : "SET ROLE '" + schemaName + "'";
+    // running the two SET queries adds about 1.5 ms execution time
+    // "SET SCHEMA ..." sets the search_path because neither "SET ROLE" nor "SET SESSION AUTHORIZATION" set it
+    String sql = DEFAULT_SCHEMA.equals(tenantId)
+        ? "SET ROLE NONE; SET SCHEMA ''"
+        : "SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'";
     return future.compose(sqlConnection ->
         sqlConnection.query(sql).execute()
         .map((PgConnection) sqlConnection));
