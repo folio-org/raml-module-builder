@@ -3,6 +3,7 @@ package org.folio.rest.tools;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -84,7 +85,7 @@ public enum PomReader {
     }
     version = version.replaceAll("-.*", "");
 
-    moduleName = moduleName.replaceAll("-", "_");
+    moduleName = moduleName.replace("-", "_");
     props = model.getProperties();
     dependencies = model.getDependencies();
 
@@ -96,13 +97,15 @@ public enum PomReader {
 
   private Model getModelFromJar(String directoryName) throws IOException, XmlPullParserException {
     MavenXpp3Reader mavenreader = new MavenXpp3Reader();
-    Model model = null;
     URL url = Thread.currentThread().getContextClassLoader().getResource(directoryName);
-    if (url.getProtocol().equals("jar")) {
-      String dirname = directoryName + "/";
-      String path = url.getPath();
-      String jarPath = path.substring(5, path.indexOf('!'));
-      JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8.name()));
+    if (! url.getProtocol().equals("jar")) {
+      throw new IllegalArgumentException("Is not jar: " + url);
+    }
+    String dirname = directoryName + "/";
+    String path = url.getPath();
+    String jarPath = path.substring(5, path.indexOf('!'));
+
+    try (JarFile jar = new JarFile(URLDecoder.decode(jarPath, StandardCharsets.UTF_8.name()))) {
       Enumeration<JarEntry> entries = jar.entries();
       while (entries.hasMoreElements()) {
         JarEntry entry = entries.nextElement();
@@ -110,16 +113,15 @@ public enum PomReader {
         // first pom.xml should be the right one.
         if (name.startsWith(dirname) && !dirname.equals(name) && name.endsWith("pom.xml")) {
           InputStream pomFile = PomReader.class.getClassLoader().getResourceAsStream(name);
-          model = mavenreader.read(pomFile);
-          break;
+          return mavenreader.read(pomFile);
         }
       }
     }
-    return model;
+    throw new FileNotFoundException("pom.xml not found in " + url);
   }
 
   private String replacePlaceHolderWithValue(String placeholder){
-    String ret[] = new String[]{placeholder};
+    String[] ret = new String[]{placeholder};
     if (placeholder != null && placeholder.startsWith("${")) {
       props.forEach( (k,v) -> {
         if (("${"+k+"}").equals(placeholder)) {

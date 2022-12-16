@@ -1,5 +1,6 @@
 package org.folio.rest.tools;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.List;
 import org.apache.maven.model.Dependency;
@@ -54,14 +55,14 @@ class PomReaderTest {
   void readFromJarNoPom() {
     PomReader pom = PomReader.INSTANCE;
 
-    assertThrows(NullPointerException.class, () -> pom.readIt(null, "ramls"));
+    assertThrows(FileNotFoundException.class, () -> pom.readIt(null, "javax/ws/rs"));
   }
 
   @Test
   void readFromJarNoResource() {
     PomReader pom = PomReader.INSTANCE;
 
-    assertThrows(NullPointerException.class, () -> pom.readIt(null, "pom/pom-sample.xml"));
+    assertThrows(IllegalArgumentException.class, () -> pom.readIt(null, "ramls"));
   }
 
   @Test
