@@ -98,8 +98,8 @@ public enum PomReader {
   private Model getModelFromJar(String directoryName) throws IOException, XmlPullParserException {
     MavenXpp3Reader mavenreader = new MavenXpp3Reader();
     URL url = Thread.currentThread().getContextClassLoader().getResource(directoryName);
-    if (! url.getProtocol().equals("jar")) {
-      throw new IllegalArgumentException("Is not jar: " + url);
+    if (url == null || ! "jar".equals(url.getProtocol())) {
+      throw new IllegalArgumentException("Is not jar: " + directoryName + " -> " + url);
     }
     String dirname = directoryName + "/";
     String path = url.getPath();
