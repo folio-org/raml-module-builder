@@ -20,7 +20,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <aspectj.version>1.9.5</aspectj.version>
+    <aspectj.version>1.9.19</aspectj.version>
   </properties>
 
   <dependencies>
@@ -98,9 +98,8 @@
       </plugin>
 
       <plugin>
-        <groupId>com.nickwongdev</groupId>
+        <groupId>dev.aspectj</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.12.6</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
