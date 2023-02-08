@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>35.0.5-SNAPSHOT</version>
+    <version>35.0.6-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-api-aspects</artifactId>
 
@@ -57,7 +57,7 @@
     <dependency>
       <groupId>org.javassist</groupId>
       <artifactId>javassist</artifactId>
-      <version>3.29.0-GA</version>
+      <version>3.29.2-GA</version>
     </dependency>
 
     <!-- test dependencies -->
@@ -95,9 +95,8 @@
 
     <plugins>
       <plugin>
-        <groupId>com.nickwongdev</groupId>
+        <groupId>dev.aspectj</groupId>
         <artifactId>aspectj-maven-plugin</artifactId>
-        <version>1.12.6</version>
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>

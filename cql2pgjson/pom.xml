@@ -7,7 +7,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>35.0.5-SNAPSHOT</version>
+    <version>35.0.6-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -94,7 +94,7 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>42.5.0</version>
+      <version>42.5.2</version>
       <scope>test</scope>
     </dependency>
 

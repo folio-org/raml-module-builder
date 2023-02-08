@@ -1,3 +1,10 @@
+## 35.0.5 2023-02-07
+
+Bug fixes:
+ * [RMB-957](https://issues.folio.org/browse/RMB-957) "duplicate key" error on parallel CREATE EXTENSION
+ * [RMB-959](https://issues.folio.org/browse/RMB-959) UXPROD-3833: Logging adjustment (NFR) includeTimeMillis
+ * [RMB-960](https://issues.folio.org/browse/RMB-960) Upgrade dependencies: Vert.x 4.3.7, aspectj-maven-plugin 1.13.1, ...
+
 ## 35.0.4 2022-11-24
 
 Bug fixes:
