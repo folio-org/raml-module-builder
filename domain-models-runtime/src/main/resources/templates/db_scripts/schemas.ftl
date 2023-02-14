@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS rmb_internal_analyze (
 -- Run script - created in version ${(script.fromModuleVersion)!0}
         </#if>
         <#if script.snippetPath??>
-          <#include script.snippetPath>
+          <#include script.snippetPath ignore_missing=false>
         <#elseif script.snippet??>
           ${script.snippet}
         </#if>
