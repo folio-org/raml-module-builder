@@ -1,3 +1,8 @@
+## 35.0.6 2023-02-13
+
+Bug fixes:
+ * [RMB-961](https://issues.folio.org/browse/RMB-961) Vert.x 4.3.8, Micrometer 1.10.3
+
 ## 35.0.5 2023-02-07
 
 Bug fixes:
