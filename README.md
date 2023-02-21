@@ -1,7 +1,7 @@
 
 # Raml-Module-Builder
 
-Copyright (C) 2016-2022 The Open Library Foundation
+Copyright (C) 2016-2023 The Open Library Foundation
 
 [ClassPath.java](domain-models-api-aspects/src/main/java/org/folio/rest/tools/utils/ClassPath.java) and
 [ClassPathTest.java](domain-models-api-aspects/src/test/java/org/folio/rest/tools/utils/ClassPathTest.java)
@@ -2681,5 +2681,7 @@ channel [#raml-module-builder](https://folio-project.slack.com/archives/CC0PHKEM
 
 See project [RMB](https://issues.folio.org/browse/RMB)
 at the [FOLIO issue tracker](https://dev.folio.org/guidelines/issue-tracker/).
+
+[SonarQube analysis](https://sonarcloud.io/project/overview?id=org.folio%3Araml-module-builder).
 
 Other FOLIO Developer documentation is at [dev.folio.org](https://dev.folio.org/)
