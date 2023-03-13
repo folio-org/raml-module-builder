@@ -1939,7 +1939,7 @@ Examples (before percent encoding):
 For estimation it uses this algorithm:
 
 1. Run "EXPLAIN SELECT" to get an estimation from PostgreSQL.
-2. If this is greater than `4\*1000 return it and stop.
+2. If this is greater than 4\*1000 return it and stop.
 3. Run "SELECT COUNT(\*) FROM query LIMIT 1000".
 4. If this is less than 1000 return it (this is the exact number) and stop.
 5. If the result from 1. is less than 1000 return 1000 and stop.
@@ -1960,13 +1960,15 @@ Note that clients should **continue on the next page when `totalRecords = offset
 
 This is the exact count guarantee:
 
-For `limit = 0` an exact count is returned without any records. Otherwise:
+For `limit` = 0 an exact count is returned without any records. Otherwise:
 
 If a result set has a `totalRecords` value that is less than 1000 then it is the exact count; if it is 1000 or more it may be an estimate.
 
 If the exact count is less than 1000 then `totalRecords` almost always contains the exact count; only when PostgreSQL estimates it to be more than 4\*1000 then it contains that overestimation.
 
 Replace 1000 by `exactCount` if configured differently.
+
+Performance warning: Depending on query and database indexes using `limit` = 0 may take long, may put load on the database and should run asynchronously in the front-end. If there isn't a supporting database index it requires a full table scan. In all cases PostgreSQL needs to check the visibility map, see [Slow counting](https://wiki.postgresql.org/wiki/Slow_Counting) and [Index-only_scans](https://wiki.postgresql.org/wiki/Index-only_scans).
 
 ## Metadata
 
