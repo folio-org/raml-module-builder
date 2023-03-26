@@ -4203,6 +4203,27 @@ public class PostgresClient {
   }
 
   /**
+   * Will connect to a specific database and execute the commands in sqlFile.
+   * <p>
+   * NOTE: NOT tested on all types of statements - but on a lot
+   * <p>
+   * Returns a failed Future if any SQL statement fails, this
+   * is different from the other runSQLFile methods.
+   *
+   * @param sqlFile - string of sql statements
+   */
+  public Future<Void> runSqlFile(String sqlFile) {
+    return Future.<List<String>>future(promise -> runSQLFile(sqlFile, true, promise))
+        .compose(errors -> {
+          if (errors.isEmpty()) {
+            return Future.succeededFuture();
+          } else {
+            return Future.failedFuture(errors.get(0));
+          }
+        });
+  }
+
+  /**
    * Will connect to a specific database and execute the commands in the .sql file
    * against that database.<p />
    * NOTE: NOT tested on all types of statements - but on a lot

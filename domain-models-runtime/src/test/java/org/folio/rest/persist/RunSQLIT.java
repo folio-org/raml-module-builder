@@ -1,5 +1,8 @@
 package org.folio.rest.persist;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
+
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -81,4 +84,16 @@ public class RunSQLIT {
     }));
   }
 
+  @Test
+  public void runSqlFile(TestContext context) {
+    if (expectedResultSize == 0) {
+      client.runSqlFile(sql)
+      .onComplete(context.asyncAssertSuccess());
+    } else {
+      client.runSqlFile(sql)
+      .onComplete(context.asyncAssertFailure(e -> {
+        assertThat(e.getMessage(), containsString("syntax"));
+      }));
+    }
+  }
 }
