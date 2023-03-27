@@ -35,7 +35,6 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
 public class AdminAPIIT {
-  private static final String tenantId = "folio_shared";
   protected static Vertx vertx;
   private static Map<String,String> okapiHeaders = new HashMap<>();
 
@@ -46,6 +45,7 @@ public class AdminAPIIT {
   public static void setUpClass() {
     vertx = VertxUtils.getVertxWithExceptionHandler();
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
+    PostgresClient.getInstance(vertx);
   }
 
   @AfterClass
