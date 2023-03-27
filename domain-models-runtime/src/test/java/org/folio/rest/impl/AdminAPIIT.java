@@ -7,6 +7,8 @@ import static org.hamcrest.Matchers.matchesRegex;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.MatcherAssert.assertThat;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -199,5 +201,45 @@ public class AdminAPIIT {
       assertThat(response.getStatus(), is(HttpStatus.HTTP_NOT_FOUND.toInt()));
       assertThat(response.getMediaType(), is(MediaType.TEXT_PLAIN_TYPE));
     }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postAdminImportSql(TestContext context) {
+    var stream = new ByteArrayInputStream("SELECT 1".getBytes(StandardCharsets.UTF_8));
+    new AdminAPI().postAdminImportSQL(stream, okapiHeaders, context.asyncAssertSuccess(response -> {
+      assertThat(response.getStatus(), is(HttpStatus.HTTP_OK.toInt()));
+    }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postAdminImportSqlError(TestContext context) {
+    var sql = "DO $$ BEGIN RAISE EXCEPTION 'spaghetti'; END $$";
+    var stream = new ByteArrayInputStream(sql.getBytes(StandardCharsets.UTF_8));
+    new AdminAPI().postAdminImportSQL(stream, okapiHeaders, context.asyncAssertSuccess(response -> {
+      assertThat(response.getStatus(), is(HttpStatus.HTTP_BAD_REQUEST.toInt()));
+      assertThat(response.getEntity().toString(), containsString("ERROR: spaghetti"));
+    }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postAdminImportSqlException(TestContext context) {
+    new AdminAPI().postAdminImportSQL(null, null, context.asyncAssertSuccess(response -> {
+      assertThat(response.getStatus(), is(HttpStatus.HTTP_INTERNAL_SERVER_ERROR.toInt()));
+    }), null);
+  }
+
+  @Test
+  public void putAdminPostgresCreateIndexesFailure(TestContext context) {
+    Map<String,String> headers = Map.of("X-Okapi-Tenant", "nonexistingcreateindexestenant");
+    new AdminAPI().putAdminPostgresCreateIndexes(headers, context.asyncAssertSuccess(response ->
+      assertThat(response.getStatus(), is(HttpStatus.HTTP_BAD_REQUEST.toInt()))
+    ), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void putAdminPostgresCreateIndexesException(TestContext context) {
+    new AdminAPI().putAdminPostgresCreateIndexes(null, context.asyncAssertSuccess(response ->
+      assertThat(response.getStatus(), is(HttpStatus.HTTP_INTERNAL_SERVER_ERROR.toInt()))
+    ), null);
   }
 }

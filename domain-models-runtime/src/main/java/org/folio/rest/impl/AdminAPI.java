@@ -210,15 +210,16 @@ public class AdminAPI implements Admin {
       PostgresClient.getInstance(vertxContext.owner(), tenantId).runSqlFile(sqlFile)
       .onFailure(e -> {
         log.error("{}", e.getMessage(), e);
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
+        asyncResultHandler.handle(Future.succeededFuture(
             PostAdminImportSQLResponse.respond400WithTextPlain(e.getMessage())));
       })
-      .onSuccess(x ->
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.respond200(null)))
+      .onSuccess(x -> asyncResultHandler.handle(Future.succeededFuture(
+          PostAdminImportSQLResponse.respond200(PostAdminImportSQLResponse.headersFor200())))
       );
     } catch (Exception e) {
       log.error("{}", e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+      asyncResultHandler.handle(Future.succeededFuture(
+          PostAdminImportSQLResponse.respond500WithTextPlain(e.getMessage())));
     }
   }
 
