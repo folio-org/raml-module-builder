@@ -39,12 +39,11 @@ public class PostgresClientMultiVertxIT {
   private void run(TestContext context) {
     Async async = context.async();
     PostgresClient client = PostgresClient.getInstance(contextRule.vertx());
-    client.runSQLFile("UPDATE pg_database SET datname=null WHERE false;\n", true, r -> {
-      async.complete();
-      // it does not trigger the bug when replacing the previous line with:
-      // client.closeClient(whenDone -> async.complete());
-      // But it must work with two clients running in parallel.
-    });
+    client.runSqlFile("UPDATE pg_database SET datname=null WHERE false;\n")
+    .onComplete(context.asyncAssertSuccess(x -> async.complete()));
+    // it does not trigger the bug when replacing the previous line with:
+    // client.closeClient(whenDone -> async.complete());
+    // But it must work with two clients running in parallel.
   }
 
   @Test
