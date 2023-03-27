@@ -8,6 +8,7 @@ import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -205,7 +206,7 @@ public class AdminAPIIT {
 
   @Test
   public void postAdminImportSql(TestContext context) {
-    var stream = new ByteArrayInputStream("SELECT 1".getBytes(StandardCharsets.UTF_8));
+    InputStream stream = new ByteArrayInputStream("SELECT 1".getBytes(StandardCharsets.UTF_8));
     new AdminAPI().postAdminImportSQL(stream, okapiHeaders, context.asyncAssertSuccess(response -> {
       assertThat(response.getStatus(), is(HttpStatus.HTTP_OK.toInt()));
     }), vertx.getOrCreateContext());
@@ -213,8 +214,8 @@ public class AdminAPIIT {
 
   @Test
   public void postAdminImportSqlError(TestContext context) {
-    var sql = "DO $$ BEGIN RAISE EXCEPTION 'spaghetti'; END $$";
-    var stream = new ByteArrayInputStream(sql.getBytes(StandardCharsets.UTF_8));
+    String sql = "DO $$ BEGIN RAISE EXCEPTION 'spaghetti'; END $$";
+    InputStream stream = new ByteArrayInputStream(sql.getBytes(StandardCharsets.UTF_8));
     new AdminAPI().postAdminImportSQL(stream, okapiHeaders, context.asyncAssertSuccess(response -> {
       assertThat(response.getStatus(), is(HttpStatus.HTTP_BAD_REQUEST.toInt()));
       assertThat(response.getEntity().toString(), containsString("ERROR: spaghetti"));
