@@ -4203,6 +4203,28 @@ public class PostgresClient {
   }
 
   /**
+   * Will connect to a specific database and execute the commands in sqlFile.
+   * <p>
+   * NOTE: NOT tested on all types of statements - but on a lot
+   * <p>
+   * Returns a failed Future if an SQL statement fails, this
+   * is different from {@link #runSQLFile(String, boolean)} and
+   * {@link #runSQLFile(String, boolean, Handler)}.
+   *
+   * @param sqlFile - string of sql statements
+   */
+  public Future<Void> runSqlFile(String sqlFile) {
+    return Future.<List<String>>future(promise -> runSQLFile(sqlFile, true, promise))
+        .compose(errors -> {
+          if (errors.isEmpty()) {
+            return Future.succeededFuture();
+          } else {
+            return Future.failedFuture(errors.get(0));
+          }
+        });
+  }
+
+  /**
    * Will connect to a specific database and execute the commands in the .sql file
    * against that database.<p />
    * NOTE: NOT tested on all types of statements - but on a lot
@@ -4211,7 +4233,12 @@ public class PostgresClient {
    * @param stopOnError - stop on first error
    * @return Future with list of failures, each failure is a string of the
    *     statement that failed and the error message; the list may be empty
+   * @deprecated Use {@link #runSqlFile(String)} instead, unlike this method it returns a failed
+   *     Future on SQL error.
    */
+  @SuppressWarnings("java:S1845")  // suppress "Methods should not differ only by capitalization", the
+  // non-deprecated method has correct camel case: https://google.github.io/styleguide/javaguide.html#s5.3-camel-case
+  @Deprecated
   public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
     return Future.future(promise -> runSQLFile(sqlFile, stopOnError, promise));
   }
@@ -4225,7 +4252,12 @@ public class PostgresClient {
    * @param stopOnError - stop on first error
    * @param replyHandler - the handler's result is the list of failures, each failure is a string of the
    *     statement that failed and the error message; the list may be empty
+   * @deprecated Use {@link #runSqlFile(String)} instead, unlike this method it returns a failed
+   *     Future on SQL error.
    */
+  @SuppressWarnings("java:S1845")  // suppress "Methods should not differ only by capitalization", the
+  // non-deprecated method has correct camel case: https://google.github.io/styleguide/javaguide.html#s5.3-camel-case
+  @Deprecated
   public void runSQLFile(String sqlFile, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
     try {

@@ -251,11 +251,8 @@ public class TenantAPI implements Tenant {
           handler.handle(Future.succeededFuture(PostTenantResponse.respond400WithTextPlain(cause.getMessage())));
         })
         .onSuccess(files ->
-          postgresClient(context).runSQLFile(files[0], true)
+          postgresClient(context).runSqlFile(files[0])
               .compose(res -> {
-                if (!res.isEmpty()) {
-                  return Future.failedFuture(res.get(0));
-                }
                 if (files.length == 1) { // not saving job for disable or purge
                   return Future.succeededFuture();
                 }
@@ -309,12 +306,8 @@ public class TenantAPI implements Tenant {
   }
 
   Future<Void> runAsync(TenantAttributes tenantAttributes, String file, TenantJob job, Map<String, String> headers, Context context) {
-    return postgresClient(context).runSQLFile(file, true)
+    return postgresClient(context).runSqlFile(file)
         .compose(res -> {
-          if (!res.isEmpty()) {
-            job.setMessages(res);
-            return Future.failedFuture("SQL error");
-          }
           if (tenantAttributes == null) {
             return Future.succeededFuture();
           }

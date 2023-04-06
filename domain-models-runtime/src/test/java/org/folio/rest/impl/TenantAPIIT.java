@@ -2,21 +2,19 @@ package org.folio.rest.impl;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.matchesRegex;
 import static org.hamcrest.Matchers.startsWith;
 import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
-
+import javax.ws.rs.core.Response;
 import org.folio.dbschema.Schema;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.postgres.testing.PostgresTesterContainer;
@@ -62,17 +60,26 @@ public class TenantAPIIT {
   }
 
   @AfterClass
-  public static void afterClass() {
-    vertx.close();
-    PostgresClientHelper.setSharedPgPool(false);
+  public static void afterClass(TestContext context) {
+    purgeTenant("tenant1")
+    .compose(x -> purgeTenant("tenant2"))
+    .compose(x -> purgeTenant("tenant3"))
+    .compose(x -> purgeTenant("tenant4"))
+    .compose(x -> vertx.close())
+    .onComplete(context.asyncAssertSuccess())
+    .onComplete(x -> PostgresClientHelper.setSharedPgPool(false));
   }
-
 
   @After
   public void after(TestContext context) {
-    TenantAPI tenantAPI = new TenantAPI();
+    purgeTenant(null).onComplete(context.asyncAssertSuccess());
+  }
+
+  private static Future<Response> purgeTenant(String tenantId) {
+    Map<String,String> headers = tenantId == null ? Map.of() : Map.of("X-Okapi-Tenant", tenantId);
     TenantAttributes attributes = new TenantAttributes().withPurge(true);
-    tenantAPI.postTenantSync(attributes, okapiHeaders, context.asyncAssertSuccess(), vertx.getOrCreateContext());
+    return Future.future(promise -> new TenantAPI()
+        .postTenantSync(attributes, headers, promise, vertx.getOrCreateContext()));
   }
 
   /**
@@ -355,7 +362,7 @@ public class TenantAPIIT {
   @Test
   public void postWithSqlError(TestContext context) {
     PostgresClient postgresClient = mock(PostgresClient.class);
-    when(postgresClient.runSQLFile(anyString(), anyBoolean())).thenReturn(Future.failedFuture("mock returns failure"));
+    when(postgresClient.runSqlFile(anyString())).thenReturn(Future.failedFuture("mock returns failure"));
     TenantAPI tenantAPI = new TenantAPI() {
       @Override
       PostgresClient postgresClient(Context context) {
@@ -377,35 +384,6 @@ public class TenantAPIIT {
       assertThat(response.getStatus(), is(400));
       assertThat((String) response.getEntity(), is("mock returns failure"));
 
-    }), vertx.getOrCreateContext());
-  }
-
-  @Test
-  public void postWithSqlFailure(TestContext context) {
-    PostgresClient postgresClient = mock(PostgresClient.class);
-    List<String> failureList = Collections.singletonList("first failure");
-    when(postgresClient.runSQLFile(anyString(), anyBoolean())).thenReturn(Future.succeededFuture(failureList));
-    TenantAPI tenantAPI = new TenantAPI() {
-      @Override
-      PostgresClient postgresClient(Context context) {
-        return postgresClient;
-      }
-
-      @Override
-      Future<Void> requirePostgresVersion(Context context) {
-        return Future.succeededFuture();
-      }
-
-      @Override
-      Future<Boolean> tenantExists(Context context, String tenantId) {
-        return Future.succeededFuture(false);
-      }
-    };
-    tenantAPI.postTenant(null, okapiHeaders, context.asyncAssertSuccess(result -> {
-      assertThat(result.getStatus(), is(400));
-      String error = (String) result.getEntity();
-
-      assertThat(error, is("first failure"));
     }), vertx.getOrCreateContext());
   }
 
@@ -647,9 +625,8 @@ public class TenantAPIIT {
     TenantJob job = new TenantJob();
     tenantAPI.runAsync(null, "SELECT (", job, okapiHeaders, vertx.getOrCreateContext())
         .onComplete(context.asyncAssertFailure(cause -> {
-          assertThat(job.getError(), is("SQL error"));
           // for some bizarre reason a space is put in front the returned stmt
-          assertThat(job.getMessages(), containsInAnyOrder(CoreMatchers.startsWith(" SELECT (\n")));
+          assertThat(job.getError(), startsWith(" SELECT (\n"));
         }));
   }
 

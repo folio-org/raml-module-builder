@@ -142,13 +142,8 @@ public class PostgresClientITBase {
    */
   public static void runSqlFileAsSuperuser(TestContext context, String sqlFile) {
     Async async = context.async();
-    PostgresClient.getInstance(vertx).runSQLFile(sqlFile, true, context.asyncAssertSuccess(result -> {
-      if (result.isEmpty()) {
-        async.complete();
-        return;
-      }
-      context.fail(new RuntimeException(result.get(0) + "\n### SQL File: ###\n" + sqlFile + "\n### end of SQL File ###"));
-    }));
+    PostgresClient.getInstance(vertx).runSqlFile(sqlFile)
+    .onComplete(context.asyncAssertSuccess(x -> async.complete()));
     async.awaitSuccess();
   }
 
