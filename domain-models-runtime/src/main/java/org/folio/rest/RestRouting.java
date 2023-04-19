@@ -561,16 +561,11 @@ public final class RestRouting {
       return;
     }
     Object entity = null;
+    Buffer buffer = Buffer.buffer();
     try {
       HttpServerResponse response = rc.response();
-      int statusCode = responseFromResult.getStatus();
-      // 204 means no content returned in the response, so passing
-      // a chunked Transfer header is not allowed
-      if (statusCode != 204) {
-        response.setChunked(true);
-      }
 
-      response.setStatusCode(statusCode);
+      response.setStatusCode(responseFromResult.getStatus());
 
       copyHeaders(responseFromResult.getStringHeaders(), response.headers());
 
@@ -578,24 +573,25 @@ public final class RestRouting {
 
       /* entity is of type OutStream - and will be written as a string */
       if (entity instanceof OutStream) {
-        response.write(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(((OutStream) entity).getData()));
+        String s = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(((OutStream) entity).getData());
+        buffer = Buffer.buffer(s);
       }
       /* entity is of type BinaryOutStream - and will be written as a buffer */
       else if (entity instanceof BinaryOutStream) {
-        response.write(Buffer.buffer(((BinaryOutStream) entity).getData()));
+        buffer = Buffer.buffer(((BinaryOutStream) entity).getData());
       }
       /* data is a string so just push it out, no conversion needed */
       else if (entity instanceof String) {
-        response.write(Buffer.buffer((String) entity));
+        buffer = Buffer.buffer((String) entity);
       }
       /* catch all - anything else will be assumed to be a pojo which needs converting to json */
       else if (entity != null) {
-        response.write(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
+        buffer = Buffer.buffer(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       }
     } catch (Exception e) {
       withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
     } finally {
-      rc.response().end();
+      rc.response().end(buffer);
     }
 
     long end = System.nanoTime();
