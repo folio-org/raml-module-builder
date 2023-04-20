@@ -561,7 +561,7 @@ public final class RestRouting {
       return;
     }
     Object entity = null;
-    Buffer buffer = Buffer.buffer();
+    var buffer = Buffer.buffer();
     try {
       HttpServerResponse response = rc.response();
 
@@ -573,20 +573,20 @@ public final class RestRouting {
 
       /* entity is of type OutStream - and will be written as a string */
       if (entity instanceof OutStream) {
-        String s = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(((OutStream) entity).getData());
-        buffer = Buffer.buffer(s);
+        var s = MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(((OutStream) entity).getData());
+        buffer.appendString(s);
       }
       /* entity is of type BinaryOutStream - and will be written as a buffer */
       else if (entity instanceof BinaryOutStream) {
-        buffer = Buffer.buffer(((BinaryOutStream) entity).getData());
+        buffer.appendBytes(((BinaryOutStream) entity).getData());
       }
       /* data is a string so just push it out, no conversion needed */
       else if (entity instanceof String) {
-        buffer = Buffer.buffer((String) entity);
+        buffer.appendString((String) entity);
       }
       /* catch all - anything else will be assumed to be a pojo which needs converting to json */
       else if (entity != null) {
-        buffer = Buffer.buffer(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
+        buffer.appendString(MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(entity));
       }
     } catch (Exception e) {
       withRequestId(rc, () -> LOGGER.error(e.getMessage(), e));
