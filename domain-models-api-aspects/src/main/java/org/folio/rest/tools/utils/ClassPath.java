@@ -178,6 +178,8 @@ public class ClassPath {
       return resourceName.hashCode();
     }
 
+    @SuppressWarnings("java:S2162")  // false positive:
+    // Compare to "this.getClass()" instead. "equals" methods should be symmetric and work for subclasses
     @Override
     public boolean equals(Object obj) {
       if (obj instanceof ResourceInfo) {
