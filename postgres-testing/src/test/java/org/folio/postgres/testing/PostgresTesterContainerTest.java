@@ -4,10 +4,13 @@ import org.folio.util.PostgresTester;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.sql.SQLException;
+
 public class PostgresTesterContainerTest {
 
   @Test
-  public void testStartClose() {
+  public void testStartClose() throws SQLException, IOException, InterruptedException {
     PostgresTester tester = new PostgresTesterContainer();
     Assert.assertFalse(tester.isStarted());
     tester.start("db", "user", "pass");
@@ -20,13 +23,13 @@ public class PostgresTesterContainerTest {
   }
 
   @Test(expected = IllegalStateException.class)
-  public void testBadDockerImage() {
+  public void testBadDockerImage() throws SQLException, IOException, InterruptedException {
     PostgresTester tester = new PostgresTesterContainer("");
     tester.start(null, null, null);
   }
 
   @Test
-  public void testGetDoubleStart() {
+  public void testGetDoubleStart() throws SQLException, IOException, InterruptedException {
     PostgresTester tester = new PostgresTesterContainer();
     tester.start("db", "user", "pass");
     String msg = "";

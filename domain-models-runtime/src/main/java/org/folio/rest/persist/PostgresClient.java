@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.lang.StackWalker.Option;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -4335,7 +4336,7 @@ public class PostgresClient {
    * Assumes postgresTester is enabled.
    * Changes HOST and PORT oc configuration
    */
-  public void startPostgresTester() {
+  public void startPostgresTester() throws SQLException, IOException, InterruptedException {
     // starting Postgres
     if (!postgresTester.isStarted()) {
       log.info("Starting postgres tester");
