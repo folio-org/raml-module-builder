@@ -48,10 +48,13 @@ public class PostgresTesterContainer implements PostgresTester {
 
     primary = new PostgreSQLContainer<>(dockerImageName)
         .withDatabaseName(database)
-        .withUsername("test")
-        .withPassword("test")
+        .withUsername(username)
+        .withPassword(password)
         .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
     primary.start();
+
+    String sqlCommand = "CREATE USER replicator WITH REPLICATION PASSWORD 'password'";
+    System.out.println(primary.execInContainer("psql", "-U", username, "-d", database, "-c", sqlCommand).getStdout());
 
     standby = new PostgreSQLContainer<>(dockerImageName)
         .withDatabaseName(database)
@@ -61,26 +64,6 @@ public class PostgresTesterContainer implements PostgresTester {
         //.withCommand("postgres -c default_transaction_read_only=on")
         .withStartupTimeout(Duration.ofSeconds(60));
     standby.start();
-
-//    String replicationUrl = String.format("jdbc:postgresql://%s:%d/mydb",
-//        primary.getHost(), primary.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT));
-
-//    String replicationUrl = String.format("jdbc:postgresql://%s:%s/%s?currentSchema=public&user=%s&password=%s",
-//        primary.getHost(), primary.getFirstMappedPort(), database, username, password);
-    try {
-      Class.forName("org.postgresql.Driver");
-    } catch (Exception e) {
-      System.out.println("Unable to register the driver: " + e.getMessage());
-    }
-    //System.out.println("Primary JDBC URL: " + primary.getJdbcUrl());
-    var url = url(primary.getHost(), primary.getFirstMappedPort(), primary.getDatabaseName(), primary.getUsername(), primary.getPassword());
-    try (Connection conn = DriverManager.getConnection(url)) {
-      try (Statement stmt = conn.createStatement()) {
-        stmt.execute("CREATE USER replicator WITH REPLICATION PASSWORD 'password'");
-      }
-    } catch (SQLException e) {
-      throw new RuntimeException("Error setting up replication user", e);
-    }
 
     // TODO Can I get away with not running pg_basebackup?
     // TODO Is this the right line?
@@ -96,12 +79,8 @@ public class PostgresTesterContainer implements PostgresTester {
         " port=" + primary.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT) +
         " user=replicator password=password' -c standby_mode=on -c primary_slot_name=my_slot");
     standby.waitingFor(Wait.forLogMessage("database system is ready to accept connections", 1));
-    standby.start();
-  }
 
-  private static String url(String host, int port, String db, String username, String password) {
-    return String.format("jdbc:postgresql://%s:%s/%s?currentSchema=public&user=%s&password=%s",
-        host, port, db, username, password);
+    //standby.start();
   }
 
   @Override
