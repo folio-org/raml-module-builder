@@ -1,14 +1,12 @@
 package org.folio.postgres.testing;
 
 import java.io.IOException;
-import java.sql.Connection;
-import java.sql.Statement;
-import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import java.time.Duration;
 
 import org.folio.util.PostgresTester;
+import org.testcontainers.containers.Container;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -50,11 +48,9 @@ public class PostgresTesterContainer implements PostgresTester {
         .withDatabaseName(database)
         .withUsername(username)
         .withPassword(password)
+        // TODO Why is this regex necessary here but not below?
         .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
     primary.start();
-
-    String sqlCommand = "CREATE USER replicator WITH REPLICATION PASSWORD 'password'";
-    System.out.println(primary.execInContainer("psql", "-U", username, "-d", database, "-c", sqlCommand).getStdout());
 
     standby = new PostgreSQLContainer<>(dockerImageName)
         .withDatabaseName(database)
@@ -65,22 +61,73 @@ public class PostgresTesterContainer implements PostgresTester {
         .withStartupTimeout(Duration.ofSeconds(60));
     standby.start();
 
-    // TODO Can I get away with not running pg_basebackup?
-    // TODO Is this the right line?
-    primary.execInContainer("echo 'host replication replicator " + standby.getHost() + "/32 md5' >> /var/lib/postgresql/data/pg_hba.conf");
-    // TODO Are these the right paths?
-    primary.execInContainer("echo 'max_wal_senders = 1' >> /var/lib/postgresql/data/postgresql.conf");
-    primary.execInContainer("echo 'wal_level = replica' >> /var/lib/postgresql/data/postgresql.conf");
-    primary.execInContainer("echo 'archive_mode = off' >> /var/lib/postgresql/data/postgresql.conf");
-    primary.execInContainer("echo 'listen_addresses = *' >> /var/lib/postgresql/data/postgresql.conf");
-    primary.execInContainer("/usr/local/bin/docker-entrypoint.sh postgres");
+    String replicationSlot = "replication_slot1";
+    String replicationUser = "replicator";
+    String replicationPassword = "password";
 
+    String createReplicationUser = "CREATE USER " + replicationUser +" WITH REPLICATION PASSWORD '" + replicationPassword + "'";
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser));
+
+    String createSlot = "SELECT * FROM pg_create_physical_replication_slot('" + replicationSlot + "');";
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createSlot));
+
+    String inspectSlot = "SELECT * FROM pg_replication_slots;";
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", inspectSlot));
+
+    logExecResult(primary.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' > /var/lib/pg_hba.conf"));
+    logExecResult(primary.execInContainer("cat", "/var/lib/pg_hba.conf"));
+    logExecResult(primary.execInContainer("sh", "-c", "echo '" + pgConfPrimary() + "' > /var/lib/postgresql.conf"));
+    logExecResult(primary.execInContainer("cat", "/var/lib/postgresql.conf"));
+
+    // Since we have changed the configs, we need to restart.
+    primary.stop();
+    primary.start();
+
+    logExecResult(standby.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' > /var/lib/pg_hba.conf"));
+    logExecResult(standby.execInContainer("cat", "/var/lib/pg_hba.conf"));
+    logExecResult(standby.execInContainer("sh", "-c", "echo '" + pgConfStandby() + "' > /var/lib/postgresql.conf"));
+    logExecResult(standby.execInContainer("cat", "/var/lib/postgresql.conf"));
+    standby.stop();
+    standby.start();
+
+    // TODO Does this method of passing in runtime configs work?
     standby.withCommand("postgres -c primary_conninfo='host=" + primary.getHost() +
-        " port=" + primary.getMappedPort(PostgreSQLContainer.POSTGRESQL_PORT) +
-        " user=replicator password=password' -c standby_mode=on -c primary_slot_name=my_slot");
+        " port=" + primary.getFirstMappedPort() +
+        " user=" + replicationUser + " password=" + replicationPassword +
+        "' -c standby_mode=on -c primary_slot_name=" + replicationSlot);
     standby.waitingFor(Wait.forLogMessage("database system is ready to accept connections", 1));
 
-    //standby.start();
+    // TODO Can test if replication is working here using psql just to validate that the setup is correct. Then need to probably have a unit test or two.
+  }
+
+  public String hbaConf(String user) {
+    return "host all all 127.0.0.1/32 trust\n" +
+           "host all all ::1/128 trust\n" +
+           "host replication " + user + " 0.0.0.0/0 trust\n" +
+           "host all all all md5";
+  }
+
+  public String pgConfPrimary() {
+    return "wal_level = replica\n" +
+           "max_wal_senders = 1\n" +
+           "wal_keep_segments = 32\n";
+  }
+
+  public String pgConfStandby() {
+    return "hot_standby = on";
+  }
+
+  private void logExecResult(Container.ExecResult result) {
+    String stdout = result.getStdout();
+    if (!stdout.isEmpty()) {
+      // TODO Probably want log4j here.
+      System.out.println("Out: " + stdout);
+    }
+
+    String stderr = result.getStderr();
+    if (!stderr.isEmpty()) {
+      System.out.println("Err: " + stderr);
+    }
   }
 
   @Override
