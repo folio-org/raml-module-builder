@@ -1,6 +1,7 @@
 package org.folio.postgres.testing;
 
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 
 import java.time.Duration;
@@ -8,7 +9,13 @@ import java.time.Duration;
 import org.folio.util.PostgresTester;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.output.OutputFrame;
+import org.testcontainers.containers.output.ToStringConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
+import org.testcontainers.utility.MountableFile;
+
+import static java.time.temporal.ChronoUnit.SECONDS;
 
 public class PostgresTesterContainer implements PostgresTester {
   static public final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
@@ -44,77 +51,130 @@ public class PostgresTesterContainer implements PostgresTester {
       throw new IllegalStateException("already started");
     }
 
+    String replicationSlot = "replication_slot1";
+    String replicationUser = "replicator";
+    String replicationPassword = "password";
+
+    File primaryPgConfig = File.createTempFile("primary-postgresql", ".conf");
+    FileUtils.writeStringToFile(primaryPgConfig, pgConfPrimary(), "UTF-8");
+
+    File hbaConfig = File.createTempFile("secondary-postgresql", ".conf");
+    FileUtils.writeStringToFile(hbaConfig, hbaConf(replicationUser), "UTF-8");
+
     primary = new PostgreSQLContainer<>(dockerImageName)
         .withDatabaseName(database)
         .withUsername(username)
         .withPassword(password)
-        // TODO Why is this regex necessary here but not below?
+        .withCopyFileToContainer(MountableFile.forHostPath(primaryPgConfig.getPath()), "/var/lib/postgresql.conf")
+        //.withCopyFileToContainer(MountableFile.forHostPath(hbaConfig.getPath()), "/var/lib/postgresql/data/pg_hba.conf")
         .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
     primary.start();
+
+    logExecResult(primary.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' >> /var/lib/postgresql/data/pg_hba.conf"));
+
+    logExecResult(primary.execInContainer("cat", "/var/lib/postgresql/data/pg_hba.conf"));
+    logExecResult(primary.execInContainer("cat", "/var/lib/postgresql.conf"));
+
+    String createReplicationUser = "CREATE USER " + replicationUser + " WITH REPLICATION PASSWORD '" + replicationPassword + "'";
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser));
+
+//    String createSlot = "SELECT * FROM pg_create_physical_replication_slot('" + replicationSlot + "');";
+//    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createSlot));
+
+//    String inspectSlot = "SELECT * FROM pg_replication_slots;";
+//    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", inspectSlot));
+
+    String primaryConnInfo = "host=" + primary.getHost() +
+    " port=" + primary.getFirstMappedPort() + " user=" + replicationUser + " password=" + replicationPassword;
+
+    File standbyPgConfig = File.createTempFile("secondary-postgresql", ".conf");
+    //FileUtils.writeStringToFile(standbyPgConfig, pgConfStandby(primary.getHost(), primary.getFirstMappedPort(), replicationUser, replicationPassword, replicationSlot), "UTF-8");
+    FileUtils.writeStringToFile(standbyPgConfig, pgConfStandby("127.0.0.1", primary.getFirstMappedPort(), replicationUser, replicationPassword, replicationSlot), "UTF-8");
+
+    File standbySignal = File.createTempFile("standby", ".signal");
+    FileUtils.writeStringToFile(standbySignal, "", "UTF-8");
 
     standby = new PostgreSQLContainer<>(dockerImageName)
         .withDatabaseName(database)
         .withUsername(username)
         .withPassword(password)
-        // TODO is this necessary when using streaming?
-        //.withCommand("postgres -c default_transaction_read_only=on")
-        .withStartupTimeout(Duration.ofSeconds(60));
+        // TODO This line causes the container to not start. But the default hba file seems to contain what we need.
+        //.withCopyFileToContainer(MountableFile.forHostPath(hbaConfig.getPath()), "/var/lib/postgresql/data/pg_hba.conf")
+        .withCopyFileToContainer(MountableFile.forHostPath(standbyPgConfig.getPath()), "/var/lib/postgresql.conf")
+        // TODO This line is causing the container to not start so I try adding the signal file after the container has started.
+        //.withCopyFileToContainer(MountableFile.forHostPath(standbySignal.getPath()), "/var/lib/postgresql/data/standby.signal")
+        .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
+
     standby.start();
 
-    String replicationSlot = "replication_slot1";
-    String replicationUser = "replicator";
-    String replicationPassword = "password";
+    logExecResult(standby.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' >> /var/lib/postgresql/data/pg_hba.conf"));
 
-    String createReplicationUser = "CREATE USER " + replicationUser +" WITH REPLICATION PASSWORD '" + replicationPassword + "'";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser));
-
-    String createSlot = "SELECT * FROM pg_create_physical_replication_slot('" + replicationSlot + "');";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createSlot));
-
-    String inspectSlot = "SELECT * FROM pg_replication_slots;";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", inspectSlot));
-
-    logExecResult(primary.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' > /var/lib/pg_hba.conf"));
-    logExecResult(primary.execInContainer("cat", "/var/lib/pg_hba.conf"));
-    logExecResult(primary.execInContainer("sh", "-c", "echo '" + pgConfPrimary() + "' > /var/lib/postgresql.conf"));
-    logExecResult(primary.execInContainer("cat", "/var/lib/postgresql.conf"));
-
-    // Since we have changed the configs, we need to restart.
-    primary.stop();
-    primary.start();
-
-    logExecResult(standby.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' > /var/lib/pg_hba.conf"));
-    logExecResult(standby.execInContainer("cat", "/var/lib/pg_hba.conf"));
-    logExecResult(standby.execInContainer("sh", "-c", "echo '" + pgConfStandby() + "' > /var/lib/postgresql.conf"));
+    logExecResult(standby.execInContainer("cat", "/var/lib/postgresql/data/pg_hba.conf"));
     logExecResult(standby.execInContainer("cat", "/var/lib/postgresql.conf"));
-    standby.stop();
-    standby.start();
 
-    // TODO Does this method of passing in runtime configs work?
-    standby.withCommand("postgres -c primary_conninfo='host=" + primary.getHost() +
-        " port=" + primary.getFirstMappedPort() +
-        " user=" + replicationUser + " password=" + replicationPassword +
-        "' -c standby_mode=on -c primary_slot_name=" + replicationSlot);
-    standby.waitingFor(Wait.forLogMessage("database system is ready to accept connections", 1));
+    // Show the location of the data directory.
+    String getDataDir = "SHOW data_directory;";
+    logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
 
-    // TODO Can test if replication is working here using psql just to validate that the setup is correct. Then need to probably have a unit test or two.
+    // One online source suggests removing everything in the data directory in the standby.
+    //logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "stop"));
+    Thread.sleep(5000);
+
+
+    // TODO This fails because testcontainers now says that the container is not running even though I only
+    // have stopped postgres.
+    //logExecResult(standby.execInContainer("su-exec", "rm", "-rf", "/var/lib/postgresql/data/*"));
+
+
+    // Try to add the standby signal file and get replication to start working. This is required according to
+    // the postgres docs.
+    logExecResult(standby.execInContainer("touch", "/var/lib/postgresql/data/standby.signal"));
+
+    // Make sure the file is there.
+    logExecResult(standby.execInContainer("ls", "/var/lib/postgresql/data"));
+
+    // Restart
+    logExecResult(primary.execInContainer("su-exec", "postgres", "pg_ctl", "reload"));
+    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "reload"));
+    //logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "start"));
+
+    // Maybe wait some time to see the restart take effect?
+    Thread.sleep(5000);
+
+    // Check that primary is streaming to replica. This should have one row if replication is working according
+    // to everything I have read.
+    System.out.println("-----------------------------------------------");
+    System.out.println("Is it working? This will have one row if it is.");
+    System.out.println("-----------------------------------------------");
+    String verifyStreaming = "SELECT * FROM pg_stat_replication;";
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
+
+    // Take a look at the logs.
+    String primaryLogs = primary.getLogs();
+    System.out.println("------------");
+    System.out.println("Primary logs");
+    System.out.println("------------");
+    System.out.println(primaryLogs);
+    String standbyLogs = standby.getLogs();
+    System.out.println("------------");
+    System.out.println("Standby logs");
+    System.out.println("------------");
+    System.out.println(standbyLogs);
   }
 
   public String hbaConf(String user) {
-    return "host all all 127.0.0.1/32 trust\n" +
-           "host all all ::1/128 trust\n" +
-           "host replication " + user + " 0.0.0.0/0 trust\n" +
-           "host all all all md5";
+    return
+           "host replication " + user + " 0.0.0.0/32 trust\n";
   }
 
   public String pgConfPrimary() {
-    return "wal_level = replica\n" +
-           "max_wal_senders = 1\n" +
-           "wal_keep_segments = 32\n";
+    return
+           "listen_addresses = '*'\n";
   }
 
-  public String pgConfStandby() {
-    return "hot_standby = on";
+  public String pgConfStandby(String host, int port, String user, String password, String slot) {
+    return
+        "primary_conninfo = 'host=" + host + " port=" + port + " user=" + user + " password=" + password + "\n";
   }
 
   private void logExecResult(Container.ExecResult result) {
