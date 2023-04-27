@@ -9,6 +9,7 @@ import java.time.Duration;
 import org.folio.util.PostgresTester;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.Container;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.OutputFrame;
@@ -23,7 +24,7 @@ public class PostgresTesterContainer implements PostgresTester {
   static public final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
 
   private PostgreSQLContainer<?> primary;
-  private PostgreSQLContainer<?> standby;
+  private GenericContainer<?> standby;
   private String dockerImageName;
 
   /**
@@ -55,7 +56,7 @@ public class PostgresTesterContainer implements PostgresTester {
 
     String replicationSlot = "replication_slot1";
     String replicationUser = "replicator";
-    String replicationPassword = "password";
+    String replicationPassword = "abc123";
 
     File primaryPgConfig = File.createTempFile("primary-postgresql", ".conf");
     FileUtils.writeStringToFile(primaryPgConfig, pgConfPrimary(), "UTF-8");
@@ -65,11 +66,11 @@ public class PostgresTesterContainer implements PostgresTester {
 
     Network network = Network.newNetwork();
 
-
     primary = new PostgreSQLContainer<>(dockerImageName)
         .withDatabaseName(database)
         .withUsername(username)
         .withPassword(password)
+        .withNetwork(network)
         .withStartupTimeout(Duration.ofSeconds(60))
         //.withCopyFileToContainer(MountableFile.forHostPath(primaryPgConfig.getPath()), "/var/postgresql/data/postgresql.conf")
         // TODO Container won't start if this is set here.
@@ -82,8 +83,8 @@ public class PostgresTesterContainer implements PostgresTester {
 
     logExecResult(primary.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' >> /var/lib/postgresql/data/pg_hba.conf"));
 
-    logExecResult(primary.execInContainer("cat", "/var/lib/postgresql/data/pg_hba.conf"));
-    logExecResult(primary.execInContainer("cat", "/var/lib/postgresql/data/postgresql.conf"));
+    //logExecResult(primary.execInContainer("cat", "/var/lib/postgresql/data/pg_hba.conf"));
+    //logExecResult(primary.execInContainer("cat", "/var/lib/postgresql/data/postgresql.conf"));
 
     System.out.println("----------------------------------------------");
     System.out.println("Restarting primary to make changes take effect");
@@ -95,47 +96,44 @@ public class PostgresTesterContainer implements PostgresTester {
     String createReplicationUser = "CREATE USER " + replicationUser + " WITH REPLICATION PASSWORD '" + replicationPassword + "'";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser));
 
-
+// How to get files so that we can use withCopyFileToContainer. Probably don't want to do this.
 //    String createSlot = "SELECT * FROM pg_create_physical_replication_slot('" + replicationSlot + "');";
 //    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createSlot));
-
 //    String inspectSlot = "SELECT * FROM pg_replication_slots;";
 //    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", inspectSlot));
-
 //    String primaryConnInfo = "host=" + primary.getHost() +
 //    " port=" + primary.getFirstMappedPort() + " user=" + replicationUser + " password=" + replicationPassword;
-
 //    File standbyPgConfig = File.createTempFile("secondary-postgresql", ".conf");
 //    //FileUtils.writeStringToFile(standbyPgConfig, pgConfStandby(primary.getHost(), primary.getFirstMappedPort(), replicationUser, replicationPassword, replicationSlot), "UTF-8");
 //    FileUtils.writeStringToFile(standbyPgConfig, pgConfStandby("127.0.0.1", primary.getFirstMappedPort(), replicationUser, replicationPassword, replicationSlot), "UTF-8");
-
 //    File standbySignal = File.createTempFile("standby", ".signal");
 //    FileUtils.writeStringToFile(standbySignal, "", "UTF-8");
 
-    standby = new PostgreSQLContainer<>(dockerImageName)
-        .withDatabaseName(database)
-        .withUsername(username)
-        .withPassword(password)
+    // Don't use PostgreSQLContainer because it will create a db and make it very hard to delete things.
+    standby = new GenericContainer<>(dockerImageName)
+        .withCommand("tail", "-f", "/dev/null")
+        .withNetwork(network);
+//        .withEnv("POSTGRES_DB", "")
+//        .withEnv("POSTGRES_USER", username)
+//        .withEnv("POSTGRES_PASSWORD", password)
+//        .withCommand("postgres", "-c", "fsync=off", "-c", "synchronous_commit=off")
+//        .withNetwork(network)
         // TODO This line causes the container to not start. But the default hba file seems to contain what we need.
         //.withCopyFileToContainer(MountableFile.forHostPath(hbaConfig.getPath()), "/var/lib/postgresql/data/pg_hba.conf")
         //.withCopyFileToContainer(MountableFile.forHostPath(standbyPgConfig.getPath()), "/var/lib/postgresql.conf")
         // TODO This line is causing the container to not start so I try adding the signal file after the container has started.
         //.withCopyFileToContainer(MountableFile.forHostPath(standbySignal.getPath()), "/var/lib/postgresql/data/standby.signal")
-        .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
+        //.waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
 
     standby.start();
 
     // Show the location of the data directory on the standby.
-    String getDataDir = "SHOW data_directory;";
-    logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
+//    String getDataDir = "SHOW data_directory;";
+//    logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
 
-//    System.out.println("------------------------------");
-//    System.out.println("Look for open ports on primary");
-//    System.out.println("------------------------------");
-//    System.out.println("Primary host: " + primary.getHost());
-//    System.out.println("Primary first mapped port: " + primary.getFirstMappedPort());
-//    //System.out.println("Primary first mapped port: " + primary.port());
-//    logExecResult(primary.execInContainer("nmap", "-p", String.valueOf(primary.getFirstMappedPort()), "localhost"));
+    //String primaryHost = primary.getContainerName().substring(1, primary.getContainerName().length());
+    String primaryHost = "host.docker.internal";
+    System.out.println("The primary host: " + primaryHost);
 
     // Can I connect via other means?
     System.out.println("--------------------------------");
@@ -144,23 +142,32 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("Primary host: " + primary.getHost());
     System.out.println("Primary first mapped port: " + primary.getFirstMappedPort());
     //System.out.println("Primary first mapped port: " + primary.port());
-    logExecResult(standby.execInContainer("nc", "-vz", "localhost", String.valueOf(primary.getFirstMappedPort())));
+    logExecResult(standby.execInContainer("nc", "-vz", primaryHost, String.valueOf(primary.getFirstMappedPort())));
 
     // Perform pg_basebackup on the standby.
     System.out.println("---------------------");
     System.out.println("Running pg_basebackup");
     System.out.println("---------------------");
-    System.out.println("Primary host: " + primary.getHost());
-    System.out.println("Primary first mapped port: " + primary.getFirstMappedPort());
-    //System.out.println("Primary first mapped port: " + primary.port());
-    String dataDirectory = "/usr/lib/postgresql/data";
-    logExecResult(standby.execInContainer("pg_basebackup", "-h", primary.getHost(), "-p",
-        String.valueOf(primary.getFirstMappedPort()), "-U", replicationUser, "-D", dataDirectory, "-Fp", "-Xs", "-P", "-R"));
+    String dataDirectory = "/var/lib/postgresql/data/";
+
+    // My many failed attempts to clear out the data directory.
+    //logExecResult(standby.execInContainer("sh", "-c", "chown -R postgres:postgres /var/lib/postgresql"));
+    //logExecResult(standby.execInContainer("su-exec", "postgres", "rm", "-rf", "/var/lib/postgresql/data/*"));
+    //logExecResult(standby.execInContainer("sh", "-c", "rm -rf /var/lib/postgresql/data/*"));
+    //logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "stop"));
+    //logExecResult(standby.execInContainer("rm", "-rf", "/var/lib/postgresql/data/*"));
+
+    // This now returns nothing which is what we want.
+    logExecResult(standby.execInContainer("ls", "/var/lib/postgresql/data"));
+
+    // This succeeds.
+    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_basebackup", "-h", primaryHost, "-p",
+        String.valueOf(primary.getFirstMappedPort()), "-U", replicationUser, "-D", dataDirectory, "-Fp", "-Xs", "-R", "-P"));
 
     // This shouldn't be necessary on the standby.
     //logExecResult(standby.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' >> /var/lib/postgresql/data/pg_hba.conf"));
 
-    // TODO This shouldn't be necessary on the standby.
+    // This shouldn't be necessary on the standby.
     //logExecResult(standby.execInContainer("cat", "/var/lib/postgresql/data/pg_hba.conf"));
     //logExecResult(standby.execInContainer("cat", "/var/lib/postgresql.conf"));
 
@@ -168,24 +175,34 @@ public class PostgresTesterContainer implements PostgresTester {
     //logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "stop"));
     Thread.sleep(5000);
 
-    // TODO This fails because testcontainers now says that the container is not running even though I only
-    // have stopped postgres.
     //logExecResult(standby.execInContainer("su-exec", "rm", "-rf", "/var/lib/postgresql/data/*"));
 
     // Try to add the standby signal file and get replication to start working. This is required according to
     // the postgres docs.
     //logExecResult(standby.execInContainer("touch", "/var/lib/postgresql/data/standby.signal"));
 
-    // Make sure the file is there.
+    // Now things can be there.
     logExecResult(standby.execInContainer("ls", "/var/lib/postgresql/data"));
 
+    // My failed attempts to create my own primary_conninfo object. All failed.
+    //String primaryConnInfo = pgConfStandby(primaryHost, primary.getFirstMappedPort(), replicationUser, replicationPassword);
+    ///System.out.println("primaryConnInfo: " + primaryConnInfo);
+    //logExecResult(standby.execInContainer("sh", "-c", "echo '" + primaryConnInfo + "' >> /var/lib/postgresql/data/postgresql.conf"));
+    // "echo \"primary_conninfo = 'user=myuser password=''mypassword'' host=primaryhost port=5432 sslmode=require'\" >> /var/lib/postgresql/data/postgresql.conf"
+    //String echo = String.format("echo \"primary_conninfo = 'host=host.docker.internal port=%s user=%s password=%s'\n\" >> /var/lib/postgresql/data/postgresql.conf", primary.getFirstMappedPort(), replicationUser, replicationPassword);
+    //logExecResult(standby.execInContainer("sh", "-c", echo));
     // Take a look at the configuration generated by pg_basebackup.
-    logExecResult(standby.execInContainer("cat", "/var/lib/postgresql/data/postgres.auto.conf"));
+    System.out.println("---------------------------");
+    System.out.println("Contents of postgresql.auto.conf");
+    System.out.println("---------------------------");
+    logExecResult(standby.execInContainer("cat", "/var/lib/postgresql/data/postgresql.auto.conf"));
+    //logExecResult(standby.execInContainer("cat", "/var/lib/postgresql/data/postgresql.conf"));
 
     // Restart
     //logExecResult(primary.execInContainer("su-exec", "postgres", "pg_ctl", "reload"));
-    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "reload"));
-    //logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "start"));
+    //logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "reload"));
+
+    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "start"));
 
     // Maybe wait some time to see the restart take effect?
     Thread.sleep(5000);
@@ -213,8 +230,8 @@ public class PostgresTesterContainer implements PostgresTester {
 
   public String hbaConf(String user) {
     return
-           //"host replication " + user + " 0.0.0.0/0 trust\n";
-        "host all all 0.0.0.0/0 trust\n";
+        "host replication " + user + " 0.0.0.0/0 trust\n";
+        //"host all all 0.0.0.0/0 trust\n";
   }
 
   public String pgConfPrimary() {
@@ -222,9 +239,9 @@ public class PostgresTesterContainer implements PostgresTester {
            "listen_addresses = \\'127.0.0.1\\'\n";
   }
 
-  public String pgConfStandby(String host, int port, String user, String password, String slot) {
+  public String pgConfStandby(String host, int port, String user, String password) {
     return
-        "primary_conninfo = 'host=" + host + " port=" + port + " user=" + user + " password=" + password + "\n";
+        "primary_conninfo = '\\''host=" + host + " port=" + port + " password=''''password'''' user=" + user + "'\\''";
   }
 
   private void logExecResult(Container.ExecResult result) {
