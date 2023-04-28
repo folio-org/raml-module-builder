@@ -110,8 +110,10 @@ public class PostgresTesterContainer implements PostgresTester {
 //    FileUtils.writeStringToFile(standbySignal, "", "UTF-8");
 
     // Don't use PostgreSQLContainer because it will create a db and make it very hard to delete things.
+    String dataDirectory = "/var/lib/postgresql/standby/";
     standby = new GenericContainer<>(dockerImageName)
         .withCommand("tail", "-f", "/dev/null")
+        .withEnv("PGDATA", dataDirectory)
         .withNetwork(network);
 //        .withEnv("POSTGRES_DB", "")
 //        .withEnv("POSTGRES_USER", username)
@@ -133,8 +135,7 @@ public class PostgresTesterContainer implements PostgresTester {
 //    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "start"));
 
     // Show the location of the data directory on the standby.
-    String getDataDir = "SHOW data_directory;";
-    logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
+
 
     //String primaryHost = primary.getContainerName().substring(1, primary.getContainerName().length());
     String primaryHost = "host.docker.internal";
@@ -164,17 +165,16 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("-------------");
     //logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "stop"));
     //logExecResult(standby.execInContainer("", "", "sh", "-c", "chown -R postgres:postgres /var/lib/postgresql"));
-    logExecResult(standby.execInContainer("ls", "-al", "/var/lib/postgresql/data"));
-    logExecResult(standby.execInContainer("su-exec", "postgres", "sh", "-c", "rm -rf /var/lib/postgresql"));
-    logExecResult(standby.execInContainer("su-exec", "postgres", "sh", "-c", "mkdir /var/lib/postgresql"));
-    logExecResult(standby.execInContainer("su-exec", "postgres", "sh", "-c", "chmod 700 /var/lib/postgresql"));
-    logExecResult(standby.execInContainer("ls", "-al", "/var/lib/postgresql/data"));
+//    logExecResult(standby.execInContainer("ls", "-al", "/var/lib/postgresql/data"));
+//    logExecResult(standby.execInContainer("su-exec", "postgres", "sh", "-c", "rm -rf /var/lib/postgresql"));
+//    logExecResult(standby.execInContainer("su-exec", "postgres", "sh", "-c", "mkdir /var/lib/postgresql"));
+//    logExecResult(standby.execInContainer("su-exec", "postgres", "sh", "-c", "chmod 700 /var/lib/postgresql"));
+//    logExecResult(standby.execInContainer("ls", "-al", "/var/lib/postgresql/data"));
 
     // This succeeds.
     System.out.println("---------------------");
     System.out.println("Running pg_basebackup");
     System.out.println("---------------------");
-    String dataDirectory = "/var/lib/postgresql/data/";
     logExecResult(standby.execInContainer("su-exec", "postgres", "pg_basebackup", "-h", primaryHost, "-p",
         String.valueOf(primary.getFirstMappedPort()), "-U", replicationUser, "-D", dataDirectory, "-Fp", "-Xs", "-R", "-P"));
 
@@ -196,7 +196,7 @@ public class PostgresTesterContainer implements PostgresTester {
     //logExecResult(standby.execInContainer("touch", "/var/lib/postgresql/data/standby.signal"));
 
     // Now things can be there.
-    logExecResult(standby.execInContainer("ls", "/var/lib/postgresql/data"));
+    //logExecResult(standby.execInContainer("ls", "/var/lib/postgresql/data"));
 
     // My failed attempts to create my own primary_conninfo object. All failed.
     //String primaryConnInfo = pgConfStandby(primaryHost, primary.getFirstMappedPort(), replicationUser, replicationPassword);
@@ -209,7 +209,8 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("---------------------------");
     System.out.println("Contents of postgresql.auto.conf");
     System.out.println("---------------------------");
-    logExecResult(standby.execInContainer("cat", "/var/lib/postgresql/data/postgresql.auto.conf"));
+    //logExecResult(standby.execInContainer("cat", dataDirectory + "postgresql.conf"));
+    logExecResult(standby.execInContainer("cat", dataDirectory + "postgresql.auto.conf"));
     //logExecResult(standby.execInContainer("cat", "/var/lib/postgresql/data/postgresql.conf"));
 
     // Restart
@@ -219,10 +220,12 @@ public class PostgresTesterContainer implements PostgresTester {
     //logExecResult(standby.execInContainer("sh", "-c", "chown -R postgres:postgres /var/lib/postgresql"));
     //logExecResult(standby.execInContainer("su-exec", "postgres", "sh", "-c", "chmod 700 /var/lib/postgresql"));
 
-    logExecResult(standby.execInContainer("ls", "-al", "/var/lib/postgresql/data"));
-
+    logExecResult(standby.execInContainer("ls", "-al", dataDirectory));
 
     logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "start"));
+
+    String getDataDir = "SHOW data_directory;";
+    logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
 
     // Maybe wait some time to see the restart take effect?
     Thread.sleep(5000);
