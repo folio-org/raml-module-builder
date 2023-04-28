@@ -2,6 +2,8 @@ package org.folio.postgres.testing;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import java.time.Duration;
@@ -88,10 +90,19 @@ public class PostgresTesterContainer implements PostgresTester {
     // which is required for pg_basebackup.
     String dataDirectory = "/var/lib/postgresql/standby/";
     standby = new GenericContainer<>(dockerImageName)
+        //.withExposedPorts(5433)
         .withCommand("tail", "-f", "/dev/null")
+        //.withCommand("/bin/sh", "-c", "trap : TERM INT; sleep infinity & wait")
         .withEnv("PGDATA", dataDirectory)
-        .withNetwork(network);
+        .withNetwork(network)
+        .waitingFor(Wait.forListeningPort());
     standby.start();
+
+
+    System.out.println("-------------------------");
+    System.out.println("Check that db is stopped.");
+    System.out.println("-------------------------");
+    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "status"));
 
     System.out.println("--------------------------------");
     System.out.println("Netcat to primary from secondary");
@@ -107,7 +118,7 @@ public class PostgresTesterContainer implements PostgresTester {
     logExecResult(standby.execInContainer("su-exec", "postgres", "pg_basebackup", "-h", primaryHost, "-p",
         String.valueOf(primary.getFirstMappedPort()), "-U", replicationUser, "-D", dataDirectory, "-Fp", "-Xs", "-R", "-P"));
 
-    Thread.sleep(2000);
+    //Thread.sleep(2000);
 
     System.out.println("-----------------------");
     System.out.println("Result of pg_basebackup");
@@ -121,30 +132,30 @@ public class PostgresTesterContainer implements PostgresTester {
     String getDataDir = "SHOW data_directory;";
     logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
 
-    // Maybe wait some time to see the restart take effect?
-    Thread.sleep(2000);
-
-    // Check that primary is streaming to replica. This should have one row if replication is working according
-    // to everything I have read.
-    System.out.println("-----------------------------------------------");
-    System.out.println("Is it working? This will have one row if it is.");
-    System.out.println("-----------------------------------------------");
-    String verifyStreaming = "SELECT * FROM pg_stat_replication;";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
+    // Try to expose the port now that postgres is running.
+    System.out.println("-------------------");
+    System.out.println("Expose standby port");
+    System.out.println("-------------------");
+    //standby.addExposedPort(5432);
+    //standby.addExposedPorts();
 
     System.out.println("-----------------");
     System.out.println("Test replication.");
     System.out.println("-----------------");
+    // This first test should have one row if it is working.
+    String verifyStreaming = "SELECT * FROM pg_stat_replication;";
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
+
     String createTablePrimary = "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createTablePrimary));
     String insertRecord = "INSERT INTO users (name) VALUES ('John Doe');";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", insertRecord));
-    Thread.sleep(2000);
-    String selectStandby = "SELECT * FROM users;";
+    String selectStandby = "SELECT * FROM users;"; // Should have 1 row.
     logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", selectStandby));
 
-    // Let some logs accumulate.
-    Thread.sleep(2000);
+    testConnection(primary.getFirstMappedPort(), primary.getHost(), database, username, password, "");
+    testConnection(standby.getFirstMappedPort(), standby.getHost(), database, username, password, "");
+    //testConnection(50022, standby.getHost(), database, username, password, "");
 
     // Take a look at the logs.
     String primaryLogs = primary.getLogs();
@@ -159,19 +170,23 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println(standbyLogs);
   }
 
+  private void testConnection(int port, String host, String database, String username, String password, String sql) {
+    String url = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
+
+    try {
+      Connection conn = DriverManager.getConnection(url, username, password);
+      System.out.println("Connection to database established.");
+      // Use the connection to execute SQL queries here
+      conn.close();
+      System.out.println("Connection to database closed.");
+    } catch (SQLException e) {
+      System.err.println("Connection to database failed: " + e.getMessage());
+    }
+  }
+
   public String hbaConf(String user) {
     return
         "host replication " + user + " 0.0.0.0/0 trust\n";
-  }
-
-  public String pgConfPrimary() {
-    return
-           "listen_addresses = \\'127.0.0.1\\'\n";
-  }
-
-  public String pgConfStandby(String host, int port, String user, String password) {
-    return
-        "primary_conninfo = '\\''host=" + host + " port=" + port + " password=''''password'''' user=" + user + "'\\''";
   }
 
   private void logExecResult(Container.ExecResult result) {
