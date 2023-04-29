@@ -1,7 +1,6 @@
 package org.folio.postgres.testing;
 
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -9,24 +8,15 @@ import java.sql.SQLException;
 import java.time.Duration;
 
 import org.folio.util.PostgresTester;
-import org.testcontainers.Testcontainers;
-import org.testcontainers.containers.Container;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.Network;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.containers.output.OutputFrame;
-import org.testcontainers.containers.output.ToStringConsumer;
+import org.testcontainers.containers.*;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.shaded.org.apache.commons.io.FileUtils;
-import org.testcontainers.utility.MountableFile;
-
-import static java.time.temporal.ChronoUnit.SECONDS;
 
 public class PostgresTesterContainer implements PostgresTester {
   static public final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
 
   private PostgreSQLContainer<?> primary;
-  private GenericContainer<?> standby;
+  private GenericContainer<?> tempStandby;
+  private PostgreSQLContainer<?> standby;
   private String dockerImageName;
 
   /**
@@ -89,20 +79,15 @@ public class PostgresTesterContainer implements PostgresTester {
     // Don't use PostgreSQLContainer because it will create a db and make it very hard to clear out the data dir
     // which is required for pg_basebackup.
     String dataDirectory = "/var/lib/postgresql/standby/";
-    standby = new GenericContainer<>(dockerImageName)
-        //.withExposedPorts(5433)
+    // TODO change this. The directory must not be created by pg_basebackup. Has to be created by the user running this code.
+    String hostVolume = "/Users/sellis/Code/folio/raml-module-builder/standby";
+
+    tempStandby = new GenericContainer<>(dockerImageName)
         .withCommand("tail", "-f", "/dev/null")
-        //.withCommand("/bin/sh", "-c", "trap : TERM INT; sleep infinity & wait")
         .withEnv("PGDATA", dataDirectory)
-        .withNetwork(network)
-        .waitingFor(Wait.forListeningPort());
-    standby.start();
-
-
-    System.out.println("-------------------------");
-    System.out.println("Check that db is stopped.");
-    System.out.println("-------------------------");
-    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "status"));
+        .withFileSystemBind(hostVolume, dataDirectory)
+        .withNetwork(network);
+    tempStandby.start();
 
     System.out.println("--------------------------------");
     System.out.println("Netcat to primary from secondary");
@@ -110,34 +95,41 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("The primary host: " + primaryHost);
     System.out.println("Primary getHost: " + primary.getHost());
     System.out.println("Primary first mapped port: " + primary.getFirstMappedPort());
-    logExecResult(standby.execInContainer("nc", "-vz", primaryHost, String.valueOf(primary.getFirstMappedPort())));
+    logExecResult(tempStandby.execInContainer("nc", "-vz", primaryHost, String.valueOf(primary.getFirstMappedPort())));
 
     System.out.println("---------------------");
     System.out.println("Running pg_basebackup");
     System.out.println("---------------------");
-    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_basebackup", "-h", primaryHost, "-p",
+    logExecResult(tempStandby.execInContainer("su-exec", "postgres", "pg_basebackup", "-h", primaryHost, "-p",
         String.valueOf(primary.getFirstMappedPort()), "-U", replicationUser, "-D", dataDirectory, "-Fp", "-Xs", "-R", "-P"));
-
-    //Thread.sleep(2000);
 
     System.out.println("-----------------------");
     System.out.println("Result of pg_basebackup");
     System.out.println("-----------------------");
+    logExecResult(tempStandby.execInContainer("cat", dataDirectory + "postgresql.auto.conf"));
+    logExecResult(tempStandby.execInContainer("ls", "-al", dataDirectory));
+    tempStandby.stop();
+
+    // Try to expose the port now that postgres is running.
+    System.out.println("---------------------");
+    System.out.println("Change data directory");
+    System.out.println("---------------------");
+    standby = new PostgreSQLContainer<>(dockerImageName)
+        .withUsername(username)
+        .withPassword(password)
+        .withDatabaseName(database)
+        .withFileSystemBind(hostVolume, dataDirectory)
+        .withEnv("PGDATA", dataDirectory)
+        .withNetwork(network)
+        .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", 1));
+    standby.start();
+
+    System.out.println("Value of data dir in env: " + standby.getEnvMap().get("PGDATA"));
     logExecResult(standby.execInContainer("cat", dataDirectory + "postgresql.auto.conf"));
     logExecResult(standby.execInContainer("ls", "-al", dataDirectory));
 
-    // Start up standby.
-    logExecResult(standby.execInContainer("su-exec", "postgres", "pg_ctl", "start"));
-
     String getDataDir = "SHOW data_directory;";
     logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
-
-    // Try to expose the port now that postgres is running.
-    System.out.println("-------------------");
-    System.out.println("Expose standby port");
-    System.out.println("-------------------");
-    //standby.addExposedPort(5432);
-    //standby.addExposedPorts();
 
     System.out.println("-----------------");
     System.out.println("Test replication.");
@@ -150,12 +142,15 @@ public class PostgresTesterContainer implements PostgresTester {
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createTablePrimary));
     String insertRecord = "INSERT INTO users (name) VALUES ('John Doe');";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", insertRecord));
+    // TODO this delay is needed which of course is bad. Because of the host volume mount? Need to make it sync rather than async perhaps.
+    Thread.sleep(1000);
     String selectStandby = "SELECT * FROM users;"; // Should have 1 row.
     logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", selectStandby));
 
     testConnection(primary.getFirstMappedPort(), primary.getHost(), database, username, password, "");
     testConnection(standby.getFirstMappedPort(), standby.getHost(), database, username, password, "");
-    //testConnection(50022, standby.getHost(), database, username, password, "");
+
+    Thread.sleep(60000);
 
     // Take a look at the logs.
     String primaryLogs = primary.getLogs();
@@ -163,6 +158,11 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("Primary logs");
     System.out.println("------------");
     System.out.println(primaryLogs);
+    String tempStandbyLogs = tempStandby.getLogs();
+    System.out.println("-----------------");
+    System.out.println("Temp standby logs");
+    System.out.println("-----------------");
+    System.out.println(tempStandbyLogs);
     String standbyLogs = standby.getLogs();
     System.out.println("------------");
     System.out.println("Standby logs");
