@@ -10,6 +10,7 @@ import java.time.Duration;
 import org.folio.util.PostgresTester;
 import org.testcontainers.containers.*;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.MountableFile;
 
 public class PostgresTesterContainer implements PostgresTester {
   static public final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
@@ -118,7 +119,8 @@ public class PostgresTesterContainer implements PostgresTester {
         .withUsername(username)
         .withPassword(password)
         .withDatabaseName(database)
-        .withFileSystemBind(hostVolume, dataDirectory)
+        //.withFileSystemBind(hostVolume, dataDirectory)
+        .withCopyFileToContainer(MountableFile.forHostPath(hostVolume), dataDirectory)
         .withEnv("PGDATA", dataDirectory)
         .withNetwork(network)
         .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", 1));
@@ -143,7 +145,7 @@ public class PostgresTesterContainer implements PostgresTester {
     String insertRecord = "INSERT INTO users (name) VALUES ('John Doe');";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", insertRecord));
     // TODO this delay is needed which of course is bad. Because of the host volume mount? Need to make it sync rather than async perhaps.
-    Thread.sleep(1000);
+    //Thread.sleep(1000);
     String selectStandby = "SELECT * FROM users;"; // Should have 1 row.
     logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", selectStandby));
 
