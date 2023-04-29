@@ -1,16 +1,22 @@
 package org.folio.postgres.testing;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
 import java.time.Duration;
+import java.util.UUID;
 
 import org.folio.util.PostgresTester;
 import org.testcontainers.containers.*;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.MountableFile;
+
 
 public class PostgresTesterContainer implements PostgresTester {
   static public final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
@@ -49,8 +55,8 @@ public class PostgresTesterContainer implements PostgresTester {
 
     String replicationUser = "replicator";
     String replicationPassword = "abc123";
-    //String primaryHost = "primaryhost";
-    String primaryHost = "host.docker.internal";
+    String primaryHost = "primaryhost";
+    //String primaryHost = "host.docker.internal";
 
     Network network = Network.newNetwork();
 
@@ -59,8 +65,7 @@ public class PostgresTesterContainer implements PostgresTester {
         .withUsername(username)
         .withPassword(password)
         .withNetwork(network)
-        // TODO This doesn't seem to work.
-        //.withNetworkAliases(primaryHost)
+        .withNetworkAliases(primaryHost)
         .withStartupTimeout(Duration.ofSeconds(60))
         .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
     primary.start();
@@ -80,13 +85,16 @@ public class PostgresTesterContainer implements PostgresTester {
     // Don't use PostgreSQLContainer because it will create a db and make it very hard to clear out the data dir
     // which is required for pg_basebackup.
     String dataDirectory = "/var/lib/postgresql/standby/";
-    // TODO change this. The directory must not be created by pg_basebackup. Has to be created by the user running this code.
-    String hostVolume = "/Users/sellis/Code/folio/raml-module-builder/standby";
+    String tempDirectory = "/tmp/standby/";
+    String hostVolume = "/tmp/rmb-standby-" + UUID.randomUUID();
+
+    Path directory = Paths.get(hostVolume);
+    Files.createDirectories(directory);
+    Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwxrwxrwx"));
 
     tempStandby = new GenericContainer<>(dockerImageName)
         .withCommand("tail", "-f", "/dev/null")
-        .withEnv("PGDATA", dataDirectory)
-        .withFileSystemBind(hostVolume, dataDirectory)
+        .withFileSystemBind(hostVolume, tempDirectory)
         .withNetwork(network);
     tempStandby.start();
 
@@ -101,14 +109,14 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("---------------------");
     System.out.println("Running pg_basebackup");
     System.out.println("---------------------");
-    logExecResult(tempStandby.execInContainer("su-exec", "postgres", "pg_basebackup", "-h", primaryHost, "-p",
-        String.valueOf(primary.getFirstMappedPort()), "-U", replicationUser, "-D", dataDirectory, "-Fp", "-Xs", "-R", "-P"));
+    logExecResult(tempStandby.execInContainer("pg_basebackup", "-h", primaryHost, "-p",
+        "5432", "-U", replicationUser, "-D", tempDirectory, "-Fp", "-Xs", "-R", "-P"));
 
     System.out.println("-----------------------");
     System.out.println("Result of pg_basebackup");
     System.out.println("-----------------------");
-    logExecResult(tempStandby.execInContainer("cat", dataDirectory + "postgresql.auto.conf"));
-    logExecResult(tempStandby.execInContainer("ls", "-al", dataDirectory));
+    logExecResult(tempStandby.execInContainer("ls", "-al", tempDirectory));
+    logExecResult(tempStandby.execInContainer("cat", tempDirectory + "postgresql.auto.conf"));
     tempStandby.stop();
 
     // Try to expose the port now that postgres is running.
@@ -119,8 +127,8 @@ public class PostgresTesterContainer implements PostgresTester {
         .withUsername(username)
         .withPassword(password)
         .withDatabaseName(database)
-        //.withFileSystemBind(hostVolume, dataDirectory)
-        .withCopyFileToContainer(MountableFile.forHostPath(hostVolume), dataDirectory)
+        .withFileSystemBind(hostVolume, dataDirectory)
+        //.withCopyFileToContainer(MountableFile.forHostPath(hostVolume), dataDirectory)
         .withEnv("PGDATA", dataDirectory)
         .withNetwork(network)
         .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", 1));
@@ -144,7 +152,8 @@ public class PostgresTesterContainer implements PostgresTester {
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createTablePrimary));
     String insertRecord = "INSERT INTO users (name) VALUES ('John Doe');";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", insertRecord));
-    // TODO this delay is needed which of course is bad. Because of the host volume mount? Need to make it sync rather than async perhaps.
+    // TODO this delay is needed which of course is bad. This _only_ observed on mac. On linux it doesn't appear to
+    // be needed when using the file system bind. Because of the host volume mount? Need to make it sync rather than async perhaps.
     //Thread.sleep(1000);
     String selectStandby = "SELECT * FROM users;"; // Should have 1 row.
     logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", selectStandby));
