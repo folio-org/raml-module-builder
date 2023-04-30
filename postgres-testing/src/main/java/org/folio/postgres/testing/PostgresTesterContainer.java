@@ -66,6 +66,7 @@ public class PostgresTesterContainer implements PostgresTester {
         .withPassword(password)
         .withNetwork(network)
         .withNetworkAliases(primaryHost)
+        .withEnv("PGOPTIONS", "-c synchronous_commit=on")
         .withStartupTimeout(Duration.ofSeconds(60))
         .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
     primary.start();
@@ -87,10 +88,6 @@ public class PostgresTesterContainer implements PostgresTester {
     String dataDirectory = "/var/lib/postgresql/standby/";
     String tempDirectory = "/tmp/standby/";
     String hostVolume = "/tmp/rmb-standby-" + UUID.randomUUID();
-
-    Path directory = Paths.get(hostVolume);
-    Files.createDirectories(directory);
-    Files.setPosixFilePermissions(directory, PosixFilePermissions.fromString("rwxrwxrwx"));
 
     tempStandby = new GenericContainer<>(dockerImageName)
         .withCommand("tail", "-f", "/dev/null")
@@ -128,8 +125,8 @@ public class PostgresTesterContainer implements PostgresTester {
         .withPassword(password)
         .withDatabaseName(database)
         .withFileSystemBind(hostVolume, dataDirectory)
-        //.withCopyFileToContainer(MountableFile.forHostPath(hostVolume), dataDirectory)
         .withEnv("PGDATA", dataDirectory)
+        .withEnv("PGOPTIONS", "-c synchronous_commit=on")
         .withNetwork(network)
         .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", 1));
     standby.start();
@@ -141,12 +138,18 @@ public class PostgresTesterContainer implements PostgresTester {
     String getDataDir = "SHOW data_directory;";
     logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
 
-    System.out.println("-----------------");
-    System.out.println("Test replication.");
-    System.out.println("-----------------");
-    // This first test should have one row if it is working.
+    System.out.println("--------------------------");
+    System.out.println("Make streaming synchronous");
+    System.out.println("--------------------------");
     String verifyStreaming = "SELECT * FROM pg_stat_replication;";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';"));
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();"));
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
+
+    System.out.println("----------------");
+    System.out.println("Test replication");
+    System.out.println("----------------");
 
     String createTablePrimary = "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createTablePrimary));
@@ -160,8 +163,6 @@ public class PostgresTesterContainer implements PostgresTester {
 
     testConnection(primary.getFirstMappedPort(), primary.getHost(), database, username, password, "");
     testConnection(standby.getFirstMappedPort(), standby.getHost(), database, username, password, "");
-
-    Thread.sleep(60000);
 
     // Take a look at the logs.
     String primaryLogs = primary.getLogs();
