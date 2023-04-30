@@ -3,9 +3,10 @@ package org.folio.postgres.testing;
 import org.folio.util.PostgresTester;
 import org.junit.Assert;
 import org.junit.Test;
+import org.postgresql.util.PSQLException;
 
 import java.io.IOException;
-import java.sql.SQLException;
+import java.sql.*;
 
 public class PostgresTesterContainerTest {
 
@@ -50,5 +51,41 @@ public class PostgresTesterContainerTest {
   @Test(expected = IllegalStateException.class)
   public void testGetPort() {
     new PostgresTesterContainer().getPort();
+  }
+
+  @Test(expected = PSQLException.class)
+  public void testReadWrite() throws SQLException, IOException, InterruptedException {
+    PostgresTester tester = new PostgresTesterContainer();
+    String user = "user";
+    String db = "db";
+    String pass = "pass";
+    tester.start(db, user, pass);
+    int port = tester.getPort();
+    String host = tester.getHost();
+    int readOnlyPort = tester.getReadPort();
+    String readOnlyHost = tester.getReadHost();
+    String connString = String.format("jdbc:postgresql://%s:%d/%s", host, port, db);
+    String connStringReadOnly = String.format("jdbc:postgresql://%s:%d/%s", readOnlyHost, readOnlyPort, db);
+
+    Connection conn = DriverManager.getConnection(connString, user, pass);
+    System.out.println("Connection to database established.");
+    Statement stmt = conn.createStatement();
+    stmt.executeUpdate("CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));");
+    stmt.executeUpdate("INSERT INTO users (name) VALUES ('John Doe');");
+
+    // Test that replication between primary and standby happens.
+    Connection readOnlyConn = DriverManager.getConnection(connString, user, pass);
+    Statement readOnlyStmt = readOnlyConn.createStatement();
+    ResultSet rs = readOnlyStmt.executeQuery("SELECT * FROM users");
+    while (rs.next()) {
+      String name = rs.getString("name");
+      Assert.assertEquals(name, "John Doe");
+    }
+
+    // Test that we can't write to read-only host.
+    readOnlyStmt.executeUpdate("CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));");
+
+    conn.close();
+    readOnlyConn.close();
   }
 }

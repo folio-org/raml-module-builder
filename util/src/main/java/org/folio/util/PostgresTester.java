@@ -26,6 +26,18 @@ public interface PostgresTester extends Closeable {
   String getHost();
 
   /**
+   * return read-only host for tester.
+   * @return host
+   */
+  String getReadHost();
+
+  /**
+   * return read-only listening port for spawned tester.
+   * @return port
+   */
+  Integer getReadPort();
+
+  /**
    * has tester started.
    * @return true if start has been invoked; false otherwise
    */

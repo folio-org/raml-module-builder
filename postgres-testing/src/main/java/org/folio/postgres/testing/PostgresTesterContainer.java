@@ -1,21 +1,17 @@
 package org.folio.postgres.testing;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.attribute.PosixFilePermissions;
-import java.sql.Connection;
-import java.sql.DriverManager;
+import java.io.IOException;
 import java.sql.SQLException;
 
 import java.time.Duration;
 import java.util.UUID;
 
 import org.folio.util.PostgresTester;
-import org.testcontainers.containers.*;
+import org.testcontainers.containers.Container;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
+import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.utility.MountableFile;
 
 
 public class PostgresTesterContainer implements PostgresTester {
@@ -56,7 +52,6 @@ public class PostgresTesterContainer implements PostgresTester {
     String replicationUser = "replicator";
     String replicationPassword = "abc123";
     String primaryHost = "primaryhost";
-    //String primaryHost = "host.docker.internal";
 
     Network network = Network.newNetwork();
 
@@ -78,7 +73,8 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("----------------------------------------------");
     logExecResult(primary.execInContainer("su-exec", "postgres", "pg_ctl", "reload"));
 
-    Thread.sleep(2000);
+    // Have to wait for change to take effect, but there might be a better way to wait by looking at the logs.
+    Thread.sleep(5000);
 
     String createReplicationUser = "CREATE USER " + replicationUser + " WITH REPLICATION PASSWORD '" + replicationPassword + "'";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser));
@@ -145,24 +141,9 @@ public class PostgresTesterContainer implements PostgresTester {
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';"));
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();"));
+    // Have to wait for change to take effect, but there might be a better way to wait by looking at the logs.
+    Thread.sleep(5000);
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
-
-    System.out.println("----------------");
-    System.out.println("Test replication");
-    System.out.println("----------------");
-
-    String createTablePrimary = "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createTablePrimary));
-    String insertRecord = "INSERT INTO users (name) VALUES ('John Doe');";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", insertRecord));
-    // TODO this delay is needed which of course is bad. This _only_ observed on mac. On linux it doesn't appear to
-    // be needed when using the file system bind. Because of the host volume mount? Need to make it sync rather than async perhaps.
-    //Thread.sleep(1000);
-    String selectStandby = "SELECT * FROM users;"; // Should have 1 row.
-    logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", selectStandby));
-
-    testConnection(primary.getFirstMappedPort(), primary.getHost(), database, username, password, "");
-    testConnection(standby.getFirstMappedPort(), standby.getHost(), database, username, password, "");
 
     // Take a look at the logs.
     String primaryLogs = primary.getLogs();
@@ -180,20 +161,6 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("Standby logs");
     System.out.println("------------");
     System.out.println(standbyLogs);
-  }
-
-  private void testConnection(int port, String host, String database, String username, String password, String sql) {
-    String url = String.format("jdbc:postgresql://%s:%d/%s", host, port, database);
-
-    try {
-      Connection conn = DriverManager.getConnection(url, username, password);
-      System.out.println("Connection to database established.");
-      // Use the connection to execute SQL queries here
-      conn.close();
-      System.out.println("Connection to database closed.");
-    } catch (SQLException e) {
-      System.err.println("Connection to database failed: " + e.getMessage());
-    }
   }
 
   public String hbaConf(String user) {
@@ -230,11 +197,25 @@ public class PostgresTesterContainer implements PostgresTester {
     return primary.getHost();
   }
 
-  // TODO Add getters for standby
+  @Override
+  public Integer getReadPort() {
+    if (standby == null) {
+      throw new IllegalStateException("read only not started");
+    }
+    return standby.getFirstMappedPort();
+  }
+
+  @Override
+  public String getReadHost() {
+    if (standby == null) {
+      throw new IllegalStateException("read only not started");
+    }
+    return standby.getHost();
+  }
 
   @Override
   public boolean isStarted() {
-    return primary != null;
+    return primary != null && standby != null;
   }
 
   @Override
@@ -242,6 +223,11 @@ public class PostgresTesterContainer implements PostgresTester {
     if (primary != null) {
       primary.close();
       primary = null;
+    }
+
+    if (standby != null) {
+      standby.close();
+      standby = null;
     }
   }
 }
