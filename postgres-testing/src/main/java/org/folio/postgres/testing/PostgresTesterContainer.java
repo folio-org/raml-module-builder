@@ -68,26 +68,23 @@ public class PostgresTesterContainer implements PostgresTester {
 
     logExecResult(primary.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' >> /var/lib/postgresql/data/pg_hba.conf"));
 
-    System.out.println("----------------------------------------------");
-    System.out.println("Restarting primary to make changes take effect");
-    System.out.println("----------------------------------------------");
-    logExecResult(primary.execInContainer("su-exec", "postgres", "pg_ctl", "reload"));
-
+    System.out.println("---------------------------------------------");
+    System.out.println("Reloading primary to make changes take effect");
+    System.out.println("---------------------------------------------");
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();"));
     var waitForHbaRelooad = Wait.forLogMessage(".*database system is ready to accept connections.*", 1);
     primary.waitingFor(waitForHbaRelooad);
 
-    // Have to wait for change to take effect, but there might be a better way to wait by looking at the logs.
-    //Thread.sleep(60000);
-
+    // Replication needs its own special user.
     String createReplicationUser = "CREATE USER " + replicationUser + " WITH REPLICATION PASSWORD '" + replicationPassword + "'";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser));
 
-    // Don't use PostgreSQLContainer because it will create a db and make it very hard to clear out the data dir
-    // which is required for pg_basebackup.
     String dataDirectory = "/var/lib/postgresql/standby/";
     String tempDirectory = "/tmp/standby/";
     String hostVolume = "/tmp/rmb-standby-" + UUID.randomUUID();
 
+    // Don't use PostgreSQLContainer because it will create a db and make it very hard to clear out the data dir
+    // which is required for pg_basebackup.
     tempStandby = new GenericContainer<>(dockerImageName)
         .withCommand("tail", "-f", "/dev/null")
         .withFileSystemBind(hostVolume, tempDirectory)
@@ -117,7 +114,6 @@ public class PostgresTesterContainer implements PostgresTester {
         .withDatabaseName(database)
         .withFileSystemBind(hostVolume, dataDirectory)
         .withEnv("PGDATA", dataDirectory)
-        .withEnv("PGOPTIONS", "-c synchronous_commit=remote_apply")
         .withNetwork(network)
         .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", 1));
     standby.start();
@@ -132,21 +128,11 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("--------------------------");
     System.out.println("Make streaming synchronous");
     System.out.println("--------------------------");
-    String verifyStreaming = "SELECT * FROM pg_stat_replication;";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';"));
+    String setSyncStandbyNames = "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';";
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", setSyncStandbyNames));
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();"));
     var waitForSyncConfig = Wait.forLogMessage(".*START_REPLICATION.*", 1);
     primary.waitingFor(waitForSyncConfig);
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
-
-    // TODO Must commit some transaction on the primary to subsequent transactions to be fully sync.
-    // There may be a way to do this with replication slots.
-    String createTablePrimary = "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createTablePrimary));
-
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
-
 
     // Take a look at the logs.
     String primaryLogs = primary.getLogs();

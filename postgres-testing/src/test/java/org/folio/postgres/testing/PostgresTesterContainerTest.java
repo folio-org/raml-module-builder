@@ -53,8 +53,7 @@ public class PostgresTesterContainerTest {
     new PostgresTesterContainer().getPort();
   }
 
-  @Test(expected = PSQLException.class)
-  //@Test
+  @Test
   public void testReadWrite() throws SQLException, IOException, InterruptedException {
     PostgresTester tester = new PostgresTesterContainer();
     String user = "user";
@@ -62,38 +61,45 @@ public class PostgresTesterContainerTest {
     String pass = "pass";
     tester.start(db, user, pass);
 
+    // Connect to the read-write host and create some data.
     int port = tester.getPort();
     String host = tester.getHost();
     String connString = String.format("jdbc:postgresql://%s:%d/%s", host, port, db);
 
     Connection conn = DriverManager.getConnection(connString, user, pass);
     Statement stmt = conn.createStatement();
-    stmt.executeUpdate("CREATE TABLE accounts (id SERIAL PRIMARY KEY, name VARCHAR(50));");
-    stmt.executeUpdate("INSERT INTO accounts (name) VALUES ('John Doe');");
+    // If we want to guarantee that these statements are going to reach the standby before returning we
+    // must set synchronous_commit here.
+    stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; CREATE TABLE accounts (id SERIAL PRIMARY KEY, name VARCHAR(50)); COMMIT;");
+    stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; INSERT INTO accounts (name) VALUES ('John Doe'); COMMIT;");
     conn.close();
 
-    //Thread.sleep(100);
-
+    // See that the data which we just wrote to the primary propagates to the read-only standby.
     int readOnlyPort = tester.getReadPort();
     String readOnlyHost = tester.getReadHost();
     String connStringReadOnly = String.format("jdbc:postgresql://%s:%d/%s", readOnlyHost, readOnlyPort, db);
     Connection readOnlyConn = DriverManager.getConnection(connStringReadOnly, user, pass);
     Statement readOnlyStmt = readOnlyConn.createStatement();
-    ResultSet rs = readOnlyStmt.executeQuery("SELECT * FROM accounts");
-    while (rs.next()) {
-      String name = rs.getString("name");
+
+    ResultSet selectResult = readOnlyStmt.executeQuery("SELECT name FROM accounts;");
+    if (selectResult.next()) {
+      String name = selectResult.getString("name");
       Assert.assertEquals(name, "John Doe");
     }
 
-    // Test that we can't write to read-only host.
-    Statement stmt2 = readOnlyConn.createStatement();
-    //stmt2.executeUpdate("CREATE TABLE accounts (id SERIAL PRIMARY KEY, name VARCHAR(50));");
-    stmt2.executeUpdate("INSERT INTO accounts (name) VALUES ('John Doe');");
+    // The value of sync_state reflects whether the last transaction was synchronous.
+    ResultSet replicationResult = readOnlyStmt.executeQuery("SELECT sync_state FROM pg_stat_replication;");
+    if (replicationResult.next()) {
+      String name = replicationResult.getString("sync_state");
+      Assert.assertEquals(name, "sync");
+    }
 
-    System.out.println("Ran update.");
+    // The standby should not accept writes of any kind since it is read-only.
+    Exception exception = Assert.assertThrows(PSQLException.class, () -> {
+      readOnlyStmt.executeUpdate("INSERT INTO accounts (name) VALUES ('John Doe');");
+    });
+    Assert.assertEquals("ERROR: cannot execute INSERT in a read-only transaction", exception.getMessage());
 
     readOnlyConn.close();
-
-    Thread.sleep(60000);
   }
 }
