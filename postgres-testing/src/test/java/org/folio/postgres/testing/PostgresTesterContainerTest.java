@@ -54,38 +54,46 @@ public class PostgresTesterContainerTest {
   }
 
   @Test(expected = PSQLException.class)
+  //@Test
   public void testReadWrite() throws SQLException, IOException, InterruptedException {
     PostgresTester tester = new PostgresTesterContainer();
     String user = "user";
     String db = "db";
     String pass = "pass";
     tester.start(db, user, pass);
+
     int port = tester.getPort();
     String host = tester.getHost();
-    int readOnlyPort = tester.getReadPort();
-    String readOnlyHost = tester.getReadHost();
     String connString = String.format("jdbc:postgresql://%s:%d/%s", host, port, db);
-    String connStringReadOnly = String.format("jdbc:postgresql://%s:%d/%s", readOnlyHost, readOnlyPort, db);
 
     Connection conn = DriverManager.getConnection(connString, user, pass);
-    System.out.println("Connection to database established.");
     Statement stmt = conn.createStatement();
-    stmt.executeUpdate("CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));");
-    stmt.executeUpdate("INSERT INTO users (name) VALUES ('John Doe');");
+    stmt.executeUpdate("CREATE TABLE accounts (id SERIAL PRIMARY KEY, name VARCHAR(50));");
+    stmt.executeUpdate("INSERT INTO accounts (name) VALUES ('John Doe');");
+    conn.close();
 
-    // Test that replication between primary and standby happens.
-    Connection readOnlyConn = DriverManager.getConnection(connString, user, pass);
+    //Thread.sleep(100);
+
+    int readOnlyPort = tester.getReadPort();
+    String readOnlyHost = tester.getReadHost();
+    String connStringReadOnly = String.format("jdbc:postgresql://%s:%d/%s", readOnlyHost, readOnlyPort, db);
+    Connection readOnlyConn = DriverManager.getConnection(connStringReadOnly, user, pass);
     Statement readOnlyStmt = readOnlyConn.createStatement();
-    ResultSet rs = readOnlyStmt.executeQuery("SELECT * FROM users");
+    ResultSet rs = readOnlyStmt.executeQuery("SELECT * FROM accounts");
     while (rs.next()) {
       String name = rs.getString("name");
       Assert.assertEquals(name, "John Doe");
     }
 
     // Test that we can't write to read-only host.
-    readOnlyStmt.executeUpdate("CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));");
+    Statement stmt2 = readOnlyConn.createStatement();
+    //stmt2.executeUpdate("CREATE TABLE accounts (id SERIAL PRIMARY KEY, name VARCHAR(50));");
+    stmt2.executeUpdate("INSERT INTO accounts (name) VALUES ('John Doe');");
 
-    conn.close();
+    System.out.println("Ran update.");
+
     readOnlyConn.close();
+
+    Thread.sleep(60000);
   }
 }

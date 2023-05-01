@@ -61,7 +61,7 @@ public class PostgresTesterContainer implements PostgresTester {
         .withPassword(password)
         .withNetwork(network)
         .withNetworkAliases(primaryHost)
-        .withEnv("PGOPTIONS", "-c synchronous_commit=on")
+        .withEnv("PGOPTIONS", "-c synchronous_commit=remote_apply")
         .withStartupTimeout(Duration.ofSeconds(60))
         .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
     primary.start();
@@ -73,8 +73,11 @@ public class PostgresTesterContainer implements PostgresTester {
     System.out.println("----------------------------------------------");
     logExecResult(primary.execInContainer("su-exec", "postgres", "pg_ctl", "reload"));
 
+    var waitForHbaRelooad = Wait.forLogMessage(".*database system is ready to accept connections.*", 1);
+    primary.waitingFor(waitForHbaRelooad);
+
     // Have to wait for change to take effect, but there might be a better way to wait by looking at the logs.
-    Thread.sleep(5000);
+    //Thread.sleep(60000);
 
     String createReplicationUser = "CREATE USER " + replicationUser + " WITH REPLICATION PASSWORD '" + replicationPassword + "'";
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser));
@@ -90,14 +93,6 @@ public class PostgresTesterContainer implements PostgresTester {
         .withFileSystemBind(hostVolume, tempDirectory)
         .withNetwork(network);
     tempStandby.start();
-
-    System.out.println("--------------------------------");
-    System.out.println("Netcat to primary from secondary");
-    System.out.println("--------------------------------");
-    System.out.println("The primary host: " + primaryHost);
-    System.out.println("Primary getHost: " + primary.getHost());
-    System.out.println("Primary first mapped port: " + primary.getFirstMappedPort());
-    logExecResult(tempStandby.execInContainer("nc", "-vz", primaryHost, String.valueOf(primary.getFirstMappedPort())));
 
     System.out.println("---------------------");
     System.out.println("Running pg_basebackup");
@@ -122,7 +117,7 @@ public class PostgresTesterContainer implements PostgresTester {
         .withDatabaseName(database)
         .withFileSystemBind(hostVolume, dataDirectory)
         .withEnv("PGDATA", dataDirectory)
-        .withEnv("PGOPTIONS", "-c synchronous_commit=on")
+        .withEnv("PGOPTIONS", "-c synchronous_commit=remote_apply")
         .withNetwork(network)
         .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", 1));
     standby.start();
@@ -141,9 +136,17 @@ public class PostgresTesterContainer implements PostgresTester {
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';"));
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();"));
-    // Have to wait for change to take effect, but there might be a better way to wait by looking at the logs.
-    Thread.sleep(5000);
+    var waitForSyncConfig = Wait.forLogMessage(".*START_REPLICATION.*", 1);
+    primary.waitingFor(waitForSyncConfig);
     logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
+
+    // TODO Must commit some transaction on the primary to subsequent transactions to be fully sync.
+    // There may be a way to do this with replication slots.
+    String createTablePrimary = "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(50));";
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createTablePrimary));
+
+    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", verifyStreaming));
+
 
     // Take a look at the logs.
     String primaryLogs = primary.getLogs();
