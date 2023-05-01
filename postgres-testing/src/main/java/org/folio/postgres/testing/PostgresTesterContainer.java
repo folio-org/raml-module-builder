@@ -7,12 +7,10 @@ import java.time.Duration;
 import java.util.UUID;
 
 import org.folio.util.PostgresTester;
-import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-
 
 public class PostgresTesterContainer implements PostgresTester {
   static public final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
@@ -52,6 +50,9 @@ public class PostgresTesterContainer implements PostgresTester {
     String replicationUser = "replicator";
     String replicationPassword = "abc123";
     String primaryHost = "primaryhost";
+    String dataDirectory = "/var/lib/postgresql/standby/";
+    String tempDirectory = "/tmp/standby/";
+    String hostVolume = "/tmp/rmb-standby-" + UUID.randomUUID();
 
     Network network = Network.newNetwork();
 
@@ -66,48 +67,40 @@ public class PostgresTesterContainer implements PostgresTester {
         .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", 2));
     primary.start();
 
-    logExecResult(primary.execInContainer("sh", "-c", "echo '" + hbaConf(replicationUser) + "' >> /var/lib/postgresql/data/pg_hba.conf"));
+    // Modify_hba.conf to allow for replication.
+    String hbaConf = String.format("host replication %s 0.0.0.0/0 trust\n", replicationUser);
+    String echo = String.format("echo '%s' >> /var/lib/postgresql/data/pg_hba.conf", hbaConf);
+    primary.execInContainer("sh", "-c", echo);
 
-    System.out.println("---------------------------------------------");
-    System.out.println("Reloading primary to make changes take effect");
-    System.out.println("---------------------------------------------");
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();"));
+    // Reload primary configuration to allow for standby to connect to primary.
+    primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();");
     var waitForHbaRelooad = Wait.forLogMessage(".*database system is ready to accept connections.*", 1);
     primary.waitingFor(waitForHbaRelooad);
 
-    // Replication needs its own special user.
+    // Create replication user.
     String createReplicationUser = "CREATE USER " + replicationUser + " WITH REPLICATION PASSWORD '" + replicationPassword + "'";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser));
+    primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser);
 
-    String dataDirectory = "/var/lib/postgresql/standby/";
-    String tempDirectory = "/tmp/standby/";
-    String hostVolume = "/tmp/rmb-standby-" + UUID.randomUUID();
-
-    // Don't use PostgreSQLContainer because it will create a db and make it very hard to clear out the data dir
+    // Make a temporary container that only gets used to generate the data directory, which we bind to the host filesystem.
+    // Don't use PostgreSQLContainer for this because it will start a db and make it very hard to clear out the data dir
     // which is required for pg_basebackup.
     tempStandby = new GenericContainer<>(dockerImageName)
-        .withCommand("tail", "-f", "/dev/null")
-        .withFileSystemBind(hostVolume, tempDirectory)
+        .withCommand("tail", "-f", "/dev/null") // Start it with something that will keep it alive.
+        .withFileSystemBind(hostVolume, tempDirectory) // Bind it to the filesystem on the host so we can use what gets generated later.
         .withNetwork(network);
     tempStandby.start();
 
-    System.out.println("---------------------");
-    System.out.println("Running pg_basebackup");
-    System.out.println("---------------------");
-    logExecResult(tempStandby.execInContainer("pg_basebackup", "-h", primaryHost, "-p",
-        "5432", "-U", replicationUser, "-D", tempDirectory, "-Fp", "-Xs", "-R", "-P"));
+    // Run pg_basebackup on the temporary container and set the directory to the filesystem on the host.
+    // pg_basebackup takes care of configuring our connection to the primary.
+    String containerPort = "5432";
+    tempStandby.execInContainer("pg_basebackup", "-h", primaryHost, "-p", containerPort,
+        "-U", replicationUser, "-D", tempDirectory, "-Fp", "-Xs", "-R", "-P");
 
-    System.out.println("-----------------------");
-    System.out.println("Result of pg_basebackup");
-    System.out.println("-----------------------");
-    logExecResult(tempStandby.execInContainer("ls", "-al", tempDirectory));
-    logExecResult(tempStandby.execInContainer("cat", tempDirectory + "postgresql.auto.conf"));
+    // We can stop it now because we don't need it anymore.
     tempStandby.stop();
 
-    // Try to expose the port now that postgres is running.
-    System.out.println("---------------------");
-    System.out.println("Change data directory");
-    System.out.println("---------------------");
+    // Finally create the standby container which will be our read-only replica/standby container. Use the
+    // host's filesystem to populate the data directory on the standby.
     standby = new PostgreSQLContainer<>(dockerImageName)
         .withUsername(username)
         .withPassword(password)
@@ -118,56 +111,12 @@ public class PostgresTesterContainer implements PostgresTester {
         .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", 1));
     standby.start();
 
-    System.out.println("Value of data dir in env: " + standby.getEnvMap().get("PGDATA"));
-    logExecResult(standby.execInContainer("cat", dataDirectory + "postgresql.auto.conf"));
-    logExecResult(standby.execInContainer("ls", "-al", dataDirectory));
-
-    String getDataDir = "SHOW data_directory;";
-    logExecResult(standby.execInContainer("psql", "-U", username, "-d", database, "-c", getDataDir));
-
-    System.out.println("--------------------------");
-    System.out.println("Make streaming synchronous");
-    System.out.println("--------------------------");
+    // Make replication synchronous.
     String setSyncStandbyNames = "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';";
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", setSyncStandbyNames));
-    logExecResult(primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();"));
+    primary.execInContainer("psql", "-U", username, "-d", database, "-c", setSyncStandbyNames);
+    primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();");
     var waitForSyncConfig = Wait.forLogMessage(".*START_REPLICATION.*", 1);
     primary.waitingFor(waitForSyncConfig);
-
-    // Take a look at the logs.
-    String primaryLogs = primary.getLogs();
-    System.out.println("------------");
-    System.out.println("Primary logs");
-    System.out.println("------------");
-    System.out.println(primaryLogs);
-    String tempStandbyLogs = tempStandby.getLogs();
-    System.out.println("-----------------");
-    System.out.println("Temp standby logs");
-    System.out.println("-----------------");
-    System.out.println(tempStandbyLogs);
-    String standbyLogs = standby.getLogs();
-    System.out.println("------------");
-    System.out.println("Standby logs");
-    System.out.println("------------");
-    System.out.println(standbyLogs);
-  }
-
-  public String hbaConf(String user) {
-    return
-        "host replication " + user + " 0.0.0.0/0 trust\n";
-  }
-
-  private void logExecResult(Container.ExecResult result) {
-    String stdout = result.getStdout();
-    if (!stdout.isEmpty()) {
-      // TODO Probably want log4j here.
-      System.out.println("Out: " + stdout);
-    }
-
-    String stderr = result.getStderr();
-    if (!stderr.isEmpty()) {
-      System.out.println("Err: " + stderr);
-    }
   }
 
   @Override

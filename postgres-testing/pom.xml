@@ -29,6 +29,7 @@
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <version>42.6.0</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 
@@ -52,7 +53,9 @@
           <configLocation>../codestyles.xml</configLocation>
         </configuration>
       </plugin>
+
     </plugins>
+
   </build>
 </project>
 
