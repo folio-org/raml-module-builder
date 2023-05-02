@@ -12,7 +12,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.folio.util.PostgresTester;
 
 public class PostgresTesterContainer implements PostgresTester {
-  static public final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
+  public static final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
 
   private static final int READY_MESSAGE_TIMES = 2;
 
@@ -117,6 +117,7 @@ public class PostgresTesterContainer implements PostgresTester {
       var waitForSyncConfig = Wait.forLogMessage(".*START_REPLICATION.*", 1);
       primary.waitingFor(waitForSyncConfig);
     } catch (IOException | InterruptedException e) {
+      Thread.currentThread().interrupt();
       throw new PostgresTesterStartException(e.getMessage());
     }
   }
