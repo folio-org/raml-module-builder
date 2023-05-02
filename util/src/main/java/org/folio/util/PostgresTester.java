@@ -11,7 +11,7 @@ public interface PostgresTester extends Closeable {
    * @param username Postgres username
    * @param password Postgres password
    */
-  void start(String database, String username, String password) throws SQLException, IOException, InterruptedException;
+  void start(String database, String username, String password) throws IOException, InterruptedException;
 
   /**
    * return listening port for spawned tester.

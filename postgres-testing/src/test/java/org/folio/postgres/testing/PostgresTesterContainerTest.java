@@ -6,12 +6,17 @@ import org.junit.Test;
 import org.postgresql.util.PSQLException;
 
 import java.io.IOException;
-import java.sql.*;
+
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.ResultSet;
 
 public class PostgresTesterContainerTest {
 
   @Test
-  public void testStartClose() throws SQLException, IOException, InterruptedException {
+  public void testStartClose() throws IOException, InterruptedException {
     PostgresTester tester = new PostgresTesterContainer();
     Assert.assertFalse(tester.isStarted());
     tester.start("db", "user", "pass");
@@ -24,13 +29,13 @@ public class PostgresTesterContainerTest {
   }
 
   @Test(expected = IllegalStateException.class)
-  public void testBadDockerImage() throws SQLException, IOException, InterruptedException {
+  public void testBadDockerImage() throws IOException, InterruptedException {
     PostgresTester tester = new PostgresTesterContainer("");
     tester.start(null, null, null);
   }
 
   @Test
-  public void testGetDoubleStart() throws SQLException, IOException, InterruptedException {
+  public void testGetDoubleStart() throws IOException, InterruptedException {
     PostgresTester tester = new PostgresTesterContainer();
     tester.start("db", "user", "pass");
     String msg = "";
@@ -53,8 +58,19 @@ public class PostgresTesterContainerTest {
     new PostgresTesterContainer().getPort();
   }
 
+  @Test(expected = IllegalStateException.class)
+  public void testGetReadHost() {
+    new PostgresTesterContainer().getReadHost();
+  }
+
+  @Test(expected = IllegalStateException.class)
+  public void testGetReadPort() {
+    new PostgresTesterContainer().getReadPort();
+  }
+
+
   @Test
-  public void testReadWrite() throws SQLException, IOException, InterruptedException {
+  public void testReadWrite() throws SQLException, InterruptedException, IOException {
     PostgresTester tester = new PostgresTesterContainer();
     String user = "user";
     String db = "db";
@@ -68,6 +84,14 @@ public class PostgresTesterContainerTest {
 
     Connection conn = DriverManager.getConnection(connString, user, pass);
     Statement stmt = conn.createStatement();
+
+    // Check that replication is set up correctly.
+    ResultSet checkResult = stmt.executeQuery("SELECT state FROM pg_stat_replication;");
+    if (checkResult.next()) {
+      String state = checkResult.getString("state");
+      Assert.assertEquals("streaming", state);
+    }
+
     // The first writes to the replicated cluster requires remote_apply. Subsequent ones don't.
     stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; CREATE TABLE accounts (id SERIAL PRIMARY KEY, name VARCHAR(50)); COMMIT;");
     stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; INSERT INTO accounts (name) VALUES ('Starbuck'); COMMIT;");
@@ -82,15 +106,15 @@ public class PostgresTesterContainerTest {
     ResultSet first = readOnlyStmt.executeQuery("SELECT name FROM accounts;");
     if (first.next()) {
       String name = first.getString("name");
-      Assert.assertEquals(name, "Starbuck");
+      Assert.assertEquals("Starbuck", name);
     }
 
     // The second time we perform an insert it propagates right away.
     stmt.executeUpdate("INSERT INTO accounts (name) VALUES ('Ishmael');");
     ResultSet second = readOnlyStmt.executeQuery("SELECT name FROM accounts where name = 'Ishmael';");
     if (second.next()) {
-      String name2 = second.getString("name");
-      Assert.assertEquals(name2, "Ishmael");
+      String secondName = second.getString("name");
+      Assert.assertEquals("Ishmael", secondName);
     }
 
     // The standby should not accept writes of any kind since it is read-only.
