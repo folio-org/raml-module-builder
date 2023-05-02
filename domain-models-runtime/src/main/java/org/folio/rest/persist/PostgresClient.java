@@ -33,7 +33,6 @@ import java.io.IOException;
 import java.lang.StackWalker.Option;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -65,6 +64,7 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
+import org.folio.util.PostgresTesterStartException;
 
 /**
  * @author shale
@@ -4336,7 +4336,7 @@ public class PostgresClient {
    * Assumes postgresTester is enabled.
    * Changes HOST and PORT oc configuration
    */
-  public void startPostgresTester() throws SQLException, IOException, InterruptedException {
+  public void startPostgresTester() throws PostgresTesterStartException {
     // starting Postgres
     if (!postgresTester.isStarted()) {
       log.info("Starting postgres tester");
@@ -4349,6 +4349,9 @@ public class PostgresClient {
     }
     postgreSQLClientConfig.put(PORT, postgresTester.getPort());
     postgreSQLClientConfig.put(HOST, postgresTester.getHost());
+
+//    postgreSQLClientConfig.put(HOST_READER, postgresTester.getReadHost());
+//    postgreSQLClientConfig.put(PORT_READER, postgresTester.getReadPort());
   }
 
   /**

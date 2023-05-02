@@ -1,11 +1,10 @@
 package org.folio.postgres.testing;
 
 import org.folio.util.PostgresTester;
+import org.folio.util.PostgresTesterStartException;
 import org.junit.Assert;
 import org.junit.Test;
 import org.postgresql.util.PSQLException;
-
-import java.io.IOException;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -16,7 +15,7 @@ import java.sql.ResultSet;
 public class PostgresTesterContainerTest {
 
   @Test
-  public void testStartClose() throws IOException, InterruptedException {
+  public void testStartClose() throws PostgresTesterStartException {
     PostgresTester tester = new PostgresTesterContainer();
     Assert.assertFalse(tester.isStarted());
     tester.start("db", "user", "pass");
@@ -29,13 +28,13 @@ public class PostgresTesterContainerTest {
   }
 
   @Test(expected = IllegalStateException.class)
-  public void testBadDockerImage() throws IOException, InterruptedException {
+  public void testBadDockerImage() throws PostgresTesterStartException {
     PostgresTester tester = new PostgresTesterContainer("");
     tester.start(null, null, null);
   }
 
   @Test
-  public void testGetDoubleStart() throws IOException, InterruptedException {
+  public void testGetDoubleStart() throws PostgresTesterStartException {
     PostgresTester tester = new PostgresTesterContainer();
     tester.start("db", "user", "pass");
     String msg = "";
@@ -68,9 +67,8 @@ public class PostgresTesterContainerTest {
     new PostgresTesterContainer().getReadPort();
   }
 
-
   @Test
-  public void testReadWrite() throws SQLException, InterruptedException, IOException {
+  public void testReadWrite() throws SQLException, PostgresTesterStartException {
     PostgresTester tester = new PostgresTesterContainer();
     String user = "user";
     String db = "db";
@@ -85,7 +83,7 @@ public class PostgresTesterContainerTest {
     Connection conn = DriverManager.getConnection(connString, user, pass);
     Statement stmt = conn.createStatement();
 
-    // Check that replication is set up correctly.
+    // Check that streaming replication is set up correctly.
     ResultSet checkResult = stmt.executeQuery("SELECT state FROM pg_stat_replication;");
     if (checkResult.next()) {
       String state = checkResult.getString("state");

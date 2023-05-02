@@ -1,8 +1,6 @@
 package org.folio.util;
 
 import java.io.Closeable;
-import java.io.IOException;
-import java.sql.SQLException;
 
 public interface PostgresTester extends Closeable {
   /**
@@ -11,7 +9,7 @@ public interface PostgresTester extends Closeable {
    * @param username Postgres username
    * @param password Postgres password
    */
-  void start(String database, String username, String password) throws IOException, InterruptedException;
+  void start(String database, String username, String password) throws PostgresTesterStartException;
 
   /**
    * return listening port for spawned tester.
