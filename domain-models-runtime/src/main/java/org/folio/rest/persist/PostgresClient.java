@@ -4350,9 +4350,9 @@ public class PostgresClient {
     postgreSQLClientConfig.put(PORT, postgresTester.getPort());
     postgreSQLClientConfig.put(HOST, postgresTester.getHost());
 
-    // TODO If we enable these 6 tests fail.
-//  postgreSQLClientConfig.put(HOST_READER, postgresTester.getReadHost());
-//  postgreSQLClientConfig.put(PORT_READER, postgresTester.getReadPort());
+    // TODO If we enable these 8 tests fail.
+    postgreSQLClientConfig.put(HOST_READER, postgresTester.getReadHost());
+    postgreSQLClientConfig.put(PORT_READER, postgresTester.getReadPort());
   }
 
   /**

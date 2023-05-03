@@ -12,6 +12,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.ResultSet;
 
+import java.util.Arrays;
+import java.util.List;
+
 public class PostgresTesterContainerTest {
 
   @Test
@@ -77,51 +80,50 @@ public class PostgresTesterContainerTest {
 
     // Connect to the read-write host and create some data.
     int port = tester.getPort();
-    String host = tester.getHost();
-    String connString = String.format("jdbc:postgresql://%s:%d/%s", host, port, db);
-
-    Connection conn = DriverManager.getConnection(connString, user, pass);
-    Statement stmt = conn.createStatement();
-
-    // Check that streaming replication is set up correctly.
-    ResultSet checkResult = stmt.executeQuery("SELECT state FROM pg_stat_replication;");
-    if (checkResult.next()) {
-      String state = checkResult.getString("state");
-      Assert.assertEquals("streaming", state);
-    }
-
-    // The first writes to the replicated cluster requires remote_apply. Subsequent ones don't.
-    stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; CREATE TABLE accounts (id SERIAL PRIMARY KEY, name VARCHAR(50)); COMMIT;");
-    stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; INSERT INTO accounts (name) VALUES ('Starbuck'); COMMIT;");
-
-    // See that the data which we just wrote to the primary propagates to the read-only standby.
     int readOnlyPort = tester.getReadPort();
+    String host = tester.getHost();
     String readOnlyHost = tester.getReadHost();
+
+    String connString = String.format("jdbc:postgresql://%s:%d/%s", host, port, db);
     String connStringReadOnly = String.format("jdbc:postgresql://%s:%d/%s", readOnlyHost, readOnlyPort, db);
-    Connection readOnlyConn = DriverManager.getConnection(connStringReadOnly, user, pass);
-    Statement readOnlyStmt = readOnlyConn.createStatement();
 
-    ResultSet first = readOnlyStmt.executeQuery("SELECT name FROM accounts;");
-    if (first.next()) {
-      String name = first.getString("name");
-      Assert.assertEquals("Starbuck", name);
+    try (Connection conn = DriverManager.getConnection(connString, user, pass);
+         Connection readOnlyConn = DriverManager.getConnection(connStringReadOnly, user, pass);
+         Statement stmt = conn.createStatement();
+         Statement readOnlyStmt = readOnlyConn.createStatement()) {
+
+      // Check that streaming replication is set up correctly.
+      ResultSet checkResult = stmt.executeQuery("SELECT state FROM pg_stat_replication;");
+      Assert.assertTrue(checkResult.next());
+      Assert.assertEquals("streaming", checkResult.getString("state"));
+
+      // The first writes to the replicated cluster requires remote_apply. Subsequent ones don't.
+      stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50)); COMMIT;");
+      stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; INSERT INTO crew (name) VALUES ('Ishmael'); COMMIT;");
+
+      ResultSet second = readOnlyStmt.executeQuery("SELECT name FROM crew where name = 'Ishmael';");
+      Assert.assertTrue(second.next());
+      Assert.assertEquals("Ishmael", second.getString("name"));
+
+      // Subsequent times we perform inserts they propagate to the standby synchronously.
+      Assert.assertEquals("Ishmael", second.getString("name"));
+      Arrays.asList("Queequeg", "Starbuck", "Stubb", "Flask", "Daggoo", "Tashtego", "Pip", "Fedallah", "Fleece", "Perth")
+          .forEach(name -> {
+            try {
+              stmt.executeUpdate(String.format("INSERT INTO crew (name) VALUES ('%s');", name));
+              ResultSet third = readOnlyStmt.executeQuery(String.format("SELECT name FROM crew where name = '%s';", name));
+              Assert.assertTrue(third.next());
+              Assert.assertEquals(name, third.getString("name"));
+            } catch (SQLException e) {
+              throw new RuntimeException(e);
+            }
+          });
+
+      // The standby should not accept writes of any kind since it is read-only.
+      Exception exception = Assert.assertThrows(PSQLException.class, () -> {
+        readOnlyStmt.executeUpdate("INSERT INTO crew (name) VALUES ('Ahab');");
+      });
+      Assert.assertEquals("ERROR: cannot execute INSERT in a read-only transaction", exception.getMessage());
     }
-
-    // The second time we perform an insert it propagates right away.
-    stmt.executeUpdate("INSERT INTO accounts (name) VALUES ('Ishmael');");
-    ResultSet second = readOnlyStmt.executeQuery("SELECT name FROM accounts where name = 'Ishmael';");
-    if (second.next()) {
-      String secondName = second.getString("name");
-      Assert.assertEquals("Ishmael", secondName);
-    }
-
-    // The standby should not accept writes of any kind since it is read-only.
-    Exception exception = Assert.assertThrows(PSQLException.class, () -> {
-      readOnlyStmt.executeUpdate("INSERT INTO accounts (name) VALUES ('Ahab');");
-    });
-    Assert.assertEquals("ERROR: cannot execute INSERT in a read-only transaction", exception.getMessage());
-
-    conn.close();
-    readOnlyConn.close();
   }
 }

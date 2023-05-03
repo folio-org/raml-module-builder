@@ -118,7 +118,7 @@ public class PostgresTesterContainer implements PostgresTester {
       primary.waitingFor(waitForSyncConfig);
     } catch (IOException | InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new PostgresTesterStartException(e.getMessage());
+      throw new PostgresTesterStartException(e.getMessage(), e);
     }
   }
 
