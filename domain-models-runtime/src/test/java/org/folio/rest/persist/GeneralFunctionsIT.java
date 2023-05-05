@@ -19,13 +19,16 @@ import java.util.UUID;
 @RunWith(VertxUnitRunner.class)
 public class GeneralFunctionsIT extends PostgresClientITBase {
 
-  private Future<Row> upsert(TestContext context, UUID id, JsonObject json) {
+  private Future<Row> upsert(TestContext context, UUID id, JsonObject json, String stage) {
     PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
-    String sql = "SELECT upsert('t', $1, $2)";
-    return postgresClient.selectSingle(sql, Tuple.of(id, json))
+    String sql = "SELECT upsert('t', $1, $2);";
+    return postgresClient.selectSingle(sql, Tuple.of(id, json)) // This is read/write or it would fail.
     .onComplete(context.asyncAssertSuccess(upsert -> {
       assertThat(sql, upsert.getUUID(0), is(id));
-      postgresClient.getById("t", id.toString(), context.asyncAssertSuccess(get -> {
+      postgresClient.getById("t", id.toString(), context.asyncAssertSuccess(get -> { // This switches to read-only.
+        // TODO Remove. On the first iteration it is getting what is expected in the second. Why?
+        System.out.println("Get is: " + get.encode() + " " + stage);
+        System.out.println("json is: " + json.encode() + " " + stage);
         assertThat(get, is(json));
       }));
     }));
@@ -35,8 +38,9 @@ public class GeneralFunctionsIT extends PostgresClientITBase {
   public void upsert(TestContext context) {
     execute(context, "CREATE TABLE " + schema + ".t (id uuid primary key, jsonb jsonb);");
     UUID id = UUID.randomUUID();
-    upsert(context, id, new JsonObject().put("a", 1))
-    .compose(x -> upsert(context, id, new JsonObject().put("b", 2)));
+    // TODO Remove stage parameter. Added just to make sure I'm not hallucinating the sequence.
+    upsert(context, id, new JsonObject().put("a", 1), "one")
+      .compose(x -> upsert(context, id, new JsonObject().put("b", 2), "two"));
   }
 
   void normalizeDigits(TestContext context, String raw, String expected) {

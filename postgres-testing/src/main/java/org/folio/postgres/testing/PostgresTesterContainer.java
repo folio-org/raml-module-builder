@@ -14,6 +14,8 @@ import org.folio.util.PostgresTester;
 public class PostgresTesterContainer implements PostgresTester {
   public static final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
 
+  public static final String POSTGRES_ASYNC_COMMIT = "PG_ASYNC_COMMIT";
+
   private static final int READY_MESSAGE_TIMES = 2;
 
   private PostgreSQLContainer<?> primary;
@@ -55,6 +57,10 @@ public class PostgresTesterContainer implements PostgresTester {
     var hostVolume = "/tmp/rmb-standby-" + UUID.randomUUID();
     var network = Network.newNetwork();
 
+    // In postgres replication the default is for commit to be async. So no configuration is needed, but our
+    // default for tests is to configure it for synchronous commit.
+    boolean configureSynchronousCommit = System.getProperty(POSTGRES_ASYNC_COMMIT) == null;
+
     try {
       primary = new PostgreSQLContainer<>(dockerImageName)
           .withDatabaseName(database)
@@ -62,8 +68,12 @@ public class PostgresTesterContainer implements PostgresTester {
           .withPassword(password)
           .withNetwork(network)
           .withNetworkAliases(primaryHost)
-          .withEnv("PGOPTIONS", "-c synchronous_commit=remote_apply")
           .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", READY_MESSAGE_TIMES));
+
+      if (configureSynchronousCommit) {
+        primary.withEnv("PGOPTIONS", "-c synchronous_commit=remote_apply");
+      }
+
       primary.start();
 
       // Modify_hba.conf to allow for replication.
@@ -81,7 +91,7 @@ public class PostgresTesterContainer implements PostgresTester {
       primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser);
 
       // Make a temporary container that only gets used to generate the data directory, which we bind to the host
-      // filesystem.Don't use PostgreSQLContainer for this because it will start a db and make it very hard to clear
+      // file system. Don't use PostgreSQLContainer for this because it will start a db and make it very hard to clear
       // out the data dir which is required for pg_basebackup.
       tempStandby = new GenericContainer<>(dockerImageName)
           .withCommand("tail", "-f", "/dev/null") // Start it with something that will keep it alive.
@@ -91,7 +101,7 @@ public class PostgresTesterContainer implements PostgresTester {
 
       // Run pg_basebackup on the temporary container and set the directory to the filesystem on the host.
       // pg_basebackup takes care of configuring our connection to the primary.
-      var containerPort = "5432";
+      var containerPort = "5432"; // This is the port inside the network rather than the port exposed outside of that.
       tempStandby.execInContainer("pg_basebackup", "-h", primaryHost, "-p", containerPort,
           "-U", replicationUser, "-D", tempDirectory, "-Fp", "-Xs", "-R", "-P");
 
@@ -111,11 +121,13 @@ public class PostgresTesterContainer implements PostgresTester {
       standby.start();
 
       // Make replication synchronous.
-      var setSyncStandbyNames = "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';";
-      primary.execInContainer("psql", "-U", username, "-d", database, "-c", setSyncStandbyNames);
-      primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();");
-      var waitForSyncConfig = Wait.forLogMessage(".*START_REPLICATION.*", 1);
-      primary.waitingFor(waitForSyncConfig);
+      if (configureSynchronousCommit) {
+        var setSyncStandbyNames = "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';";
+        primary.execInContainer("psql", "-U", username, "-d", database, "-c", setSyncStandbyNames);
+        primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();");
+        var waitForSyncConfig = Wait.forLogMessage(".*START_REPLICATION.*", 1);
+        primary.waitingFor(waitForSyncConfig);
+      }
     } catch (IOException | InterruptedException e) {
       Thread.currentThread().interrupt();
       throw new PostgresTesterStartException(e.getMessage(), e);

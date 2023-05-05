@@ -13,7 +13,6 @@ import java.sql.Statement;
 import java.sql.ResultSet;
 
 import java.util.Arrays;
-import java.util.List;
 
 public class PostgresTesterContainerTest {
 
@@ -99,7 +98,20 @@ public class PostgresTesterContainerTest {
 
       // The first writes to the replicated cluster requires remote_apply. Subsequent ones don't.
       stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50)); COMMIT;");
-      stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; INSERT INTO crew (name) VALUES ('Ishmael'); COMMIT;");
+
+      // The standby should not accept writes of any kind since it is read-only.
+      Exception exception = Assert.assertThrows(PSQLException.class, () -> {
+        readOnlyStmt.executeUpdate("INSERT INTO crew (name) VALUES ('Ahab');");
+      });
+      Assert.assertEquals("ERROR: cannot execute INSERT in a read-only transaction", exception.getMessage());
+
+      // Should we test synchronous commit? The default is true.
+      boolean testSynchronousCommit = System.getProperty(PostgresTesterContainer.POSTGRES_ASYNC_COMMIT) == null;
+      if (!testSynchronousCommit) {
+        return;
+      }
+
+      stmt.executeUpdate("INSERT INTO crew (name) VALUES ('Ishmael');");
 
       ResultSet second = readOnlyStmt.executeQuery("SELECT name FROM crew where name = 'Ishmael';");
       Assert.assertTrue(second.next());
@@ -118,12 +130,6 @@ public class PostgresTesterContainerTest {
               throw new RuntimeException(e);
             }
           });
-
-      // The standby should not accept writes of any kind since it is read-only.
-      Exception exception = Assert.assertThrows(PSQLException.class, () -> {
-        readOnlyStmt.executeUpdate("INSERT INTO crew (name) VALUES ('Ahab');");
-      });
-      Assert.assertEquals("ERROR: cannot execute INSERT in a read-only transaction", exception.getMessage());
     }
   }
 }
