@@ -2682,7 +2682,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id with the readonly connectino and return it as a pojo of type T.
+   * Get the jsonb by id with the readonly connection and return it as a pojo of type T.
    * @param table  the table to search in
    * @param id  the value of the id field
    * @param clazz  the type of the pojo
