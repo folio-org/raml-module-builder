@@ -593,9 +593,6 @@ public class PostgresClient {
       readClient = createPgPool(vertx, postgreSQLClientConfig, true);
     }
 
-    // TODO Remove this.
-    // readClient = null;
-
     readClient = readClient != null ? readClient : client;
   }
 
