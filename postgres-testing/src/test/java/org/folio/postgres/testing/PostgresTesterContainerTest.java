@@ -92,18 +92,15 @@ public class PostgresTesterContainerTest {
          Statement readOnlyStmt = readOnlyConn.createStatement()) {
 
       // Check that streaming replication is set up correctly.
-      ResultSet checkResult = stmt.executeQuery("SELECT state FROM pg_stat_replication;");
-      Assert.assertTrue(checkResult.next());
-      Assert.assertEquals("streaming", checkResult.getString("state"));
-
-      // The first writes to the replicated cluster requires remote_apply. Subsequent ones don't.
-      stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50)); COMMIT;");
+      ResultSet state = stmt.executeQuery("SELECT state FROM pg_stat_replication;");
+      Assert.assertTrue(state.next());
+      Assert.assertEquals("streaming", state.getString("state"));
 
       // The standby should not accept writes of any kind since it is read-only.
       Exception exception = Assert.assertThrows(PSQLException.class, () -> {
-        readOnlyStmt.executeUpdate("INSERT INTO crew (name) VALUES ('Ahab');");
+        readOnlyStmt.executeUpdate("CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50));");
       });
-      Assert.assertEquals("ERROR: cannot execute INSERT in a read-only transaction", exception.getMessage());
+      Assert.assertEquals("ERROR: cannot execute CREATE TABLE in a read-only transaction", exception.getMessage());
 
       // Should we test synchronous commit? The default is true.
       boolean testSynchronousCommit = System.getProperty(PostgresTesterContainer.POSTGRES_ASYNC_COMMIT) == null;
@@ -111,21 +108,15 @@ public class PostgresTesterContainerTest {
         return;
       }
 
-      stmt.executeUpdate("INSERT INTO crew (name) VALUES ('Ishmael');");
-
-      ResultSet second = readOnlyStmt.executeQuery("SELECT name FROM crew where name = 'Ishmael';");
-      Assert.assertTrue(second.next());
-      Assert.assertEquals("Ishmael", second.getString("name"));
-
-      // Subsequent times we perform inserts they propagate to the standby synchronously.
-      Assert.assertEquals("Ishmael", second.getString("name"));
+      // The first writes to the replicated cluster requires remote_apply. Subsequent ones don't.
+      stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50)); COMMIT;");
       Arrays.asList("Queequeg", "Starbuck", "Stubb", "Flask", "Daggoo", "Tashtego", "Pip", "Fedallah", "Fleece", "Perth")
           .forEach(name -> {
             try {
               stmt.executeUpdate(String.format("INSERT INTO crew (name) VALUES ('%s');", name));
-              ResultSet third = readOnlyStmt.executeQuery(String.format("SELECT name FROM crew where name = '%s';", name));
-              Assert.assertTrue(third.next());
-              Assert.assertEquals(name, third.getString("name"));
+              ResultSet rs = readOnlyStmt.executeQuery(String.format("SELECT name FROM crew where name = '%s';", name));
+              Assert.assertTrue(rs.next());
+              Assert.assertEquals(name, rs.getString("name"));
             } catch (SQLException e) {
               throw new RuntimeException(e);
             }
