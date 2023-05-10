@@ -21,6 +21,7 @@ public class PostgresTesterContainer implements PostgresTester {
   private PostgreSQLContainer<?> primary;
   private PostgreSQLContainer<?> standby;
   private String dockerImageName;
+  private Network network;
 
   /**
    * Create postgres container based on given image.
@@ -51,11 +52,11 @@ public class PostgresTesterContainer implements PostgresTester {
 
     GenericContainer<?> tempStandby;
     var replicationUser = "replicator";
-    var primaryHost = "primaryhost";
+    var primaryHost = "postgresprimary";
     var dataDirectory = "/var/lib/postgresql/standby/";
     var tempDirectory = "/tmp/standby/";
     var hostVolume = "/tmp/rmb-standby-" + UUID.randomUUID();
-    var network = Network.newNetwork();
+    network = Network.newNetwork();
 
     // In postgres replication the default is for commit to be async. So no configuration is needed, but our
     // default for tests is to configure it for synchronous commit.
@@ -71,6 +72,7 @@ public class PostgresTesterContainer implements PostgresTester {
           .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", READY_MESSAGE_TIMES));
 
       if (configureSynchronousCommit) {
+        // See https://www.postgresql.org/docs/15/warm-standby.html#SYNCHRONOUS-REPLICATION
         primary.withEnv("PGOPTIONS", "-c synchronous_commit=remote_apply");
       }
 
@@ -121,6 +123,7 @@ public class PostgresTesterContainer implements PostgresTester {
       standby.start();
 
       // Make replication synchronous.
+      // See https://www.postgresql.org/docs/15/warm-standby.html#SYNCHRONOUS-REPLICATION
       if (configureSynchronousCommit) {
         var setSyncStandbyNames = "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';";
         primary.execInContainer("psql", "-U", username, "-d", database, "-c", setSyncStandbyNames);
@@ -164,6 +167,14 @@ public class PostgresTesterContainer implements PostgresTester {
       throw new IllegalStateException("read only not started");
     }
     return standby.getHost();
+  }
+
+  @Override
+  public Network getNetwork() {
+    if (network == null) {
+      throw new IllegalStateException("network not defined");
+    }
+    return network;
   }
 
   @Override

@@ -1,6 +1,7 @@
 package org.folio.util;
 
 import java.io.Closeable;
+import org.testcontainers.containers.Network;
 
 public interface PostgresTester extends Closeable {
   /**
@@ -34,6 +35,11 @@ public interface PostgresTester extends Closeable {
    * @return port
    */
   Integer getReadPort();
+
+  /**
+   * The network that the read and write hosts are part of.
+   */
+  Network getNetwork();
 
   /**
    * has tester started.

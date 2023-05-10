@@ -65,9 +65,10 @@ public class PostgresTesterContainerTest {
   }
 
   @Test(expected = IllegalStateException.class)
-  public void testGetReadPort() {
-    new PostgresTesterContainer().getReadPort();
-  }
+  public void testGetReadPort() { new PostgresTesterContainer().getReadPort(); }
+
+  @Test(expected = IllegalStateException.class)
+  public void testGetNetwork() { new PostgresTesterContainer().getNetwork(); }
 
   @Test
   public void testReadWrite() throws SQLException, PostgresTesterStartException {
