@@ -12,21 +12,35 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.MultiMap;
+import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.client.HttpResponse;
+import io.vertx.ext.web.client.WebClient;
+import io.vertx.junit5.VertxExtension;
+import io.vertx.junit5.VertxTestContext;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.rest.jaxrs.model.Errors;
 import org.folio.rest.jaxrs.resource.support.ResponseDelegate;
 import org.folio.rest.tools.client.exceptions.ResponseException;
+import org.folio.rest.tools.utils.BinaryOutStream;
+import org.folio.rest.tools.utils.OutStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Null;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.ResponseBuilder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+@ExtendWith(VertxExtension.class)
 public class RestRoutingTest {
   @Test
   public void utilityClass() {
@@ -175,5 +189,73 @@ public class RestRoutingTest {
     assertThat(okapiHeaders.get(XOkapiHeaders.TENANT), is("mytenant"));
     assertThat(okapiHeaders.get(XOkapiHeaders.TOKEN), is("mytoken"));
     assertThat(okapiHeaders.get("x-okapi"), is("1"));
+  }
+
+  Future<HttpResponse<Buffer>> sendResponse(Vertx vertx, ResponseBuilder responseBuilder) {
+    Router router = Router.router(vertx);
+    router.route().handler(rc -> {
+      AsyncResult<Response> asyncResult = Future.succeededFuture(responseBuilder.build());
+      RestRouting.sendResponse(rc, asyncResult, 0, "diku");
+    });
+    return vertx.createHttpServer()
+        .requestHandler(router)
+        .listen(0)
+        .compose(httpServer -> WebClient.create(vertx)
+            .getAbs("http://localhost:" + httpServer.actualPort())
+            .send());
+  }
+
+  @Test
+  void sendResponse200(Vertx vertx, VertxTestContext vtc) {
+    sendResponse(vertx, Response.status(200).entity("foo"))
+    .onComplete(vtc.succeeding(httpResponse -> {
+      assertThat(httpResponse.statusCode(), is(200));
+      assertThat(httpResponse.bodyAsString(), is("foo"));
+      vtc.completeNow();
+    }));
+  }
+
+  @Test
+  void sendResponse204(Vertx vertx, VertxTestContext vtc) {
+    sendResponse(vertx, Response.status(204))
+    .onComplete(vtc.succeeding(httpResponse -> {
+      assertThat(httpResponse.statusCode(), is(204));
+      assertThat(httpResponse.bodyAsString(), is(nullValue()));
+      vtc.completeNow();
+    }));
+  }
+
+  @Test
+  void sendResponseOutStream(Vertx vertx, VertxTestContext vtc) {
+    OutStream outStream = new OutStream();
+    outStream.setData("abc");
+    sendResponse(vertx, Response.status(201).entity(outStream))
+    .onComplete(vtc.succeeding(httpResponse -> {
+      assertThat(httpResponse.statusCode(), is(201));
+      assertThat(httpResponse.bodyAsString(), is("\"abc\""));
+      vtc.completeNow();
+    }));
+  }
+
+  @Test
+  void sendResponseBinaryOutStream(Vertx vertx, VertxTestContext vtc) {
+    BinaryOutStream binaryOutStream = new BinaryOutStream();
+    binaryOutStream.setData("xyz".getBytes(StandardCharsets.UTF_8));
+    sendResponse(vertx, Response.status(500).entity(binaryOutStream))
+    .onComplete(vtc.succeeding(httpResponse -> {
+      assertThat(httpResponse.statusCode(), is(500));
+      assertThat(httpResponse.bodyAsString(), is("xyz"));
+      vtc.completeNow();
+    }));
+  }
+
+  @Test
+  void sendResponseInteger(Vertx vertx, VertxTestContext vtc) {
+    sendResponse(vertx, Response.status(500).entity(42))
+    .onComplete(vtc.succeeding(httpResponse -> {
+      assertThat(httpResponse.statusCode(), is(500));
+      assertThat(httpResponse.bodyAsString(), is("42"));
+      vtc.completeNow();
+    }));
   }
 }

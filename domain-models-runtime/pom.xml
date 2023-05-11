@@ -280,7 +280,7 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
+          <release>11</release>
           <includes>
             <include>**/*.java</include>
             <include>**/*.aj</include>
