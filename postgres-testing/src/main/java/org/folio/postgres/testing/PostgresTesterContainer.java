@@ -1,27 +1,29 @@
 package org.folio.postgres.testing;
 
-import java.io.IOException;
-import java.util.UUID;
-
 import org.folio.util.PostgresTesterStartException;
-import org.testcontainers.containers.GenericContainer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
-
+import org.testcontainers.images.builder.Transferable;
 import org.folio.util.PostgresTester;
 
 public class PostgresTesterContainer implements PostgresTester {
   public static final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
-
-  public static final String POSTGRES_ASYNC_COMMIT = "PG_ASYNC_COMMIT";
+  public static final String PRIMARY_ALIAS = "postgresprimary";
+  public static final String STANDBY_ALIAS = "postgresstandby";
 
   private static final int READY_MESSAGE_TIMES = 2;
+
+  private static final Logger LOG = LoggerFactory.getLogger(PostgresTester.class);
+  private static boolean hasLog = false;
 
   private PostgreSQLContainer<?> primary;
   private PostgreSQLContainer<?> standby;
   private String dockerImageName;
-  private Network network;
+  private Network network = Network.newNetwork();
 
   /**
    * Create postgres container based on given image.
@@ -38,6 +40,22 @@ public class PostgresTesterContainer implements PostgresTester {
     this(DEFAULT_IMAGE_NAME);
   }
 
+  /**
+   * Enable or disable logging of the PostgreSQL containers.
+   * <p>
+   * Requires
+   * <pre>{@code
+   * <dependency>
+   *   <groupId>org.apache.logging.log4j</groupId>
+   *   <artifactId>log4j-slf4j-impl</artifactId>
+   *   <scope>test</scope>
+   * </dependency>
+   * }</pre>
+   */
+  public static void enableLog(boolean hasLog)  {
+    PostgresTesterContainer.hasLog = hasLog;
+  }
+
   // S2095: Resources should be closed
   // We can't close in start. As this whole class is Closeable!
   @java.lang.SuppressWarnings({"squid:S2095", "resource"})
@@ -50,88 +68,45 @@ public class PostgresTesterContainer implements PostgresTester {
       throw new IllegalStateException("already started");
     }
 
-    GenericContainer<?> tempStandby;
-    var replicationUser = "replicator";
-    var primaryHost = "postgresprimary";
-    var dataDirectory = "/var/lib/postgresql/standby/";
-    var tempDirectory = "/tmp/standby/";
-    var hostVolume = "/tmp/rmb-standby-" + UUID.randomUUID();
-    network = Network.newNetwork();
-
-    // In postgres replication the default is for commit to be async. So no configuration is needed, but our
-    // default for tests is to configure it for synchronous commit.
-    boolean configureSynchronousCommit = System.getProperty(POSTGRES_ASYNC_COMMIT) == null;
-
     try {
+      var replicationSh = Transferable.of(
+            "echo 'synchronous_commit=remote_apply' >> /var/lib/postgresql/data/postgresql.conf\n"
+          + "echo \"synchronous_standby_names='*'\" >> /var/lib/postgresql/data/postgresql.conf\n"
+          + "echo 'host replication replicator 0.0.0.0/0 trust' >> /var/lib/postgresql/data/pg_hba.conf\n"
+          + "psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -c 'CREATE USER replicator WITH REPLICATION'");
       primary = new PostgreSQLContainer<>(dockerImageName)
+          .withCopyToContainer(replicationSh, "/docker-entrypoint-initdb.d/replication.sh")
           .withDatabaseName(database)
           .withUsername(username)
           .withPassword(password)
           .withNetwork(network)
-          .withNetworkAliases(primaryHost)
+          .withNetworkAliases(PRIMARY_ALIAS)
           .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", READY_MESSAGE_TIMES));
-
-      if (configureSynchronousCommit) {
-        // See https://www.postgresql.org/docs/15/warm-standby.html#SYNCHRONOUS-REPLICATION
-        primary.withEnv("PGOPTIONS", "-c synchronous_commit=remote_apply");
+      primary.start();
+      if (hasLog) {
+        primary.followOutput(new Slf4jLogConsumer(LOG).withSeparateOutputStreams().withPrefix("primary"));
       }
 
-      primary.start();
-
-      // Modify_hba.conf to allow for replication.
-      var hbaConf = String.format("host replication %s 0.0.0.0/0 trust%n", replicationUser);
-      var echo = String.format("echo '%s' >> /var/lib/postgresql/data/pg_hba.conf", hbaConf);
-      primary.execInContainer("sh", "-c", echo);
-
-      // Reload primary configuration to allow for standby to connect to primary.
-      primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();");
-      var waitForHbaRelooad = Wait.forLogMessage(".*database system is ready to accept connections.*", 1);
-      primary.waitingFor(waitForHbaRelooad);
-
-      // Create replication user.
-      var createReplicationUser = "CREATE USER " + replicationUser + " WITH REPLICATION PASSWORD 'abc123'";
-      primary.execInContainer("psql", "-U", username, "-d", database, "-c", createReplicationUser);
-
-      // Make a temporary container that only gets used to generate the data directory, which we bind to the host
-      // file system. Don't use PostgreSQLContainer for this because it will start a db and make it very hard to clear
-      // out the data dir which is required for pg_basebackup.
-      tempStandby = new GenericContainer<>(dockerImageName)
-          .withCommand("tail", "-f", "/dev/null") // Start it with something that will keep it alive.
-          .withFileSystemBind(hostVolume, tempDirectory) // Bind it to the filesystem on the host.
-          .withNetwork(network);
-      tempStandby.start();
-
-      // Run pg_basebackup on the temporary container and set the directory to the filesystem on the host.
-      // pg_basebackup takes care of configuring our connection to the primary.
-      var containerPort = "5432"; // This is the port inside the network rather than the port exposed outside of that.
-      tempStandby.execInContainer("pg_basebackup", "-h", primaryHost, "-p", containerPort,
-          "-U", replicationUser, "-D", tempDirectory, "-Fp", "-Xs", "-R", "-P");
-
-      // We can stop it now because we don't need it anymore.
-      tempStandby.stop();
-
-      // Finally create the standby container which will be our read-only replica/standby container. Use the
-      // host's filesystem to populate the data directory on the standby.
+      var basebackupSh = Transferable.of(
+            "pg_ctl -D /var/lib/postgresql/data stop\n"
+          + "rm -rf /var/lib/postgresql/data/*\n"
+          + "pg_basebackup -h postgresprimary -p 5432 -U replicator "
+          +   "-D /var/lib/postgresql/data -Fp -Xs -R -P\n"
+          + "pg_ctl -D /var/lib/postgresql/data start\n",
+          0755);
       standby = new PostgreSQLContainer<>(dockerImageName)
+          .withCopyToContainer(basebackupSh, "/docker-entrypoint-initdb.d/basebackup.sh")
           .withUsername(username)
           .withPassword(password)
           .withDatabaseName(database)
-          .withFileSystemBind(hostVolume, dataDirectory)
-          .withEnv("PGDATA", dataDirectory)
           .withNetwork(network)
-          .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", 1));
+          .withNetworkAliases(STANDBY_ALIAS)
+          .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", READY_MESSAGE_TIMES));
       standby.start();
-
-      // Make replication synchronous.
-      // See https://www.postgresql.org/docs/15/warm-standby.html#SYNCHRONOUS-REPLICATION
-      if (configureSynchronousCommit) {
-        var setSyncStandbyNames = "ALTER SYSTEM SET synchronous_standby_names TO 'walreceiver';";
-        primary.execInContainer("psql", "-U", username, "-d", database, "-c", setSyncStandbyNames);
-        primary.execInContainer("psql", "-U", username, "-d", database, "-c", "SELECT pg_reload_conf();");
-        var waitForSyncConfig = Wait.forLogMessage(".*START_REPLICATION.*", 1);
-        primary.waitingFor(waitForSyncConfig);
+      if (hasLog) {
+        standby.followOutput(new Slf4jLogConsumer(LOG).withSeparateOutputStreams().withPrefix("standby"));
       }
-    } catch (IOException | InterruptedException e) {
+    } catch (Exception e) {
       Thread.currentThread().interrupt();
       throw new PostgresTesterStartException(e.getMessage(), e);
     }
@@ -169,11 +144,12 @@ public class PostgresTesterContainer implements PostgresTester {
     return standby.getHost();
   }
 
+  /**
+   * On the Docker network the hostname aliases are {@link #PRIMARY_ALIAS} and {@link #STANDBY_ALIAS},
+   * they listen on port 5432.
+   */
   @Override
   public Network getNetwork() {
-    if (network == null) {
-      throw new IllegalStateException("network not defined");
-    }
     return network;
   }
 

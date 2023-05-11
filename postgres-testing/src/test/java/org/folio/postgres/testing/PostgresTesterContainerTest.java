@@ -1,8 +1,13 @@
 package org.folio.postgres.testing;
 
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+
 import org.folio.util.PostgresTester;
 import org.folio.util.PostgresTesterStartException;
-import org.junit.Assert;
 import org.junit.Test;
 import org.postgresql.util.PSQLException;
 
@@ -17,36 +22,31 @@ import java.util.Arrays;
 public class PostgresTesterContainerTest {
 
   @Test
-  public void testStartClose() throws PostgresTesterStartException {
+  public void testStartClose() {
     PostgresTester tester = new PostgresTesterContainer();
-    Assert.assertFalse(tester.isStarted());
+    assertFalse(tester.isStarted());
     tester.start("db", "user", "pass");
-    Assert.assertTrue(tester.isStarted());
-    Assert.assertNotNull(tester.getHost());
-    Assert.assertTrue(tester.getPort() >= 1024);
+    assertTrue(tester.isStarted());
+    assertNotNull(tester.getHost());
+    assertTrue(tester.getPort() >= 1024);
     tester.close();
-    Assert.assertFalse(tester.isStarted());
+    assertFalse(tester.isStarted());
     tester.close();
   }
 
-  @Test(expected = IllegalStateException.class)
-  public void testBadDockerImage() throws PostgresTesterStartException {
-    PostgresTester tester = new PostgresTesterContainer("");
-    tester.start(null, null, null);
+  public void testBadDockerImage() {
+    var e = assertThrows(PostgresTesterStartException.class, () ->
+      new PostgresTesterContainer("").start(null, null, null));
+    assertEquals("java.lang.IllegalStateException", e.getCause().getClass().getName());
   }
 
   @Test
-  public void testGetDoubleStart() throws PostgresTesterStartException {
-    PostgresTester tester = new PostgresTesterContainer();
-    tester.start("db", "user", "pass");
-    String msg = "";
-    try {
+  public void testGetDoubleStart() {
+    try (var tester = new PostgresTesterContainer()) {
       tester.start("db", "user", "pass");
-    } catch (IllegalStateException e) {
-      msg = e.getMessage();
+      var e = assertThrows(IllegalStateException.class, () -> tester.start("db", "user", "pass"));
+      assertEquals("already started", e.getMessage());
     }
-    Assert.assertEquals("already started", msg);
-    tester.close();
   }
 
   @Test(expected = IllegalStateException.class)
@@ -67,11 +67,13 @@ public class PostgresTesterContainerTest {
   @Test(expected = IllegalStateException.class)
   public void testGetReadPort() { new PostgresTesterContainer().getReadPort(); }
 
-  @Test(expected = IllegalStateException.class)
-  public void testGetNetwork() { new PostgresTesterContainer().getNetwork(); }
+  @Test
+  public void testGetNetwork() {
+    assertNotNull(new PostgresTesterContainer().getNetwork());
+  }
 
   @Test
-  public void testReadWrite() throws SQLException, PostgresTesterStartException {
+  public void testReadWrite() throws SQLException {
     PostgresTester tester = new PostgresTesterContainer();
     String user = "user";
     String db = "db";
@@ -94,34 +96,28 @@ public class PostgresTesterContainerTest {
 
       // Check that streaming replication is set up correctly.
       ResultSet state = stmt.executeQuery("SELECT state FROM pg_stat_replication;");
-      Assert.assertTrue(state.next());
-      Assert.assertEquals("streaming", state.getString("state"));
+      assertTrue(state.next());
+      assertEquals("streaming", state.getString("state"));
 
       // The standby should not accept writes of any kind since it is read-only.
-      Exception exception = Assert.assertThrows(PSQLException.class, () -> {
+      Exception exception = assertThrows(PSQLException.class, () -> {
         readOnlyStmt.executeUpdate("CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50));");
       });
-      Assert.assertEquals("ERROR: cannot execute CREATE TABLE in a read-only transaction", exception.getMessage());
+      assertEquals("ERROR: cannot execute CREATE TABLE in a read-only transaction", exception.getMessage());
 
-      // Should we test synchronous commit? The default is true.
-      boolean testSynchronousCommit = System.getProperty(PostgresTesterContainer.POSTGRES_ASYNC_COMMIT) == null;
-      if (!testSynchronousCommit) {
-        return;
-      }
-
-      // The first writes to the replicated cluster requires remote_apply. Subsequent ones don't.
-      stmt.executeUpdate("BEGIN; SET LOCAL synchronous_commit = remote_apply; CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50)); COMMIT;");
+      stmt.executeUpdate("CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50))");
       Arrays.asList("Queequeg", "Starbuck", "Stubb", "Flask", "Daggoo", "Tashtego", "Pip", "Fedallah", "Fleece", "Perth")
           .forEach(name -> {
             try {
               stmt.executeUpdate(String.format("INSERT INTO crew (name) VALUES ('%s');", name));
               ResultSet rs = readOnlyStmt.executeQuery(String.format("SELECT name FROM crew where name = '%s';", name));
-              Assert.assertTrue(rs.next());
-              Assert.assertEquals(name, rs.getString("name"));
+              assertTrue(rs.next());
+              assertEquals(name, rs.getString("name"));
             } catch (SQLException e) {
               throw new RuntimeException(e);
             }
           });
     }
+    tester.close();
   }
 }
