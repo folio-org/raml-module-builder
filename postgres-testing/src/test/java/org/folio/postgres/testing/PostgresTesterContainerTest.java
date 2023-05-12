@@ -1,13 +1,14 @@
 package org.folio.postgres.testing;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import org.awaitility.Awaitility;
 import org.folio.util.PostgresTester;
-import org.folio.util.PostgresTesterStartException;
 import org.junit.Test;
 import org.postgresql.util.PSQLException;
 
@@ -18,6 +19,9 @@ import java.sql.Statement;
 import java.sql.ResultSet;
 
 import java.util.Arrays;
+import java.util.Objects;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 public class PostgresTesterContainerTest {
 
@@ -34,10 +38,10 @@ public class PostgresTesterContainerTest {
     tester.close();
   }
 
+  @Test(expected = IllegalStateException.class)
   public void testBadDockerImage() {
-    var e = assertThrows(PostgresTesterStartException.class, () ->
-      new PostgresTesterContainer("").start(null, null, null));
-    assertEquals("java.lang.IllegalStateException", e.getCause().getClass().getName());
+    PostgresTester tester = new PostgresTesterContainer("");
+    tester.start(null, null, null);
   }
 
   @Test
@@ -65,7 +69,9 @@ public class PostgresTesterContainerTest {
   }
 
   @Test(expected = IllegalStateException.class)
-  public void testGetReadPort() { new PostgresTesterContainer().getReadPort(); }
+  public void testGetReadPort() {
+    new PostgresTesterContainer().getReadPort();
+  }
 
   @Test
   public void testGetNetwork() {
@@ -73,7 +79,7 @@ public class PostgresTesterContainerTest {
   }
 
   @Test
-  public void testReadWrite() throws SQLException {
+  public void testReadWrite() throws Exception {
     PostgresTester tester = new PostgresTesterContainer();
     String user = "user";
     String db = "db";
@@ -105,19 +111,41 @@ public class PostgresTesterContainerTest {
       });
       assertEquals("ERROR: cannot execute CREATE TABLE in a read-only transaction", exception.getMessage());
 
-      stmt.executeUpdate("CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50))");
+      //stmt.executeUpdate(tryAddSleep("CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50));", isAsyncTest));
+      stmt.executeUpdate("CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50));");
+
+      // If the tester containers have been configured for async replication, we need to poll to verify the replication
+      // since writes don't wait for the commit.
+      boolean isAsyncTest = System.getProperty(PostgresTesterContainer.POSTGRES_ASYNC_COMMIT) != null;
+
+      verify(() -> {
+        ResultSet rs = readOnlyStmt.executeQuery("SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = 'crew');");
+        assertTrue(rs.next());
+        return rs.getBoolean(1);
+      }, isAsyncTest);
+
       Arrays.asList("Queequeg", "Starbuck", "Stubb", "Flask", "Daggoo", "Tashtego", "Pip", "Fedallah", "Fleece", "Perth")
           .forEach(name -> {
             try {
               stmt.executeUpdate(String.format("INSERT INTO crew (name) VALUES ('%s');", name));
-              ResultSet rs = readOnlyStmt.executeQuery(String.format("SELECT name FROM crew where name = '%s';", name));
-              assertTrue(rs.next());
-              assertEquals(name, rs.getString("name"));
-            } catch (SQLException e) {
+              verify(() -> {
+                ResultSet rs = readOnlyStmt.executeQuery(String.format("SELECT name FROM crew where name = '%s';", name));
+                assertTrue(rs.next());
+                return Objects.equals(name, rs.getString("name"));
+              }, isAsyncTest);
+            } catch (Exception e) {
               throw new RuntimeException(e);
             }
           });
     }
     tester.close();
   }
+
+  private void verify(Callable<Boolean> callable, boolean isAsync) throws Exception {
+    if (!isAsync) {
+      assertTrue(callable.call());
+    }
+    await().atMost(5, TimeUnit.SECONDS).until(callable);
+  }
 }
+

@@ -64,7 +64,6 @@ import org.folio.rest.tools.utils.Envs;
 import org.folio.rest.tools.utils.MetadataUtil;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.util.PostgresTester;
-import org.folio.util.PostgresTesterStartException;
 
 /**
  * @author shale
@@ -4336,7 +4335,7 @@ public class PostgresClient {
    * Assumes postgresTester is enabled.
    * Changes HOST and PORT oc configuration
    */
-  public void startPostgresTester() throws PostgresTesterStartException {
+  public void startPostgresTester() {
     // starting Postgres
     if (!postgresTester.isStarted()) {
       log.info("Starting postgres tester");
