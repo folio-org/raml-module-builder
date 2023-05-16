@@ -7,14 +7,12 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import org.awaitility.Awaitility;
 import org.folio.util.PostgresTester;
 import org.junit.Test;
 import org.postgresql.util.PSQLException;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.ResultSet;
 
@@ -79,8 +77,18 @@ public class PostgresTesterContainerTest {
   }
 
   @Test
-  public void testReadWrite() throws Exception {
-    PostgresTester tester = new PostgresTesterContainer();
+  public void testReplication() throws Exception {
+    testReplication(new PostgresTesterContainer());
+  }
+
+  @Test
+  public void testReplicationAsync() throws Exception {
+    System.setProperty(PostgresTesterContainer.POSTGRES_ASYNC_COMMIT, "yes");
+    testReplication(new PostgresTesterContainer());
+    System.clearProperty(PostgresTesterContainer.POSTGRES_ASYNC_COMMIT);
+  }
+
+  private void testReplication(PostgresTesterContainer tester) throws Exception {
     String user = "user";
     String db = "db";
     String pass = "pass";
@@ -111,12 +119,11 @@ public class PostgresTesterContainerTest {
       });
       assertEquals("ERROR: cannot execute CREATE TABLE in a read-only transaction", exception.getMessage());
 
-      //stmt.executeUpdate(tryAddSleep("CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50));", isAsyncTest));
       stmt.executeUpdate("CREATE TABLE crew (id SERIAL PRIMARY KEY, name VARCHAR(50));");
 
       // If the tester containers have been configured for async replication, we need to poll to verify the replication
       // since writes don't wait for the commit.
-      boolean isAsyncTest = System.getProperty(PostgresTesterContainer.POSTGRES_ASYNC_COMMIT) != null;
+      boolean isAsyncTest = tester.hasAsyncCommitConfig();
 
       verify(() -> {
         ResultSet rs = readOnlyStmt.executeQuery("SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename  = 'crew');");

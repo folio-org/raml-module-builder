@@ -11,14 +11,30 @@ import org.folio.util.PostgresTester;
 
 public class PostgresTesterContainer implements PostgresTester {
   public static final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
+
+  /**
+   * the Docker network the hostname alias for the primary container.
+   */
   public static final String PRIMARY_ALIAS = "postgresprimary";
+
+  /**
+   * the Docker network the hostname alias for the read-only standby container.
+   */
   public static final String STANDBY_ALIAS = "postgresstandby";
+
+  /**
+   * Key for an environment variable or system property, that, if present, will configure the replication between the
+   * primary and standby containers to be asynchronous.
+   */
   public static final String POSTGRES_ASYNC_COMMIT = "PG_ASYNC_COMMIT";
 
   private static final int READY_MESSAGE_TIMES = 2;
 
   private static final Logger LOG = LoggerFactory.getLogger(PostgresTesterContainer.class);
-  private static final int FILE_MODE = 493; // 493 is the decimal of octal 0755.
+
+  @SuppressWarnings("squid:S1314")  // Suppress false positive "Octal values should not be used"
+  private static final int FILE_MODE = 0755; // octal
+
   private static boolean hasLog;
 
   private PostgreSQLContainer<?> primary;
@@ -57,6 +73,14 @@ public class PostgresTesterContainer implements PostgresTester {
     PostgresTesterContainer.hasLog = hasLog;
   }
 
+  /**
+   * See {@link #POSTGRES_ASYNC_COMMIT}.
+   * @return True if this instance of the class is configured for asynchronous commit.
+   */
+  public boolean hasAsyncCommitConfig() {
+    return System.getProperty(POSTGRES_ASYNC_COMMIT) != null || System.getenv(POSTGRES_ASYNC_COMMIT) != null;
+  }
+
   // S2095: Resources should be closed
   // We can't close in start. As this whole class is Closeable!
   @java.lang.SuppressWarnings({"squid:S2095", "resource"})
@@ -69,18 +93,17 @@ public class PostgresTesterContainer implements PostgresTester {
       throw new IllegalStateException("already started");
     }
 
-    boolean configureAsyncCommit = System.getProperty(POSTGRES_ASYNC_COMMIT) != null;
+    var baseReplicationSh =
+        "echo 'host replication replicator 0.0.0.0/0 trust' >> /var/lib/postgresql/data/pg_hba.conf\n"
+        + "psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -c 'CREATE USER replicator WITH REPLICATION'";
 
     var replicationSh = Transferable.of(
         "echo 'synchronous_commit=remote_apply' >> /var/lib/postgresql/data/postgresql.conf\n"
             + "echo \"synchronous_standby_names='*'\" >> /var/lib/postgresql/data/postgresql.conf\n"
-            + "echo 'host replication replicator 0.0.0.0/0 trust' >> /var/lib/postgresql/data/pg_hba.conf\n"
-            + "psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -c 'CREATE USER replicator WITH REPLICATION'");
+            + baseReplicationSh);
 
-    if (configureAsyncCommit) {
-      replicationSh = Transferable.of(
-          "echo 'host replication replicator 0.0.0.0/0 trust' >> /var/lib/postgresql/data/pg_hba.conf\n"
-              + "psql -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -c 'CREATE USER replicator WITH REPLICATION'");
+    if (hasAsyncCommitConfig()) {
+      replicationSh = Transferable.of(baseReplicationSh);
     }
 
     primary = new PostgreSQLContainer<>(dockerImageName)
@@ -148,10 +171,6 @@ public class PostgresTesterContainer implements PostgresTester {
     return standby.getHost();
   }
 
-  /**
-   * On the Docker network the hostname aliases are {@link #PRIMARY_ALIAS} and {@link #STANDBY_ALIAS},
-   * they listen on port 5432.
-   */
   @Override
   public Network getNetwork() {
     return network;

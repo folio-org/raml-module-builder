@@ -46,6 +46,7 @@
     <dependency>
       <groupId>org.testcontainers</groupId>
       <artifactId>testcontainers</artifactId>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>
