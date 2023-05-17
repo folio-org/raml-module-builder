@@ -149,10 +149,11 @@ public class PostgresTesterContainerTest {
   }
 
   private void verify(Callable<Boolean> callable, boolean isAsync) throws Exception {
-    if (!isAsync) {
+    if (isAsync) {
+      await().atMost(5, TimeUnit.SECONDS).until(callable);
+    } else {
       assertTrue(callable.call());
     }
-    await().atMost(5, TimeUnit.SECONDS).until(callable);
   }
 }
 

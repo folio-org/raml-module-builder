@@ -38,6 +38,8 @@ public interface PostgresTester extends Closeable {
 
   /**
    * The network that the read and write hosts are part of.
+   * The hostname aliases are PRIMARY_ALIAS and STANDBY_ALIAS,
+   * they listen on port 5432.
    */
   Network getNetwork();
 

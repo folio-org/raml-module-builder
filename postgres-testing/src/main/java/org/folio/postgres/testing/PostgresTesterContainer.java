@@ -24,7 +24,8 @@ public class PostgresTesterContainer implements PostgresTester {
 
   /**
    * Key for an environment variable or system property, that, if present, will configure the replication between the
-   * primary and standby containers to be asynchronous.
+   * primary and standby containers to be asynchronous. This is an unofficial experimental option that might be removed
+   * without notice.
    */
   public static final String POSTGRES_ASYNC_COMMIT = "PG_ASYNC_COMMIT";
 
