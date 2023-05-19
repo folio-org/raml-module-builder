@@ -137,8 +137,10 @@ public class PostgresTesterContainerTest {
               stmt.executeUpdate(String.format("INSERT INTO crew (name) VALUES ('%s');", name));
               verify(() -> {
                 ResultSet rs = readOnlyStmt.executeQuery(String.format("SELECT name FROM crew where name = '%s';", name));
-                assertTrue(rs.next());
-                return Objects.equals(name, rs.getString("name"));
+                if (rs.next()) {
+                  return Objects.equals(name, rs.getString("name"));
+                }
+                return false;
               }, isAsyncTest);
             } catch (Exception e) {
               throw new RuntimeException(e);
@@ -150,7 +152,10 @@ public class PostgresTesterContainerTest {
 
   private void verify(Callable<Boolean> callable, boolean isAsync) throws Exception {
     if (isAsync) {
-      await().atMost(5, TimeUnit.SECONDS).until(callable);
+      await()
+          .atLeast(PostgresTesterContainer.SIMULATED_ASYNC_REPLICATION_LAG_MILLISECONDS - 100, TimeUnit.MILLISECONDS)
+          .atMost(PostgresTesterContainer.SIMULATED_ASYNC_REPLICATION_LAG_MILLISECONDS + 100, TimeUnit.MILLISECONDS)
+          .until(callable);
     } else {
       assertTrue(callable.call());
     }

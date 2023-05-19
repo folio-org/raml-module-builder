@@ -29,6 +29,13 @@ public class PostgresTesterContainer implements PostgresTester {
    */
   public static final String POSTGRES_ASYNC_COMMIT = "PG_ASYNC_COMMIT";
 
+  /**
+   * The number of milliseconds that replication will take between the primary and the standby in order to simulate
+   * a variable real-world replication delay between primary and standby replicas.
+   * This is only applied when the experimental {@link #POSTGRES_ASYNC_COMMIT} is applied.
+   */
+  public static final int SIMULATED_ASYNC_REPLICATION_LAG_MILLISECONDS = 1000;
+
   private static final int READY_MESSAGE_TIMES = 2;
 
   private static final Logger LOG = LoggerFactory.getLogger(PostgresTesterContainer.class);
@@ -104,7 +111,10 @@ public class PostgresTesterContainer implements PostgresTester {
             + baseReplicationSh);
 
     if (hasAsyncCommitConfig()) {
-      replicationSh = Transferable.of(baseReplicationSh);
+      var simulatedDelayConfig =
+          String.format("echo \"recovery_min_apply_delay = '%sms'\" >> /var/lib/postgresql/data/postgresql.conf%n",
+              SIMULATED_ASYNC_REPLICATION_LAG_MILLISECONDS);
+      replicationSh = Transferable.of(simulatedDelayConfig + baseReplicationSh);
     }
 
     primary = new PostgreSQLContainer<>(dockerImageName)
