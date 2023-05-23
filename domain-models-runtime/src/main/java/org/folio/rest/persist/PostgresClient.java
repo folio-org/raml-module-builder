@@ -4295,10 +4295,10 @@ public class PostgresClient {
               for (int i = 0; i < sql.length; i++) {
                 String stmt = sql[i];
                 future = future.compose(x -> {
-                  log.info("trying to execute: {}" + stmt);
+                  log.info("trying to execute: {}", stmt);
                   return conn.query(stmt).execute()
                       .compose(good -> {
-                        log.info("Successfully executed {}", stmt);
+                        log.info("Successfully executed: {}", stmt);
                         return Future.succeededFuture();
                       }, res -> {
                         log.error(res.getMessage(), res);
