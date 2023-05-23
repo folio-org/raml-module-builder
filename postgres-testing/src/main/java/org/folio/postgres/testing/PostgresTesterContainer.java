@@ -34,7 +34,7 @@ public class PostgresTesterContainer implements PostgresTester {
    * a variable real-world replication delay between primary and standby replicas.
    * This is only applied when the experimental {@link #POSTGRES_ASYNC_COMMIT} is applied.
    */
-  public static final int SIMULATED_ASYNC_REPLICATION_LAG_MILLISECONDS = 1000;
+  public static final int SIMULATED_ASYNC_REPLICATION_LAG_MILLISECONDS = 300;
 
   private static final int READY_MESSAGE_TIMES = 2;
 
