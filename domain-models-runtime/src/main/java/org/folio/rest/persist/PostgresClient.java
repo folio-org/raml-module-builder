@@ -2678,7 +2678,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id with the readonly connectino and return it as a pojo of type T.
+   * Get the jsonb by id with the readonly connection and return it as a pojo of type T.
    * @param table  the table to search in
    * @param id  the value of the id field
    * @param clazz  the type of the pojo
@@ -4348,6 +4348,9 @@ public class PostgresClient {
     }
     postgreSQLClientConfig.put(PORT, postgresTester.getPort());
     postgreSQLClientConfig.put(HOST, postgresTester.getHost());
+
+    postgreSQLClientConfig.put(HOST_READER, postgresTester.getReadHost());
+    postgreSQLClientConfig.put(PORT_READER, postgresTester.getReadPort());
   }
 
   /**
