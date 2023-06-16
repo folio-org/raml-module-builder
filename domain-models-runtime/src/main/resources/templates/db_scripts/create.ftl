@@ -7,7 +7,7 @@ CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodu
 
 </#if>
 
-ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "$user";
+ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "${myuniversity}_${mymodule}";
 
 <#include "extensions.ftl">
 
