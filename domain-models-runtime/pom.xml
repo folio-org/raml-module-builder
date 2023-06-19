@@ -280,7 +280,7 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <release>11</release>
+          <release>17</release>
           <includes>
             <include>**/*.java</include>
             <include>**/*.aj</include>
