@@ -178,7 +178,10 @@ public class ClassPath {
       return resourceName.hashCode();
     }
 
-    @SuppressWarnings("java:S2162")  // false positive:
+    @SuppressWarnings("java:S2162")  // false positive because ClassInfo extends ResourceInfo and
+    // ClassInfo.equals uses ResourceInfo.equals, therefore ResourceInfo.equals cannot be changed.
+    // Note that this class is not FOLIO code but has been copied from Guava, see above.
+    // Suppressed message:
     // Compare to "this.getClass()" instead. "equals" methods should be symmetric and work for subclasses
     @Override
     public boolean equals(Object obj) {
