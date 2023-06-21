@@ -2678,7 +2678,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id with the readonly connectino and return it as a pojo of type T.
+   * Get the jsonb by id with the readonly connection and return it as a pojo of type T.
    * @param table  the table to search in
    * @param id  the value of the id field
    * @param clazz  the type of the pojo
@@ -4295,10 +4295,10 @@ public class PostgresClient {
               for (int i = 0; i < sql.length; i++) {
                 String stmt = sql[i];
                 future = future.compose(x -> {
-                  log.info("trying to execute: {}" + stmt);
+                  log.info("trying to execute: {}", stmt);
                   return conn.query(stmt).execute()
                       .compose(good -> {
-                        log.info("Successfully executed {}", stmt);
+                        log.info("Successfully executed: {}", stmt);
                         return Future.succeededFuture();
                       }, res -> {
                         log.error(res.getMessage(), res);
@@ -4348,6 +4348,9 @@ public class PostgresClient {
     }
     postgreSQLClientConfig.put(PORT, postgresTester.getPort());
     postgreSQLClientConfig.put(HOST, postgresTester.getHost());
+
+    postgreSQLClientConfig.put(HOST_READER, postgresTester.getReadHost());
+    postgreSQLClientConfig.put(PORT_READER, postgresTester.getReadPort());
   }
 
   /**

@@ -1,6 +1,7 @@
 package org.folio.util;
 
 import java.io.Closeable;
+import org.testcontainers.containers.Network;
 
 public interface PostgresTester extends Closeable {
   /**
@@ -22,6 +23,25 @@ public interface PostgresTester extends Closeable {
    * @return host
    */
   String getHost();
+
+  /**
+   * return read-only host for tester.
+   * @return host
+   */
+  String getReadHost();
+
+  /**
+   * return read-only listening port for spawned tester.
+   * @return port
+   */
+  Integer getReadPort();
+
+  /**
+   * The network that the read and write hosts are part of.
+   * The hostname aliases are PRIMARY_ALIAS and STANDBY_ALIAS,
+   * they listen on port 5432.
+   */
+  Network getNetwork();
 
   /**
    * has tester started.
