@@ -5,10 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Set;
-
 import org.folio.rest.persist.Criteria.GroupedCriterias.Pairs;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -180,7 +176,7 @@ public class Criterion {
 
   /**
    * example of json that can be passed in and converted into a postgres jsonb query
-   * "[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"
+   * "[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"&lt;\"}]"
    * with the use of cql this function should be depreicated
    * @param query
    * @return

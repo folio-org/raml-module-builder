@@ -129,7 +129,7 @@ public class CQLWrapper {
   /**
    * Sets CQL query (should be used with {@link CQLWrapper#setField(org.folio.cql2pgjson.CQL2PgJSON)}
    * Or this constructor can be used to specify both:
-   * {@link CQLWrapper#CQLWrapper(org.folio.cql2pgjson.CQL2PgJSON, java.lang.String)
+   * {@link CQLWrapper#CQLWrapper(org.folio.cql2pgjson.CQL2PgJSON, java.lang.String)}
    * @param query CQL query
    * @return wrapper itself
    */

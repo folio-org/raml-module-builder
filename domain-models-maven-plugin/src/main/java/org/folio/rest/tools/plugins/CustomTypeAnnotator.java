@@ -28,9 +28,11 @@ import io.vertx.core.json.JsonObject;
  * see https://github.com/folio-org/raml-module-builder#json-schema-fields
  *
  * this is called since we set the generator configuration with the following (in GenerateRunner.java):
+ * <pre>{@code
  *     Map<String, String> config = new HashMap<>();
  *     config.put("customAnnotator", "ramltojaxrs.resources.CustomTypeAnnotator");
  *     configuration.setJsonMapperConfiguration(config);
+ *  }</pre>
  */
 public class CustomTypeAnnotator extends Jackson2Annotator {
 
