@@ -48,7 +48,7 @@ public class JsonUtils {
    * for example a list of parameters with a key in the list called 'key' will be transformed into
    * parameters.key
    * @param entity pojo to transform into a query
-   * @param removeFields fields starting with this prefix will not be included in the returned json object
+   * @param removeFieldsPrefixes fields starting with this prefix will not be included in the returned json object
    * @return
    */
   public static JsonObject entity2Json(Object entity, String[] removeFieldsPrefixes){
@@ -115,7 +115,6 @@ public class JsonUtils {
    * for example a list of parameters with a key in the list called 'key' will be transformed into
    * parameters.key
    * @param entity
-   * @param removeFields fields starting with this prefix will not be included in the returned json object
    * @return
    */
   public static JsonObject entity2Json(Object entity){

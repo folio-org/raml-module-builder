@@ -128,15 +128,8 @@ public final class PgExceptionUtil {
    * (Message, duplicate key value violates unique constraint "t_text_key"),
    * (Detail, Key (text)=(a) already exists.)]}
    *
-   * <p>This is similar to {@link com.github.jasync.sql.db.postgresql.exceptions.GenericDatabaseException#getMessage()
-   * GenericDatabaseException#getMessage()} that returns
-   *
-   * <p>{@code ErrorMessage(fields=[(Severity, ERROR), (V, ERROR), (SQLSTATE, 23505),
-   * (Message, duplicate key value violates unique constraint "t_text_key"),
-   * (Detail, Key (text)=(a) already exists.), (s, public), (t, t), (n, t_text_key),
-   * (File, nbtinsert.c), (Line, 427), (Routine, _bt_check_unique)])}
-   *
-   * <p>Use this method where PgException.getMessage() returning the message field only is not sufficient.
+   * <p>This is more than {@link PgException#getMessage()} that returns
+   * {@code ERROR: duplicate key value violates unique constraint "t_text_key" (23505)}.
    *
    * @return all PgException fields if throwable is a PgException, throwable.getMessage() otherwise
    */

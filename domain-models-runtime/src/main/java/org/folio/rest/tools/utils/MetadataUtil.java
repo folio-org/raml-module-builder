@@ -33,8 +33,8 @@ public final class MetadataUtil {
   /**
    * @return Metadata where createdDate and updatedDate are set to current time and
    * createdByUserId and updatedByUserId are set to the
-   * {@link RestVerticle.OKAPI_USERID_HEADER} header, using {@code user_id} from the
-   * {@link RestVerticle.OKAPI_HEADER_TOKEN} as a fall-back. The token is used without
+   * {@link RestVerticle#OKAPI_USERID_HEADER} header, using {@code user_id} from the
+   * {@link RestVerticle#OKAPI_HEADER_TOKEN} as a fall-back. The token is used without
    * validation.
    */
   public static Metadata createMetadata(Map<String, String> okapiHeaders) {

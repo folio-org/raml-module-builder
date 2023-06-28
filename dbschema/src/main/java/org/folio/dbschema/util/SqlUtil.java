@@ -256,7 +256,7 @@ public final class SqlUtil {
      *
      * <p><code>appendQuoted("4 Rock'n'roll!", 2, 13, result)</code> appends <code>'Rock''n''roll'</code>
      *
-     * @param s the source text to take the subsequence from, must not be null if start < end
+     * @param s the source text to take the subsequence from, must not be null if start &lt; end
      * @param start the start of the substring within s
      * @param end the end of the substring within s
      * @param result where to append

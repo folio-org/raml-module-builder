@@ -573,13 +573,13 @@ public final class PgUtil {
    *   "instances",
    *   "totalRecords"
    * ]
-   *</pre>
+   *}</pre>
    * @param <T> Class for each item returned
    * @param table SQL table
    * @param clazz The item class
    * @param cql CQL query
-   * @param offset offset >= 0; < 0 for no offset
-   * @param limit  limit >= 0 ; <0 for no limit
+   * @param offset offset &gt;= 0; &lt; 0 for no offset
+   * @param limit  limit &gt;= 0 ; &lt; 0 for no limit
    * @param facets facets (empty or null for  no facets)
    * @param element wrapper JSON element for list of items (eg books / users)
    * @param routingContext routing context from which a HTTP response is made
@@ -624,14 +624,14 @@ public final class PgUtil {
    * "required": [
    *   "instances"
    * ]
-   *</pre>
+   *}</pre>
    * @param <T> Class for each item returned
    * @param table SQL table
    * @param clazz The item class
    * @param cql CQL query
    * @param hasTotalRecords "auto" for estimating totalRecords, "none" to suppress totalRecords estimation
-   * @param offset offset >= 0; < 0 for no offset
-   * @param limit  limit >= 0 ; <0 for no limit
+   * @param offset offset &gt;= 0; &lt; 0 for no offset
+   * @param limit  limit &gt;= 0 ; &lt; 0 for no limit
    * @param facets facets (null or empty for no facets)
    * @param element wrapper JSON element for list of items (eg books / users)
    * @param routingContext routing context from which a HTTP response is made
@@ -1159,7 +1159,6 @@ public final class PgUtil {
 *                  headersFor201(), respond201WithApplicationJson(T, HeadersFor201),
 *                  respond400WithTextPlain(Object), respond500WithTextPlain(Object).
    * @param asyncResultHandler  where to return the result created by clazz
-   * @return
    */
   @SuppressWarnings("squid:S1523")  // suppress "Dynamically executing code is security-sensitive"
                                     // we use only hard-coded names
@@ -1183,7 +1182,7 @@ public final class PgUtil {
    * @param clazz  the ResponseDelegate class generated as defined by the RAML file, must have these methods:
 *               headersFor201(), respond201WithApplicationJson(T, HeadersFor201),
 *               respond400WithTextPlain(Object), respond500WithTextPlain(Object).
-   * @return Future<Response>  where to return the result created by clazz
+   * @return Future&lt;Response&gt;  where to return the result created by clazz
    */
   @SuppressWarnings("squid:S1523")  // suppress "Dynamically executing code is security-sensitive"
                                     // we use only hard-coded names

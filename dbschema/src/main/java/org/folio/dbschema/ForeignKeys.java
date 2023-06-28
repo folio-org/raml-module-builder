@@ -87,7 +87,6 @@ public class ForeignKeys extends Field {
    * the tableAlias can differ from the database child table name, for example
    * tableName="holdings_records", tableAlias="holdingsRecords".
    * Null indicates that using this parent->child foreign key relation is disabled for CQL queries.
-   * @return the alias name, or null if disabled.
    */
   public void setTableAlias(String tableAlias) {
     this.tableAlias = tableAlias;
@@ -103,7 +102,6 @@ public class ForeignKeys extends Field {
 
   /**
    * Set the list of fieldNames for a join of more than two tables.
-   * @return list of fieldNames, or null if this is a two table join using fieldName.
    */
   public void setTargetPath(List<String> targetPath) {
     this.targetPath = targetPath;
