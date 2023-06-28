@@ -25,6 +25,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.dbschema.util.SqlUtil;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
+import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.PostgresClient.FunctionWithException;
 import org.folio.rest.persist.PostgresClient.QueryHelper;
 import org.folio.rest.persist.PostgresClient.TotaledResults;
@@ -610,7 +611,7 @@ public class Conn {
    * <br>
    * 1. can be mapped from a string in the following format [{"field":"''","value":"","op":""}]
    * <pre>
-   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"); //denotes funds_distribution is an array of objects
+   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"&lt;\"}]"); //denotes funds_distribution is an array of objects
    *    Criterion a = json2Criterion("[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]");
    *    (see postgres query syntax for more examples in the read.me
    * </pre>

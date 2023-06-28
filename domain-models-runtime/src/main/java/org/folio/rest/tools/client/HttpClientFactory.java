@@ -12,8 +12,8 @@ import org.folio.rest.tools.client.test.HttpClientMock2;
  * an {@link HttpModuleClient2} instance if mocking is disabled.
  *
  * <p>Mocking is disabled by default. It can be enabled by setting the system property
- * {@link HttpClientMock2.MOCK_MODE} to any value (for example in pom.xml),
- * or by setting the {@link DeploymentOptions} property {@link HttpClientMock2.MOCK_MODE}
+ * {@link HttpClientMock2#MOCK_MODE} to any value (for example in pom.xml),
+ * or by setting the {@link DeploymentOptions} property {@link HttpClientMock2#MOCK_MODE}
  * to any value when deploying {@link RestVerticle}. It can programmatically been enabled
  * or disabled by calling {@link #setMockEnabled(boolean)}.
  *

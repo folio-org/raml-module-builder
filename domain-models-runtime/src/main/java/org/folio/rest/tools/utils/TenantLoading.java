@@ -60,21 +60,17 @@ import org.folio.util.PercentCodec;
  * </ul>
  *
  * <pre>
- * <code>
- *
- * @Override
- * Future<Void> loadData(TenantAttributes attributes, String tenantId,
- *                       Map<String, String> headers, Context vertxContext) {
+ * &#64;Override
+ * Future&lt;Void&gt; loadData(TenantAttributes attributes, String tenantId,
+ *                       Map&lt;String, String&gt; headers, Context vertxContext) {
  *   return super.loadData(attributes, tenantId, headers, vertxContext)
- *       .compose(res -> new TenantLoading()
+ *       .compose(res -&gt; new TenantLoading()
  *           .withKey("loadReference").withLead("ref-data")
  *           .add("groups")
  *           .withKey("loadSample").withLead("sample-data")
  *           .add("users")
  *           .perform(attributes, headers, vertxContext));
  * }
- *
- * </code>
  * </pre>
  */
 public class TenantLoading {
@@ -438,8 +434,8 @@ public class TenantLoading {
    * Specify for TenantLoading object the key that triggers loading of the subsequent files to be
    * added (see add method)
    *
-   * For sample data, the convention is <literal>loadSample</literal>. For reference data, the
-   * convention is <literal>loadReference</literal>.
+   * For sample data, the convention is <code>loadSample</code>. For reference data, the
+   * convention is <code>loadReference</code>.
    *
    * @param key the parameter key
    * @return TenandLoading new state
@@ -467,7 +463,7 @@ public class TenantLoading {
   /**
    * Specify loading with unique key in JSON field "id"
    *
-   * In most cases, data has a unique key in JSON field <literal>"id"</literal>. The content of the
+   * In most cases, data has a unique key in JSON field <code>"id"</code>. The content of the
    * that field is used to check the existence of the object or update thereof.
    *
    * @return TenandLoading new state
@@ -482,7 +478,7 @@ public class TenantLoading {
    * Specify loading with unique key in custom JSON field
    *
    * Should be used if unique key is in other field than
-   * <literal>"id"</literal>. The content of the that field is used to check the
+   * <code>"id"</code>. The content of the that field is used to check the
    * existence of the object or update thereof.
    *
    * @return TenandLoading new state

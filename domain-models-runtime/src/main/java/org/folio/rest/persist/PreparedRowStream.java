@@ -10,7 +10,7 @@ import io.vertx.sqlclient.RowStream;
 import io.vertx.sqlclient.Tuple;
 
 /**
- * Extend a RowStream<Row> with a result {@link Future} that completes after
+ * Extend a RowStream&lt;Row&gt; with a result {@link Future} that completes after
  * endHandler or exceptionHandler has been called.
  */
 public class PreparedRowStream implements RowStream<Row> {
@@ -25,7 +25,7 @@ public class PreparedRowStream implements RowStream<Row> {
   }
 
   /**
-   * Constructor with PreparedStatement and RowStream<Row>.
+   * Constructor with PreparedStatement and RowStream&lt;Row&gt;.
    *
    * @param preparedStatement the query to execute, it is closed when this PreparedRowStream is closed
    */
@@ -47,7 +47,7 @@ public class PreparedRowStream implements RowStream<Row> {
   }
 
   /**
-   * Create a RowStream<Row> using the preparedStatement, fetch and tuple.
+   * Create a RowStream&lt;Row&gt; using the preparedStatement, fetch and tuple.
    *
    * @param preparedStatement the query to execute, it is closed when this PreparedRowStream is closed
    * @param fetch the cursor fetch size
