@@ -746,6 +746,7 @@ public final class PgUtil {
           if (message == null) {
             message = reply.cause().getMessage();
           }
+          message = message + ": " + filter.getQuery();
           logger.error(message, reply.cause());
           response.setStatusCode(400);
           response.putHeader(HttpHeaders.CONTENT_TYPE, "text/plain");
