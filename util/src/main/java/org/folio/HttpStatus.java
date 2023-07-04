@@ -63,7 +63,7 @@ public enum HttpStatus {
    * <a href="https://github.com/folio-org/raml/blob/raml1.0/rtypes/item-collection.raml">item-collection</a>
    * resource types.
    * <p>
-   * For an application/json response body see {@link #HTTP_VALIDATION_ERROR} (422).
+   * For an application/json response body see {@link #HTTP_UNPROCESSABLE_ENTITY} (422).
    */
   HTTP_BAD_REQUEST(400),
 

@@ -20,9 +20,6 @@ import org.apache.maven.project.MavenProject;
 import org.folio.rest.tools.plugins.CustomTypeAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
 
-/**
- * @requiresDependencyResolution runtime
- */
 @Mojo(name = "java", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class DomainModelsMojo extends AbstractMojo {
 

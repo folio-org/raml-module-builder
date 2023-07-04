@@ -247,7 +247,7 @@ public class PostgresClient {
    * <p>Setting the same or a different PostgresTester instance invokes the close method of the
    * old PostgresTester instance.
    *
-   * <p>See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()}
+   * <p>See {@code org.folio.postgres.testing.PostgresTesterContainer}.
    *
    * @param tester instance to use for testing.
    */
@@ -704,7 +704,7 @@ public class PostgresClient {
   /**
    * Start an SQL transaction.
    *
-   * <p>Use the AsyncResult<SQLConnection> result to invoke any of the
+   * <p>Use the AsyncResult&lt;SQLConnection&gt; result to invoke any of the
    * functions that take that result as first parameter for the commands
    * within the transaction.
    *
@@ -892,7 +892,6 @@ public class PostgresClient {
    * @param table database table (without schema)
    * @param id primary key for the record
    * @param entity a POJO (plain old java object)
-   * @param replyHandler returns any errors and the entity after applying any database INSERT triggers
    * @return the entity after applying any database INSERT triggers
    */
   public <T> Future<T> saveAndReturnUpdatedEntity(String table, String id, T entity) {
@@ -1379,7 +1378,7 @@ public class PostgresClient {
    * <br>
    * 1. can be mapped from a string in the following format [{"field":"''","value":"","op":""}]
    * <pre>
-   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"); //denotes funds_distribution is an array of objects
+   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"&lt;\"}]"); //denotes funds_distribution is an array of objects
    *    Criterion a = json2Criterion("[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]");
    *    (see postgres query syntax for more examples in the read.me
    * </pre>
@@ -1435,7 +1434,7 @@ public class PostgresClient {
    * <br>
    * 1. can be mapped from a string in the following format [{"field":"''","value":"","op":""}]
    * <pre>
-   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"); //denotes funds_distribution is an array of objects
+   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"&lt;\"}]"); //denotes funds_distribution is an array of objects
    *    Criterion a = json2Criterion("[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]");
    *    (see postgres query syntax for more examples in the read.me
    * </pre>
@@ -2552,7 +2551,7 @@ public class PostgresClient {
     /**
      * @param t  some input
      * @return some output
-     * @throws Exception of type E
+     * @throws E Exception of type E
      */
     R apply(T t) throws E;
   }
@@ -4226,7 +4225,7 @@ public class PostgresClient {
 
   /**
    * Will connect to a specific database and execute the commands in the .sql file
-   * against that database.<p />
+   * against that database.<p>
    * NOTE: NOT tested on all types of statements - but on a lot
    *
    * @param sqlFile - string of sqls with executable statements
@@ -4245,7 +4244,7 @@ public class PostgresClient {
 
   /**
    * Will connect to a specific database and execute the commands in the .sql file
-   * against that database.<p />
+   * against that database.<p>
    * NOTE: NOT tested on all types of statements - but on a lot
    *
    * @param sqlFile - string of sqls with executable statements
@@ -4380,7 +4379,7 @@ public class PostgresClient {
 
   /**
    * Name of the back-end module, usually determined and stored in
-   * {@link org.folio.rest.tools.utils.ModuleName} by domain-models-maven-plugin at build time.
+   * {@code org.folio.rest.tools.utils.ModuleName} by domain-models-maven-plugin at build time.
    */
   public static String getModuleName() {
     return MODULE_NAME;
