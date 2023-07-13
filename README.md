@@ -412,9 +412,13 @@ The environment variables `DB_HOST_READER` and `DB_PORT_READER` are for the [Rea
 See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables) section of the Okapi Guide for more information on how to deploy environment variables to RMB modules via Okapi.
 
 ## Read and write database instances setup
-A PostgreSQL instance (the write instance) can be replicated for horizontal scaling (scale out), each replica is a [read-only hot standby](https://www.postgresql.org/docs/current/hot-standby.html).
+A PostgreSQL instance (the write instance) can be replicated for horizontal scaling (scale out), each replica is a read-only standby instance.
 
 RMB supports separating read and write requests. By default the write instance configured with `DB_HOST` and `DB_PORT` environment variables is used for reading as well, but optionally a read instance (or a load balancer for multiple read instances) can be configured by setting its host and port using the `DB_HOST_READER` and `DB_PORT_READER` environment variables. If either of these reader variables are not set then it will default to use the writer instance.
+
+RMB only supports [synchronous standby servers](https://www.postgresql.org/docs/current/warm-standby.html#SYNCHRONOUS-REPLICATION). The write instance must list the `DB_*_READER` instance(s) in its `synchronous_standby_names` configuration. This ensures ACID for both write and read instance.
+
+PostgreSQL's default asynchronous replication is not supported by RMB and will result in errors caused by outdated data the replica may return. Asynchronous replication is eventual consistency suitable for read-only applications like reporting, analytics, and data warehouse.
 
 ## Local development server
 
