@@ -1,5 +1,8 @@
 package org.folio.postgres.testing;
 
+import java.util.Map;
+
+import org.folio.util.PostgresTester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
@@ -7,7 +10,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
-import org.folio.util.PostgresTester;
 
 public class PostgresTesterContainer implements PostgresTester {
   public static final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
@@ -36,6 +38,8 @@ public class PostgresTesterContainer implements PostgresTester {
    */
   public static final int SIMULATED_ASYNC_REPLICATION_LAG_MILLISECONDS = 300;
 
+  private static final String IMAGE_NAME = getImageName(System.getenv());
+
   private static final int READY_MESSAGE_TIMES = 2;
 
   private static final Logger LOG = LoggerFactory.getLogger(PostgresTesterContainer.class);
@@ -59,10 +63,23 @@ public class PostgresTesterContainer implements PostgresTester {
   }
 
   /**
-   *  Create postgres container with default image Postgres 12.
+   * Create postgres container with the image name configured by environment variable
+   * TESTCONTAINERS_POSTGRES, or the default {@link #DEFAULT_IMAGE_NAME} if undefined.
    */
   public PostgresTesterContainer() {
-    this(DEFAULT_IMAGE_NAME);
+    this(IMAGE_NAME);
+  }
+
+  static String getImageName(Map<String, String> env) {
+    return env.getOrDefault("TESTCONTAINERS_POSTGRES", DEFAULT_IMAGE_NAME);
+  }
+
+  /**
+   * The image name configured by environment variable TESTCONTAINERS_POSTGRES,
+   * or the default {@link #DEFAULT_IMAGE_NAME} if undefined.
+   */
+  public static String getImageName() {
+    return IMAGE_NAME;
   }
 
   /**

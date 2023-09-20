@@ -368,6 +368,7 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_RECONNECTINTERVAL
  - DB_EXPLAIN_QUERY_THRESHOLD
  - DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING
+ - TESTCONTAINERS_POSTGRES
 
 The first five are mandatory, the others are optional.
 
@@ -408,6 +409,8 @@ and pass it to the RMB method that starts the connection, transaction or query.
 The environment variables `DB_HOST_READER` and `DB_PORT_READER` are for the [Read and write database instances setup](#read-and-write-database-instances-setup).
 
 `DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING` is a timestamp in the format `2022-12-31T23:59:59Z`. Setting it disables optimistic locking when sending a record that contains `"_version":-1` before that time, after that time `"_version":-1` is rejected. This applies only to tables with `failOnConflictUnlessSuppressed`, see below. The timestamp ensures that disabling this option cannot be forgotten. Suppressing optimistic locking is known to lead to data loss in some cases, don't use in production, you have been warned!
+
+`TESTCONTAINERS_POSTGRES` changes the PostgreSQL container image name used at build time for testing; it is not used at runtime.
 
 See the [Environment Variables](https://github.com/folio-org/okapi/blob/master/doc/guide.md#environment-variables) section of the Okapi Guide for more information on how to deploy environment variables to RMB modules via Okapi.
 
