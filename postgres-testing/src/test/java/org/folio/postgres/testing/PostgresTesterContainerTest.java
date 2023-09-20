@@ -25,6 +25,11 @@ public class PostgresTesterContainerTest {
 
   @Test
   public void imageName() {
+    assertEquals(PostgresTesterContainer.DEFAULT_IMAGE_NAME, PostgresTesterContainer.getImageName());
+  }
+
+  @Test
+  public void imageNameEnvEmpty() {
     assertEquals(PostgresTesterContainer.DEFAULT_IMAGE_NAME, PostgresTesterContainer.getImageName(Map.of()));
   }
 
