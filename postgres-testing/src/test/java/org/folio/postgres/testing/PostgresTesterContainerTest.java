@@ -1,10 +1,10 @@
 package org.folio.postgres.testing;
 
 import static org.awaitility.Awaitility.await;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.folio.util.PostgresTester;
@@ -13,15 +13,31 @@ import org.postgresql.util.PSQLException;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
-import java.sql.Statement;
 import java.sql.ResultSet;
-
+import java.sql.Statement;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 
 public class PostgresTesterContainerTest {
+
+  @Test
+  public void imageName() {
+    assertEquals(PostgresTesterContainer.DEFAULT_IMAGE_NAME, PostgresTesterContainer.getImageName());
+  }
+
+  @Test
+  public void imageNameEnvEmpty() {
+    assertEquals(PostgresTesterContainer.DEFAULT_IMAGE_NAME, PostgresTesterContainer.getImageName(Map.of()));
+  }
+
+  @Test
+  public void imageNameEnv() {
+    var env = Map.of("TESTCONTAINERS_POSTGRES", "postgres:15.4-alpine3.18");
+    assertEquals("postgres:15.4-alpine3.18", PostgresTesterContainer.getImageName(env));
+  }
 
   @Test
   public void testStartClose() {
