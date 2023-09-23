@@ -35,6 +35,11 @@ public class PgConnectionMock implements PgConnection {
   }
 
   @Override
+  public Future<Void> cancelRequest() {
+    return Future.succeededFuture();
+  }
+
+  @Override
   public int processId() {
     return 0;
   }
@@ -89,6 +94,11 @@ public class PgConnectionMock implements PgConnection {
   @Override
   public Future<Transaction> begin() {
     throw new PgConnectionMockException();
+  }
+
+  @Override
+  public Transaction transaction() {
+    return null;
   }
 
   @Override

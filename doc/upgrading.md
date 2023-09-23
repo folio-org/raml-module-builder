@@ -23,6 +23,16 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
+## Version 36.1
+
+RMB requires Vert.x 4.4.\*.
+
+RMB uses log4j 2.20.0. Ensure that log4j-bom is listed before vertx-stack-depchain in
+<dependencyManagement>.
+
+postgres-testing requires testcontainers >= 1.19.0. If log4j-slf4j-impl has been used
+for testcontainers logging you need to switch to log4j-slf4j2-impl.
+
 ## Version 35.0
 
 ### [RMB-932](https://issues.folio.org/browse/RMB-932) Broken empty string matching: uuidfield == ""
