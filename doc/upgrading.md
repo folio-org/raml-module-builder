@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 35.1](#version-351)
 * [Version 35.0](#version-350)
 * [Version 34.0](#version-340)
 * [Version 33.2](#version-332)
@@ -23,12 +24,14 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
-## Version 36.1
+## Version 35.1
+
+This is the Poppy (R2 2023) version.
 
 RMB requires Vert.x 4.4.\*.
 
 RMB uses log4j 2.20.0. Ensure that log4j-bom is listed before vertx-stack-depchain in
-<dependencyManagement>.
+\<dependencyManagement\>.
 
 postgres-testing requires testcontainers >= 1.19.0. If log4j-slf4j-impl has been used
 for testcontainers logging you need to switch to log4j-slf4j2-impl.
