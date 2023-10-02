@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>35.1.0-SNAPSHOT</version>
+    <version>35.2.0-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-api-interfaces</artifactId>
   <properties>
@@ -151,10 +151,8 @@
             </goals>
             <configuration>
               <target>
-                <replace token= "@param java_package" value="@param javaPackage" failOnNoReplacements="true"
-                         file="${project.build.directory}/generated-sources/raml-jaxrs/org/folio/rest/jaxrs/resource/Admin.java" />
-                <replace token= "@param access_token" value="@param accessToken" failOnNoReplacements="true"
-                         file="${project.build.directory}/generated-sources/raml-jaxrs/org/folio/rest/jaxrs/resource/Rmbtests.java" />
+                <replace token="@param java_package" value="@param javaPackage" failOnNoReplacements="true" file="${project.build.directory}/generated-sources/raml-jaxrs/org/folio/rest/jaxrs/resource/Admin.java" />
+                <replace token="@param access_token" value="@param accessToken" failOnNoReplacements="true" file="${project.build.directory}/generated-sources/raml-jaxrs/org/folio/rest/jaxrs/resource/Rmbtests.java" />
               </target>
             </configuration>
           </execution>

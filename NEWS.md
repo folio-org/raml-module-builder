@@ -1,3 +1,58 @@
+## 35.1.0 2023-09-28
+
+New features:
+
+* [RMB-979](https://issues.folio.org/browse/RMB-979): Poppy dependencies: Vert.x 4.4.5, log4j 2.20.0, ...
+* [RMB-978](https://issues.folio.org/browse/RMB-978): TESTCONTAINERS\_POSTGRES
+* [RMB-971](https://issues.folio.org/browse/RMB-971): Update to Java 17
+* [RMB-973](https://issues.folio.org/browse/RMB-973): If CQL is invalid PgUtil.getStream should log it
+* [CIRCSTORE-377](https://issues.folio.org/browse/CIRCSTORE-377): Set correct db search\_path for tenant\_module user
+* [RMB-970](https://issues.folio.org/browse/RMB-970): Add PgExceptionFacade.isVersionConflict()
+* [RMB-938](https://issues.folio.org/browse/RMB-938): Provide postgres-testing containers with read/write split
+* [RMB-966](https://issues.folio.org/browse/RMB-966): sendResponse 204 with body: Content-Length/chunked error
+* [FOLIO-3678](https://issues.folio.org/browse/FOLIO-3678), [RMB-964](https://issues.folio.org/browse/RMB-964/): Use GitHub Workflows api-lint and api-schema-lint and api-doc
+* [RMB-965](https://issues.folio.org/browse/RMB-965): runSqlFile with failed Future on SQL failure
+* [RMB-962](https://issues.folio.org/browse/RMB-962): Report missing snippetPath file in schema.json
+* [RMB-955](https://issues.folio.org/browse/RMB-955): Set search\_path when doing "SET ROLE" for shared pool conn
+
+Bug fixes: See 3.0.1 ... 3.0.6.
+
+## 35.0.6 2023-02-13
+
+Bug fixes:
+ * [RMB-961](https://issues.folio.org/browse/RMB-961) Vert.x 4.3.8, Micrometer 1.10.3
+
+## 35.0.5 2023-02-07
+
+Bug fixes:
+ * [RMB-957](https://issues.folio.org/browse/RMB-957) "duplicate key" error on parallel CREATE EXTENSION
+ * [RMB-959](https://issues.folio.org/browse/RMB-959) UXPROD-3833: Logging adjustment (NFR) includeTimeMillis
+ * [RMB-960](https://issues.folio.org/browse/RMB-960) Upgrade dependencies: Vert.x 4.3.7, aspectj-maven-plugin 1.13.1, ...
+
+## 35.0.4 2022-11-24
+
+Bug fixes:
+ * [RMB-955](https://issues.folio.org/browse/RMB-955) Set search\_path when doing "SET ROLE" for shared pool connection
+ * [RMB-944](https://issues.folio.org/browse/RMB-944) Migration "ERROR: tuple concurrently updated" on DROP TRIGGER
+ * [RMB-947](https://issues.folio.org/browse/RMB-947) LocalRowSet for RowDesc from both 4.3.3 and 4.3.4
+ * [RMB-952](https://issues.folio.org/browse/RMB-952) Deprecate .impl.RowDesc usage in LocalRowDesc
+ * [RMB-956](https://issues.folio.org/browse/RMB-956) Upgrade to Vert.x 4.3.5
+
+## 35.0.3 2022-11-02
+
+Bug fixes:
+ * [RMB-948](https://issues.folio.org/browse/RMB-948) jackson-databind 2.13.4.2 fixing DoS CVE-2022-42003
+
+## 35.0.2 2022-10-20
+
+Bug fixes:
+ * [RMB-949](https://issues.folio.org/browse/RMB-949) Report PostgreSQL URI on timeout
+
+## 35.0.1 2022-10-11
+
+Bug fixes:
+ * [RMB-945](https://issues.folio.org/browse/RMB-945) Vert.x 4.3.4, micrometer 1.9.4, log4j 2.19.0, okapi 4.14.5
+
 ## 35.0.0 2022-09-30
 
 New features:
