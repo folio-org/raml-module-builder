@@ -89,6 +89,7 @@
           </execution>
         </executions>
         <configuration>
+          <createDependencyReducedPom>false</createDependencyReducedPom>
           <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
         </configuration>
       </plugin>
