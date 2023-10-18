@@ -38,12 +38,13 @@ for testcontainers logging you need to switch to log4j-slf4j2-impl.
 
 The next step is not strictly required but is needed to comply with the
 [Technical Council decision DR-000012](https://wiki.folio.org/display/TC/DR-000012+-+Localization+parameter+for+back-end).
+
 It removes the deprecated language query parameter, and introduces the totalRecords
 query parameter that exists since RMB 33.2.\*.
-Some module might already have done this step.
+Some modules might already have done this step.
 
 It assumes that https://github.com/folio-org/raml is used as a git submodule at
-`ramls/raml-util/` directory. Update the sumodule to the latest commit:
+`ramls/raml-util/` directory. Update the submodule to the latest commit:
 ```
 git submodule update --remote ramls/raml-util/
 git add ramls/raml-util/
