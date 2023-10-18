@@ -33,7 +33,7 @@
     <aspectj.version>1.9.20.1</aspectj.version>
     <junit-jupiter-version>5.10.0</junit-jupiter-version>
     <maven.version>3.9.4</maven.version>
-    <vertx.version>4.4.5</vertx.version>
+    <vertx.version>4.4.6</vertx.version>
     <micrometer.version>1.11.4</micrometer.version> <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
