@@ -260,12 +260,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <!-- Versions [3.3.0 ... 3.5.0] create a published domain-models-runtime pom.xml
-               where the domain-models-api-interfaces dependency is missing.
-               Compiling mod-inventory-storage fails with
-               "Compilation failure: class file for org.folio.rest.jaxrs.resource.Tenant not found"
-          -->
-          <version>3.2.4</version>
+          <version>3.5.1</version>
           <configuration>
             <filters>
               <filter>
