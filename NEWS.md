@@ -1,3 +1,10 @@
+## 35.1.1 2023-10-20
+
+Bug fixes:
+
+* [RMB-981](https://issues.folio.org/browse/RMB-981): maven-shade-plugin 3.5.1 and disabling reduced pom
+* [RMB-983](https://issues.folio.org/browse/RMB-983): Vert.x 4.4.6 fixing netty-codec-http2 DoS (CVE-2023-44487)
+
 ## 35.1.0 2023-09-28
 
 New features:
