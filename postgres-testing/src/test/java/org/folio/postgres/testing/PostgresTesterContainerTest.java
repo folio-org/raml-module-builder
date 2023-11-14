@@ -35,7 +35,7 @@ public class PostgresTesterContainerTest {
 
   @Test
   public void imageNameEnv() {
-    var env = Map.of("TESTCONTAINERS_POSTGRES", "postgres:15.4-alpine3.18");
+    var env = Map.of("TESTCONTAINERS_POSTGRES_IMAGE", "postgres:15.4-alpine3.18");
     assertEquals("postgres:15.4-alpine3.18", PostgresTesterContainer.getImageName(env));
   }
 

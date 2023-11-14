@@ -64,18 +64,18 @@ public class PostgresTesterContainer implements PostgresTester {
 
   /**
    * Create postgres container with the image name configured by environment variable
-   * TESTCONTAINERS_POSTGRES, or the default {@link #DEFAULT_IMAGE_NAME} if undefined.
+   * TESTCONTAINERS_POSTGRES_IMAGE, or the default {@link #DEFAULT_IMAGE_NAME} if undefined.
    */
   public PostgresTesterContainer() {
     this(IMAGE_NAME);
   }
 
   static String getImageName(Map<String, String> env) {
-    return env.getOrDefault("TESTCONTAINERS_POSTGRES", DEFAULT_IMAGE_NAME);
+    return env.getOrDefault("TESTCONTAINERS_POSTGRES_IMAGE", DEFAULT_IMAGE_NAME);
   }
 
   /**
-   * The image name configured by environment variable TESTCONTAINERS_POSTGRES,
+   * The image name configured by environment variable TESTCONTAINERS_POSTGRES_IMAGE,
    * or the default {@link #DEFAULT_IMAGE_NAME} if undefined.
    */
   public static String getImageName() {
