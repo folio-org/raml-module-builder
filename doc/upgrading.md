@@ -36,6 +36,11 @@ RMB uses log4j 2.20.0. Ensure that log4j-bom is listed before vertx-stack-depcha
 postgres-testing requires testcontainers >= 1.19.0. If log4j-slf4j-impl has been used
 for testcontainers logging you need to switch to log4j-slf4j2-impl.
 
+RMB no longer can handle uppercase letters in tenant ids. Change unit tests to use
+downcase letters only; consider to also remove underscores in tenant ids to completely
+comply with
+[DR-000002 - Tenant Id and Module Name Restrictions](https://wiki.folio.org/display/TC/DR-000002+-+Tenant+Id+and+Module+Name+Restrictions).
+
 The next step is not strictly required but is needed to comply with the
 [Technical Council decision DR-000012](https://wiki.folio.org/display/TC/DR-000012+-+Localization+parameter+for+back-end).
 
