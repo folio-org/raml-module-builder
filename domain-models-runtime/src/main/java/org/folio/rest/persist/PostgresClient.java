@@ -164,6 +164,8 @@ public class PostgresClient {
   /** analyze threshold value in milliseconds */
   private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
 
+  private static final PostgresConnectionManager POSTGRES_CONNECTION_MANAGER = new PostgresConnectionManager();
+
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
   /**
@@ -3525,18 +3527,7 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    */
   public Future<PgConnection> getConnection(PgPool client) {
-    Future<SqlConnection> future = client.getConnection();
-    if (! sharedPgPool) {
-      return future.map(sqlConnection -> (PgConnection) sqlConnection);
-    }
-    // running the two SET queries adds about 1.5 ms execution time
-    // "SET SCHEMA ..." sets the search_path because neither "SET ROLE" nor "SET SESSION AUTHORIZATION" set it
-    String sql = DEFAULT_SCHEMA.equals(tenantId)
-        ? "SET ROLE NONE; SET SCHEMA ''"
-        : "SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'";
-    return future.compose(sqlConnection ->
-        sqlConnection.query(sql).execute()
-            .map((PgConnection) sqlConnection));
+    return POSTGRES_CONNECTION_MANAGER.getConnection(client, sharedPgPool, schemaName, tenantId);
   }
   /**
    * Get Vert.x {@link PgConnection}.
