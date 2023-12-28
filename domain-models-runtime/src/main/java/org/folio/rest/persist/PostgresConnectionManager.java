@@ -1,40 +1,57 @@
 package org.folio.rest.persist;
 
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgPool;
-import io.vertx.sqlclient.SqlConnection;
-
+import io.vertx.sqlclient.Pool;
 import io.vertx.core.Future;
 
-import java.util.HashMap;
-import java.util.Map;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class PostgresConnectionManager {
-  private Map<String, SQLConnection> tenantConnections;
+  private static final Logger LOG = LogManager.getLogger(PostgresConnectionManager.class);
 
-  private String currentTenantId;
+  private PgConnection currentConnection;
+
+  private String currentTenant;
 
   public PostgresConnectionManager() {
-    this.tenantConnections = new HashMap<>();
+    // TODO Document
   }
 
-  public Future<PgConnection> getConnection(PgPool pool, boolean sharedPgPool, String schemaName, String tenantId) {
-    Future<SqlConnection> future;
+  public void clear() {
+    this.currentTenant = "";
+    this.currentConnection = null;
 
-    future = pool.getConnection();
+    LOG.debug("Cleared connection manager");
+  }
 
-    if (! sharedPgPool) {
-      return future.map(sqlConnection -> (PgConnection) sqlConnection);
+  public Future<PgConnection> getConnection(Pool pool, String schemaName, String tenantId) {
+    if (! PostgresClient.sharedPgPool) {
+      LOG.debug("Shared - not in shared mode");
+      return pool.getConnection().map(PgConnection.class::cast);
     }
 
-    // running the two SET queries adds about 1.5 ms execution time
-    // "SET SCHEMA ..." sets the search_path because neither "SET ROLE" nor "SET SESSION AUTHORIZATION" set it
-    String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
-            ? "SET ROLE NONE; SET SCHEMA ''"
-            : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
+    if (tenantId.equals(currentTenant)) {
+      // TODO This is rather ineffcient since it always uses the same conn for the tenant.
+      // TODO Perhaps create a list as long as this is true and then re-use from that list.
+      LOG.debug("Shared - Recycling connection for {}", currentTenant);
+      return Future.succeededFuture(currentConnection);
+    } else {
+      currentTenant = tenantId;
 
-    return future.compose(sqlConnection ->
-        sqlConnection.query(sql).execute()
-            .map((PgConnection) sqlConnection));
+      LOG.debug("Shared - Creating connection for {}", currentTenant);
+
+      // running the two SET queries adds about 1.5 ms execution time
+      // "SET SCHEMA ..." sets the search_path because neither "SET ROLE" nor "SET SESSION AUTHORIZATION" set it
+      String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
+          ? "SET ROLE NONE; SET SCHEMA ''"
+          : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
+
+      return pool.getConnection().compose(sqlConnection -> {
+        this.currentConnection = (PgConnection) sqlConnection;
+        return sqlConnection.query(sql).execute()
+            .map((PgConnection) sqlConnection);
+      });
+    }
   }
 }

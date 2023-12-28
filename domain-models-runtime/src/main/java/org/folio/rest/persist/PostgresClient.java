@@ -490,6 +490,8 @@ public class PostgresClient {
    * Close all SQL clients stored in the connection pool.
    */
   public static void closeAllClients() {
+    POSTGRES_CONNECTION_MANAGER.clear();
+
     // copy of values() because closeClient will delete them from CONNECTION_POOL
     for (PostgresClient client : CONNECTION_POOL.values().toArray(new PostgresClient [0])) {
       client.closeClient();
@@ -3527,7 +3529,7 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    */
   public Future<PgConnection> getConnection(PgPool client) {
-    return POSTGRES_CONNECTION_MANAGER.getConnection(client, sharedPgPool, schemaName, tenantId);
+    return POSTGRES_CONNECTION_MANAGER.getConnection(client, schemaName, tenantId);
   }
   /**
    * Get Vert.x {@link PgConnection}.
