@@ -79,4 +79,11 @@ public class PgExceptionFacade {
   public boolean isInvalidTextRepresentation() {
     return PgExceptionUtil.INVALID_TEXT_REPRESENTATION.equals(getSqlState());
   }
+
+  /**
+   * @return whether the sql state is "23F09 FOLIO optimistic locking version conflict"
+   */
+  public boolean isVersionConflict() {
+    return PgExceptionUtil.VERSION_CONFLICT.equals(getSqlState());
+  }
 }

@@ -48,7 +48,7 @@ public class ForeignKeyPerformanceIT {
     if (! sql.endsWith(";\n")) {
       sql += ";\n";
     }
-    client.runSQLFile(sql, true, reply -> async.complete());
+    client.runSqlFile(sql).onComplete(context.asyncAssertSuccess(x -> async.complete()));
     async.awaitSuccess(5000);
   }
 
@@ -85,12 +85,8 @@ public class ForeignKeyPerformanceIT {
   static private void createTables(TestContext context) throws IOException {
     Async async = context.async();
     String sql = resourceAsString("ForeignKeyPerformanceIT.sql");
-    PostgresClient.getInstance(vertx).runSQLFile(sql, false, reply -> {
-      context.assertTrue(reply.succeeded());
-      int failures = reply.result().size();
-      context.assertEquals(0, failures);
-      async.complete();
-    });
+    PostgresClient.getInstance(vertx).runSqlFile(sql)
+    .onComplete(context.asyncAssertSuccess(x -> async.complete()));
     async.awaitSuccess(5000);
   }
 

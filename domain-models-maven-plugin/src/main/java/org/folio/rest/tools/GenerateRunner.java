@@ -148,7 +148,7 @@ public class GenerateRunner {
   /**
    * Generate the .java files from the .raml files.
    * @param inputDirectory  where to search for .raml files
-   * @throws Exception  on read, write or validate error
+   * @throws IOException  on read, write or validate error
    */
   public void generate(String inputDirectory) throws IOException {
     System.out.println("GenerateRunner.generate Input directory " + inputDirectory);

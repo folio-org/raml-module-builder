@@ -24,10 +24,16 @@ public class PgExceptionFacadeTest {
   }
 
   @Test
-  void isInvalidTextRepresentation() {
+  void invalidTextRepresentation() {
     PgExceptionFacade f = new PgExceptionFacade(new PgException(null, null, "22P02", null));
     assertThat(f.isInvalidTextRepresentation(), is(true));
-    PgExceptionFacade f2 = new PgExceptionFacade(new PgException(null, null, "22P03", null));
-    assertThat(f2.isInvalidTextRepresentation(), is(false));
+    assertThat(f.isVersionConflict(), is(false));
+  }
+
+  @Test
+  void versionConflict() {
+    PgExceptionFacade f = new PgExceptionFacade(new PgException(null, null, "23F09", null));
+    assertThat(f.isInvalidTextRepresentation(), is(false));
+    assertThat(f.isVersionConflict(), is(true));
   }
 }

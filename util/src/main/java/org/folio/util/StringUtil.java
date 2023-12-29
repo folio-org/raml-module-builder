@@ -81,7 +81,7 @@ public final class StringUtil {
    * <p>query is {@code username=="\\\*\?\^\""} if s is {@code \*?^"}
    *
    * @return appendable
-   * @see {@link #appendCqlEncoded(Appendable, CharSequence)} for appending to a StringBuilder
+   * @see #appendCqlEncoded(Appendable, CharSequence) appendCqlEncoded for appending to a StringBuilder
    */
   public static String cqlEncode(CharSequence s) {
     if (s == null) {

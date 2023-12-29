@@ -329,7 +329,7 @@ public class PostgresClientIT {
 
   @Test
   public void getNewInstanceSharedPool(TestContext context) {
-    assertPoolsOfTwoTenants(context, true, 1);
+    assertPoolsOfTwoTenants(context, true, 2);
   }
 
   @Test(expected = IllegalArgumentException.class)

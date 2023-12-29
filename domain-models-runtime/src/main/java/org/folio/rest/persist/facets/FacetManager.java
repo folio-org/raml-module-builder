@@ -98,9 +98,9 @@ public class FacetManager {
 
   /**
    * pass in a list of facets, where each facet is in the form of:
-   * a.b.c <- path to the facet
-   * a.b.c:10 <- path to the facet with count of values to return
-   * a < - path to facet - top level field in the json
+   * a.b.c t &lt;- path to the facet
+   * a.b.c:10 &lt;- path to the facet with count of values to return
+   * a &lt;- path to facet - top level field in the json
    *
    * @param facets
    * @param columnName - the column where the json is stored - for example jsonb.

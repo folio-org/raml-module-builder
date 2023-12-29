@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 35.1](#version-351)
 * [Version 35.0](#version-350)
 * [Version 34.0](#version-340)
 * [Version 33.2](#version-332)
@@ -22,6 +23,65 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 35.1
+
+35.1.\* is the Poppy (R2 2023) version.
+
+RMB requires Vert.x 4.4.\*.
+
+RMB uses log4j 2.20.0. Ensure that log4j-bom is listed before vertx-stack-depchain in
+\<dependencyManagement\>.
+
+postgres-testing requires testcontainers >= 1.19.0. If log4j-slf4j-impl has been used
+for testcontainers logging you need to switch to log4j-slf4j2-impl.
+
+RMB no longer can handle uppercase letters in tenant ids. Change unit tests to use
+downcase letters only; consider to also remove underscores in tenant ids to completely
+comply with
+[DR-000002 - Tenant Id and Module Name Restrictions](https://wiki.folio.org/display/TC/DR-000002+-+Tenant+Id+and+Module+Name+Restrictions).
+
+The next step is not strictly required but is needed to comply with the
+[Technical Council decision DR-000012](https://wiki.folio.org/display/TC/DR-000012+-+Localization+parameter+for+back-end).
+
+It removes the deprecated language query parameter, and introduces the totalRecords
+query parameter that exists since RMB 33.2.\*.
+Some modules might already have done this step.
+
+It assumes that https://github.com/folio-org/raml is used as a git submodule at
+`ramls/raml-util/` directory. Update the submodule to the latest commit:
+```
+git submodule update --remote ramls/raml-util/
+git add ramls/raml-util/
+```
+`git add` prevents `pom.xml` from running a reverting `git submodule update`.
+
+This removes the language trait and adds totalRecords to the pageable trait:
+
+* https://github.com/folio-org/raml/pull/141/files
+* https://github.com/folio-org/raml/pull/140/files
+
+Therefore you need to change the parameters of your methods that implement the RAML generated interfaces -
+remove the lang parameter, and add the `String totalRecords` parameter before the `int offset` parameter.
+The compile will fail unless this is done so it's easy to find affected code.
+
+Examples:
+
+Replace
+
+`public void getMyitems(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,`
+
+by
+
+`public void getMyitems(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,`
+
+Replace
+
+`public void postMyitems(String lang, Myitem entity, Map<String, String> okapiHeaders,`
+
+by
+
+`public void postMyitems(Myitem entity, Map<String, String> okapiHeaders,`
 
 ## Version 35.0
 

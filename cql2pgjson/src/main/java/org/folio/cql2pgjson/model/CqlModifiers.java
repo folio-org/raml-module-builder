@@ -4,7 +4,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import org.folio.cql2pgjson.exception.CQLFeatureUnsupportedException;
-import org.folio.cql2pgjson.exception.QueryValidationException;
 import org.z3950.zing.cql.CQLTermNode;
 import org.z3950.zing.cql.Modifier;
 import org.z3950.zing.cql.ModifierSet;
@@ -30,7 +29,7 @@ public class CqlModifiers {
    * Default is ascending, ignoreCase, ignoreAccents and masked.
    *
    * @param modifiers where to read from
-   * @throws QueryValidationException
+   * @throws CQLFeatureUnsupportedException
    */
   @SuppressWarnings("squid:MethodCyclomaticComplexity")
   public final void readModifiers(List<Modifier> modifiers) throws CQLFeatureUnsupportedException {

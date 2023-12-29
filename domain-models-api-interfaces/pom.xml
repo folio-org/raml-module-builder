@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>35.1.0-SNAPSHOT</version>
+    <version>35.2.0-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-api-interfaces</artifactId>
   <properties>
@@ -77,6 +77,10 @@
       <artifactId>domain-models-api-aspects</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
+	<dependency>
+      <groupId>org.apache.commons</groupId>
+	  <artifactId>commons-lang3</artifactId>
+	</dependency>
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-collections4</artifactId>
@@ -137,8 +141,21 @@
 
       <plugin>
         <artifactId>maven-antrun-plugin</artifactId>
-        <version>3.0.0</version>
+        <version>3.1.0</version>
         <executions>
+          <execution>
+            <id>fix-javadoc-in-generated-code</id>
+            <phase>generate-sources</phase>
+            <goals>
+              <goal>run</goal>
+            </goals>
+            <configuration>
+              <target>
+                <replace token="@param java_package" value="@param javaPackage" failOnNoReplacements="true" file="${project.build.directory}/generated-sources/raml-jaxrs/org/folio/rest/jaxrs/resource/Admin.java" />
+                <replace token="@param access_token" value="@param accessToken" failOnNoReplacements="true" file="${project.build.directory}/generated-sources/raml-jaxrs/org/folio/rest/jaxrs/resource/Rmbtests.java" />
+              </target>
+            </configuration>
+          </execution>
           <execution>
             <id>delete-modulename-class</id>
             <phase>process-sources</phase>

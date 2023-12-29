@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>35.1.0-SNAPSHOT</version>
+    <version>35.2.0-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-maven-plugin</artifactId>
   <description>Domain Model Generator that reads RAML files and writes Java files</description>
@@ -87,6 +87,7 @@
       <groupId>org.apache.maven</groupId>
       <artifactId>maven-model</artifactId>
       <version>3.3.9</version>
+      <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>xpp3</groupId>
@@ -168,7 +169,7 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-plugin-plugin</artifactId>
-        <version>3.6.0</version>
+        <version>3.9.0</version>
         <configuration>
           <!-- <goalPrefix>maven-archetype-plugin</goalPrefix> -->
           <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>

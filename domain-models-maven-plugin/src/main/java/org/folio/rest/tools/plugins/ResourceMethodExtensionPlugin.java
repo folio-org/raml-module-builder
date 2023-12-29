@@ -12,7 +12,6 @@ import javax.lang.model.element.Modifier;
 import javax.ws.rs.core.Response;
 
 import org.apache.commons.io.IOUtils;
-import org.folio.rest.tools.AnnotationGrabber;
 import org.folio.rest.tools.PomReader;
 import org.folio.rest.tools.utils.Enum2Annotation;
 import org.folio.rest.annotations.Validate;
@@ -21,7 +20,6 @@ import org.raml.jaxrs.generator.extension.resources.api.ResourceMethodExtension;
 import org.raml.jaxrs.generator.ramltypes.GMethod;
 import org.raml.jaxrs.generator.ramltypes.GParameter;
 import org.raml.jaxrs.generator.ramltypes.GRequest;
-import org.raml.jaxrs.generator.ramltypes.GType;
 import org.raml.v2.api.model.v10.datamodel.ExampleSpec;
 import org.raml.v2.api.model.v10.datamodel.TypeDeclaration;
 import org.raml.v2.api.model.v10.system.types.MarkdownString;
@@ -230,10 +228,6 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
 
     List<GRequest> bodyContent = method.body();
     for(int i=0; i< bodyContent.size(); i++){
-      GType entity = bodyContent.get(i).type();
-      if(entity != null){
-        methodSpec.addJavadoc("@param entity <code>"+entity.defaultJavaTypeName("")+"</code>\n");
-      }
       ExampleSpec example = ((TypeDeclaration)method.body().get(i).implementation()).example();
       if(example != null){
         methodSpec.addJavadoc(example.value());
@@ -241,7 +235,7 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
       }
     }
 
-    methodSpec.addJavadoc("@param asyncResultHandler An AsyncResult<Response> Handler ");
+    methodSpec.addJavadoc("@param asyncResultHandler An AsyncResult&lt;Response&gt; Handler ");
     methodSpec.addJavadoc(" {@link $T} " , Handler.class);
     methodSpec.addJavadoc("which must be called as follows - Note the 'GetPatronsResponse' should be replaced with '[nameOfYourFunction]Response': (example only) <code>asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetPatronsResponse.withJsonOK( new ObjectMapper().readValue(reply.result().body().toString(), Patron.class))));</code> in the final callback (most internal callback) of the function.\n");
 
@@ -249,7 +243,7 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     methodSpec.addJavadoc(" The Vertx Context Object <code>io.vertx.core.Context</code> \n");
 
     methodSpec.addJavadoc("@param okapiHeaders\n");
-    methodSpec.addJavadoc(" Case insensitive map of x-okapi-* headers passed in as part of the request <code>java.util.Map<String, String></code> ");
+    methodSpec.addJavadoc(" Case insensitive map of x-okapi-* headers passed in as part of the request <code>java.util.Map&lt;String, String&gt;</code> ");
   }
 
   private static void handleOverrides() throws IOException {

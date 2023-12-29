@@ -5,7 +5,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>35.1.0-SNAPSHOT</version>
+    <version>35.2.0-SNAPSHOT</version>
   </parent>
 
   <artifactId>util</artifactId>
@@ -42,6 +42,11 @@
       <groupId>org.folio.okapi</groupId>
       <artifactId>okapi-testing</artifactId>
       <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <scope>provided</scope>
     </dependency>
 
   </dependencies>
@@ -84,6 +89,7 @@
           </execution>
         </executions>
         <configuration>
+          <createDependencyReducedPom>false</createDependencyReducedPom>
           <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
         </configuration>
       </plugin>

@@ -247,7 +247,7 @@ public class PostgresClient {
    * <p>Setting the same or a different PostgresTester instance invokes the close method of the
    * old PostgresTester instance.
    *
-   * <p>See {@link org.folio.postgres.testing.PostgresTesterContainer#PostgresTesterContainer()}
+   * <p>See {@code org.folio.postgres.testing.PostgresTesterContainer}.
    *
    * @param tester instance to use for testing.
    */
@@ -704,7 +704,7 @@ public class PostgresClient {
   /**
    * Start an SQL transaction.
    *
-   * <p>Use the AsyncResult<SQLConnection> result to invoke any of the
+   * <p>Use the AsyncResult&lt;SQLConnection&gt; result to invoke any of the
    * functions that take that result as first parameter for the commands
    * within the transaction.
    *
@@ -892,7 +892,6 @@ public class PostgresClient {
    * @param table database table (without schema)
    * @param id primary key for the record
    * @param entity a POJO (plain old java object)
-   * @param replyHandler returns any errors and the entity after applying any database INSERT triggers
    * @return the entity after applying any database INSERT triggers
    */
   public <T> Future<T> saveAndReturnUpdatedEntity(String table, String id, T entity) {
@@ -1379,7 +1378,7 @@ public class PostgresClient {
    * <br>
    * 1. can be mapped from a string in the following format [{"field":"''","value":"","op":""}]
    * <pre>
-   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"); //denotes funds_distribution is an array of objects
+   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"&lt;\"}]"); //denotes funds_distribution is an array of objects
    *    Criterion a = json2Criterion("[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]");
    *    (see postgres query syntax for more examples in the read.me
    * </pre>
@@ -1435,7 +1434,7 @@ public class PostgresClient {
    * <br>
    * 1. can be mapped from a string in the following format [{"field":"''","value":"","op":""}]
    * <pre>
-   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"<\"}]"); //denotes funds_distribution is an array of objects
+   *    Criterion a = json2Criterion("[{\"field\":\"'fund_distributions'->[]->'amount'->>'sum'\",\"value\":120,\"op\":\"&lt;\"}]"); //denotes funds_distribution is an array of objects
    *    Criterion a = json2Criterion("[{"field":"'po_line_status'->>'value'","value":"SENT","op":"like"},{"field":"'owner'->>'value'","value":"MITLIBMATH","op":"="}, {"op":"AND"}]");
    *    (see postgres query syntax for more examples in the read.me
    * </pre>
@@ -2552,7 +2551,7 @@ public class PostgresClient {
     /**
      * @param t  some input
      * @return some output
-     * @throws Exception of type E
+     * @throws E Exception of type E
      */
     R apply(T t) throws E;
   }
@@ -2678,7 +2677,7 @@ public class PostgresClient {
   }
 
   /**
-   * Get the jsonb by id with the readonly connectino and return it as a pojo of type T.
+   * Get the jsonb by id with the readonly connection and return it as a pojo of type T.
    * @param table  the table to search in
    * @param id  the value of the id field
    * @param clazz  the type of the pojo
@@ -4203,29 +4202,61 @@ public class PostgresClient {
   }
 
   /**
+   * Will connect to a specific database and execute the commands in sqlFile.
+   * <p>
+   * NOTE: NOT tested on all types of statements - but on a lot
+   * <p>
+   * Returns a failed Future if an SQL statement fails, this
+   * is different from {@link #runSQLFile(String, boolean)} and
+   * {@link #runSQLFile(String, boolean, Handler)}.
+   *
+   * @param sqlFile - string of sql statements
+   */
+  public Future<Void> runSqlFile(String sqlFile) {
+    return Future.<List<String>>future(promise -> runSQLFile(sqlFile, true, promise))
+        .compose(errors -> {
+          if (errors.isEmpty()) {
+            return Future.succeededFuture();
+          } else {
+            return Future.failedFuture(errors.get(0));
+          }
+        });
+  }
+
+  /**
    * Will connect to a specific database and execute the commands in the .sql file
-   * against that database.<p />
+   * against that database.<p>
    * NOTE: NOT tested on all types of statements - but on a lot
    *
    * @param sqlFile - string of sqls with executable statements
    * @param stopOnError - stop on first error
    * @return Future with list of failures, each failure is a string of the
    *     statement that failed and the error message; the list may be empty
+   * @deprecated Use {@link #runSqlFile(String)} instead, unlike this method it returns a failed
+   *     Future on SQL error.
    */
+  @SuppressWarnings("java:S1845")  // suppress "Methods should not differ only by capitalization", the
+  // non-deprecated method has correct camel case: https://google.github.io/styleguide/javaguide.html#s5.3-camel-case
+  @Deprecated
   public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
     return Future.future(promise -> runSQLFile(sqlFile, stopOnError, promise));
   }
 
   /**
    * Will connect to a specific database and execute the commands in the .sql file
-   * against that database.<p />
+   * against that database.<p>
    * NOTE: NOT tested on all types of statements - but on a lot
    *
    * @param sqlFile - string of sqls with executable statements
    * @param stopOnError - stop on first error
    * @param replyHandler - the handler's result is the list of failures, each failure is a string of the
    *     statement that failed and the error message; the list may be empty
+   * @deprecated Use {@link #runSqlFile(String)} instead, unlike this method it returns a failed
+   *     Future on SQL error.
    */
+  @SuppressWarnings("java:S1845")  // suppress "Methods should not differ only by capitalization", the
+  // non-deprecated method has correct camel case: https://google.github.io/styleguide/javaguide.html#s5.3-camel-case
+  @Deprecated
   public void runSQLFile(String sqlFile, boolean stopOnError,
       Handler<AsyncResult<List<String>>> replyHandler){
     try {
@@ -4263,10 +4294,10 @@ public class PostgresClient {
               for (int i = 0; i < sql.length; i++) {
                 String stmt = sql[i];
                 future = future.compose(x -> {
-                  log.info("trying to execute: {}" + stmt);
+                  log.info("trying to execute: {}", stmt);
                   return conn.query(stmt).execute()
                       .compose(good -> {
-                        log.info("Successfully executed {}", stmt);
+                        log.info("Successfully executed: {}", stmt);
                         return Future.succeededFuture();
                       }, res -> {
                         log.error(res.getMessage(), res);
@@ -4316,6 +4347,9 @@ public class PostgresClient {
     }
     postgreSQLClientConfig.put(PORT, postgresTester.getPort());
     postgreSQLClientConfig.put(HOST, postgresTester.getHost());
+
+    postgreSQLClientConfig.put(HOST_READER, postgresTester.getReadHost());
+    postgreSQLClientConfig.put(PORT_READER, postgresTester.getReadPort());
   }
 
   /**
@@ -4345,7 +4379,7 @@ public class PostgresClient {
 
   /**
    * Name of the back-end module, usually determined and stored in
-   * {@link org.folio.rest.tools.utils.ModuleName} by domain-models-maven-plugin at build time.
+   * {@code org.folio.rest.tools.utils.ModuleName} by domain-models-maven-plugin at build time.
    */
   public static String getModuleName() {
     return MODULE_NAME;

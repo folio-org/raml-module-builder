@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>35.1.0-SNAPSHOT</version>
+    <version>35.2.0-SNAPSHOT</version>
   </parent>
 
   <repositories>
@@ -264,7 +264,7 @@
             <goals>
               <goal>add-source</goal>
             </goals>
-            <phase>process-sources</phase>
+            <phase>generate-sources</phase>
             <configuration>
               <sources>
                 <source>${project.build.directory}/generated-sources/rmbversion</source>
@@ -280,7 +280,7 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
+          <release>17</release>
           <includes>
             <include>**/*.java</include>
             <include>**/*.aj</include>
@@ -459,6 +459,7 @@
                   </excludes>
                 </filter>
               </filters>
+              <createDependencyReducedPom>false</createDependencyReducedPom>
               <outputFile>${project.build.directory}/${project.artifactId}-fat.jar</outputFile>
             </configuration>
           </execution>

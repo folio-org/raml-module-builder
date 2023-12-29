@@ -40,7 +40,6 @@ import io.vertx.core.AsyncResult;
 import io.vertx.core.Context;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
-import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 
 public class AdminAPI implements Admin {
@@ -208,25 +207,19 @@ public class AdminAPI implements Admin {
     try {
       String tenantId = TenantTool.tenantId(okapiHeaders);
       String sqlFile = IOUtils.toString(entity, "UTF8");
-      PostgresClient.getInstance(vertxContext.owner(), tenantId).runSQLFile(sqlFile, false, reply -> {
-        if (! reply.succeeded()) {
-          log.error(reply.cause().getMessage(), reply.cause());
-          asyncResultHandler.handle(Future.failedFuture(reply.cause().getMessage()));
-          return;
-        }
-        if (! reply.result().isEmpty()) {
-          // some statements failed, transaction aborted
-          String msg = "postAdminImportSQL failed:\n  " + String.join("\n  ", reply.result());
-          log.error(msg);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-            PostAdminImportSQLResponse.respond400WithTextPlain(msg)));
-          return;
-        }
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PostAdminImportSQLResponse.respond200(null)));
-      });
+      PostgresClient.getInstance(vertxContext.owner(), tenantId).runSqlFile(sqlFile)
+      .onFailure(e -> {
+        log.error("{}", e.getMessage(), e);
+        asyncResultHandler.handle(Future.succeededFuture(
+            PostAdminImportSQLResponse.respond400WithTextPlain(e.getMessage())));
+      })
+      .onSuccess(x -> asyncResultHandler.handle(Future.succeededFuture(
+          PostAdminImportSQLResponse.respond200(PostAdminImportSQLResponse.headersFor200())))
+      );
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.failedFuture(e.getMessage()));
+      log.error("{}", e.getMessage(), e);
+      asyncResultHandler.handle(Future.succeededFuture(
+          PostAdminImportSQLResponse.respond500WithTextPlain(e.getMessage())));
     }
   }
 
@@ -667,38 +660,19 @@ public class AdminAPI implements Admin {
 
       String sqlFile = sMaker.generateIndexesOnly();
 
-      PostgresClient.getInstance(vertxContext.owner()).runSQLFile(sqlFile, true,
-        reply -> {
-          try {
-            StringBuilder res = new StringBuilder();
-            if (reply.succeeded()) {
-              boolean failuresExist = false;
-              if(reply.result().size() > 0){
-                failuresExist = true;
-              }
-              res.append(new JsonArray(reply.result()).encodePrettily());
-              if(failuresExist){
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  PutAdminPostgresCreateIndexesResponse.respond400WithTextPlain(res.toString())));
-              }
-              else{
-                asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(
-                  PutAdminPostgresCreateIndexesResponse.respond204()));
-              }
-            } else {
-              log.error(reply.cause().getMessage(), reply.cause());
-              asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
-                respond500WithTextPlain(reply.cause().getMessage())));
-            }
-          } catch (Exception e) {
-            log.error(e.getMessage(), e);
-            asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
-              respond500WithTextPlain(e.getMessage())));
-          }
-        });
+      PostgresClient.getInstance(vertxContext.owner()).runSqlFile(sqlFile)
+      .onFailure(e -> {
+        log.error("{}", e.getMessage(), e);
+        asyncResultHandler.handle(Future.succeededFuture(
+            PutAdminPostgresCreateIndexesResponse.respond400WithTextPlain(e.getMessage())));
+      })
+      .onSuccess(x ->
+        asyncResultHandler.handle(Future.succeededFuture(
+            PutAdminPostgresCreateIndexesResponse.respond204()))
+      );
     } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
+      log.error("{}", e.getMessage(), e);
+      asyncResultHandler.handle(Future.succeededFuture(PutAdminPostgresCreateIndexesResponse.
         respond500WithTextPlain(e.getMessage())));
     }
 

@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>35.1.0-SNAPSHOT</version>
+  <version>35.2.0-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -27,11 +27,14 @@
   </licenses>
 
   <properties>
-    <aspectj.version>1.9.19</aspectj.version>
-    <junit-jupiter-version>5.9.1</junit-jupiter-version>
-    <maven.version>3.8.4</maven.version>
-    <vertx.version>4.3.8</vertx.version>
-    <micrometer.version>1.10.3</micrometer.version>  <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
+
+    <project.build.outputTimestamp>2023-10-20T10:38:23Z</project.build.outputTimestamp>
+
+    <aspectj.version>1.9.20.1</aspectj.version>
+    <junit-jupiter-version>5.10.0</junit-jupiter-version>
+    <maven.version>3.9.4</maven.version>
+    <vertx.version>4.4.6</vertx.version>
+    <micrometer.version>1.11.4</micrometer.version> <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -54,7 +57,14 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>31.1-jre</version>
+        <version>32.1.2-jre</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.logging.log4j</groupId>
+        <artifactId>log4j-bom</artifactId>
+        <version>2.20.0</version>
+        <type>pom</type>
+        <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>io.vertx</groupId>
@@ -73,7 +83,7 @@
       <dependency>
         <groupId>io.rest-assured</groupId>
         <artifactId>rest-assured</artifactId>
-        <version>5.2.0</version>
+        <version>5.3.2</version>
       </dependency>
       <dependency>
         <groupId>javax.ws.rs</groupId>
@@ -83,7 +93,7 @@
       <dependency>
         <groupId>commons-io</groupId>
         <artifactId>commons-io</artifactId>
-        <version>2.11.0</version>
+        <version>2.13.0</version>
       </dependency>
       <dependency>
         <groupId>junit</groupId>
@@ -98,14 +108,7 @@
       <dependency>
         <groupId>org.apache.commons</groupId>
         <artifactId>commons-lang3</artifactId>
-        <version>3.12.0</version>
-      </dependency>
-      <dependency>
-        <groupId>org.apache.logging.log4j</groupId>
-        <artifactId>log4j-bom</artifactId>
-        <version>2.19.0</version>
-        <scope>import</scope>
-        <type>pom</type>
+        <version>3.13.0</version>
       </dependency>
       <dependency>
         <groupId>org.aspectj</groupId>
@@ -160,14 +163,14 @@
       <dependency>
         <groupId>org.mockito</groupId>
         <artifactId>mockito-bom</artifactId>
-        <version>5.1.1</version>
+        <version>5.5.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
       <dependency>
         <groupId>org.glassfish.jersey.media</groupId>
         <artifactId>jersey-media-json-jackson</artifactId>
-        <version>2.38</version>
+        <version>2.40</version>
       </dependency>
       <dependency>
         <groupId>javax.validation</groupId>
@@ -193,12 +196,12 @@
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-common</artifactId>
-        <version>4.14.10</version>
+        <version>5.0.2</version>
       </dependency>
       <dependency>
         <groupId>org.folio.okapi</groupId>
         <artifactId>okapi-testing</artifactId>
-        <version>4.14.10</version>
+        <version>5.0.2</version>
       </dependency>
       <dependency>
         <groupId>org.apache.commons</groupId>
@@ -208,7 +211,7 @@
       <dependency>
         <groupId>org.testcontainers</groupId>
         <artifactId>testcontainers-bom</artifactId>
-        <version>1.17.6</version>
+        <version>1.19.0</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -222,9 +225,9 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.8.1</version>
+          <version>3.11.0</version>
           <configuration>
-            <release>11</release>
+            <release>17</release>
             <compilerArgument>-Xlint:unchecked</compilerArgument>
             <encoding>UTF-8</encoding>
           </configuration>
@@ -239,25 +242,25 @@
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>exec-maven-plugin</artifactId>
-          <version>3.0.0</version>
+          <version>3.1.0</version>
         </plugin>
 
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-enforcer-plugin</artifactId>
-          <version>3.0.0-M3</version>
+          <version>3.4.1</version>
         </plugin>
 
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>2.22.2</version>
+          <version>3.1.2</version>
         </plugin>
 
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-shade-plugin</artifactId>
-          <version>3.2.4</version>
+          <version>3.5.1</version>
           <configuration>
             <filters>
               <filter>
@@ -273,7 +276,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>2.22.2</version>
+          <version>3.1.2</version>
           <configuration>
             <useSystemClassLoader>false</useSystemClassLoader>
             <classesDirectory>${project.build.outputDirectory}</classesDirectory>
@@ -292,13 +295,13 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-resources-plugin</artifactId>
-          <version>3.2.0</version>
+          <version>3.3.1</version>
         </plugin>
 
         <plugin>
           <groupId>org.codehaus.mojo</groupId>
           <artifactId>build-helper-maven-plugin</artifactId>
-          <version>3.2.0</version>
+          <version>3.4.0</version>
           <executions>
             <execution>
               <id>add-raml-jaxrs-source</id>
@@ -327,7 +330,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>versions-maven-plugin</artifactId>
-        <version>2.8.1</version>
+        <version>2.16.1</version>
         <configuration>
           <generateBackupPoms>false</generateBackupPoms>
         </configuration>
@@ -336,7 +339,7 @@
       <plugin>
         <groupId>org.codehaus.mojo</groupId>
         <artifactId>properties-maven-plugin</artifactId>
-        <version>1.0.0</version>
+        <version>1.2.0</version>
         <executions>
           <execution>
             <goals>
@@ -357,12 +360,12 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-checkstyle-plugin</artifactId>
-        <version>3.1.2</version>
+        <version>3.3.0</version>
         <dependencies>
           <dependency>
             <groupId>com.puppycrawl.tools</groupId>
             <artifactId>checkstyle</artifactId>
-            <version>10.3</version>
+            <version>10.12.3</version>
           </dependency>
         </dependencies>
         <executions>
@@ -421,8 +424,14 @@
       </plugin>
 
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <version>3.3.0</version>
+      </plugin>
+
+      <plugin>
         <artifactId>maven-source-plugin</artifactId>
-        <version>3.2.1</version>
+        <version>3.3.0</version>
         <executions>
           <execution>
             <id>attach-sources</id>
@@ -436,7 +445,7 @@
 
       <plugin>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>3.3.1</version>
+        <version>3.6.0</version>
         <executions>
           <execution>
             <id>attach-javadocs</id>
@@ -450,7 +459,7 @@
 
       <plugin>
         <artifactId>maven-deploy-plugin</artifactId>
-        <version>3.0.0-M2</version>
+        <version>3.1.1</version>
         <executions>
           <execution>
             <id>deploy</id>
