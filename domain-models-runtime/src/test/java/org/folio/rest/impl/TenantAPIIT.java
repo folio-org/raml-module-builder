@@ -652,6 +652,7 @@ public class TenantAPIIT {
   }
 
   private Future<Row> assertCount(TestContext context, String tenant, int expectedCount) {
+    // TODO When executed in parallel on the second time, when the connection limit > 1, the relation doesn't exist.
     return PostgresClient.getInstance(vertx, tenant).selectSingle("SELECT count(*) from test_tenantapi")
         .onComplete(context.asyncAssertSuccess(row -> assertThat(row.getInteger(0), is(expectedCount))));
   }

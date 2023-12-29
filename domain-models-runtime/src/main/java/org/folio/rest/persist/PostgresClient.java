@@ -25,7 +25,6 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
-import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 
@@ -490,8 +489,6 @@ public class PostgresClient {
    * Close all SQL clients stored in the connection pool.
    */
   public static void closeAllClients() {
-    POSTGRES_CONNECTION_MANAGER.clear();
-
     // copy of values() because closeClient will delete them from CONNECTION_POOL
     for (PostgresClient client : CONNECTION_POOL.values().toArray(new PostgresClient [0])) {
       client.closeClient();
@@ -501,6 +498,8 @@ public class PostgresClient {
     PG_POOLS.clear();
     PG_POOLS_READER.values().forEach(PgPool::close);
     PG_POOLS_READER.clear();
+
+    POSTGRES_CONNECTION_MANAGER.clearCache();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, boolean isReader) {
