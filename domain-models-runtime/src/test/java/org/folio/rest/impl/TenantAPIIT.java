@@ -692,7 +692,7 @@ public class TenantAPIIT {
   }
 
   @Test
-  public void postTenantPSharedPoolCache(TestContext context) {
+  public void postTenantSharedPoolCache(TestContext context) {
     PostgresClientHelper.setSharedPgPool(true);
     var tenant = "tenant5";
     tenantPost(new TenantAPI(), context, null, tenant);
