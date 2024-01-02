@@ -41,7 +41,7 @@ public class PostgresConnectionManager {
     return getCachedConnection(pool, schemaName, tenantId);
   }
 
-  Future<PgConnection> getCachedConnection(Pool pool, String schemaName, String tenantId) {
+  private Future<PgConnection> getCachedConnection(Pool pool, String schemaName, String tenantId) {
     if (tenantId.equals(currentTenant)) {
       var connection = tryGetCachedConnection();
       if (connection != null) {
@@ -60,14 +60,14 @@ public class PostgresConnectionManager {
     return createAndCacheConnection(pool, schemaName, tenantId);
   }
 
-  PgConnection tryGetCachedConnection() {
-    if (connectionCache.size() == cacheSizeLimit) {
+  private PgConnection tryGetCachedConnection() {
+    if (connectionCache.size() > cacheSizeLimit) {
       return getCachedConnection();
     }
     return null;
   }
 
-  Future<PgConnection> createAndCacheConnection(Pool pool, String schemaName, String tenantId) {
+  private Future<PgConnection> createAndCacheConnection(Pool pool, String schemaName, String tenantId) {
     return pool.getConnection().compose(sqlConnection -> {
       String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
           ? "SET ROLE NONE; SET SCHEMA ''"
@@ -81,12 +81,12 @@ public class PostgresConnectionManager {
     });
   }
 
-  PgConnection getCachedConnection() {
+  private PgConnection getCachedConnection() {
     if (connectionCache.isEmpty()) {
       throw new IllegalStateException("No connections available");
     }
 
-    LOG.debug("Returning cache item {} for tenant {}", currentIndex, currentTenant);
+    LOG.debug("Returning cache item for tenant {} {}", currentTenant, currentIndex);
 
     PgConnection nextConnection = connectionCache.get(currentIndex);
     currentIndex = (currentIndex + 1) % connectionCache.size();

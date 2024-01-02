@@ -675,14 +675,6 @@ public class TenantAPIIT {
     PostgresClient.getInstance(vertx, tenant1).execute("INSERT INTO test_tenantapi VALUES ('27f0857b-3165-4d5a-af77-229e4ad7921d', '{}')")
     .compose(x -> assertCountFour(context, tenant1, 1))
     .compose(x -> assertCountFour(context, tenant2, 0))
-        .compose(x -> assertCountFour(context, tenant2, 0))
-        .compose(x -> assertCountFour(context, tenant2, 0))
-        .compose(x -> assertCountFour(context, tenant2, 0))
-        .compose(x -> assertCountFour(context, tenant2, 0))
-        .compose(x -> assertCountFour(context, tenant2, 0))
-        .compose(x -> assertCountFour(context, tenant2, 0))
-        .compose(x -> assertCountFour(context, tenant2, 0))
-        .compose(x -> assertCountFour(context, tenant2, 0))
     .compose(x -> tenantPurge(context, tenant2))
     .compose(x -> assertCountFour(context, tenant1, 1))
     .onComplete(context.asyncAssertSuccess());
@@ -697,5 +689,19 @@ public class TenantAPIIT {
   @Test
   public void postTenantPurgeTenantPools(TestContext context) {
     assertTenantPurge(context, "tenant3", "tenant4");
+  }
+
+  @Test
+  public void postTenantPSharedPoolCache(TestContext context) {
+    PostgresClientHelper.setSharedPgPool(true);
+    var tenant = "tenant5";
+    tenantPost(new TenantAPI(), context, null, tenant);
+    PostgresClient.getInstance(vertx, tenant).execute("INSERT INTO test_tenantapi VALUES ('27f0857b-3165-4d5a-af77-229e4ad7921d', '{}')")
+        .compose(x -> assertCountFour(context, tenant, 1)) // Populates cache with 4 connections.
+        .compose(x -> assertCountFour(context, tenant, 1)) // Uses 4 cached connections in circular cache.
+        .onComplete(x -> {
+          PostgresClientHelper.setSharedPgPool(false);
+          context.asyncAssertSuccess();
+        });
   }
 }
