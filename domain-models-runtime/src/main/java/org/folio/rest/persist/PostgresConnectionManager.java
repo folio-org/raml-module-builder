@@ -13,7 +13,7 @@ import java.util.List;
 
 public class PostgresConnectionManager {
   private static final Logger LOG = LogManager.getLogger(PostgresConnectionManager.class);
-  private static final int DEFAULT_CACHE_SIZE = 5;
+  private static final int DEFAULT_CACHE_SIZE = 4;
   private final int cacheSizeLimit;
   private final List<PgConnection> connectionCache = new ArrayList<>();
   private String currentTenant = "";
@@ -53,6 +53,8 @@ public class PostgresConnectionManager {
     }
 
     clearCache();
+
+    currentTenant = tenantId;
 
     LOG.debug("Starting new connection cache for tenant {} {}", tenantId, connectionCache.size());
     return createAndCacheConnection(pool, schemaName, tenantId);
