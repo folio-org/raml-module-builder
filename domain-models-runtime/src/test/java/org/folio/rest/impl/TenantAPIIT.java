@@ -51,7 +51,7 @@ public class TenantAPIIT {
   private static final int TIMER_WAIT = 10000;
 
   @Rule
-  public Timeout rule = Timeout.seconds(20);
+  public Timeout rule = Timeout.seconds(1000);
 
   @BeforeClass
   public static void setUpClass() {
@@ -691,13 +691,15 @@ public class TenantAPIIT {
     assertTenantPurge(context, "tenant3", "tenant4");
   }
 
-  //@Test
+  @Test
   public void postTenantPoolShared(TestContext context) { // TODO Figure out why the order that this test runs in matters. The alpha sorting of the method name matters.
     PostgresClientHelper.setSharedPgPool(true);
     var tenant = "tenant5";
     tenantPost(new TenantAPI(), context, null, tenant);
     PostgresClient.getInstance(vertx, tenant).execute("INSERT INTO test_tenantapi VALUES ('27f0857b-3165-4d5a-af77-229e4ad7921d', '{}')")
         .compose(x -> assertCountFour(context, tenant, 1)) // Populates cache with 4 connections.
+        .compose(x -> assertCountFour(context, tenant, 1)) // Uses 4 cached connections in circular cache.
+        .compose(x -> assertCountFour(context, tenant, 1)) // Uses 4 cached connections in circular cache.
         .compose(x -> assertCountFour(context, tenant, 1)) // Uses 4 cached connections in circular cache.
         .onComplete(x -> {
           PostgresClientHelper.setSharedPgPool(false);

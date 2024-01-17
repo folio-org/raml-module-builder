@@ -48,7 +48,6 @@ public class PostgresConnectionManager {
         return Future.succeededFuture(connection);
       }
 
-      LOG.debug("Adding to connection cache for tenant {} {}", tenantId, connectionCache.size());
       return createAndCacheConnection(pool, schemaName, tenantId);
     }
 
@@ -75,8 +74,10 @@ public class PostgresConnectionManager {
 
       return sqlConnection.query(sql).execute()
           .map(x -> {
-            connectionCache.add((PgConnection) sqlConnection);
-            return (PgConnection) sqlConnection;
+            LOG.debug("Adding to connection cache for tenant {} {}", tenantId, connectionCache.size());
+            var sharedPgConnection = new SharedPgConnection((PgConnection) sqlConnection);
+            connectionCache.add(sharedPgConnection);
+            return sharedPgConnection;
           });
     });
   }
