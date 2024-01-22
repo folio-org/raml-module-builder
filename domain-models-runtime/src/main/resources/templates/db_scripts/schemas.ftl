@@ -24,8 +24,10 @@ CREATE TABLE IF NOT EXISTS rmb_internal_analyze (
   <#list scripts as script>
     <#if script.run == "before">
       <#if (script.isNewForThisInstall(version)) || mode.name() == "CREATE">
+
         <#if mode.name() != "CREATE">
--- Run script - created in version ${(script.fromModuleVersion)!0}
+-- Run "before" script - created in version ${(script.fromModuleVersion)!0}
+
         </#if>
         <#if script.snippetPath??>
           <#include script.snippetPath ignore_missing=false>
@@ -173,8 +175,10 @@ END $$;
   <#list scripts as script>
     <#if script.run == "after">
       <#if (script.isNewForThisInstall(version)) || mode.name() == "CREATE">
+
         <#if mode.name() != "CREATE">
--- Run script - created in version ${(script.fromModuleVersion)!0}
+-- Run "after" script - created in version ${(script.fromModuleVersion)!0}
+
         </#if>
         <#if script.snippetPath??>
           <#include script.snippetPath>
