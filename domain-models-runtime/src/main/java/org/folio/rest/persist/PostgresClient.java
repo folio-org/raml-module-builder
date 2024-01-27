@@ -494,12 +494,13 @@ public class PostgresClient {
       client.closeClient();
     }
 
+    POSTGRES_CONNECTION_MANAGER.clearCache();
+
     PG_POOLS.values().forEach(PgPool::close);
     PG_POOLS.clear();
     PG_POOLS_READER.values().forEach(PgPool::close);
     PG_POOLS_READER.clear();
 
-    POSTGRES_CONNECTION_MANAGER.clearCache();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, boolean isReader) {
@@ -651,6 +652,7 @@ public class PostgresClient {
     if (v instanceof Long) {
       PostgresClient.setExplainQueryThreshold((Long) v);
     }
+    // TODO Why is this sometimes true even though it doesn't seem to have been set yet?
     sharedPgPool |= config.containsKey(MAX_SHARED_POOL_SIZE);
     if (tenantId.equals(DEFAULT_SCHEMA) || sharedPgPool) {
       config.put(PASSWORD, decodePassword( config.getString(PASSWORD) ));

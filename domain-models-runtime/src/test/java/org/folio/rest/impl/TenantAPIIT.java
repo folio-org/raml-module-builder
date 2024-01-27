@@ -668,7 +668,7 @@ public class TenantAPIIT {
         assertCount(context, tenant, expectedCount)));
   }
 
-  private void assertTenantPurge(TestContext context, String tenant1, String tenant2) {
+  private void assertTenantPurge(TestContext context, String tenant1, String tenant2, boolean sharedPool) {
     PostgresClient.closeAllClients();
     tenantPost(new TenantAPI(), context, null, tenant1);
     tenantPost(new TenantAPI(), context, null, tenant2);
@@ -677,33 +677,17 @@ public class TenantAPIIT {
     .compose(x -> assertCountFour(context, tenant2, 0))
     .compose(x -> tenantPurge(context, tenant2))
     .compose(x -> assertCountFour(context, tenant1, 1))
-    .onComplete(context.asyncAssertSuccess());
+    .onComplete(x -> {
+      if (sharedPool) {
+        PostgresClientHelper.setSharedPgPool(false);
+      }
+      context.asyncAssertSuccess();
+    });
  }
 
   @Test
-  public void postTenantPurgeSharedPool(TestContext context) {
-    PostgresClientHelper.setSharedPgPool(true);
-    assertTenantPurge(context, "tenant1", "tenant2");
-  }
-
-  @Test
   public void postTenantPurgeTenantPools(TestContext context) {
-    assertTenantPurge(context, "tenant3", "tenant4");
+    assertTenantPurge(context, "tenant3", "tenant4", false);
   }
 
-  @Test
-  public void postTenantPoolShared(TestContext context) { // TODO Figure out why the order that this test runs in matters. The alpha sorting of the method name matters.
-    PostgresClientHelper.setSharedPgPool(true);
-    var tenant = "tenant5";
-    tenantPost(new TenantAPI(), context, null, tenant);
-    PostgresClient.getInstance(vertx, tenant).execute("INSERT INTO test_tenantapi VALUES ('27f0857b-3165-4d5a-af77-229e4ad7921d', '{}')")
-        .compose(x -> assertCountFour(context, tenant, 1)) // Populates cache with 4 connections.
-        .compose(x -> assertCountFour(context, tenant, 1)) // Uses 4 cached connections in circular cache.
-        .compose(x -> assertCountFour(context, tenant, 1)) // Uses 4 cached connections in circular cache.
-        .compose(x -> assertCountFour(context, tenant, 1)) // Uses 4 cached connections in circular cache.
-        .onComplete(x -> {
-          PostgresClientHelper.setSharedPgPool(false);
-          context.asyncAssertSuccess();
-        });
-  }
 }
