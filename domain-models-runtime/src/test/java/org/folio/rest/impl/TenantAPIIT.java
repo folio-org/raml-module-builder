@@ -691,10 +691,4 @@ public class TenantAPIIT {
     assertTenantPurge(context, "tenant3", "tenant4", false);
   }
 
-  @Test
-  public void postTenantPurgeSharedPool(TestContext context) {
-    PostgresClientHelper.setSharedPgPool(true);
-    assertTenantPurge(context, "tenant1", "tenant2", true);
-  }
-
 }

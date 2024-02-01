@@ -20,9 +20,7 @@ public class PostgresConnectionManager {
 
   private int newConnections;
   private int addToCacheCount;
-
   private int cacheHits;
-
   private int activeConnectionCount;
 
   public PostgresConnectionManager() {
