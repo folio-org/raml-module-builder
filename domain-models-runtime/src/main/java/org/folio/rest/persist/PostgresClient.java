@@ -135,6 +135,8 @@ public class PostgresClient {
   private static final String    COMMA = ",";
   private static final String    SEMI_COLON = ";";
 
+  private static final int DEFAULT_MAX_POOL_SIZE = 20;
+
   private static String          configPath               = null;
 
   /**
@@ -608,7 +610,7 @@ public class PostgresClient {
 
     PoolOptions poolOptions = new PoolOptions();
     poolOptions.setMaxSize(
-        configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, 4)));
+        configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, DEFAULT_MAX_POOL_SIZE)));
     Integer connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
     poolOptions.setIdleTimeout(connectionReleaseDelay);
     poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);

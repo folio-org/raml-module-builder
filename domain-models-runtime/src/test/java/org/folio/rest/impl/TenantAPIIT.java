@@ -99,6 +99,7 @@ public class TenantAPIIT {
     };
   }
 
+
   private Future<Void> tenantPurge(TestContext context, String tenant) {
     TenantAttributes tenantAttributes = new TenantAttributes();
     tenantAttributes.setPurge(true);
@@ -688,6 +689,12 @@ public class TenantAPIIT {
   @Test
   public void postTenantPurgeTenantPools(TestContext context) {
     assertTenantPurge(context, "tenant3", "tenant4", false);
+  }
+
+  @Test
+  public void postTenantPurgeSharedPool(TestContext context) {
+    PostgresClientHelper.setSharedPgPool(true);
+    assertTenantPurge(context, "tenant1", "tenant2", true);
   }
 
 }

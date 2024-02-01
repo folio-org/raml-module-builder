@@ -18,6 +18,7 @@ import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.Date;
 import java.util.UUID;
 
 public class CachedPgConnection implements PgConnection {
@@ -26,6 +27,7 @@ public class CachedPgConnection implements PgConnection {
   private final PostgresConnectionManager manager;
   private final UUID sessionId;
   private final String tenantId;
+  private final long timestamp;
   private boolean available;
 
   public CachedPgConnection(String tenantId, PgConnection connection, PostgresConnectionManager manager) {
@@ -33,33 +35,27 @@ public class CachedPgConnection implements PgConnection {
     this.manager =  manager;
     this.sessionId = UUID.randomUUID();
     this.tenantId = tenantId;
+    this.timestamp = System.currentTimeMillis();
   }
 
   @Override
   public Future<Void> close() {
-    LOG.debug("Calling extended method: close");
-    if (this.manager.shouldClose(this)) {
-      LOG.debug("shouldClose is true");
-      return connection.close();
-    }
-    LOG.debug("Returning succeeded future");
+    LOG.debug("Calling close: {} {}", this.tenantId, this.sessionId);
+    this.available = true;
+    this.manager.tryRemoveOldestAvailableConnection();
+    this.manager.tryAddToCache(this);
     return Future.succeededFuture();
   }
 
   @Override
   public void close(Handler<AsyncResult<Void>> handler) {
-    LOG.debug("Calling extended method: Handler<AsyncResult<Void>>");
-    if (this.manager.shouldClose(this)) {
-      connection.close(handler);
-    }
+    LOG.debug("Calling close: Handler<AsyncResult<Void>>");
+
   }
 
   @Override
   public PgConnection closeHandler(Handler<Void> handler) {
-    LOG.debug("Calling extended method: closeHandler Handler<Void>");
-    if (this.manager.shouldClose(this)) {
-      connection.closeHandler(handler);
-    }
+    LOG.debug("Calling close: closeHandler Handler<Void>");
 
     return this;
   }
@@ -165,12 +161,12 @@ public class CachedPgConnection implements PgConnection {
   }
 
   public void setAvailable() {
+    LOG.debug("Setting available: {} {}", this.tenantId, sessionId);
     this.available = true;
   }
 
-  public PgConnection getConnectionAndSetUnavailable() {
+  public void setUnavailable() {
     this.available = false;
-    return this.connection;
   }
 
   public UUID getSessionId() {
@@ -180,4 +176,15 @@ public class CachedPgConnection implements PgConnection {
   public String getTenantId() {
     return tenantId;
   }
+
+  public int getConnectionHash() {
+    if (connection == null) {
+      return -1;
+    }
+    return connection.hashCode();
+  }
+
+  public PgConnection getWrappedConnection() { return connection; }
+
+  public long getTimestamp() { return this.timestamp; }
 }
