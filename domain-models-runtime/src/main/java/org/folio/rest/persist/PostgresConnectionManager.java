@@ -11,32 +11,35 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.List;
 import java.util.Optional;
 
 public class PostgresConnectionManager {
   private static final Logger LOG = LogManager.getLogger(PostgresConnectionManager.class);
-  private final Collection<CachedPgConnection> connectionCache;
+  private final Collection<CachedPgConnection> connectionCache = Collections.synchronizedCollection(new ArrayList<>());
 
-  private int newConnections;
-  private int addToCacheCount;
   private int cacheHits;
+  private int cacheMisses;
   private int activeConnectionCount;
 
   public PostgresConnectionManager() {
-    this.connectionCache = Collections.synchronizedCollection(new ArrayList<>());
+    // TODO
   }
 
-  public PostgresConnectionManager(List<CachedPgConnection> connectionCache) {
-    this.connectionCache = connectionCache;
+  public int getCacheSize() {
+    return connectionCache.size();
   }
 
   public void clearCache() {
     cacheHits = 0;
-    newConnections = 0;
+    cacheMisses = 0;
+    activeConnectionCount = 0;
     connectionCache.clear();
-
     LOG.debug("Cleared connection manager");
+  }
+
+  public void tryClose(CachedPgConnection connection) {
+    this.tryAddToCache(connection);
+    this.tryRemoveOldestAvailableConnectionAndClose();
   }
 
   public Future<PgConnection> getConnection(Pool pool, String schemaName, String tenantId) {
@@ -49,23 +52,24 @@ public class PostgresConnectionManager {
     return getOrCreateCachedConnection(pool, schemaName, tenantId);
   }
 
-  public void tryAddToCache(CachedPgConnection cachedPgConnection) {
-    addToCacheCount++;
-    LOG.debug("Add to cache count: {} {}", cachedPgConnection.getTenantId(), addToCacheCount);
-    if (! connectionCache.contains(cachedPgConnection)) {
-      connectionCache.add(cachedPgConnection);
-      logCache("after add ", -1);
+  private void tryAddToCache(CachedPgConnection connection) {
+    if (connectionCache.contains(connection)) {
+      LOG.debug("Item already exists in cache: {} {} {}",
+          connection.getTenantId(), connection.getSessionId(), connection.isAvailable());
+      return;
     }
+    connectionCache.add(connection);
   }
 
-  public void tryRemoveOldestAvailableConnection() {
-    var poolExhausted = this.connectionCache.size() >= 5;
-    if (! poolExhausted) {
+  private void tryRemoveOldestAvailableConnectionAndClose() {
+    // The cache must not grow larger than the max pool size of the underlying pool.
+    // TODO get the pool size from the env.
+    var cacheExhausted = this.connectionCache.size() >= PostgresClient.DEFAULT_MAX_POOL_SIZE;
+    if (! cacheExhausted) {
+      LOG.debug("Cache is not yet exhausted");
       return;
     }
 
-    LOG.debug("Before remove called");
-    logCache("before remove", -1);
     connectionCache.stream()
         .filter(CachedPgConnection::isAvailable)
         .min(Comparator.comparingLong(CachedPgConnection::getTimestamp))
@@ -78,7 +82,6 @@ public class PostgresConnectionManager {
           }
           connectionCache.remove(connection);
         });
-    LOG.debug("After remove {}", connectionCache.size());
   }
 
   private void logCache(String context, int poolSize) {
@@ -86,14 +89,13 @@ public class PostgresConnectionManager {
 
     synchronized (connectionCache) {
       connectionCache.forEach(c ->
-        LOG.debug("{} {} {} {} {} {} {} {} {}", cacheHits, newConnections, connectionCache.size(),
+        LOG.debug("{} {} {} {} {} {} {} {} {}", cacheHits, cacheMisses, connectionCache.size(),
             activeConnectionCount, poolSize, c.getSessionId(), c.getTenantId(), c.isAvailable(),
             c.getConnectionHash()));
     }
   }
 
   private Future<PgConnection> getOrCreateCachedConnection(Pool pool, String schemaName, String tenantId) {
-    logCache("before cache check: " + tenantId, pool.size());
     Optional<CachedPgConnection> connectionOptional =
         connectionCache.stream().filter(item ->
             item.getTenantId().equals(tenantId) && item.isAvailable()).findFirst();
@@ -107,13 +109,13 @@ public class PostgresConnectionManager {
     }
 
     var ctx = String.format("cache miss %s", tenantId);
+    cacheMisses++;
     logCache(ctx, pool.size());
 
     return createConnectionSession(pool, schemaName, tenantId);
   }
 
   private Future<PgConnection> createConnectionSession(Pool pool, String schemaName, String tenantId) {
-    newConnections++;
     activeConnectionCount++;
     return pool.getConnection().compose(sqlConnection -> {
       String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)

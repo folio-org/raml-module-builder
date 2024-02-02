@@ -73,6 +73,7 @@ public class PostgresClient {
 
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
+  public static final int DEFAULT_MAX_POOL_SIZE = 10;
 
   static Logger log = LogManager.getLogger(PostgresClient.class);
 
@@ -134,8 +135,6 @@ public class PostgresClient {
   private static final String    DOT = ".";
   private static final String    COMMA = ",";
   private static final String    SEMI_COLON = ";";
-
-  private static final int DEFAULT_MAX_POOL_SIZE = 20;
 
   private static String          configPath               = null;
 

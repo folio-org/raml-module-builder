@@ -42,21 +42,20 @@ public class CachedPgConnection implements PgConnection {
   public Future<Void> close() {
     LOG.debug("Calling close: {} {}", this.tenantId, this.sessionId);
     this.available = true;
-    this.manager.tryRemoveOldestAvailableConnection();
-    this.manager.tryAddToCache(this);
+    this.manager.tryClose(this);
     return Future.succeededFuture();
   }
 
   @Override
   public void close(Handler<AsyncResult<Void>> handler) {
     LOG.debug("Calling close: Handler<AsyncResult<Void>>");
-
+    this.manager.tryClose(this);
   }
 
   @Override
   public PgConnection closeHandler(Handler<Void> handler) {
     LOG.debug("Calling close: closeHandler Handler<Void>");
-
+    this.manager.tryClose(this);
     return this;
   }
 
