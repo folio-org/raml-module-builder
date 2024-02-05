@@ -3,9 +3,7 @@ package org.folio.rest.impl;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import javax.ws.rs.core.Response;
 import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -20,7 +18,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.sqlclient.Row;
 
-public class TenantITHelper {
+public class TenantHelper {
   protected static final int TIMER_WAIT = 10000;
   protected static final String tenantId = "folio_shared";
   protected static Map<String,String> okapiHeaders = new HashMap<>();
@@ -52,11 +50,9 @@ public class TenantITHelper {
   }
 
   protected Future<Row> assertCount(TestContext context, String tenant, int expectedCount) {
-    // TODO When executed in parallel on the second time, when the connection limit > 1, the relation doesn't exist.
     return PostgresClient.getInstance(vertx, tenant).selectSingle("SELECT count(*) from test_tenantapi")
         .onComplete(context.asyncAssertSuccess(row -> assertThat(row.getInteger(0), is(expectedCount))));
   }
-
 
   protected Future<Void> tenantPurge(TestContext context, String tenant) {
     TenantAttributes tenantAttributes = new TenantAttributes();

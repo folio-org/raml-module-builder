@@ -36,7 +36,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
 @RunWith(VertxUnitRunner.class)
-public class TenantAPIIT extends TenantITHelper {
+public class TenantAPIIT extends TenantHelper {
 
   @Rule
   public Timeout rule = Timeout.seconds(1000);

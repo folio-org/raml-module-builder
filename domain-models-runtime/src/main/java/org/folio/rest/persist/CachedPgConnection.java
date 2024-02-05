@@ -32,7 +32,7 @@ public class CachedPgConnection implements PgConnection {
 
   public CachedPgConnection(String tenantId, PgConnection connection, PostgresConnectionManager manager) {
     this.connection = connection;
-    this.manager =  manager;
+    this.manager = manager;
     this.sessionId = UUID.randomUUID();
     this.tenantId = tenantId;
     this.timestamp = System.currentTimeMillis();
@@ -49,12 +49,14 @@ public class CachedPgConnection implements PgConnection {
   @Override
   public void close(Handler<AsyncResult<Void>> handler) {
     LOG.debug("Calling close: Handler<AsyncResult<Void>>");
+    this.available = true;
     this.manager.tryClose(this);
   }
 
   @Override
   public PgConnection closeHandler(Handler<Void> handler) {
     LOG.debug("Calling close: closeHandler Handler<Void>");
+    this.available = true;
     this.manager.tryClose(this);
     return this;
   }
@@ -183,7 +185,11 @@ public class CachedPgConnection implements PgConnection {
     return connection.hashCode();
   }
 
-  public PgConnection getWrappedConnection() { return connection; }
+  public PgConnection getWrappedConnection() {
+    return connection;
+  }
 
-  public long getTimestamp() { return this.timestamp; }
+  public long getTimestamp() {
+    return this.timestamp;
+  }
 }
