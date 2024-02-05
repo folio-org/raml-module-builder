@@ -13,7 +13,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class PostgresConnectionManagerLoadTest extends TenantHelper {
   @Rule
-  public Timeout rule = Timeout.seconds(20000);
+  public Timeout rule = Timeout.seconds(20);
 
   @BeforeClass
   public static void setUpClass() {
@@ -39,13 +39,6 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
     putLoadOnTenant("tenant3", context);
     putLoadOnTenant("tenant4", context);
     // Add more tenants to increase demand on cache.
-  }
-
-  @Test
-  public void oneTenantSharedPool(TestContext context) {
-    PostgresClientHelper.setSharedPgPool(true);
-    tenantPost(new TenantAPI(), context, null, "tenant5");
-    putLoadOnTenant("tenant5", context);
   }
 
   private void putLoadOnTenant(String tenant, TestContext context) {

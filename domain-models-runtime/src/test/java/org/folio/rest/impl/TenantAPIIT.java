@@ -39,7 +39,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 public class TenantAPIIT extends TenantHelper {
 
   @Rule
-  public Timeout rule = Timeout.seconds(1000);
+  public Timeout rule = Timeout.seconds(20);
 
   @BeforeClass
   public static void setUpClass() {
