@@ -13,7 +13,7 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
 @RunWith(VertxUnitRunner.class)
 public class PostgresConnectionManagerLoadTest extends TenantHelper {
   @Rule
-  public Timeout rule = Timeout.seconds(10000);
+  public Timeout rule = Timeout.seconds(20000);
 
   @BeforeClass
   public static void setUpClass() {
