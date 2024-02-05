@@ -588,22 +588,17 @@ public class TenantAPIIT extends TenantHelper {
         .compose(x -> assertCountFour(context, tenant2, 0))
         .compose(x -> tenantPurge(context, tenant2))
         .compose(x -> assertCountFour(context, tenant1, 1))
-        .onComplete(x -> {
-          if (sharedPool) {
-            PostgresClientHelper.setSharedPgPool(false);
-          }
-          context.asyncAssertSuccess();
-        });
-  }
-
-  @Test
-  public void postTenantPurgeTenantPools(TestContext context) {
-    assertTenantPurge(context, "tenant3", "tenant4", false);
+        .onComplete(x -> context.asyncAssertSuccess());
   }
 
   @Test
   public void postTenantPurgeSharedPool(TestContext context) {
     PostgresClientHelper.setSharedPgPool(true);
     assertTenantPurge(context, "tenant1", "tenant2", true);
+  }
+
+  @Test
+  public void postTenantPurgeTenantPools(TestContext context) {
+    assertTenantPurge(context, "tenant3", "tenant4", false);
   }
 }
