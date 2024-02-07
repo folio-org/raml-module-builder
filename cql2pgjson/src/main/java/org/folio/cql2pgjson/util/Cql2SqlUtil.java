@@ -33,7 +33,9 @@ public final class Cql2SqlUtil {
    * @param s CQL string without leading or trailing double quote
    * @return SQL LIKE string without leading or trailing single quote
    */
-  @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
+  @SuppressWarnings("squid:S3776")  // Suppress "Cognitive Complexity of methods should not be too high"
+  // because the cognitive complexity metric threshold is a rule of thumb, here it's a false positive:
+  // Splitting this method decreases readability.
   public static String cql2like(String s) {
     StringBuilder like = new StringBuilder();
     boolean backslash = false;  // previous character is backslash
