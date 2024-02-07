@@ -22,9 +22,8 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
   }
 
   @AfterClass
-  public static void afterClass(TestContext context) throws InterruptedException {
-    // TODO Remove before merging.
-    Thread.sleep(2000); // Sleep a bit to see console output.
+  public static void afterClass(TestContext context) {
+    PostgresClientHelper.setSharedPgPool(false);
   }
 
   @Test
@@ -49,9 +48,6 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
         .compose(x -> assertCountFour(context, tenant, 1))
         // Add more compose calls like above to increase load.
         .compose(x -> purgeTenant(tenant))
-        .onSuccess(x -> {
-          PostgresClientHelper.setSharedPgPool(false);
-          context.asyncAssertSuccess();
-        });
+        .onComplete(context.asyncAssertSuccess(x -> {})); // Have to wrap the Handler in the context for it to wait.
   }
 }
