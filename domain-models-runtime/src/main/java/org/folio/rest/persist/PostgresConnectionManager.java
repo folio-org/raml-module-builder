@@ -5,6 +5,7 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Pool;
 import io.vertx.core.Future;
 
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.utils.Envs;
@@ -14,17 +15,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class PostgresConnectionManager {
   public static final int OBSERVER_INTERVAL = 10000;
+  private static final String LOGGER_LABEL = "CONNECTION MANAGER CACHE STATE";
   private static final Logger LOG = LogManager.getLogger(PostgresConnectionManager.class);
-
   private final Collection<CachedPgConnection> connectionCache = Collections.synchronizedCollection(new ArrayList<>());
   private final int maxPoolSize;
-
-  private int cacheHits;
-  private int cacheMisses;
-  private int activeConnectionCount;
+  private final ConnectionMetrics connectionMetrics = new ConnectionMetrics();
   private int lowestReleaseDelayReceived;
 
   public PostgresConnectionManager() {
@@ -36,9 +35,7 @@ public class PostgresConnectionManager {
   }
 
   public void clearCache() {
-    cacheHits = 0;
-    cacheMisses = 0;
-    activeConnectionCount = 0;
+    connectionMetrics.clear();
     connectionCache.clear();
     LOG.debug("Cleared connection manager");
   }
@@ -75,6 +72,7 @@ public class PostgresConnectionManager {
 
     LOG.debug("Setting idle connection timeout observer with interval: {}", observerInterval);
     vertx.setPeriodic(observerInterval, id -> {
+      logCache();
       LOG.debug("Observer firing: {}", id);
       removeCacheConnectionsBeforeTimeout(observerInterval);
     });
@@ -129,34 +127,40 @@ public class PostgresConnectionManager {
         .ifPresent(connection -> {
           LOG.debug("Removing and closing oldest available connection: {} {}",
               connection.getTenantId(), connection.getSessionId());
-          activeConnectionCount--;
+
+          connectionMetrics.activeConnectionCount--;
           connection.getWrappedConnection().close();
           connectionCache.remove(connection);
         });
   }
 
   private Future<PgConnection> getOrCreateCachedConnection(Pool pool, String schemaName, String tenantId) {
+    connectionMetrics.poolSize = pool.size();
+
     Optional<CachedPgConnection> connectionOptional =
         connectionCache.stream().filter(item ->
             item.getTenantId().equals(tenantId) && item.isAvailable()).findFirst();
+
     if (connectionOptional.isPresent()) {
-      cacheHits++;
+      connectionMetrics.incrementHits();
       CachedPgConnection connection = connectionOptional.get();
-      var ctx = String.format("cache hit %s %s", connection.getTenantId(), connection.getSessionId());
-      logCache(ctx, pool.size());
       connection.setUnavailable();
+
+      var ctx = String.format("cache hit %s %s", connection.getTenantId(), connection.getSessionId());
+      debugLogCache(ctx);
+
       return Future.succeededFuture(connection);
     }
 
+    connectionMetrics.incrementMisses();
     var ctx = String.format("cache miss %s", tenantId);
-    cacheMisses++;
-    logCache(ctx, pool.size());
+    debugLogCache(ctx);
 
     return createConnectionSession(pool, schemaName, tenantId);
   }
 
   private Future<PgConnection> createConnectionSession(Pool pool, String schemaName, String tenantId) {
-    activeConnectionCount++;
+    connectionMetrics.activeConnectionCount++;
     return pool.getConnection().compose(sqlConnection -> {
       String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
           ? "SET ROLE NONE; SET SCHEMA ''"
@@ -166,14 +170,57 @@ public class PostgresConnectionManager {
     });
   }
 
-  private void logCache(String context, int poolSize) {
-    LOG.debug("Current cache state: {}", context);
+  private void debugLogCache(String event) {
+    if (LOG.getLevel() == Level.DEBUG) {
+      var msg = connectionMetrics.toStringDebug(String.format(LOGGER_LABEL + ": %s", event));
+      LOG.debug(msg);
+    }
+  }
 
-    synchronized (connectionCache) {
-      connectionCache.forEach(c ->
-          LOG.debug("{} {} {} {} {} {} {} {} {}", cacheHits, cacheMisses, connectionCache.size(),
-              activeConnectionCount, poolSize, c.getSessionId(), c.getTenantId(), c.isAvailable(),
-              c.getConnectionHash()));
+  private void logCache() {
+    var msg = this.connectionMetrics.toString(LOGGER_LABEL);
+    LOG.info(msg);
+  }
+
+  class ConnectionMetrics {
+    int cacheHits;
+    int cacheMisses;
+    int activeConnectionCount;
+    int poolSize;
+
+    void clear() {
+      cacheHits = 0;
+      cacheMisses = 0;
+      activeConnectionCount = 0;
+    }
+
+    void incrementHits() {
+      cacheHits = (cacheHits == Integer.MAX_VALUE) ? 0 : (cacheHits + 1);
+    }
+
+    void incrementMisses() {
+      cacheMisses = (cacheMisses == Integer.MAX_VALUE) ? 0 : (cacheMisses + 1);
+    }
+
+    String toString(String msg) {
+      var header =
+          String.format("%n%s%n%-11s %-11s %-11s %-11s %-11s%n", msg, "Hits", "Misses", "Size", "Active", "Pool");
+      var footer = String.format("%-11d %-11d %-11d %-11d %-11d",
+          cacheHits, cacheMisses, connectionCache.size(), activeConnectionCount, poolSize);
+      return header + footer;
+    }
+
+    String toStringDebug(String msg) {
+      var withCollection = toString(msg) + "\nCache items:\n" ;
+      synchronized (connectionCache) {
+        withCollection += connectionCache.stream()
+            .map(item -> item.getSessionId() + " " +
+                item.getTenantId() + " " +
+                item.isAvailable() + " " +
+                item.getLastUsedAt())
+            .collect(Collectors.joining("\n"));
+      }
+      return withCollection;
     }
   }
 }
