@@ -1,11 +1,13 @@
 package org.folio.rest.persist;
 
+import io.vertx.core.Vertx;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Pool;
 import io.vertx.core.Future;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.rest.tools.utils.Envs;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -14,15 +16,19 @@ import java.util.Comparator;
 import java.util.Optional;
 
 public class PostgresConnectionManager {
+  public static final int OBSERVER_INTERVAL = 10000;
   private static final Logger LOG = LogManager.getLogger(PostgresConnectionManager.class);
+
   private final Collection<CachedPgConnection> connectionCache = Collections.synchronizedCollection(new ArrayList<>());
+  private final int maxPoolSize;
 
   private int cacheHits;
   private int cacheMisses;
   private int activeConnectionCount;
+  private int lowestReleaseDelayReceived;
 
   public PostgresConnectionManager() {
-    // TODO
+    this.maxPoolSize = getMaxSharedPoolSize();
   }
 
   public int getCacheSize() {
@@ -52,6 +58,48 @@ public class PostgresConnectionManager {
     return getOrCreateCachedConnection(pool, schemaName, tenantId);
   }
 
+  public void setObserver(Vertx vertx,  int connectionReleaseDelay) {
+    setObserver(vertx, connectionReleaseDelay, OBSERVER_INTERVAL);
+  }
+
+  public void setObserver(Vertx vertx, int connectionReleaseDelay, int observerInterval) {
+    if (connectionReleaseDelay == 0) {
+      // Zero means there is no timeout and connections should be kept open forever. See the RMB readme.
+      return;
+    }
+
+    if (this.lowestReleaseDelayReceived == 0 || connectionReleaseDelay < lowestReleaseDelayReceived) {
+      // Since there can be multiple clients, we let whichever one has provided the lowest release delay win.
+      this.lowestReleaseDelayReceived = connectionReleaseDelay;
+    }
+
+    LOG.debug("Setting idle connection timeout observer with interval: {}", observerInterval);
+    vertx.setPeriodic(observerInterval, id -> {
+      LOG.debug("Observer firing: {}", id);
+      removeCacheConnectionsBeforeTimeout(observerInterval);
+    });
+  }
+
+  private void removeCacheConnectionsBeforeTimeout(int observerInterval) {
+    connectionCache.removeIf(item -> {
+      boolean remove = item.isAvailable() && isTooOld(item, observerInterval);
+      if (remove) {
+        LOG.debug("Connection cache item is available and too old, removing: {} {}",
+            item.getTenantId(), item.getSessionId());
+      }
+      return remove;
+    });
+  }
+
+  private boolean isTooOld(CachedPgConnection item, int observerInterval) {
+    // Since we don't know when the timer is firing relative to the release delay (timeout) we subtract the timer
+    // interval from the release delay.
+    var timeoutWithInterval = this.lowestReleaseDelayReceived - observerInterval;
+    var millisecondsSinceLastUse = System.currentTimeMillis() - item.getLastUsedAt();
+    LOG.debug("Value to check: {} {}", millisecondsSinceLastUse, timeoutWithInterval);
+    return millisecondsSinceLastUse > timeoutWithInterval;
+  }
+
   private void tryAddToCache(CachedPgConnection connection) {
     if (connectionCache.contains(connection)) {
       LOG.debug("Item already exists in cache: {} {} {}",
@@ -61,10 +109,15 @@ public class PostgresConnectionManager {
     connectionCache.add(connection);
   }
 
+  private static int getMaxSharedPoolSize() {
+    return Envs.getEnv(Envs.DB_MAXSHAREDPOOLSIZE) == null ?
+        PostgresClient.DEFAULT_MAX_POOL_SIZE :
+        Integer.parseInt(Envs.getEnv(Envs.DB_MAXSHAREDPOOLSIZE));
+  }
+
   private void tryRemoveOldestAvailableConnectionAndClose() {
     // The cache must not grow larger than the max pool size of the underlying pool.
-    // TODO get the pool size from the env.
-    var cacheExhausted = this.connectionCache.size() >= PostgresClient.DEFAULT_MAX_POOL_SIZE;
+    var cacheExhausted = this.connectionCache.size() >= maxPoolSize;
     if (! cacheExhausted) {
       LOG.debug("Cache is not yet exhausted");
       return;
@@ -72,27 +125,14 @@ public class PostgresConnectionManager {
 
     connectionCache.stream()
         .filter(CachedPgConnection::isAvailable)
-        .min(Comparator.comparingLong(CachedPgConnection::getTimestamp))
+        .min(Comparator.comparingLong(CachedPgConnection::getLastUsedAt))
         .ifPresent(connection -> {
           LOG.debug("Removing and closing oldest available connection: {} {}",
               connection.getTenantId(), connection.getSessionId());
-          if (connection.getWrappedConnection() != null) {
-            activeConnectionCount--;
-            connection.getWrappedConnection().close();
-          }
+          activeConnectionCount--;
+          connection.getWrappedConnection().close();
           connectionCache.remove(connection);
         });
-  }
-
-  private void logCache(String context, int poolSize) {
-    LOG.debug("Current cache state: {}", context);
-
-    synchronized (connectionCache) {
-      connectionCache.forEach(c ->
-        LOG.debug("{} {} {} {} {} {} {} {} {}", cacheHits, cacheMisses, connectionCache.size(),
-            activeConnectionCount, poolSize, c.getSessionId(), c.getTenantId(), c.isAvailable(),
-            c.getConnectionHash()));
-    }
   }
 
   private Future<PgConnection> getOrCreateCachedConnection(Pool pool, String schemaName, String tenantId) {
@@ -124,5 +164,16 @@ public class PostgresConnectionManager {
       var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection, this);
       return sqlConnection.query(sql).execute().map(x -> cachedConnection);
     });
+  }
+
+  private void logCache(String context, int poolSize) {
+    LOG.debug("Current cache state: {}", context);
+
+    synchronized (connectionCache) {
+      connectionCache.forEach(c ->
+          LOG.debug("{} {} {} {} {} {} {} {} {}", cacheHits, cacheMisses, connectionCache.size(),
+              activeConnectionCount, poolSize, c.getSessionId(), c.getTenantId(), c.isAvailable(),
+              c.getConnectionHash()));
+    }
   }
 }

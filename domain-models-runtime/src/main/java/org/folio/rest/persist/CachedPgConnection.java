@@ -26,15 +26,19 @@ public class CachedPgConnection implements PgConnection {
   private final PostgresConnectionManager manager;
   private final UUID sessionId;
   private final String tenantId;
-  private final long timestamp;
+  private long lastUsedAt;
   private boolean available;
 
   public CachedPgConnection(String tenantId, PgConnection connection, PostgresConnectionManager manager) {
+    if (tenantId.isEmpty() || connection == null || manager == null) {
+      throw new IllegalArgumentException();
+    }
+
+    this.tenantId = tenantId;
     this.connection = connection;
     this.manager = manager;
     this.sessionId = UUID.randomUUID();
-    this.tenantId = tenantId;
-    this.timestamp = System.currentTimeMillis();
+    this.lastUsedAt = System.currentTimeMillis();
   }
 
   @Override
@@ -167,6 +171,7 @@ public class CachedPgConnection implements PgConnection {
 
   public void setUnavailable() {
     this.available = false;
+    this.lastUsedAt = System.currentTimeMillis();
   }
 
   public UUID getSessionId() {
@@ -178,9 +183,6 @@ public class CachedPgConnection implements PgConnection {
   }
 
   public int getConnectionHash() {
-    if (connection == null) {
-      return -1;
-    }
     return connection.hashCode();
   }
 
@@ -188,7 +190,7 @@ public class CachedPgConnection implements PgConnection {
     return connection;
   }
 
-  public long getTimestamp() {
-    return this.timestamp;
+  public long getLastUsedAt() {
+    return lastUsedAt;
   }
 }

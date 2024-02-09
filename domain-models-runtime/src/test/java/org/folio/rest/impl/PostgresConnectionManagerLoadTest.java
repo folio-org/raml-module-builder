@@ -22,7 +22,7 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
   }
 
   @AfterClass
-  public static void afterClass(TestContext context) {
+  public static void afterClass() {
     PostgresClientHelper.setSharedPgPool(false);
   }
 

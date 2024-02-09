@@ -550,6 +550,7 @@ public class PostgresClient {
     if (reconnectInterval != null) {
       pgConnectOptions.setReconnectInterval(reconnectInterval);
     }
+
     String serverPem = sqlConfig.getString(SERVER_PEM);
     if (serverPem != null) {
       pgConnectOptions.setSslMode(SslMode.VERIFY_FULL);
@@ -610,9 +611,13 @@ public class PostgresClient {
     PoolOptions poolOptions = new PoolOptions();
     poolOptions.setMaxSize(
         configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, DEFAULT_MAX_POOL_SIZE)));
-    Integer connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
+    var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
     poolOptions.setIdleTimeout(connectionReleaseDelay);
     poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
+
+    if (sharedPgPool) {
+      POSTGRES_CONNECTION_MANAGER.setObserver(vertx, connectionReleaseDelay);
+    }
 
     return PgPool.pool(vertx, connectOptions, poolOptions);
   }
