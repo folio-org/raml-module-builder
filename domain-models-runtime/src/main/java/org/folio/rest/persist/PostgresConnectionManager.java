@@ -205,22 +205,25 @@ public class PostgresConnectionManager {
     String toString(String msg) {
       var header =
           String.format("%n%s%n%-11s %-11s %-11s %-11s %-11s%n", msg, "Hits", "Misses", "Size", "Active", "Pool");
-      var footer = String.format("%-11d %-11d %-11d %-11d %-11d",
+      var body = String.format("%-11d %-11d %-11d %-11d %-11d",
           cacheHits, cacheMisses, connectionCache.size(), activeConnectionCount, poolSize);
-      return header + footer;
+      return header + body;
     }
 
     String toStringDebug(String msg) {
-      var withCollection = toString(msg) + "\nCache items:\n" ;
+      var msg = toString(msg) + "\nCACHE ITEMS (DEBUG)\n" ;
+      msg += String.format("%-36s %-10s %-20s %-20s%n", "Session", "Available", "Last Used", "Tenant");
       synchronized (connectionCache) {
-        withCollection += connectionCache.stream()
-            .map(item -> item.getSessionId() + " " +
-                item.getTenantId() + " " +
-                item.isAvailable() + " " +
-                item.getLastUsedAt())
+        msg += connectionCache.stream()
+            .map(item -> String.format("%-36s %-10s %-20s %-20s",
+                item.getSessionId(),
+                item.isAvailable(),
+                item.getLastUsedAt(),
+                item.getTenantId()
+                ))
             .collect(Collectors.joining("\n"));
       }
-      return withCollection;
+      return msg;
     }
   }
 }
