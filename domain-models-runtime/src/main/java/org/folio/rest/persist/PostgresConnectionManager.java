@@ -211,10 +211,10 @@ public class PostgresConnectionManager {
     }
 
     String toStringDebug(String msg) {
-      var msg = toString(msg) + "\nCACHE ITEMS (DEBUG)\n" ;
-      msg += String.format("%-36s %-10s %-20s %-20s%n", "Session", "Available", "Last Used", "Tenant");
+      var items = toString(msg) + "\nCACHE ITEMS (DEBUG)\n" ;
+      items += String.format("%-36s %-10s %-20s %-20s%n", "Session", "Available", "Last Used", "Tenant");
       synchronized (connectionCache) {
-        msg += connectionCache.stream()
+        items += connectionCache.stream()
             .map(item -> String.format("%-36s %-10s %-20s %-20s",
                 item.getSessionId(),
                 item.isAvailable(),
@@ -223,7 +223,7 @@ public class PostgresConnectionManager {
                 ))
             .collect(Collectors.joining("\n"));
       }
-      return msg;
+      return items;
     }
   }
 }
