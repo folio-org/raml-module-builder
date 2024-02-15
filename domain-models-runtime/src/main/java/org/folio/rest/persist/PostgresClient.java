@@ -658,7 +658,6 @@ public class PostgresClient {
     if (v instanceof Long) {
       PostgresClient.setExplainQueryThreshold((Long) v);
     }
-    // TODO Why is this sometimes true even though it doesn't seem to have been set yet?
     sharedPgPool |= config.containsKey(MAX_SHARED_POOL_SIZE);
     if (tenantId.equals(DEFAULT_SCHEMA) || sharedPgPool) {
       config.put(PASSWORD, decodePassword( config.getString(PASSWORD) ));

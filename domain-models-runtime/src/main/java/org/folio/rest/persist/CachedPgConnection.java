@@ -18,7 +18,6 @@ import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.net.ssl.HandshakeCompletedEvent;
 import java.util.UUID;
 
 public class CachedPgConnection implements PgConnection {
@@ -29,7 +28,7 @@ public class CachedPgConnection implements PgConnection {
   private final String tenantId;
   private long lastUsedAt;
   private boolean available;
-  private volatile Handler<Void> closeHandler;
+  private Handler<Void> closeHandler;
 
   public CachedPgConnection(String tenantId, PgConnection connection, PostgresConnectionManager manager) {
     if (tenantId == null || tenantId.isEmpty() || connection == null || manager == null) {
