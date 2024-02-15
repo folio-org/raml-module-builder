@@ -15,9 +15,11 @@ import org.awaitility.Awaitility;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
-class PostgresConnectionManagerTest {
+public class PostgresConnectionManagerTest {
 
   @Test
   public void removeOldestAvailableConnectionTest() {
@@ -34,6 +36,26 @@ class PostgresConnectionManagerTest {
       manager.tryClose(new CachedPgConnection("tenant2", new PgConnectionMock(), manager));
     }
     assertEquals(PostgresClient.DEFAULT_MAX_POOL_SIZE - 1, manager.getCacheSize());
+  }
+
+  @Test
+  public void closeWithHandler() {
+    var manager = new PostgresConnectionManager();
+    var connection = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
+    assertFalse(connection.isAvailable());
+    connection.closeHandler(event -> {
+      assertTrue(connection.isAvailable());
+    });
+  }
+
+  @Test
+  public void closeWithHandlerAsyncResult() {
+    var manager = new PostgresConnectionManager();
+    var connection = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
+    assertFalse(connection.isAvailable());
+    connection.close(event -> {
+      assertTrue(connection.isAvailable());
+    });
   }
 
   @ParameterizedTest

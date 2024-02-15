@@ -44,23 +44,22 @@ public class CachedPgConnection implements PgConnection {
   @Override
   public Future<Void> close() {
     LOG.debug("Calling close: {} {}", this.tenantId, this.sessionId);
-    this.available = true;
-    this.manager.tryClose(this);
+    setAvailableAndTryClose();
     return Future.succeededFuture();
   }
 
   @Override
   public void close(Handler<AsyncResult<Void>> handler) {
     LOG.debug("Calling close: Handler<AsyncResult<Void>>");
-    this.available = true;
-    this.manager.tryClose(this);
+    setAvailableAndTryClose();
+    // There is nothing to signal here so calling handler.handle(Future.succeededFuture()) is a  no-op.
   }
 
   @Override
   public PgConnection closeHandler(Handler<Void> handler) {
     LOG.debug("Calling close: closeHandler Handler<Void>");
-    this.available = true;
-    this.manager.tryClose(this);
+    setAvailableAndTryClose();
+    // There is nothing to signal here so calling handler.handle(null); is a no-op.
     return this;
   }
 
@@ -160,6 +159,7 @@ public class CachedPgConnection implements PgConnection {
     return connection.databaseMetadata();
   }
 
+
   public boolean isAvailable() {
     return this.available;
   }
@@ -182,15 +182,16 @@ public class CachedPgConnection implements PgConnection {
     return tenantId;
   }
 
-  public int getConnectionHash() {
-    return connection.hashCode();
-  }
-
   public PgConnection getWrappedConnection() {
     return connection;
   }
 
   public long getLastUsedAt() {
     return lastUsedAt;
+  }
+
+  private void setAvailableAndTryClose() {
+    this.available = true;
+    this.manager.tryClose(this);
   }
 }
