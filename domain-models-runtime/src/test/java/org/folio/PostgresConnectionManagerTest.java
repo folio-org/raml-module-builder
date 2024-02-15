@@ -1,5 +1,6 @@
 package org.folio;
 
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import org.folio.rest.persist.CachedPgConnection;
@@ -13,6 +14,7 @@ import org.junit.runner.RunWith;
 import org.awaitility.Awaitility;
 
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -39,13 +41,23 @@ public class PostgresConnectionManagerTest {
   }
 
   @Test
-  public void closeWithHandler() {
+  public void close() {
     var manager = new PostgresConnectionManager();
     var connection = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
     assertFalse(connection.isAvailable());
-    connection.closeHandler(event -> {
-      assertTrue(connection.isAvailable());
-    });
+    connection.close();
+    assertTrue(connection.isAvailable());
+  }
+
+  @Test
+  public void closeWithHandler() {
+    var manager = new PostgresConnectionManager();
+    var connection = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
+    var handled = new AtomicBoolean(false);
+    Handler<Void> handler = event -> handled.set(true);
+    connection.closeHandler(handler);
+    connection.close();
+    assertTrue(handled.get());
   }
 
   @Test

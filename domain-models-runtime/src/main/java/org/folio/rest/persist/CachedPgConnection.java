@@ -18,6 +18,7 @@ import io.vertx.sqlclient.spi.DatabaseMetadata;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.net.ssl.HandshakeCompletedEvent;
 import java.util.UUID;
 
 public class CachedPgConnection implements PgConnection {
@@ -28,9 +29,10 @@ public class CachedPgConnection implements PgConnection {
   private final String tenantId;
   private long lastUsedAt;
   private boolean available;
+  private volatile Handler<Void> closeHandler;
 
   public CachedPgConnection(String tenantId, PgConnection connection, PostgresConnectionManager manager) {
-    if (tenantId.isEmpty() || connection == null || manager == null) {
+    if (tenantId == null || tenantId.isEmpty() || connection == null || manager == null) {
       throw new IllegalArgumentException();
     }
 
@@ -45,6 +47,9 @@ public class CachedPgConnection implements PgConnection {
   public Future<Void> close() {
     LOG.debug("Calling close: {} {}", this.tenantId, this.sessionId);
     setAvailableAndTryClose();
+    if (closeHandler != null) {
+      closeHandler.handle(null);
+    }
     return Future.succeededFuture();
   }
 
@@ -52,14 +57,12 @@ public class CachedPgConnection implements PgConnection {
   public void close(Handler<AsyncResult<Void>> handler) {
     LOG.debug("Calling close: Handler<AsyncResult<Void>>");
     setAvailableAndTryClose();
-    // There is nothing to signal here so calling handler.handle(Future.succeededFuture()) is a  no-op.
   }
 
   @Override
   public PgConnection closeHandler(Handler<Void> handler) {
     LOG.debug("Calling close: closeHandler Handler<Void>");
-    setAvailableAndTryClose();
-    // There is nothing to signal here so calling handler.handle(null); is a no-op.
+    this.closeHandler = handler;
     return this;
   }
 
