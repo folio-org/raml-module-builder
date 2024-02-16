@@ -2,11 +2,15 @@ package org.folio;
 
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
+import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.pgclient.PgPool;
 import org.folio.rest.persist.CachedPgConnection;
 import org.folio.rest.persist.PgConnectionMock;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.PostgresClientHelper;
 import org.folio.rest.persist.PostgresConnectionManager;
+import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -22,6 +26,24 @@ import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
 public class PostgresConnectionManagerTest {
+  @AfterClass
+  public static void afterClass() {
+    PostgresClientHelper.setSharedPgPool(false);
+  }
+
+  @Test
+  public void getCachedConnection(TestContext context) {
+    PostgresClientHelper.setSharedPgPool(true);
+    var manager = new PostgresConnectionManager();
+    var connectionToGet = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
+    connectionToGet.close();
+    manager.tryClose(connectionToGet);
+    manager.getConnection(PgPool.pool(), "tenant1", "tenant1").onComplete(context.asyncAssertSuccess(pgConnection -> {
+      var gotConnection = (CachedPgConnection) pgConnection;
+      assertEquals(connectionToGet.getSessionId(), gotConnection.getSessionId());
+      assertFalse(gotConnection.isAvailable());
+    }));
+  }
 
   @Test
   public void removeOldestAvailableConnectionTest() {
@@ -76,8 +98,8 @@ public class PostgresConnectionManagerTest {
       "1500, 2"
   })
   void releaseDelayWithObserverTest(int delay, int expected) {
-    var vertx = Vertx.vertx();
     var manager = new PostgresConnectionManager();
+    var vertx = Vertx.vertx();
     manager.setObserver(vertx, delay, 1000);
     var connection1 = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
     var connection2 = new CachedPgConnection("tenant2", new PgConnectionMock(), manager);
