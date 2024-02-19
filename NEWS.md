@@ -1,3 +1,11 @@
+## 35.1.2 2024-02-19
+
+Bug fixes:
+* [RMB-984](https://folio-org.atlassian.net/browse/RMB-984) Rename TESTCONTAINERS\_POSTGRES to TESTCONTAINERS\_POSTGRES\_IMAGE
+* [RMB-987](https://folio-org.atlassian.net/browse/RMB-987) Put empty lines before and after snippet and snippetPath
+* [RMB-929](https://folio-org.atlassian.net/browse/RMB-929) Use a case insensitive Map to merge headers in HttpModuleClient2
+* [RMB-989](https://folio-org.atlassian.net/browse/RMB-989) Vert.x 4.4.7 fixing FastThreadLocal memory leak CVE-2024-1023
+
 ## 35.1.1 2023-10-20
 
 Bug fixes:
