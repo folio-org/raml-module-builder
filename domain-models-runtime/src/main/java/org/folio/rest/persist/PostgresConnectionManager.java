@@ -72,8 +72,9 @@ public class PostgresConnectionManager {
 
     LOG.debug("Setting idle connection timeout observer with interval: {}", observerInterval);
     vertx.setPeriodic(observerInterval, id -> {
+      LOG.debug("Observer firing:: connectionReleaseDelay: {}, observerInterval: {}, observer id {}",
+          connectionReleaseDelay, observerInterval, id);
       logCache();
-      LOG.debug("Observer firing: {}", id);
       removeCacheConnectionsBeforeTimeout(observerInterval);
     });
   }
@@ -82,8 +83,10 @@ public class PostgresConnectionManager {
     connectionCache.removeIf(item -> {
       boolean remove = item.isAvailable() && isTooOld(item, observerInterval);
       if (remove) {
-        LOG.debug("Connection cache item is available and too old, removing: {} {}",
+        LOG.debug("Connection cache item is available and too old, removing and closing: {} {}",
             item.getTenantId(), item.getSessionId());
+        connectionMetrics.activeConnectionCount--;
+        item.getWrappedConnection().close();
       }
       return remove;
     });
@@ -94,7 +97,7 @@ public class PostgresConnectionManager {
     // interval from the release delay.
     var timeoutWithInterval = this.lowestReleaseDelayReceived - observerInterval;
     var millisecondsSinceLastUse = System.currentTimeMillis() - item.getLastUsedAt();
-    LOG.debug("Value to check: {} {}", millisecondsSinceLastUse, timeoutWithInterval);
+    LOG.debug("Value to check for cache item age: {} {}", millisecondsSinceLastUse, timeoutWithInterval);
     return millisecondsSinceLastUse > timeoutWithInterval;
   }
 
@@ -128,9 +131,9 @@ public class PostgresConnectionManager {
           LOG.debug("Removing and closing oldest available connection: {} {}",
               connection.getTenantId(), connection.getSessionId());
 
-          connectionMetrics.activeConnectionCount--;
           connection.getWrappedConnection().close();
           connectionCache.remove(connection);
+          connectionMetrics.activeConnectionCount--;
         });
   }
 
@@ -146,15 +149,15 @@ public class PostgresConnectionManager {
       CachedPgConnection connection = connectionOptional.get();
       connection.setUnavailable();
 
-      var ctx = String.format("cache hit %s %s", connection.getTenantId(), connection.getSessionId());
-      debugLogCache(ctx);
+      var event = String.format("cache hit %s %s", connection.getTenantId(), connection.getSessionId());
+      logCache(event);
 
       return Future.succeededFuture(connection);
     }
 
     connectionMetrics.incrementMisses();
-    var ctx = String.format("cache miss %s", tenantId);
-    debugLogCache(ctx);
+    var event = String.format("cache miss %s", tenantId);
+    logCache(event);
 
     return createConnectionSession(pool, schemaName, tenantId);
   }
@@ -170,15 +173,22 @@ public class PostgresConnectionManager {
     });
   }
 
-  private void debugLogCache(String event) {
+
+  private void logCache(String event) {
     if (LOG.getLevel() == Level.DEBUG) {
-      var msg = connectionMetrics.toStringDebug(String.format(LOGGER_LABEL + ": %s", event));
-      LOG.debug(msg);
+      var msg = this.connectionMetrics.toString(LOGGER_LABEL + ": " + event);
+      var debugMsg = msg + connectionMetrics.toStringDebug();
+      LOG.debug(debugMsg);
     }
   }
 
   private void logCache() {
-    var msg = this.connectionMetrics.toString(LOGGER_LABEL);
+    var msg = this.connectionMetrics.toString(LOGGER_LABEL + ": observer");
+    if (LOG.getLevel() == Level.DEBUG) {
+      var debugMsg = msg + connectionMetrics.toStringDebug();
+      LOG.debug(debugMsg);
+      return;
+    }
     LOG.info(msg);
   }
 
@@ -210,8 +220,8 @@ public class PostgresConnectionManager {
       return header + body;
     }
 
-    String toStringDebug(String msg) {
-      var items = toString(msg) + "\nCACHE ITEMS (DEBUG)\n" ;
+    String toStringDebug() {
+      var items = "\nCACHE ITEMS (DEBUG)\n" ;
       items += String.format("%-36s %-10s %-20s %-20s%n", "Session", "Available", "Last Used", "Tenant");
       synchronized (connectionCache) {
         items += connectionCache.stream()

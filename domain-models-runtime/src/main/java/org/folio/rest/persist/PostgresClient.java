@@ -659,6 +659,9 @@ public class PostgresClient {
       PostgresClient.setExplainQueryThreshold((Long) v);
     }
     sharedPgPool |= config.containsKey(MAX_SHARED_POOL_SIZE);
+
+    log.info("Shared pool for tenant {} is set: {}", tenantId, sharedPgPool);
+
     if (tenantId.equals(DEFAULT_SCHEMA) || sharedPgPool) {
       config.put(PASSWORD, decodePassword( config.getString(PASSWORD) ));
     } else {
