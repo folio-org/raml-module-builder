@@ -93,12 +93,16 @@ public class PostgresConnectionManager {
   }
 
   private boolean isTooOld(CachedPgConnection item, int observerInterval) {
+    if (this.lowestReleaseDelayReceived <= 0) {
+      throw new IllegalArgumentException("Connection release delay has not been set");
+    }
     // Since we don't know when the timer is firing relative to the release delay (timeout) we subtract the timer
     // interval from the release delay.
     var timeoutWithInterval = this.lowestReleaseDelayReceived - observerInterval;
     var millisecondsSinceLastUse = System.currentTimeMillis() - item.getLastUsedAt();
-    LOG.debug("Value to check for cache item age: {} {}", millisecondsSinceLastUse, timeoutWithInterval);
-    return millisecondsSinceLastUse > timeoutWithInterval;
+    var tooOld = millisecondsSinceLastUse > timeoutWithInterval;
+    LOG.debug("Last use of {} is greater than {}: {}", millisecondsSinceLastUse, timeoutWithInterval, tooOld);
+    return tooOld;
   }
 
   private void tryAddToCache(CachedPgConnection connection) {
@@ -138,7 +142,9 @@ public class PostgresConnectionManager {
   }
 
   private Future<PgConnection> getOrCreateCachedConnection(Pool pool, String schemaName, String tenantId) {
-    connectionMetrics.poolSize = pool.size();
+    // Because the periodic timer may not be reliable we need to make sure that cached connections have not timed out
+    // before giving them out.
+    removeCacheConnectionsBeforeTimeout(0);
 
     Optional<CachedPgConnection> connectionOptional =
         connectionCache.stream().filter(item ->
@@ -164,6 +170,7 @@ public class PostgresConnectionManager {
 
   private Future<PgConnection> createConnectionSession(Pool pool, String schemaName, String tenantId) {
     connectionMetrics.activeConnectionCount++;
+    connectionMetrics.poolSize = pool.size();
     return pool.getConnection().compose(sqlConnection -> {
       String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
           ? "SET ROLE NONE; SET SCHEMA ''"
