@@ -1,4 +1,4 @@
-package org.folio;
+package org.folio.rest.persist;
 
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
