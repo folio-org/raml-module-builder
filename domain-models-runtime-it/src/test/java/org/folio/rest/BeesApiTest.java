@@ -76,7 +76,7 @@ public class BeesApiTest extends ApiTestBase {
     when().post("/bees/bees").
     then().
       statusCode(422).
-      body("errors[0].code", is("javax.validation.constraints.DecimalMin.message"));
+      body("errors[0].code", is("jakarta.validation.constraints.DecimalMin.message"));
   }
 
   @Test

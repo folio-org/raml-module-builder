@@ -6,11 +6,11 @@ import io.vertx.core.logging.LoggerFactory;
 import java.util.Arrays;
 import java.util.Set;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.Validation;
-import javax.validation.ValidationException;
-import javax.validation.ValidatorFactory;
-import javax.validation.executable.ExecutableValidator;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidationException;
+import jakarta.validation.ValidatorFactory;
+import jakarta.validation.executable.ExecutableValidator;
 
 import org.aspectj.lang.reflect.MethodSignature;
 import org.aspectj.lang.annotation.SuppressAjWarnings;

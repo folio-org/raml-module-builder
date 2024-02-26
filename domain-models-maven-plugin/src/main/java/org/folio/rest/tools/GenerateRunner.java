@@ -5,11 +5,15 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,6 +24,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.lang3.exception.UncheckedException;
 import org.folio.rest.tools.plugins.CustomTypeAnnotator;
 import org.folio.rest.tools.utils.RamlDirCopier;
 import org.jsonschema2pojo.AnnotationStyle;
@@ -179,7 +184,26 @@ public class GenerateRunner {
         log.info(ramls[j] + " has a .raml suffix but does not start with #%RAML");
       }
     }
+    migrateToJakarta();
     log.info("processed: " + numMatches + " raml files");
+  }
+
+  private void migrateToJakarta() {
+    try {
+      Files.walkFileTree(Path.of(outputDirectory), new JakartaMigrator());
+    } catch (IOException e) {
+      throw new UncheckedException(e);
+    }
+  }
+
+  private class JakartaMigrator extends SimpleFileVisitor<Path> {
+    @Override
+    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+      String java = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+      java = java.replace("import javax.validation.", "import jakarta.validation.");
+      Files.write(file, java.getBytes(StandardCharsets.UTF_8));
+      return FileVisitResult.CONTINUE;
+    }
   }
 
   /**

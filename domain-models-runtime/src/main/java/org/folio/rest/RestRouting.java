@@ -47,10 +47,10 @@ import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.util.StringUtil;
 
-import javax.validation.ConstraintViolation;
-import javax.validation.Path.Node;
-import javax.validation.Validation;
-import javax.validation.ValidatorFactory;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Path.Node;
+import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import javax.ws.rs.core.MultivaluedMap;
 import javax.ws.rs.core.Response;
 import java.io.ByteArrayInputStream;
@@ -142,7 +142,7 @@ public final class RestRouting {
     }
     boolean ret = true;
     for (ConstraintViolation<?> cv : validationErrors) {
-      if ("{javax.validation.constraints.Null.message}".equals(cv.getMessageTemplate())) {
+      if ("{jakarta.validation.constraints.Null.message}".equals(cv.getMessageTemplate())) {
         /**
          * read only fields are marked with a 'must be null' annotation @null
          * so the client should not pass them in, if they were passed in, remove them here

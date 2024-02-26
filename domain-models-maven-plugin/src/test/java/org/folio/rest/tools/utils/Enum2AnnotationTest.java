@@ -8,13 +8,13 @@ class Enum2AnnotationTest implements WithAssertions {
 
   @ParameterizedTest
   @CsvSource({
-    "PATTERN,      javax.validation.constraints.Pattern",
-    "pattern,      javax.validation.constraints.Pattern",
-    "MIN,          javax.validation.constraints.Min",
-    "MAX,          javax.validation.constraints.Max",
-    "REQUIRED,     javax.validation.constraints.NotNull",
+    "PATTERN,      jakarta.validation.constraints.Pattern",
+    "pattern,      jakarta.validation.constraints.Pattern",
+    "MIN,          jakarta.validation.constraints.Min",
+    "MAX,          jakarta.validation.constraints.Max",
+    "REQUIRED,     jakarta.validation.constraints.NotNull",
     "DEFAULTVALUE, javax.ws.rs.DefaultValue",
-    "SIZE,         javax.validation.constraints.Size",
+    "SIZE,         jakarta.validation.constraints.Size",
     "MINNI, ",
   })
   void getAnnotation(String anno, String clazz) {

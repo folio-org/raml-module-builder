@@ -20,6 +20,25 @@
       <groupId>org.testcontainers</groupId>
       <artifactId>postgresql</artifactId>
     </dependency>
+    <!--
+         remove commons-compress dependency when testcontainers
+         comes with commons-compress >= 1.26.0 fixing
+         https://nvd.nist.gov/vuln/detail/CVE-2024-25710
+         https://nvd.nist.gov/vuln/detail/CVE-2024-26308
+         see https://github.com/testcontainers/testcontainers-java/pull/8354
+    -->
+    <dependency>
+      <groupId>org.apache.commons</groupId>
+      <artifactId>commons-compress</artifactId>
+    </dependency>
+    <!-- remove commons-codec dependency when using a commons-compress
+         version >= 1.27.0: https://github.com/apache/commons-compress/pull/482/files
+    -->
+    <dependency>
+      <groupId>commons-codec</groupId>
+      <artifactId>commons-codec</artifactId>
+      <version>1.16.1</version>
+    </dependency>
     <!-- for Testcontainers -->
     <dependency>
       <groupId>org.apache.logging.log4j</groupId>
@@ -34,7 +53,6 @@
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
-      <version>42.6.0</version>
       <scope>test</scope>
     </dependency>
     <dependency>
