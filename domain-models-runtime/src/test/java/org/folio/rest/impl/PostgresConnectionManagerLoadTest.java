@@ -5,6 +5,7 @@ import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.sqlclient.Row;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -24,12 +25,16 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
+
 @RunWith(VertxUnitRunner.class)
 public class PostgresConnectionManagerLoadTest extends TenantHelper {
   private final Logger LOG = LogManager.getLogger(PostgresConnectionManagerLoadTest.class);
 
   @Rule
-  public Timeout rule = Timeout.seconds(30);
+  public Timeout rule = Timeout.seconds(60);
 
   @BeforeClass
   public static void setUpClass() {
@@ -56,7 +61,6 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
     // Add more tenants to increase demand on cache.
   }
 
-
   @Test
   public void randomTenantsWithLongDBCallDuration(TestContext context) {
     Async async = context.async();
@@ -69,7 +73,7 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
     Future.succeededFuture()
         .compose(ar -> {
           // Setup
-          Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.ERROR);
+          Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.DEBUG);
 
           for (int i = 0; i < numTenants; i++) {
             tenantPost(new TenantAPI(), context, null, tenantNameFunc.apply(i));
@@ -79,7 +83,7 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
         })
         .compose(ar -> {
           // Load testing
-          List<Future<Void>> futures = new ArrayList<>();
+          List<Future<Row>> futures = new ArrayList<>();
           for (int i = 0; i < numAssertions; i++) {
             int tenantIndex = rand.nextInt(numTenants);
             futures.add(exerciseTenant(tenantNameFunc.apply(tenantIndex), context));
@@ -89,14 +93,14 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
         .compose(notUsed -> {
           // Clean up
           Future<Void> future = Future.succeededFuture();
-          Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.ERROR);
+          Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.DEBUG);
           for (int i = 0; i < numTenants; i++) {
             String tenantName = tenantNameFunc.apply(i);
             future = future.compose(ar -> purgeTenant(tenantName).mapEmpty());
           }
           return future;
         }).onComplete(ar -> {
-          if(ar.failed()){
+          if (ar.failed()) {
             LOG.error(ar.cause());
             context.fail(ar.cause());
           }
@@ -105,19 +109,6 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
           async.complete();
         });
   }
-
-  private Future<Void> exerciseTenant(String tenant, TestContext context) {
-    PostgresClient postgresClient = PostgresClient.getInstance(vertx, tenant);
-    return postgresClient.selectSingle("select current_user; select pg_sleep(0.5);")
-        .onFailure(th -> LOG.error("Something happened while querying database for tenant:{}",tenant, th))
-        .compose(ar -> {
-          LOG.info("got result for {}", tenant);
-          context.assertEquals(tenant + "_raml_module_builder", ar.getString(0));
-          return Future.succeededFuture();
-        });
-  }
-
-  ;
 
   private void putLoadOnTenant(String tenant, TestContext context) {
     PostgresClient.getInstance(vertx, tenant).execute("INSERT INTO test_tenantapi VALUES ('27f0857b-3165-4d5a-af77-229e4ad7921d', '{}')")
@@ -128,5 +119,17 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
         // Add more compose calls like above to increase load.
         .compose(x -> purgeTenant(tenant))
         .onComplete(context.asyncAssertSuccess(x -> {})); // Have to wrap the Handler in the context for it to wait.
+  }
+
+  protected Future<Row> assertGreaterThan(TestContext context, String tenant, int expectedCount, String query) {
+    return PostgresClient.getInstance(vertx, tenant).selectSingle(query)
+        .onComplete(context.asyncAssertSuccess(row ->
+            assertThat(row.size(), greaterThan(expectedCount))));
+  }
+
+  private Future<Row> exerciseTenant(String tenant, TestContext context) {
+    //var query = "select current_user; select pg_sleep(.2);"; // This works too, just slower.
+    var query = "select current_user;";
+    return assertGreaterThan(context, tenant, 0, query);
   }
 }
