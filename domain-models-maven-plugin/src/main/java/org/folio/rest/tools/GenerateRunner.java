@@ -197,9 +197,11 @@ public class GenerateRunner {
   }
 
   private static class JakartaMigrator extends SimpleFileVisitor<Path> {
+    @SuppressWarnings("java:S6212")  // suppress 'Declare this local variable with "var" instead.'
+                                     // because aspectj AJC doesn't support "var"
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-      var java = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+      String java = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
       java = java.replace("import javax.validation.", "import jakarta.validation.");
       Files.write(file, java.getBytes(StandardCharsets.UTF_8));
       return FileVisitResult.CONTINUE;
