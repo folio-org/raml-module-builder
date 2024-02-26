@@ -196,10 +196,10 @@ public class GenerateRunner {
     }
   }
 
-  private class JakartaMigrator extends SimpleFileVisitor<Path> {
+  private static class JakartaMigrator extends SimpleFileVisitor<Path> {
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-      String java = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
+      var java = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
       java = java.replace("import javax.validation.", "import jakarta.validation.");
       Files.write(file, java.getBytes(StandardCharsets.UTF_8));
       return FileVisitResult.CONTINUE;
