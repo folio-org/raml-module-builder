@@ -79,18 +79,20 @@ public class PostgresConnectionManager {
   }
 
   private void removeCacheConnectionsBeforeTimeout(int observerInterval) {
-    long start = System.currentTimeMillis();
-    connectionCache.removeIf(item -> {
-      boolean remove = item.isAvailable() && isTooOld(item, observerInterval);
-      if (remove) {
-        connectionMetrics.activeConnectionCount--;
-        item.getWrappedConnection().close();
-      }
-      long diff = System.currentTimeMillis() - start;
-      LOG.debug("Connection cache item is available and too old, removing and closing: {} {} {}",
-          item.getTenantId(), item.getSessionId(), diff);
-      return remove;
-    });
+    synchronized (connectionCache) {
+      long start = System.currentTimeMillis();
+      connectionCache.removeIf(connection -> {
+        boolean remove = connection.isAvailable() && isTooOld(connection, observerInterval);
+        if (remove) {
+          connectionMetrics.activeConnectionCount--;
+          connection.getWrappedConnection().close();
+          long diff = System.currentTimeMillis() - start;
+          LOG.debug("Connection cache item is available and too old, removing and closing: {} {} {}",
+              connection.getTenantId(), connection.getSessionId(), diff);
+        }
+        return remove;
+      });
+    }
   }
 
   private boolean isTooOld(CachedPgConnection item, int observerInterval) {
@@ -101,18 +103,18 @@ public class PostgresConnectionManager {
     // interval from the release delay.
     var timeoutWithInterval = this.lowestReleaseDelayReceived - observerInterval;
     var millisecondsSinceLastUse = System.currentTimeMillis() - item.getLastUsedAt();
-    var tooOld = millisecondsSinceLastUse > timeoutWithInterval;
-    LOG.debug("Last use of {} is greater than {}: {}", millisecondsSinceLastUse, timeoutWithInterval, tooOld);
-    return tooOld;
+    return millisecondsSinceLastUse > timeoutWithInterval;
   }
 
   private void tryAddToCache(CachedPgConnection connection) {
-    if (connectionCache.contains(connection)) {
-      LOG.debug("Item already exists in cache: {} {} {}",
-          connection.getTenantId(), connection.getSessionId(), connection.isAvailable());
-      return;
+    synchronized (connectionCache) {
+      if (connectionCache.contains(connection)) {
+        LOG.debug("Item already exists in cache: {} {} {}",
+            connection.getTenantId(), connection.getSessionId(), connection.isAvailable());
+        return;
+      }
+      connectionCache.add(connection);
     }
-    connectionCache.add(connection);
   }
 
   private static int getMaxSharedPoolSize() {
@@ -129,31 +131,34 @@ public class PostgresConnectionManager {
       return;
     }
 
-    long start = System.currentTimeMillis();
-    connectionCache.stream()
-        .filter(CachedPgConnection::isAvailable)
-        .min(Comparator.comparingLong(CachedPgConnection::getLastUsedAt))
-        .ifPresent(connection -> {
-          connection.getWrappedConnection().close();
-          connectionCache.remove(connection);
-          connectionMetrics.activeConnectionCount--;
-
-          long diff = System.currentTimeMillis() - start;
-          LOG.debug("Removed and closed oldest available connection: {} {} {}",
-              connection.getTenantId(), connection.getSessionId(), diff);
-
-        });
+    synchronized (connectionCache) {
+      long start = System.currentTimeMillis();
+      connectionCache.stream()
+          .filter(CachedPgConnection::isAvailable)
+          .min(Comparator.comparingLong(CachedPgConnection::getLastUsedAt))
+          .ifPresent(connection -> {
+            connection.getWrappedConnection().close();
+            connectionCache.remove(connection);
+            connectionMetrics.activeConnectionCount--;
+            long diff = System.currentTimeMillis() - start;
+            LOG.debug("Removed and closed oldest available connection: {} {} {}",
+                connection.getTenantId(), connection.getSessionId(), diff);
+          });
+    }
   }
 
   private Future<PgConnection> getOrCreateCachedConnection(Pool pool, String schemaName, String tenantId) {
     // Because the periodic timer may not be reliable we need to make sure that cached connections have not timed out
     // before giving them out.
     removeCacheConnectionsBeforeTimeout(0);
-
     long start = System.currentTimeMillis();
-    Optional<CachedPgConnection> connectionOptional =
-        connectionCache.stream().filter(item ->
-            item.getTenantId().equals(tenantId) && item.isAvailable()).findFirst();
+
+    Optional<CachedPgConnection> connectionOptional;
+    synchronized (connectionCache) {
+      connectionOptional =
+          connectionCache.stream().filter(item ->
+              item.getTenantId().equals(tenantId) && item.isAvailable()).findFirst();
+    }
 
     if (connectionOptional.isPresent()) {
       connectionMetrics.incrementHits();
@@ -168,8 +173,7 @@ public class PostgresConnectionManager {
     }
 
     connectionMetrics.incrementMisses();
-    long diff = System.currentTimeMillis() - start;
-    var event = String.format("cache miss %s %s", tenantId, diff);
+    var event = String.format("cache miss %s", tenantId);
     logCache(event);
 
     return createConnectionSession(pool, schemaName, tenantId);
@@ -186,7 +190,6 @@ public class PostgresConnectionManager {
       return sqlConnection.query(sql).execute().map(x -> cachedConnection);
     });
   }
-
 
   private void logCache(String event) {
     if (LOG.getLevel() == Level.DEBUG) {
