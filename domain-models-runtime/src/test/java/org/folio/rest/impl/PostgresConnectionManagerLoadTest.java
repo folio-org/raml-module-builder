@@ -6,10 +6,8 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.sqlclient.Row;
-import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.Configurator;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.PostgresClientHelper;
@@ -25,7 +23,6 @@ import java.util.List;
 import java.util.Random;
 import java.util.function.Function;
 
-import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 
@@ -73,12 +70,9 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
     Future.succeededFuture()
         .compose(ar -> {
           // Setup
-          Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.DEBUG);
-
           for (int i = 0; i < numTenants; i++) {
             tenantPost(new TenantAPI(), context, null, tenantNameFunc.apply(i));
           }
-          Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.DEBUG);
           return Future.succeededFuture();
         })
         .compose(ar -> {
@@ -93,7 +87,6 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
         .compose(notUsed -> {
           // Clean up
           Future<Void> future = Future.succeededFuture();
-          Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.DEBUG);
           for (int i = 0; i < numTenants; i++) {
             String tenantName = tenantNameFunc.apply(i);
             future = future.compose(ar -> purgeTenant(tenantName).mapEmpty());
@@ -104,7 +97,6 @@ public class PostgresConnectionManagerLoadTest extends TenantHelper {
             LOG.error(ar.cause());
             context.fail(ar.cause());
           }
-          Configurator.setAllLevels(LogManager.getRootLogger().getName(), Level.DEBUG);
           PostgresClient.closeAllClients();
           async.complete();
         });
