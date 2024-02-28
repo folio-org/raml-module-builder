@@ -1,7 +1,7 @@
 
 package org.folio.rest.jaxrs.model;
 
-import javax.validation.constraints.NotNull;
+import jakarta.validation.constraints.NotNull;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
@@ -57,7 +57,7 @@ public class User {
      */
     @JsonProperty("metadata")
     @JsonPropertyDescription("Metadata about creation and changes to records, provided by the server (client should not provide)")
-    @javax.validation.constraints.Null
+    @jakarta.validation.constraints.Null
     private Metadata metadata;
 
     /**

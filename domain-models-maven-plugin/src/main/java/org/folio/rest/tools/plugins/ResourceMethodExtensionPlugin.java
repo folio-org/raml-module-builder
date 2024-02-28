@@ -110,7 +110,7 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     if (typeDeclaration instanceof StringTypeDeclaration) {
       StringTypeDeclaration n = (StringTypeDeclaration) typeDeclaration;
       if (n.pattern() != null) {
-        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Pattern.class);
+        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(jakarta.validation.constraints.Pattern.class);
         annoBuilder.addMember("regexp", "$S", n.pattern());
         newAnnotations.add(annoBuilder.build());
       }
@@ -118,12 +118,12 @@ public class ResourceMethodExtensionPlugin implements ResourceMethodExtension<GM
     if (typeDeclaration instanceof NumberTypeDeclaration) {
       NumberTypeDeclaration n = (NumberTypeDeclaration) typeDeclaration;
       if (n.minimum() != null) {
-        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Min.class);
+        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(jakarta.validation.constraints.Min.class);
         annoBuilder.addMember(ANNOTATION_VALUE, "$L", (Long) n.minimum().longValue());
         newAnnotations.add(annoBuilder.build());
       }
       if (n.maximum() != null) {
-        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(javax.validation.constraints.Max.class);
+        AnnotationSpec.Builder annoBuilder = AnnotationSpec.builder(jakarta.validation.constraints.Max.class);
         annoBuilder.addMember(ANNOTATION_VALUE, "$L", (Long) n.maximum().longValue());
         newAnnotations.add(annoBuilder.build());
       }

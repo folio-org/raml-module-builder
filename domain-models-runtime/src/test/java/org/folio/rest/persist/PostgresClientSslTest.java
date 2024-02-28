@@ -36,8 +36,6 @@ class PostgresClientSslTest {
   @Container
   static final PostgreSQLContainer<?> POSTGRES =
       new PostgreSQLContainer<>(PostgresTesterContainer.DEFAULT_IMAGE_NAME);
-  static final String SERVER_CRT = ResourceUtil.asString("ssl/server.crt");
-  static final String SERVER_CRT_FOLIO = ResourceUtil.asString("ssl/server-folio.org.crt");
 
   static void exec(String... command) {
     try {
@@ -48,18 +46,12 @@ class PostgresClientSslTest {
   }
 
   /**
-   * Configure the server to use crtFile as certificate.
-   * Append each entry to postgresql.conf and reload it into postgres.
+   * Configure the connection to check the server certificate against crtFile.
+   * Append each of the configEntries to postgresql.conf and reload it into postgres.
    * Appending a key=value entry has precedence over any previous entries of the same key.
    */
   static void configure(String crtFile, String... configEntries) {
-    String crtString = null;
-
-    if (crtFile != null) {
-      MountableFile serverCrtFile = MountableFile.forClasspathResource("/ssl/" + crtFile);
-      POSTGRES.copyFileToContainer(serverCrtFile, CRT_PATH);
-      crtString = ResourceUtil.asString("ssl/" + crtFile);
-    }
+    String crtString = crtFile == null ? null : ResourceUtil.asString("ssl/" + crtFile);
     Envs.setEnv(config(crtString));
 
     exec("cp", "-p", CONF_BAK_PATH, CONF_PATH);  // start with unaltered config
@@ -84,10 +76,13 @@ class PostgresClientSslTest {
 
   @BeforeAll
   static void beforeAll() {
-    MountableFile serverKeyFile = MountableFile.forClasspathResource("/ssl/server.key");
+    MountableFile serverKeyFile = MountableFile.forClasspathResource("ssl/server.key");
+    MountableFile serverCrtFile = MountableFile.forClasspathResource("ssl/server.crt");
     POSTGRES.copyFileToContainer(serverKeyFile, KEY_PATH);
+    POSTGRES.copyFileToContainer(serverCrtFile, CRT_PATH);
     exec("chown", "postgres.postgres", KEY_PATH, CRT_PATH);
     exec("chmod", "400", KEY_PATH, CRT_PATH);
+
     exec("cp", "-p", CONF_PATH, CONF_BAK_PATH);
   }
 

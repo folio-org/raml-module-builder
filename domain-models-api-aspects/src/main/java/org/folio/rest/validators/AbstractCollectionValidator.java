@@ -4,7 +4,7 @@ import java.lang.annotation.Annotation;
 import java.util.Collection;
 import java.util.Iterator;
 
-import javax.validation.ConstraintValidatorContext;
+import jakarta.validation.ConstraintValidatorContext;
 
 public abstract class AbstractCollectionValidator<A extends Annotation, E, C extends Collection<E>>
     implements CollectionValidator<A, E, C> {
