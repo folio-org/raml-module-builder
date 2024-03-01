@@ -1,3 +1,10 @@
+## 35.2.0 2024-03-01
+
+Quesnelia release, see [upgrade notes](doc/upgrading.md#version-360).
+
+New features:
+* [RMB-990](https://folio-org.atlassian.net/browse/RMB-990) Quesnelia dependencies: Vert.x 4.5.4, jakarta.validation, …
+
 ## 35.1.2 2024-02-19
 
 Bug fixes:
