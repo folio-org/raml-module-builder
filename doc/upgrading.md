@@ -4,7 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
-* [Version 36.0](#version-360)
+* [Version 35.2](#version-352)
 * [Version 35.1](#version-351)
 * [Version 35.0](#version-350)
 * [Version 34.0](#version-340)
@@ -25,11 +25,11 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
-## Version 36.0
+## Version 35.2
 
-36.0.\* is the Quesnelia (R1 2024) version.
+35.2.\* is the Quesnelia (R1 2024) version.
 
-RMB requires Vert.x 4.5.\*.
+RMB 35.2.\* requires Vert.x 4.5.\*.
 
 In Java files replace `javax.validation` with `jakarta.validation`
 and in pom.xml files replace
