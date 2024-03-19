@@ -1,4 +1,4 @@
-package org.folio.rest.impl;
+package org.folio.rest.persist.cache;
 
 import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
@@ -9,6 +9,8 @@ import io.vertx.sqlclient.Row;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.postgres.testing.PostgresTesterContainer;
+import org.folio.rest.impl.TenantAPI;
+import org.folio.rest.impl.TenantHelper;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.PostgresClientHelper;
 import org.folio.rest.tools.utils.VertxUtils;
@@ -27,8 +29,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.greaterThan;
 
 @RunWith(VertxUnitRunner.class)
-public class PostgresConnectionManagerLoadTest extends TenantHelper {
-  private final Logger LOG = LogManager.getLogger(PostgresConnectionManagerLoadTest.class);
+public class CachedConnectionManagerLoadTest extends TenantHelper {
+  private final Logger LOG = LogManager.getLogger(CachedConnectionManagerLoadTest.class);
 
   @Rule
   public Timeout rule = Timeout.seconds(60);

@@ -1,10 +1,13 @@
-package org.folio.rest.persist;
+package org.folio.rest.persist.cache;
 
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.pgclient.PgPool;
+import org.folio.rest.persist.PgConnectionMock;
+import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.PostgresClientHelper;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -21,7 +24,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @RunWith(VertxUnitRunner.class)
-public class PostgresConnectionManagerTest {
+public class CachedConnectionManagerTest {
   @AfterClass
   public static void afterClass() {
     PostgresClientHelper.setSharedPgPool(false);
@@ -30,7 +33,7 @@ public class PostgresConnectionManagerTest {
   @Test
   public void getCachedConnection(TestContext context) {
     PostgresClientHelper.setSharedPgPool(true);
-    var manager = new PostgresConnectionManager();
+    var manager = new CachedConnectionManager();
     var vertx = Vertx.vertx();
     manager.setObserver(vertx, 1000, 1000);
     var connectionToGet = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
@@ -46,7 +49,7 @@ public class PostgresConnectionManagerTest {
   @Test
   public void getCachedConnectionThrowsConnectionReleaseDelayNotSet(TestContext context) {
     PostgresClientHelper.setSharedPgPool(true);
-    var manager = new PostgresConnectionManager();
+    var manager = new CachedConnectionManager();
     var conn = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
     conn.close();
     var pool = PgPool.pool();
@@ -57,7 +60,7 @@ public class PostgresConnectionManagerTest {
 
   @Test
   public void removeOldestAvailableConnectionTest() {
-    var manager = new PostgresConnectionManager();
+    var manager = new CachedConnectionManager();
     // Need to max out the cache.
     int bound = PostgresClient.DEFAULT_MAX_POOL_SIZE;
     for (int i = 0; i < bound; i++) {
@@ -74,7 +77,7 @@ public class PostgresConnectionManagerTest {
 
   @Test
   public void close() {
-    var manager = new PostgresConnectionManager();
+    var manager = new CachedConnectionManager();
     var connection = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
     assertFalse(connection.isAvailable());
     connection.close();
@@ -83,7 +86,7 @@ public class PostgresConnectionManagerTest {
 
   @Test
   public void closeWithHandler() {
-    var manager = new PostgresConnectionManager();
+    var manager = new CachedConnectionManager();
     var connection = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
     var handled = new AtomicBoolean(false);
     Handler<Void> handler = event -> handled.set(true);
@@ -94,7 +97,7 @@ public class PostgresConnectionManagerTest {
 
   @Test
   public void closeWithHandlerAsyncResult() {
-    var manager = new PostgresConnectionManager();
+    var manager = new CachedConnectionManager();
     var connection = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);
     assertFalse(connection.isAvailable());
     connection.close(event -> {
@@ -108,7 +111,7 @@ public class PostgresConnectionManagerTest {
       "1500, 2"
   })
   void releaseDelayWithObserverTest(int delay, int expected) {
-    var manager = new PostgresConnectionManager();
+    var manager = new CachedConnectionManager();
     var vertx = Vertx.vertx();
     manager.setObserver(vertx, delay, 1000);
     var connection1 = new CachedPgConnection("tenant1", new PgConnectionMock(), manager);

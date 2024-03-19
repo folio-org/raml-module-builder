@@ -1,4 +1,4 @@
-package org.folio.rest.persist;
+package org.folio.rest.persist.cache;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
@@ -23,14 +23,14 @@ import java.util.UUID;
 public class CachedPgConnection implements PgConnection {
   private static final Logger LOG = LogManager.getLogger(CachedPgConnection.class);
   private final PgConnection connection;
-  private final PostgresConnectionManager manager;
+  private final CachedConnectionManager manager;
   private final UUID sessionId;
   private final String tenantId;
   private long lastUsedAt;
   private boolean available;
   private Handler<Void> closeHandler;
 
-  public CachedPgConnection(String tenantId, PgConnection connection, PostgresConnectionManager manager) {
+  public CachedPgConnection(String tenantId, PgConnection connection, CachedConnectionManager manager) {
     if (tenantId == null || tenantId.isEmpty() || connection == null || manager == null) {
       throw new IllegalArgumentException();
     }

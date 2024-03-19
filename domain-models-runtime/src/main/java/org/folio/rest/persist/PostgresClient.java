@@ -54,6 +54,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
+import org.folio.rest.persist.cache.CachedConnectionManager;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
@@ -93,7 +94,7 @@ public class PostgresClient {
    *
    * @see #PG_POOLS
    */
-  static boolean sharedPgPool = false;
+  private static boolean sharedPgPool = false;
 
   private static final String    MODULE_NAME              = getModuleName("org.folio.rest.tools.utils.ModuleName");
   private static final String    ID_FIELD                 = "id";
@@ -164,7 +165,7 @@ public class PostgresClient {
   /** analyze threshold value in milliseconds */
   private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
 
-  private static final PostgresConnectionManager POSTGRES_CONNECTION_MANAGER = new PostgresConnectionManager();
+  private static final CachedConnectionManager POSTGRES_CONNECTION_MANAGER = new CachedConnectionManager();
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
@@ -238,6 +239,14 @@ public class PostgresClient {
       long endNanoTime = System.nanoTime();
       logTimer(descriptionKey, sql, startNanoTime, endNanoTime);
     }
+  }
+
+  public static boolean getSharedPgPool() {
+    return sharedPgPool;
+  }
+
+  public static void setSharedPgPool(boolean shared) {
+    sharedPgPool = shared;
   }
 
   /**
