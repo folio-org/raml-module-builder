@@ -621,11 +621,14 @@ public class PostgresClient {
     poolOptions.setMaxSize(
         configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, DEFAULT_MAX_POOL_SIZE)));
     var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
-    poolOptions.setIdleTimeout(connectionReleaseDelay);
+
     poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
 
     if (sharedPgPool) {
-      POSTGRES_CONNECTION_MANAGER.setObserver(vertx, connectionReleaseDelay);
+      poolOptions.setIdleTimeout(0); // The manager fully manages this.
+      POSTGRES_CONNECTION_MANAGER.setConnectionReleaseDelay(connectionReleaseDelay);
+    } else {
+      poolOptions.setIdleTimeout(connectionReleaseDelay);
     }
 
     return PgPool.pool(vertx, connectOptions, poolOptions);
@@ -3547,7 +3550,7 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    */
   public Future<PgConnection> getConnection(PgPool client) {
-    return POSTGRES_CONNECTION_MANAGER.getConnection(client, schemaName, tenantId);
+    return POSTGRES_CONNECTION_MANAGER.getConnection(vertx, client, schemaName, tenantId);
   }
   /**
    * Get Vert.x {@link PgConnection}.

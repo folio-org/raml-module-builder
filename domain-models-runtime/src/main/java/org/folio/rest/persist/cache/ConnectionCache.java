@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class ConnectionCache {
-  private static final Logger LOG = LogManager.getLogger(CachedConnectionManager.class);
+  private static final Logger LOG = LogManager.getLogger(ConnectionCache.class);
   private static final String LOGGER_LABEL = "CONNECTION MANAGER CACHE STATE";
 
   private final List<CachedPgConnection> cache;
@@ -24,18 +24,12 @@ public class ConnectionCache {
     manager = connectionManager;
   }
 
-  public void removeBeforeTimeout(int observerInterval) {
+  public void remove(CachedPgConnection connection) {
     synchronized (cache) {
-      cache.removeIf(connection -> {
-        boolean remove = connection.isAvailable() && isTooOld(connection, observerInterval);
-        if (remove) {
-          metrics.active--;
-          connection.getWrappedConnection().close();
-          LOG.debug("Connection cache item is available and too old, removing and closing: {} {}",
-              connection.getTenantId(), connection.getSessionId());
-        }
-        return remove;
-      });
+      cache.remove(connection);
+      metrics.active--;
+      LOG.debug("Removed connection: {} {}",
+          connection.getTenantId(), connection.getSessionId());
     }
   }
 
@@ -120,17 +114,6 @@ public class ConnectionCache {
 
   public void setPoolSizeMetric(int size) {
     metrics.poolSize = size;
-  }
-
-  private boolean isTooOld(CachedPgConnection item, int observerInterval) {
-    if (this.manager.getLowestReleaseDelayReceived() <= 0) {
-      throw new IllegalArgumentException("Connection release delay has not been set");
-    }
-    // Since we don't know when the timer is firing relative to the release delay (timeout) we subtract the timer
-    // interval from the release delay.
-    var timeoutWithInterval = this.manager.getLowestReleaseDelayReceived() - observerInterval;
-    var millisecondsSinceLastUse = System.currentTimeMillis() - item.getLastUsedAt();
-    return millisecondsSinceLastUse > timeoutWithInterval;
   }
 
   class Metrics {

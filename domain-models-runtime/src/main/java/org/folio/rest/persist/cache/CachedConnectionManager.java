@@ -13,11 +13,10 @@ import org.folio.rest.tools.utils.Envs;
 import java.util.Optional;
 
 public class CachedConnectionManager {
-  public static final int OBSERVER_INTERVAL = 10000;
   private static final Logger LOG = LogManager.getLogger(CachedConnectionManager.class);
   private final ConnectionCache connectionCache = new ConnectionCache(this);
   private final int maxPoolSize;
-  private int lowestReleaseDelayReceived;
+  private int connectionReleaseDelaySeconds;
 
   public CachedConnectionManager() {
     this.maxPoolSize = getMaxSharedPoolSize();
@@ -27,13 +26,13 @@ public class CachedConnectionManager {
     return connectionCache.size();
   }
 
-  public int getLowestReleaseDelayReceived() {
-    return lowestReleaseDelayReceived;
-  }
-
   public void clearCache() {
     connectionCache.clear();
     LOG.debug("Cleared connection manager");
+  }
+
+  public void removeFromCache(CachedPgConnection connection)  {
+    connectionCache.remove(connection);
   }
 
   public void tryClose(CachedPgConnection connection) {
@@ -41,41 +40,18 @@ public class CachedConnectionManager {
     this.tryRemoveOldestAvailableConnectionAndClose();
   }
 
-  public Future<PgConnection> getConnection(Pool pool, String schemaName, String tenantId) {
+  public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
     if (! PostgresClient.getSharedPgPool()) {
       LOG.debug("Not in shared pool mode");
       return pool.getConnection().map(PgConnection.class::cast);
     }
 
     LOG.debug("In shared pool mode");
-    return getOrCreateCachedConnection(pool, schemaName, tenantId);
+    return getOrCreateCachedConnection(vertx, pool, schemaName, tenantId);
   }
 
-  public void setObserver(Vertx vertx,  int connectionReleaseDelay) {
-    setObserver(vertx, connectionReleaseDelay, OBSERVER_INTERVAL);
-  }
-  public void setObserver(Vertx vertx, int connectionReleaseDelay, int observerInterval) {
-    if (connectionReleaseDelay == 0) {
-      // Zero means there is no timeout and connections should be kept open forever. See the RMB readme.
-      return;
-    }
-
-    if (this.lowestReleaseDelayReceived == 0 || connectionReleaseDelay < lowestReleaseDelayReceived) {
-      // Since there can be multiple clients, we let whichever one has provided the lowest release delay win.
-      this.lowestReleaseDelayReceived = connectionReleaseDelay;
-    }
-
-    LOG.debug("Setting idle connection timeout observer with interval: {}", observerInterval);
-    vertx.setPeriodic(observerInterval, id -> {
-      LOG.debug("Observer firing:: connectionReleaseDelay: {}, observerInterval: {}, observer id {}",
-          connectionReleaseDelay, observerInterval, id);
-      connectionCache.log();
-      removeCacheConnectionsBeforeTimeout(observerInterval);
-    });
-  }
-
-  private void removeCacheConnectionsBeforeTimeout(int observerInterval) {
-    connectionCache.removeBeforeTimeout(observerInterval);
+  public void setConnectionReleaseDelay(int seconds) {
+    this.connectionReleaseDelaySeconds = seconds;
   }
 
   private void tryAddToCache(CachedPgConnection connection) {
@@ -99,12 +75,7 @@ public class CachedConnectionManager {
     connectionCache.tryRemoveOldestAvailableAndClose();
   }
 
-  private Future<PgConnection> getOrCreateCachedConnection(Pool pool, String schemaName, String tenantId) {
-    // Because the periodic timer may not be reliable we need to make sure that cached connections have not timed out
-    // before giving them out.
-    removeCacheConnectionsBeforeTimeout(0);
-    long start = System.currentTimeMillis();
-
+  private Future<PgConnection> getOrCreateCachedConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
     Optional<CachedPgConnection> connectionOptional = connectionCache.getConnection(tenantId);
 
     if (connectionOptional.isPresent()) {
@@ -112,8 +83,7 @@ public class CachedConnectionManager {
       CachedPgConnection connection = connectionOptional.get();
       connection.setUnavailable();
 
-      long diff = System.currentTimeMillis() - start;
-      var event = String.format("cache hit %s %s %s", connection.getTenantId(), connection.getSessionId(), diff);
+      var event = String.format("cache hit %s %s", connection.getTenantId(), connection.getSessionId());
       connectionCache.log(event);
 
       return Future.succeededFuture(connection);
@@ -123,17 +93,18 @@ public class CachedConnectionManager {
     var event = String.format("cache miss %s", tenantId);
     connectionCache.log(event);
 
-    return createConnectionSession(pool, schemaName, tenantId);
+    return createConnectionSession(vertx, pool, schemaName, tenantId);
   }
 
-  private Future<PgConnection> createConnectionSession(Pool pool, String schemaName, String tenantId) {
+  private Future<PgConnection> createConnectionSession(Vertx vertx, Pool pool, String schemaName, String tenantId) {
     connectionCache.incrementActive();
     connectionCache.setPoolSizeMetric(pool.size());
     return pool.getConnection().compose(sqlConnection -> {
       String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
           ? "SET ROLE NONE; SET SCHEMA ''"
           : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
-      var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection, this);
+      var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection,
+          this, vertx, connectionReleaseDelaySeconds);
       return sqlConnection.query(sql).execute().map(x -> cachedConnection);
     });
   }

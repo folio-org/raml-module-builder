@@ -3,6 +3,7 @@ package org.folio.rest.persist.cache;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Vertx;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotice;
 import io.vertx.pgclient.PgNotification;
@@ -30,7 +31,13 @@ public class CachedPgConnection implements PgConnection {
   private boolean available;
   private Handler<Void> closeHandler;
 
-  public CachedPgConnection(String tenantId, PgConnection connection, CachedConnectionManager manager) {
+  private final ReleaseDelayObserver observer;
+
+  public CachedPgConnection(String tenantId,
+                            PgConnection connection,
+                            CachedConnectionManager manager,
+                            Vertx vertx,
+                            int releaseDelaySeconds) {
     if (tenantId == null || tenantId.isEmpty() || connection == null || manager == null) {
       throw new IllegalArgumentException();
     }
@@ -40,6 +47,7 @@ public class CachedPgConnection implements PgConnection {
     this.manager = manager;
     this.sessionId = UUID.randomUUID();
     this.lastUsedAt = System.currentTimeMillis();
+    observer = new ReleaseDelayObserver(vertx, releaseDelaySeconds);
   }
 
   @Override
@@ -174,6 +182,7 @@ public class CachedPgConnection implements PgConnection {
   public void setUnavailable() {
     this.available = false;
     this.lastUsedAt = System.currentTimeMillis();
+    this.observer.cancelCountdown();
   }
 
   public UUID getSessionId() {
@@ -194,6 +203,16 @@ public class CachedPgConnection implements PgConnection {
 
   private void setAvailableAndTryClose() {
     this.available = true;
+    this.observer.startCountdown(this::handleReleaseDelayCompletion);
     this.manager.tryClose(this);
+  }
+
+  private void handleReleaseDelayCompletion() {
+    this.available = false;
+    this.connection.close();
+    this.manager.removeFromCache(this);
+
+    LOG.debug("Release delay completed after {} seconds: {} {}",
+        this.observer.getReleaseDelaySeconds(), this.tenantId, this.sessionId);
   }
 }
