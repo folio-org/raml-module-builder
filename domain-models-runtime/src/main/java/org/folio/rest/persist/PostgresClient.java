@@ -94,7 +94,7 @@ public class PostgresClient {
    *
    * @see #PG_POOLS
    */
-  private static boolean sharedPgPool = false;
+  private static boolean sharedPgPool;
 
   private static final String    MODULE_NAME              = getModuleName("org.folio.rest.tools.utils.ModuleName");
   private static final String    ID_FIELD                 = "id";
@@ -241,7 +241,7 @@ public class PostgresClient {
     }
   }
 
-  public static boolean getSharedPgPool() {
+  public static boolean isSharedPool() {
     return sharedPgPool;
   }
 
@@ -671,7 +671,6 @@ public class PostgresClient {
       PostgresClient.setExplainQueryThreshold((Long) v);
     }
     sharedPgPool |= config.containsKey(MAX_SHARED_POOL_SIZE);
-
     log.info("Shared pool for tenant {} is set: {}", tenantId, sharedPgPool);
 
     if (tenantId.equals(DEFAULT_SCHEMA) || sharedPgPool) {

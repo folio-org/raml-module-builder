@@ -1,11 +1,8 @@
 package org.folio.rest.persist.cache;
 
 import io.vertx.core.Vertx;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class ReleaseDelayObserver {
-  private static final Logger LOG = LogManager.getLogger(ReleaseDelayObserver.class);
   private final int releaseDelaySeconds;
   private final Vertx vertx;
   private Long timerId;
@@ -24,15 +21,18 @@ public class ReleaseDelayObserver {
       vertx.cancelTimer(this.timerId);
     }
 
-    vertx.setTimer(releaseDelaySeconds * 1000L, id -> {
+    vertx.setTimer(toMilliseconds(releaseDelaySeconds), id -> {
       this.timerId = id;
       whenDone.run();
     });
   }
-
   public void cancelCountdown() {
     if (this.timerId != null) {
       vertx.cancelTimer(this.timerId);
     }
+  }
+
+  private Long toMilliseconds(int seconds) {
+    return seconds * 1000L;
   }
 }

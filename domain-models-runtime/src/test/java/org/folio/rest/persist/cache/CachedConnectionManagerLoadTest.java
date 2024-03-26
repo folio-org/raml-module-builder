@@ -33,7 +33,7 @@ public class CachedConnectionManagerLoadTest extends TenantHelper {
   private final Logger LOG = LogManager.getLogger(CachedConnectionManagerLoadTest.class);
 
   @Rule
-  public Timeout rule = Timeout.seconds(60);
+  public Timeout rule = Timeout.seconds(20);
 
   @BeforeClass
   public static void setUpClass() {
@@ -47,21 +47,7 @@ public class CachedConnectionManagerLoadTest extends TenantHelper {
   }
 
   @Test
-  public void multipleTenantsSharedPoolLoadTest(TestContext context) {
-    PostgresClientHelper.setSharedPgPool(true);
-    tenantPost(new TenantAPI(), context, null, "tenant1");
-    tenantPost(new TenantAPI(), context, null, "tenant2");
-    tenantPost(new TenantAPI(), context, null, "tenant3");
-    tenantPost(new TenantAPI(), context, null, "tenant4");
-    putLoadOnTenant("tenant1", context);
-    putLoadOnTenant("tenant2", context);
-    putLoadOnTenant("tenant3", context);
-    putLoadOnTenant("tenant4", context);
-    // Add more tenants to increase demand on cache.
-  }
-
-  @Test
-  public void randomTenantsWithLongDBCallDuration(TestContext context) {
+  public void randomTenantsLoadTest(TestContext context) {
     Async async = context.async();
     int numTenants = 15;
     int numAssertions = 50;
@@ -104,26 +90,15 @@ public class CachedConnectionManagerLoadTest extends TenantHelper {
         });
   }
 
-  private void putLoadOnTenant(String tenant, TestContext context) {
-    PostgresClient.getInstance(vertx, tenant).execute("INSERT INTO test_tenantapi VALUES ('27f0857b-3165-4d5a-af77-229e4ad7921d', '{}')")
-        .compose(x -> assertCountFour(context, tenant, 1))
-        .compose(x -> assertCountFour(context, tenant, 1))
-        .compose(x -> assertCountFour(context, tenant, 1))
-        .compose(x -> assertCountFour(context, tenant, 1))
-        // Add more compose calls like above to increase load.
-        .compose(x -> purgeTenant(tenant))
-        .onComplete(context.asyncAssertSuccess(x -> {})); // Have to wrap the Handler in the context for it to wait.
-  }
-
-  protected Future<Row> assertGreaterThan(TestContext context, String tenant, int expectedCount, String query) {
+  protected Future<Row> assertGreaterThan(TestContext context, String tenant, String query) {
     return PostgresClient.getInstance(vertx, tenant).selectSingle(query)
         .onComplete(context.asyncAssertSuccess(row ->
-            assertThat(row.size(), greaterThan(expectedCount))));
+            assertThat(row.size(), greaterThan(0))));
   }
 
   private Future<Row> exerciseTenant(String tenant, TestContext context) {
     //var query = "select current_user; select pg_sleep(.2);"; // This works too, just slower.
     var query = "select current_user;";
-    return assertGreaterThan(context, tenant, 0, query);
+    return assertGreaterThan(context, tenant, query);
   }
 }

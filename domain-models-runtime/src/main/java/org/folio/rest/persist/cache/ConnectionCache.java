@@ -17,11 +17,9 @@ public class ConnectionCache {
 
   private final List<CachedPgConnection> cache;
   private final Metrics metrics = new Metrics();
-  private final CachedConnectionManager manager;
 
-  public ConnectionCache(CachedConnectionManager connectionManager) {
+  public ConnectionCache() {
     cache = Collections.synchronizedList(new ArrayList<>());
-    manager = connectionManager;
   }
 
   public void remove(CachedPgConnection connection) {

@@ -14,7 +14,7 @@ import java.util.Optional;
 
 public class CachedConnectionManager {
   private static final Logger LOG = LogManager.getLogger(CachedConnectionManager.class);
-  private final ConnectionCache connectionCache = new ConnectionCache(this);
+  private final ConnectionCache connectionCache = new ConnectionCache();
   private final int maxPoolSize;
   private int connectionReleaseDelaySeconds = -1;
 
@@ -41,7 +41,7 @@ public class CachedConnectionManager {
   }
 
   public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    if (! PostgresClient.getSharedPgPool()) {
+    if (! PostgresClient.isSharedPool()) {
       LOG.debug("Not in shared pool mode");
       return pool.getConnection().map(PgConnection.class::cast);
     }
