@@ -16,7 +16,7 @@ public class CachedConnectionManager {
   private static final Logger LOG = LogManager.getLogger(CachedConnectionManager.class);
   private final ConnectionCache connectionCache = new ConnectionCache(this);
   private final int maxPoolSize;
-  private int connectionReleaseDelaySeconds;
+  private int connectionReleaseDelaySeconds = -1;
 
   public CachedConnectionManager() {
     this.maxPoolSize = getMaxSharedPoolSize();
@@ -35,8 +35,8 @@ public class CachedConnectionManager {
     connectionCache.remove(connection);
   }
 
-  public void tryClose(CachedPgConnection connection) {
-    this.tryAddToCache(connection);
+  public void tryAddToCache(CachedPgConnection connection) {
+    connectionCache.tryAdd(connection);
     this.tryRemoveOldestAvailableConnectionAndClose();
   }
 
@@ -46,16 +46,16 @@ public class CachedConnectionManager {
       return pool.getConnection().map(PgConnection.class::cast);
     }
 
+    if (this.connectionReleaseDelaySeconds == -1) {
+      throw new IllegalArgumentException("Connection release delay has not been set");
+    }
+
     LOG.debug("In shared pool mode");
     return getOrCreateCachedConnection(vertx, pool, schemaName, tenantId);
   }
 
   public void setConnectionReleaseDelay(int seconds) {
     this.connectionReleaseDelaySeconds = seconds;
-  }
-
-  private void tryAddToCache(CachedPgConnection connection) {
-    connectionCache.tryAdd(connection);
   }
 
   private static int getMaxSharedPoolSize() {

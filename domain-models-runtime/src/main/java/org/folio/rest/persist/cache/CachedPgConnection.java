@@ -53,7 +53,9 @@ public class CachedPgConnection implements PgConnection {
   @Override
   public Future<Void> close() {
     LOG.debug("Calling close: {} {}", this.tenantId, this.sessionId);
-    setAvailableAndTryClose();
+
+    manageAvailability();
+
     if (closeHandler != null) {
       closeHandler.handle(null);
     }
@@ -63,7 +65,7 @@ public class CachedPgConnection implements PgConnection {
   @Override
   public void close(Handler<AsyncResult<Void>> handler) {
     LOG.debug("Calling close: Handler<AsyncResult<Void>>");
-    setAvailableAndTryClose();
+    manageAvailability();
   }
 
   @Override
@@ -175,7 +177,6 @@ public class CachedPgConnection implements PgConnection {
   }
 
   public void setAvailable() {
-    LOG.debug("Setting available: {} {}", this.tenantId, sessionId);
     this.available = true;
   }
 
@@ -201,10 +202,10 @@ public class CachedPgConnection implements PgConnection {
     return lastUsedAt;
   }
 
-  private void setAvailableAndTryClose() {
+  private void manageAvailability() {
     this.available = true;
     this.observer.startCountdown(this::handleReleaseDelayCompletion);
-    this.manager.tryClose(this);
+    this.manager.tryAddToCache(this);
   }
 
   private void handleReleaseDelayCompletion() {
