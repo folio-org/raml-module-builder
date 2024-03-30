@@ -1,14 +1,25 @@
 package org.folio.dbschema;
 
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.UncheckedIOException;
+import java.time.Instant;
+import java.util.Date;
+
 import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.util.ResourceUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 
 class ObjectMapperToolTest {
 
@@ -61,5 +72,44 @@ class ObjectMapperToolTest {
     assertThat(dbSchema.getScripts().get(1).isNewForThisInstall("18.2.2"),
       is(true));
     assertThat(dbSchema.getExactCount(), is(10000));
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    " 2024-12-31T13:14:15.789+00:00, 2024-12-31T13:14:15.789+00:00",
+    " 0000-01-01T00:00:00.000+00:00, 0000-01-01T00:00:00.000+00:00",
+    "+0000-01-01T00:00:00.000+00:00, 0000-01-01T00:00:00.000+00:00",
+    "+0000-12-31T23:59:59.999+00:00, 0000-12-31T23:59:59.999+00:00",
+  })
+  void date(String input, String expected) throws Exception {
+    var json = '"' + input + '"';
+    var date = ObjectMapperTool.readValue(json, Date.class);
+    var json2 = ObjectMapperTool.getMapper().writeValueAsString(date);
+    assertThat(json2, is('"' + expected + '"'));
+  }
+
+  static class Foo {
+    public String s;
+    public Date dueDate;
+  }
+
+  @Test
+  void foo() throws JsonProcessingException {
+    var json = "{\"s\":\"a\",\"dueDate\":\"+1970-01-01T00:00:00.000+00:00\"}";
+    var foo = ObjectMapperTool.readValue(json, Foo.class);
+    assertThat(foo.s, is("a"));
+    assertThat(foo.dueDate.toInstant(), is(Instant.parse("1970-01-01T00:00:00.000+00:00")));
+    var json2 = ObjectMapperTool.getMapper().writeValueAsString(foo);
+    var expected = json.replace("+1970", "1970");
+    assertThat(json2, is(expected));
+  }
+
+  @Test
+  void fooException() {
+    var json = "{\"dueDate\": true}";
+    var e = assertThrows(Exception.class, () -> ObjectMapperTool.readValue(json, Foo.class));
+    assertThat(e.getMessage(), containsString("expected string containing a date"));
+    assertThat(e.getMessage(), containsString("Foo[\"dueDate\"]"));
+    assertThat(e.getCause(), instanceOf(MismatchedInputException.class));
   }
 }
