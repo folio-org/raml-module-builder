@@ -12,15 +12,25 @@ import org.folio.rest.tools.utils.Envs;
 
 import java.util.Optional;
 
+/**
+ * Manages cached connections. Cached connections are tenant session connections. A session is a connection
+ * which has the role and schema set for it for a given tenant. This allows for these session connections to be
+ * reused to reduce round-trips to the database. The {@link ConnectionCache} is where these cached connections are
+ * stored and which this manager manages.
+ * @see ConnectionCache
+ * @see ReleaseDelayObserver
+ * @see CachedPgConnection
+ */
 public class CachedConnectionManager {
   private static final Logger LOG = LogManager.getLogger(CachedConnectionManager.class);
-  private final ConnectionCache connectionCache = new ConnectionCache();
-  private final int maxPoolSize;
-  private int connectionReleaseDelaySeconds = -1;
+  private static final int MAX_POOL_SIZE = Envs.getEnv(Envs.DB_MAXSHAREDPOOLSIZE) == null ?
+      PostgresClient.DEFAULT_MAX_POOL_SIZE :
+      Integer.parseInt(Envs.getEnv(Envs.DB_MAXSHAREDPOOLSIZE));
+  private static final int CONNECTION_RELEASE_DELAY_SECONDS = Envs.getEnv(Envs.DB_CONNECTIONRELEASEDELAY) == null ?
+      PostgresClient.DEFAULT_CONNECTION_RELEASE_DELAY :
+      Integer.parseInt(Envs.getEnv(Envs.DB_CONNECTIONRELEASEDELAY));
 
-  public CachedConnectionManager() {
-    this.maxPoolSize = getMaxSharedPoolSize();
-  }
+  private final ConnectionCache connectionCache = new ConnectionCache();
 
   public int getCacheSize() {
     return connectionCache.size();
@@ -41,33 +51,16 @@ public class CachedConnectionManager {
   }
 
   public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    if (! PostgresClient.isSharedPool()) {
-      LOG.debug("Not in shared pool mode");
+    if (!PostgresClient.isSharedPool()) {
       return pool.getConnection().map(PgConnection.class::cast);
     }
-
-    if (this.connectionReleaseDelaySeconds == -1) {
-      throw new IllegalArgumentException("Connection release delay has not been set");
-    }
-
-    LOG.debug("In shared pool mode");
     return getOrCreateCachedConnection(vertx, pool, schemaName, tenantId);
-  }
-
-  public void setConnectionReleaseDelay(int seconds) {
-    this.connectionReleaseDelaySeconds = seconds;
-  }
-
-  private static int getMaxSharedPoolSize() {
-    return Envs.getEnv(Envs.DB_MAXSHAREDPOOLSIZE) == null ?
-        PostgresClient.DEFAULT_MAX_POOL_SIZE :
-        Integer.parseInt(Envs.getEnv(Envs.DB_MAXSHAREDPOOLSIZE));
   }
 
   private void tryRemoveOldestAvailableConnectionAndClose() {
     // The cache must not grow larger than the max pool size of the underlying pool.
-    var cacheExhausted = this.connectionCache.size() >= maxPoolSize;
-    if (! cacheExhausted) {
+    var cacheExhausted = this.connectionCache.size() >= MAX_POOL_SIZE;
+    if (!cacheExhausted) {
       LOG.debug("Cache is not yet exhausted");
       return;
     }
@@ -104,7 +97,7 @@ public class CachedConnectionManager {
           ? "SET ROLE NONE; SET SCHEMA ''"
           : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
       var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection,
-          this, vertx, connectionReleaseDelaySeconds);
+          this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
       return sqlConnection.query(sql).execute().map(x -> cachedConnection);
     });
   }

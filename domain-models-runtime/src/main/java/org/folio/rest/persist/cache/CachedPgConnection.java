@@ -21,6 +21,13 @@ import org.apache.logging.log4j.Logger;
 
 import java.util.UUID;
 
+/**
+ * Both wraps and implements a {@link PgConnection} to provide additional connection features to allow for tenant
+ * connection sessions to be managed (reused). This allows clients to use the connection as they would normally.
+ * Cached connections are contained in the {@link ConnectionCache}.
+ * @see CachedConnectionManager
+ * @see ReleaseDelayObserver
+ */
 public class CachedPgConnection implements PgConnection {
   private static final Logger LOG = LogManager.getLogger(CachedPgConnection.class);
   private final PgConnection connection;
@@ -170,7 +177,6 @@ public class CachedPgConnection implements PgConnection {
   public DatabaseMetadata databaseMetadata() {
     return connection.databaseMetadata();
   }
-
 
   public boolean isAvailable() {
     return this.available;

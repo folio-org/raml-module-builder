@@ -74,7 +74,9 @@ public class PostgresClient {
 
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
-  public static final int DEFAULT_MAX_POOL_SIZE = 10;
+  public static final int        DEFAULT_MAX_POOL_SIZE = 10;
+  /** default release delay in milliseconds; after this time an idle database connection is closed */
+  public static final int        DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
 
   static Logger log = LogManager.getLogger(PostgresClient.class);
 
@@ -102,8 +104,6 @@ public class PostgresClient {
   private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
   private static final String    MAX_POOL_SIZE = "maxPoolSize";
   private static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
-  /** default release delay in milliseconds; after this time an idle database connection is closed */
-  private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
 
   private static PostgresTester postgresTester;
@@ -165,7 +165,7 @@ public class PostgresClient {
   /** analyze threshold value in milliseconds */
   private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
 
-  private static final CachedConnectionManager POSTGRES_CONNECTION_MANAGER = new CachedConnectionManager();
+  private static final CachedConnectionManager CACHED_CONNECTION_MANAGER = new CachedConnectionManager();
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
@@ -504,7 +504,7 @@ public class PostgresClient {
       client.closeClient();
     }
 
-    POSTGRES_CONNECTION_MANAGER.clearCache();
+    CACHED_CONNECTION_MANAGER.clearCache();
 
     PG_POOLS.values().forEach(PgPool::close);
     PG_POOLS.clear();
@@ -620,14 +620,13 @@ public class PostgresClient {
     PoolOptions poolOptions = new PoolOptions();
     poolOptions.setMaxSize(
         configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, DEFAULT_MAX_POOL_SIZE)));
-    var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
 
     poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
 
     if (sharedPgPool) {
       poolOptions.setIdleTimeout(0); // The manager fully manages this.
-      POSTGRES_CONNECTION_MANAGER.setConnectionReleaseDelay(connectionReleaseDelay);
     } else {
+      var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
       poolOptions.setIdleTimeout(connectionReleaseDelay);
     }
 
@@ -3549,7 +3548,7 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    */
   public Future<PgConnection> getConnection(PgPool client) {
-    return POSTGRES_CONNECTION_MANAGER.getConnection(vertx, client, schemaName, tenantId);
+    return CACHED_CONNECTION_MANAGER.getConnection(vertx, client, schemaName, tenantId);
   }
   /**
    * Get Vert.x {@link PgConnection}.

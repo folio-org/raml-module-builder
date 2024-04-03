@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @RunWith(VertxUnitRunner.class)
 public class CachedConnectionManagerTest {
@@ -34,7 +33,6 @@ public class CachedConnectionManagerTest {
   public void getCachedConnectionTest(TestContext context) {
     PostgresClientHelper.setSharedPgPool(true);
     var manager = new CachedConnectionManager();
-    manager.setConnectionReleaseDelay(1000);
     var vertx = Vertx.vertx();
     var connectionToGet = new CachedPgConnection("tenant1", new PgConnectionMock(), manager, vertx, 1);
     connectionToGet.close();
@@ -44,19 +42,6 @@ public class CachedConnectionManagerTest {
       assertEquals(connectionToGet.getSessionId(), gotConnection.getSessionId());
       assertFalse(gotConnection.isAvailable());
     }));
-  }
-
-  @Test
-  public void getCachedConnectionThrowsConnectionReleaseDelayNotSetTest(TestContext context) {
-    PostgresClientHelper.setSharedPgPool(true);
-    var manager = new CachedConnectionManager();
-    var vertx = Vertx.vertx();
-    var conn = new CachedPgConnection("tenant1", new PgConnectionMock(), manager, vertx, 1);
-    conn.close();
-    var pool = PgPool.pool();
-    Throwable throwable = assertThrows(IllegalArgumentException.class, () ->
-        manager.getConnection(vertx, pool, "tenant1", "tenant1"));
-    assertEquals("Connection release delay has not been set", throwable.getMessage());
   }
 
   @Test

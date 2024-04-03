@@ -11,6 +11,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Provides a thread-safe cache that stores {@link CachedPgConnection} objects.
+ * @see CachedConnectionManager
+ */
 public class ConnectionCache {
   private static final Logger LOG = LogManager.getLogger(ConnectionCache.class);
   private static final String LOGGER_LABEL = "CONNECTION MANAGER CACHE STATE";
@@ -80,20 +84,15 @@ public class ConnectionCache {
     }
   }
 
-  public void log(String event) {
-    if (LOG.getLevel() == Level.DEBUG) {
-      var msg = this.metrics.toString(LOGGER_LABEL + ": " + event);
-      var debugMsg = msg + metrics.toStringDebug();
-      LOG.debug(debugMsg);
-    }
-  }
-
-  public void log() {
-    var msg = this.metrics.toString(LOGGER_LABEL + ": observer");
+  /**
+   * Logs the current state of the cache. If debug logging is configured, iterates and prints the cache items.
+   * @param context Any details that help contextualize the event.
+   */
+  public void log(String context) {
+    var msg = this.metrics.toString(LOGGER_LABEL + ": " + context);
     if (LOG.getLevel() == Level.DEBUG) {
       var debugMsg = msg + metrics.toStringDebug();
       LOG.debug(debugMsg);
-      return;
     }
     LOG.info(msg);
   }
