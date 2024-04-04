@@ -69,8 +69,6 @@ public final class ObjectMapperTool {
 
   public static class DateSerializer extends StdSerializer<Date> {
 
-    private static final long serialVersionUID = 1L;
-
     public DateSerializer(Class<Date> type) {
       super(type);
     }
@@ -88,7 +86,6 @@ public final class ObjectMapperTool {
   }
 
   public static class DateDeserializer extends StdDeserializer<Date> {
-    private static final long serialVersionUID = 1L;
 
     public DateDeserializer(Class<?> c) {
       super(c);
@@ -96,10 +93,10 @@ public final class ObjectMapperTool {
 
     @Override
     public Date deserialize(JsonParser parser, DeserializationContext context)
-        throws IOException, JacksonException {
+        throws IOException {
 
       var token = parser.currentToken();
-      if (! JsonToken.VALUE_STRING.equals(token)) {
+      if (JsonToken.VALUE_STRING != token) {
         throw context.wrongTokenException(parser, Date.class, JsonToken.VALUE_STRING,
             "expected string containing a date");
       }
