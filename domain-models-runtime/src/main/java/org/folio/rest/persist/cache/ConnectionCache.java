@@ -50,7 +50,7 @@ public class ConnectionCache {
     synchronized (cache) {
       cache.stream()
           .filter(CachedPgConnection::isAvailable)
-          .min(Comparator.comparingLong(CachedPgConnection::getLastUsedAt))
+          .min(Comparator.comparingLong(CachedPgConnection::getIdleSince))
           .ifPresent(connection -> {
             connection.getWrappedConnection().close();
             cache.remove(connection);
@@ -61,14 +61,28 @@ public class ConnectionCache {
     }
   }
 
-  public Optional<CachedPgConnection> getConnection(String tenantId) {
-    Optional<CachedPgConnection> connectionOptional;
+  public Optional<CachedPgConnection> getOrRecycleConnection(String tenantId) {
     synchronized (cache) {
-      connectionOptional =
+      // First attempt to find a connection for the tenant that is available.
+      Optional<CachedPgConnection> connectionOptional =
           cache.stream().filter(item ->
               item.getTenantId().equals(tenantId) && item.isAvailable()).findFirst();
+
+      // If The first attempt fails, try to find the oldest connection for another tenant that is available.
+      if (connectionOptional.isEmpty()) {
+        connectionOptional = cache.stream()
+            .filter(item -> !item.getTenantId().equals(tenantId) && item.isAvailable())
+            .min(Comparator.comparingLong(CachedPgConnection::getIdleSince));
+
+        // Indicate that it can now be used for another tenant (recycled).
+        connectionOptional.ifPresent(connection -> connection.setRecycled(tenantId));
+      }
+
+      // Make sure to set the connection to be unavailable in the synchronized block if it is present.
+      connectionOptional.ifPresent(CachedPgConnection::setUnavailable);
+
+      return connectionOptional;
     }
-    return connectionOptional;
   }
 
   public void clear() {
@@ -134,7 +148,7 @@ public class ConnectionCache {
     }
 
     String toString(String msg) {
-      return msg + String.format(":: %s (hits) %s (misses) %s (size) %s (active) %s (pool)",
+      return msg + String.format(":: %s hits, %s misses, %s size, %s active, %s pool",
           hits, misses, cache.size(), active, poolSize);
     }
 
@@ -145,7 +159,7 @@ public class ConnectionCache {
             .map(item -> String.format("%s %s %s %s",
                 item.getSessionId(),
                 item.isAvailable(),
-                item.getLastUsedAt(),
+                item.getIdleSince(),
                 item.getTenantId()
             ))
             .collect(Collectors.joining("\n"));

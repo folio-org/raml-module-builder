@@ -5,6 +5,7 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Pool;
 import io.vertx.core.Future;
 
+import io.vertx.sqlclient.SqlConnection;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.persist.PostgresClient;
@@ -23,12 +24,10 @@ import java.util.Optional;
  */
 public class CachedConnectionManager {
   private static final Logger LOG = LogManager.getLogger(CachedConnectionManager.class);
-  private static final int MAX_POOL_SIZE = Envs.getEnv(Envs.DB_MAXSHAREDPOOLSIZE) == null ?
-      PostgresClient.DEFAULT_MAX_POOL_SIZE :
-      Integer.parseInt(Envs.getEnv(Envs.DB_MAXSHAREDPOOLSIZE));
-  private static final int CONNECTION_RELEASE_DELAY_SECONDS = Envs.getEnv(Envs.DB_CONNECTIONRELEASEDELAY) == null ?
-      PostgresClient.DEFAULT_CONNECTION_RELEASE_DELAY :
-      Integer.parseInt(Envs.getEnv(Envs.DB_CONNECTIONRELEASEDELAY));
+  private static final int MAX_POOL_SIZE = getIntFromEnvOrDefault(
+      Envs.DB_MAXSHAREDPOOLSIZE, PostgresClient.DEFAULT_MAX_POOL_SIZE);
+  private static final int CONNECTION_RELEASE_DELAY_SECONDS = getIntFromEnvOrDefault(
+      Envs.DB_CONNECTIONRELEASEDELAY, PostgresClient.DEFAULT_CONNECTION_RELEASE_DELAY);
 
   private final ConnectionCache connectionCache = new ConnectionCache();
 
@@ -38,7 +37,7 @@ public class CachedConnectionManager {
 
   public void clearCache() {
     connectionCache.clear();
-    LOG.debug("Cleared connection manager");
+    LOG.debug("Cleared connection cache");
   }
 
   public void removeFromCache(CachedPgConnection connection)  {
@@ -51,30 +50,19 @@ public class CachedConnectionManager {
   }
 
   public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    if (!PostgresClient.isSharedPool()) {
-      return pool.getConnection().map(PgConnection.class::cast);
-    }
-    return getOrCreateCachedConnection(vertx, pool, schemaName, tenantId);
-  }
-
-  private void tryRemoveOldestAvailableConnectionAndClose() {
-    // The cache must not grow larger than the max pool size of the underlying pool.
-    var cacheExhausted = this.connectionCache.size() >= MAX_POOL_SIZE;
-    if (!cacheExhausted) {
-      LOG.debug("Cache is not yet exhausted");
-      return;
-    }
-
-    connectionCache.tryRemoveOldestAvailableAndClose();
-  }
-
-  private Future<PgConnection> getOrCreateCachedConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    Optional<CachedPgConnection> connectionOptional = connectionCache.getConnection(tenantId);
+    Optional<CachedPgConnection> connectionOptional = connectionCache.getOrRecycleConnection(tenantId);
 
     if (connectionOptional.isPresent()) {
       connectionCache.incrementHits();
       CachedPgConnection connection = connectionOptional.get();
-      connection.setUnavailable();
+
+      // If it has been recycled, we now need to set a new role and schema for it.
+      if (connection.isRecycled()) {
+        var event = String.format("cache hit (recycled) %s %s", connection.getTenantId(), connection.getSessionId());
+        connectionCache.log(event);
+
+        return setRoleAndSchema(vertx, schemaName, tenantId, connection);
+      }
 
       var event = String.format("cache hit %s %s", connection.getTenantId(), connection.getSessionId());
       connectionCache.log(event);
@@ -89,16 +77,44 @@ public class CachedConnectionManager {
     return createConnectionSession(vertx, pool, schemaName, tenantId);
   }
 
+  private static int getIntFromEnvOrDefault(Envs envKey, int defaultValue) {
+    String envValue = Envs.getEnv(envKey);
+    if (envValue == null) {
+      return defaultValue;
+    }
+    try {
+      return Integer.parseInt(envValue);
+    } catch (NumberFormatException e) {
+      LOG.error("Environment variable has wrong format:: variable: {}, value: {}", envKey.name(), envValue);
+      return defaultValue;
+    }
+  }
+
+  private void tryRemoveOldestAvailableConnectionAndClose() {
+    // The cache must not grow larger than the max pool size of the underlying pool.
+    var cacheExhausted = this.connectionCache.size() >= MAX_POOL_SIZE;
+    if (!cacheExhausted) {
+      LOG.debug("Cache is not yet exhausted");
+      return;
+    }
+    connectionCache.tryRemoveOldestAvailableAndClose();
+  }
+
   private Future<PgConnection> createConnectionSession(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    connectionCache.incrementActive();
     connectionCache.setPoolSizeMetric(pool.size());
-    return pool.getConnection().compose(sqlConnection -> {
-      String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
-          ? "SET ROLE NONE; SET SCHEMA ''"
-          : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
-      var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection,
-          this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
-      return sqlConnection.query(sql).execute().map(x -> cachedConnection);
-    });
+    return pool.getConnection().compose(sqlConnection -> setRoleAndSchema(vertx, schemaName, tenantId, sqlConnection));
+  }
+
+  private Future<PgConnection> setRoleAndSchema(Vertx vertx,
+                                                String schemaName,
+                                                String tenantId,
+                                                SqlConnection sqlConnection) {
+    connectionCache.incrementActive();
+    String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
+        ? "SET ROLE NONE; SET SCHEMA ''"
+        : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
+    var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection,
+        this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
+    return sqlConnection.query(sql).execute().map(x -> cachedConnection);
   }
 }

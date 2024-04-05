@@ -3548,6 +3548,10 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    */
   public Future<PgConnection> getConnection(PgPool client) {
+    if (!isSharedPool()) {
+      return client.getConnection().map(PgConnection.class::cast);
+    }
+
     return CACHED_CONNECTION_MANAGER.getConnection(vertx, client, schemaName, tenantId);
   }
   /**

@@ -33,9 +33,10 @@ public class CachedPgConnection implements PgConnection {
   private final PgConnection connection;
   private final CachedConnectionManager manager;
   private final UUID sessionId;
-  private final String tenantId;
-  private long lastUsedAt;
+  private String tenantId;
+  private long idleSince;
   private boolean available;
+  private boolean recycled;
   private Handler<Void> closeHandler;
 
   private final ReleaseDelayObserver observer;
@@ -53,7 +54,7 @@ public class CachedPgConnection implements PgConnection {
     this.connection = connection;
     this.manager = manager;
     this.sessionId = UUID.randomUUID();
-    this.lastUsedAt = System.currentTimeMillis();
+    this.idleSince = System.currentTimeMillis();
     observer = new ReleaseDelayObserver(vertx, releaseDelaySeconds);
   }
 
@@ -61,7 +62,10 @@ public class CachedPgConnection implements PgConnection {
   public Future<Void> close() {
     LOG.debug("Calling close: {} {}", this.tenantId, this.sessionId);
 
-    manageAvailability();
+    this.available = true;
+    this.recycled = false;
+    this.observer.startCountdown(this::handleReleaseDelayCompletion);
+    this.manager.tryAddToCache(this);
 
     if (closeHandler != null) {
       closeHandler.handle(null);
@@ -72,7 +76,7 @@ public class CachedPgConnection implements PgConnection {
   @Override
   public void close(Handler<AsyncResult<Void>> handler) {
     LOG.debug("Calling close: Handler<AsyncResult<Void>>");
-    manageAvailability();
+    close().onComplete(handler);
   }
 
   @Override
@@ -184,12 +188,21 @@ public class CachedPgConnection implements PgConnection {
 
   public void setAvailable() {
     this.available = true;
+    this.idleSince = System.currentTimeMillis();
   }
 
   public void setUnavailable() {
     this.available = false;
-    this.lastUsedAt = System.currentTimeMillis();
     this.observer.cancelCountdown();
+  }
+
+  public boolean isRecycled() {
+    return this.recycled;
+  }
+
+  public void setRecycled(String newTenantId) {
+    this.recycled = true;
+    this.tenantId = newTenantId;
   }
 
   public UUID getSessionId() {
@@ -204,14 +217,8 @@ public class CachedPgConnection implements PgConnection {
     return connection;
   }
 
-  public long getLastUsedAt() {
-    return lastUsedAt;
-  }
-
-  private void manageAvailability() {
-    this.available = true;
-    this.observer.startCountdown(this::handleReleaseDelayCompletion);
-    this.manager.tryAddToCache(this);
+  public long getIdleSince() {
+    return idleSince;
   }
 
   private void handleReleaseDelayCompletion() {
