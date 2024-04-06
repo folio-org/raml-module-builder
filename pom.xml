@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>35.1.3</version>
+  <version>35.1.4-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -28,7 +28,7 @@
 
   <properties>
 
-    <project.build.outputTimestamp>2024-04-06T09:49:14Z</project.build.outputTimestamp>
+    <project.build.outputTimestamp>2024-04-06T09:50:43Z</project.build.outputTimestamp>
 
     <aspectj.version>1.9.20.1</aspectj.version>
     <junit-jupiter-version>5.10.0</junit-jupiter-version>
@@ -478,7 +478,7 @@
     <url>https://github.com/folio-org/raml-module-builder</url>
     <connection>scm:git:git://github.com:folio-org/raml-module-builder.git</connection>
     <developerConnection>scm:git:git@github.com:folio-org/raml-module-builder.git</developerConnection>
-    <tag>v35.1.3</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <distributionManagement>
