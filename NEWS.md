@@ -1,3 +1,8 @@
+## 35.1.3 2024-04-06
+
+Bug fix:
+* [RMB-992](https://folio-org.atlassian.net/browse/RMB-992) Don't increment optimistic locking \_version when updating non-jsonb columns
+
 ## 35.1.2 2024-02-19
 
 Bug fixes:

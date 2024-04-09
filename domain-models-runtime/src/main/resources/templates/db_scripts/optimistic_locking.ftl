@@ -39,7 +39,7 @@
   DROP TRIGGER IF EXISTS set_${table.tableName}_ol_version_trigger
     ON ${myuniversity}_${mymodule}.${table.tableName} CASCADE;
     
-  CREATE TRIGGER set_${table.tableName}_ol_version_trigger BEFORE INSERT OR UPDATE
+  CREATE TRIGGER set_${table.tableName}_ol_version_trigger BEFORE INSERT OR UPDATE OF jsonb
     ON ${myuniversity}_${mymodule}.${table.tableName}
     FOR EACH ROW EXECUTE PROCEDURE ${myuniversity}_${mymodule}.${table.tableName}_set_ol_version();
   
