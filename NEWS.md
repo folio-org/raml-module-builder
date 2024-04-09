@@ -1,3 +1,10 @@
+## 35.2.1 2024-04-06
+
+Bug fixes:
+* [RMB-991](https://folio-org.atlassian.net/browse/RMB-991) Vert.x 4.5.5 fixing PostgreSQL SSL/TLS/https hostname verification
+* [RMB-943](https://folio-org.atlassian.net/browse/RMB-943) Some dates are not deserialized properly (year 0)
+* [RMB-992](https://folio-org.atlassian.net/browse/RMB-992) Don't increment optimistic locking \_version when updating non-jsonb columns
+
 ## 35.2.0 2024-03-01
 
 Quesnelia release, see [upgrade notes](doc/upgrading.md#version-360).
