@@ -1,3 +1,8 @@
+## 35.2.2 2024-04-12
+
+Bug fixes:
+* [RMB-943](https://folio-org.atlassian.net/browse/RMB-943) Support deserialization of long to Date
+
 ## 35.2.1 2024-04-06
 
 Bug fixes:
