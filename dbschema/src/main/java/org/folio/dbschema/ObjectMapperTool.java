@@ -94,7 +94,7 @@ public final class ObjectMapperTool {
     public Date deserialize(JsonParser parser, DeserializationContext context)
         throws IOException {
 
-      switch (parser.currentToken()) {
+      return switch (parser.currentToken()) {
         case VALUE_STRING -> {
           var v = parser.getValueAsString();
           // remove preceding + that Jackson's default Date formatter have created
@@ -102,17 +102,13 @@ public final class ObjectMapperTool {
           if (v.startsWith("+")) {
             v = v.substring(1);
           }
-          return context.parseDate(v);
+          yield context.parseDate(v);
         }
-        case VALUE_NUMBER_INT -> {
-          // non-RMB serializers use Date::getTime to serialize a Date
-          return new Date(parser.getValueAsLong());
-        }
-        default -> {
-          throw context.wrongTokenException(parser, Date.class, JsonToken.VALUE_STRING,
-              "expected string containing a date");
-        }
-      }
+        // non-RMB serializers use Date::getTime to serialize a Date
+        case VALUE_NUMBER_INT -> new Date(parser.getValueAsLong());
+        default -> throw context.wrongTokenException(parser, Date.class, JsonToken.VALUE_STRING,
+            "expected string containing a date");
+      };
     }
   }
 
