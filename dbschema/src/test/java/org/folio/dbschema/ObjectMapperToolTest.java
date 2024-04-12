@@ -88,6 +88,20 @@ class ObjectMapperToolTest {
     assertThat(json2, is('"' + expected + '"'));
   }
 
+  @ParameterizedTest
+  @CsvSource({
+    "           -1, 1969-12-31T23:59:59.999+00:00",
+    "            0, 1970-01-01T00:00:00.000+00:00",
+    "            1, 1970-01-01T00:00:00.001+00:00",
+    "1800000000000, 2027-01-15T08:00:00.000+00:00",
+  })
+  void date(long input, String expected) throws Exception {
+    var date = ObjectMapperTool.readValue("" + input, Date.class);
+    assertThat(date, is(new Date(input)));
+    var json = ObjectMapperTool.getMapper().writeValueAsString(date);
+    assertThat(json, is('"' + expected + '"'));
+  }
+
   static class Foo {
     public String s;
     public Date dueDate;

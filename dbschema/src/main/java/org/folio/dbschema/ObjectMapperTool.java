@@ -94,18 +94,25 @@ public final class ObjectMapperTool {
     public Date deserialize(JsonParser parser, DeserializationContext context)
         throws IOException {
 
-      var token = parser.currentToken();
-      if (JsonToken.VALUE_STRING != token) {
-        throw context.wrongTokenException(parser, Date.class, JsonToken.VALUE_STRING,
-            "expected string containing a date");
+      switch (parser.currentToken()) {
+        case VALUE_STRING -> {
+          var v = parser.getValueAsString();
+          // remove preceding + that Jackson's default Date formatter have created
+          // for year 0 dates like "+0000-01-01T00:00:00.000+00:00"
+          if (v.startsWith("+")) {
+            v = v.substring(1);
+          }
+          return context.parseDate(v);
+        }
+        case VALUE_NUMBER_INT -> {
+          // non-RMB serializers use Date::getTime to serialize a Date
+          return new Date(parser.getValueAsLong());
+        }
+        default -> {
+          throw context.wrongTokenException(parser, Date.class, JsonToken.VALUE_STRING,
+              "expected string containing a date");
+        }
       }
-      var v = parser.getValueAsString();
-      // remove preceding + that Jackson's default Date formatter have created
-      // for year 0 dates like "+0000-01-01T00:00:00.000+00:00"
-      if (v.startsWith("+")) {
-        v = v.substring(1);
-      }
-      return context.parseDate(v);
     }
   }
 
