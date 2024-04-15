@@ -24,10 +24,10 @@ import java.util.Optional;
  */
 public class CachedConnectionManager {
   private static final Logger LOG = LogManager.getLogger(CachedConnectionManager.class);
-  private static final int MAX_POOL_SIZE = getIntFromEnvOrDefault(
-      Envs.DB_MAXSHAREDPOOLSIZE, PostgresClient.DEFAULT_MAX_POOL_SIZE);
-  private static final int CONNECTION_RELEASE_DELAY_SECONDS = getIntFromEnvOrDefault(
-      Envs.DB_CONNECTIONRELEASEDELAY, PostgresClient.DEFAULT_CONNECTION_RELEASE_DELAY);
+  private static final int MAX_POOL_SIZE =
+      getIntFromEnvOrDefault(Envs.DB_MAXSHAREDPOOLSIZE, PostgresClient.DEFAULT_MAX_POOL_SIZE);
+  private static final int CONNECTION_RELEASE_DELAY_SECONDS =
+      getIntFromEnvOrDefault(Envs.DB_CONNECTIONRELEASEDELAY, PostgresClient.DEFAULT_CONNECTION_RELEASE_DELAY);
 
   private final ConnectionCache connectionCache = new ConnectionCache();
 
@@ -44,11 +44,19 @@ public class CachedConnectionManager {
     connectionCache.remove(connection);
   }
 
+  /**
+   * Try to add the provided connection to the cache. If the connection has already been added do nothing. Also
+   * attempts to remove the oldest available connection if the cache is full (for any tenant).
+   */
   public void tryAddToCache(CachedPgConnection connection) {
     connectionCache.tryAdd(connection);
-    this.tryRemoveOldestAvailableConnectionAndClose();
+    tryRemoveOldestAvailableConnectionAndClose();
   }
 
+  /**
+   * Get a connection from the manager. If a connection for the tenant is not available, another available connection
+   * will be recycled and used for the provided tenant.
+   */
   public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
     Optional<CachedPgConnection> connectionOptional = connectionCache.getOrRecycleConnection(tenantId);
 
@@ -97,7 +105,7 @@ public class CachedConnectionManager {
       LOG.debug("Cache is not yet exhausted");
       return;
     }
-    connectionCache.tryRemoveOldestAvailableAndClose();
+    connectionCache.removeOldestAvailableAndClose();
   }
 
   private Future<PgConnection> createConnectionSession(Vertx vertx, Pool pool, String schemaName, String tenantId) {

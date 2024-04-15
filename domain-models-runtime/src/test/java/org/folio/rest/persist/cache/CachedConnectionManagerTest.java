@@ -45,7 +45,7 @@ public class CachedConnectionManagerTest {
   }
 
   @Test
-  public void removeOldestAvailableConnectionTest() {
+  public void removeOldestAvailableConnectionWhenCacheIsFullTest() {
     var manager = new CachedConnectionManager();
     var vertx = Vertx.vertx();
     // Need to max out the cache.
@@ -58,6 +58,7 @@ public class CachedConnectionManagerTest {
       }
       manager.tryAddToCache(new CachedPgConnection("tenant2", new PgConnectionMock(), manager, vertx, 1));
     }
+    // One should be removed.
     assertEquals(PostgresClient.DEFAULT_MAX_POOL_SIZE - 1, manager.getCacheSize());
   }
 

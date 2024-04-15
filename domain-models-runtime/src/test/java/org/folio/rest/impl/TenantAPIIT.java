@@ -588,7 +588,7 @@ public class TenantAPIIT extends TenantHelper {
         .compose(x -> assertCountFour(context, tenant2, 0))
         .compose(x -> tenantPurge(context, tenant2))
         .compose(x -> assertCountFour(context, tenant1, 1))
-        .onComplete(x -> context.asyncAssertSuccess());
+        .onComplete(context.asyncAssertSuccess());
   }
 
   @Test

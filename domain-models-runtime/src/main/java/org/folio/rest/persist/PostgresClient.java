@@ -74,7 +74,7 @@ public class PostgresClient {
 
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
-  public static final int        DEFAULT_MAX_POOL_SIZE = 10;
+  public static final int        DEFAULT_MAX_POOL_SIZE = 4;
   /** default release delay in milliseconds; after this time an idle database connection is closed */
   public static final int        DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
 
@@ -162,10 +162,10 @@ public class PostgresClient {
       // \\b = a word boundary
       Pattern.compile("^\\s*COPY\\b.*\\bFROM\\s+STDIN\\b.*", Pattern.CASE_INSENSITIVE);
 
+  private static final CachedConnectionManager CACHED_CONNECTION_MANAGER = new CachedConnectionManager();
+
   /** analyze threshold value in milliseconds */
   private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
-
-  private static final CachedConnectionManager CACHED_CONNECTION_MANAGER = new CachedConnectionManager();
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;

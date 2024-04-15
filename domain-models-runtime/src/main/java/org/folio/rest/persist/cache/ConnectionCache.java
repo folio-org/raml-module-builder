@@ -35,6 +35,10 @@ public class ConnectionCache {
     }
   }
 
+  /**
+   * Add the connection to the cache if it does not already exist. If it exists do nothing.
+   * @param connection The connection to try adding.
+   */
   public void tryAdd(CachedPgConnection connection) {
     synchronized (cache) {
       if (cache.contains(connection)) {
@@ -46,7 +50,10 @@ public class ConnectionCache {
     }
   }
 
-  public void tryRemoveOldestAvailableAndClose() {
+  /**
+   * Remove the oldest available connection and close the underlying (wrapped) connection if it is the oldest available.
+   */
+  public void removeOldestAvailableAndClose() {
     synchronized (cache) {
       cache.stream()
           .filter(CachedPgConnection::isAvailable)
@@ -78,7 +85,6 @@ public class ConnectionCache {
         connectionOptional.ifPresent(connection -> connection.setRecycled(tenantId));
       }
 
-      // Make sure to set the connection to be unavailable in the synchronized block if it is present.
       connectionOptional.ifPresent(CachedPgConnection::setUnavailable);
 
       return connectionOptional;
