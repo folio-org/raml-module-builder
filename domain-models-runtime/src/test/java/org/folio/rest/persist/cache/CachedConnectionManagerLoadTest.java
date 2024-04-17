@@ -1,5 +1,8 @@
 package org.folio.rest.persist.cache;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.greaterThan;
+
 import io.vertx.core.Future;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
@@ -19,14 +22,10 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
 import java.util.ArrayList;
+import java.util.function.Function;
 import java.util.List;
 import java.util.Random;
-import java.util.function.Function;
-
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.greaterThan;
 
 @RunWith(VertxUnitRunner.class)
 public class CachedConnectionManagerLoadTest extends TenantHelper {

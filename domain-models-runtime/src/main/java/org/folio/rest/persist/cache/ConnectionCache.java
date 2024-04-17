@@ -68,21 +68,26 @@ public class ConnectionCache {
     }
   }
 
-  public Optional<CachedPgConnection> getOrRecycleConnection(String tenantId) {
+  /**
+   * Get a connection where {@link CachedPgConnection#isAvailable()} is true. First it tries to get an available
+   * connection for the provided tenant. If that fails it provides one for another tenant which is the oldest
+   * available. If none are available it returns null. If the connection is found it is set to be unavailable using
+   * {@link CachedPgConnection#setUnavailable()} in a thread safe way.
+   * @param tenantId The tenant to check first.
+   * @return An optional wrapping the potentially null connection.
+   */
+  public Optional<CachedPgConnection> getAvailableConnection(String tenantId) {
     synchronized (cache) {
       // First attempt to find a connection for the tenant that is available.
       Optional<CachedPgConnection> connectionOptional =
-          cache.stream().filter(item ->
-              item.getTenantId().equals(tenantId) && item.isAvailable()).findFirst();
+          cache.stream().filter(connection ->
+              connection.getTenantId().equals(tenantId) && connection.isAvailable()).findFirst();
 
       // If The first attempt fails, try to find the oldest connection for another tenant that is available.
       if (connectionOptional.isEmpty()) {
         connectionOptional = cache.stream()
-            .filter(item -> !item.getTenantId().equals(tenantId) && item.isAvailable())
+            .filter(CachedPgConnection::isAvailable)
             .min(Comparator.comparingLong(CachedPgConnection::getIdleSince));
-
-        // Indicate that it can now be used for another tenant (recycled).
-        connectionOptional.ifPresent(connection -> connection.setRecycled(tenantId));
       }
 
       connectionOptional.ifPresent(CachedPgConnection::setUnavailable);
@@ -105,12 +110,20 @@ public class ConnectionCache {
   }
 
   /**
-   * Logs the current state of the cache. If debug logging is configured, iterates and prints the cache items.
+   * Logs the current state of the cache. If debug logging is configured, iterates and prints the cache items. If only
+   * info logging is enabled, then the state of the log is limited to being logged every hundred times the cache
+   * is hit or missed.
    * @param context Any details that help contextualize the event.
    */
   public void log(String context) {
-    var msg = this.metrics.toString(LOGGER_LABEL + ": " + context);
-    if (LOG.getLevel() == Level.DEBUG) {
+    var level = LOG.getLevel();
+    var threshold = 100;
+    if (level == Level.INFO && (metrics.hits % threshold != 0 && metrics.misses % threshold != 0)) {
+      return;
+    }
+
+    var msg = metrics.toString(LOGGER_LABEL + ": " + context);
+    if (level == Level.DEBUG) {
       var debugMsg = msg + metrics.toStringDebug();
       LOG.debug(debugMsg);
     }

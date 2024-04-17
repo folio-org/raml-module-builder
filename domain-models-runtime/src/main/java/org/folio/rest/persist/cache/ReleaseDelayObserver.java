@@ -39,18 +39,19 @@ public class ReleaseDelayObserver {
       return;
     }
 
-    if (this.timerId != null) {
+    if (timerId != null) {
       vertx.cancelTimer(this.timerId);
     }
 
     vertx.setTimer(toMilliseconds(releaseDelaySeconds), id -> {
-      this.timerId = id;
+      timerId = id;
       whenDone.run();
     });
   }
   public void cancelCountdown() {
-    if (this.timerId != null) {
-      vertx.cancelTimer(this.timerId);
+    if (timerId != null) {
+      vertx.cancelTimer(timerId);
+      timerId = null;
     }
   }
 

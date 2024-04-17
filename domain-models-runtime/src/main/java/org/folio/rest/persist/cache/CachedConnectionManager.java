@@ -1,16 +1,14 @@
 package org.folio.rest.persist.cache;
 
-import io.vertx.core.Vertx;
-import io.vertx.pgclient.PgConnection;
-import io.vertx.sqlclient.Pool;
-import io.vertx.core.Future;
-
-import io.vertx.sqlclient.SqlConnection;
-import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.tools.utils.Envs;
-
+import io.vertx.core.Vertx;
+import io.vertx.core.Future;
+import io.vertx.pgclient.PgConnection;
+import io.vertx.sqlclient.Pool;
+import io.vertx.sqlclient.SqlConnection;
 import java.util.Optional;
 
 /**
@@ -50,7 +48,7 @@ public class CachedConnectionManager {
    */
   public void tryAddToCache(CachedPgConnection connection) {
     connectionCache.tryAdd(connection);
-    tryRemoveOldestAvailableConnectionAndClose();
+    limitCacheSize();
   }
 
   /**
@@ -58,17 +56,15 @@ public class CachedConnectionManager {
    * will be recycled and used for the provided tenant.
    */
   public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    Optional<CachedPgConnection> connectionOptional = connectionCache.getOrRecycleConnection(tenantId);
+    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId);
 
     if (connectionOptional.isPresent()) {
       connectionCache.incrementHits();
       CachedPgConnection connection = connectionOptional.get();
 
-      // If it has been recycled, we now need to set a new role and schema for it.
-      if (connection.isRecycled()) {
-        var event = String.format("cache hit (recycled) %s %s", connection.getTenantId(), connection.getSessionId());
-        connectionCache.log(event);
-
+      // If it is being used from another tenant (recycled), we now need to set a new role and schema for it.
+      if (!connection.getTenantId().equals(tenantId)) {
+        connection.setTenantId(tenantId);
         return setRoleAndSchema(vertx, schemaName, tenantId, connection);
       }
 
@@ -82,6 +78,8 @@ public class CachedConnectionManager {
     var event = String.format("cache miss %s", tenantId);
     connectionCache.log(event);
 
+    // Create a new session. If the underlying PgPool is maxed out this connection request will be added to its
+    // wait queue and will be completed when a connection is available in the underlying PgPool.
     return createConnectionSession(vertx, pool, schemaName, tenantId);
   }
 
@@ -98,9 +96,9 @@ public class CachedConnectionManager {
     }
   }
 
-  private void tryRemoveOldestAvailableConnectionAndClose() {
+  private void limitCacheSize() {
     // The cache must not grow larger than the max pool size of the underlying pool.
-    var cacheExhausted = this.connectionCache.size() >= MAX_POOL_SIZE;
+    var cacheExhausted = connectionCache.size() >= MAX_POOL_SIZE;
     if (!cacheExhausted) {
       LOG.debug("Cache is not yet exhausted");
       return;
@@ -123,6 +121,6 @@ public class CachedConnectionManager {
         : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
     var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection,
         this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
-    return sqlConnection.query(sql).execute().map(x -> cachedConnection);
+    return sqlConnection.query(sql).execute().map(cachedConnection);
   }
 }
