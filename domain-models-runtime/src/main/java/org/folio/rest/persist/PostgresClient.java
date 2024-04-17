@@ -74,7 +74,7 @@ public class PostgresClient {
 
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
-  public static final int        DEFAULT_MAX_POOL_SIZE = 10;
+  public static final int        DEFAULT_MAX_POOL_SIZE = 4;
   /** default release delay in milliseconds; after this time an idle database connection is closed */
   public static final int        DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
 
