@@ -7,4 +7,11 @@ public class ModuleName {
   public static String getModuleName() {
     return "raml_module_builder";
   }
+
+  /**
+   * The module version taken from pom.xml at compile time.
+   */
+  public static String getModuleVersion() {
+    return "9.8.7-SNAPSHOT";
+  }
 }

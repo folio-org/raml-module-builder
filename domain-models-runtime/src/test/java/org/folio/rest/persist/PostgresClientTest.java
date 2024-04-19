@@ -5,6 +5,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
+import static org.hamcrest.collection.IsMapContaining.hasEntry;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
 import static org.junit.Assert.assertEquals;
@@ -174,6 +175,7 @@ public class PostgresClientTest {
     assertThat("user", is(options.getUser()));
     assertThat("pass", is(options.getPassword()));
     assertThat("db", is(options.getDatabase()));
+    assertThat(options.getProperties(), hasEntry("application_name", "raml-module-builder-9.8.7-SNAPSHOT"));
     // TODO: enable when available in vertx-sql-client/vertx-pg-client
     // https://issues.folio.org/browse/RMB-657
     // assertThat(60000, is(options.getConnectionReleaseDelay()));
@@ -736,7 +738,7 @@ public class PostgresClientTest {
 
   @Test
   public void getModuleName() {
-    Exception e = assertThrows(RuntimeException.class, () -> PostgresClient.getModuleName("foo.Bar"));
+    Exception e = assertThrows(RuntimeException.class, () -> PostgresClient.getModuleNameValue("foo.Bar", "x"));
     assertThat(e.getMessage(), containsString("src/test/java/foo/Bar.java"));
     assertThat(e.getCause(), is(instanceOf(ClassNotFoundException.class)));
   }

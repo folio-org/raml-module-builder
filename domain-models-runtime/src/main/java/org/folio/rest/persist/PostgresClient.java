@@ -95,7 +95,9 @@ public class PostgresClient {
    */
   static boolean sharedPgPool = false;
 
-  private static final String    MODULE_NAME              = getModuleName("org.folio.rest.tools.utils.ModuleName");
+  private static final String    MODULE_NAME = getModuleNameValue("getModuleName");
+  private static final String    PG_APPLICATION_NAME = MODULE_NAME.replace('_', '-') + "-"
+                                     + getModuleNameValue("getModuleVersion");
   private static final String    ID_FIELD                 = "id";
 
   private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
@@ -501,9 +503,10 @@ public class PostgresClient {
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, boolean isReader) {
     PgConnectOptions pgConnectOptions = new PgConnectOptions();
+    pgConnectOptions.addProperty("application_name", PG_APPLICATION_NAME);
+
     String hostToResolve = HOST;
     String portToResolve = PORT;
-
     if (isReader) {
        hostToResolve = HOST_READER;
        portToResolve = PORT_READER;
@@ -4385,7 +4388,11 @@ public class PostgresClient {
     return MODULE_NAME;
   }
 
-  static String getModuleName(final String className) {
+  static String getModuleNameValue(final String methodName) {
+    return getModuleNameValue("org.folio.rest.tools.utils.ModuleName", methodName);
+  }
+
+  static String getModuleNameValue(final String className, final String methodName) {
     try {
       // there might be multiple class loaders: raml-module-builder, folio-some-library, mod-example
       StackWalker stackWalker = StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE);
@@ -4393,7 +4400,7 @@ public class PostgresClient {
       while (classLoader != null) {
         try {
           Class<?> moduleNameClass = Class.forName(className, true, classLoader);
-          return moduleNameClass.getMethod("getModuleName").invoke(null).toString();
+          return moduleNameClass.getMethod(methodName).invoke(null).toString();
         } catch (ClassNotFoundException e) {
           classLoader = classLoader.getParent();
         }
