@@ -43,11 +43,12 @@ public class ReleaseDelayObserver {
       vertx.cancelTimer(this.timerId);
     }
 
-    vertx.setTimer(toMilliseconds(releaseDelaySeconds), id -> {
-      timerId = id;
+    timerId = vertx.setTimer(toMilliseconds(releaseDelaySeconds), id -> {
+      timerId = null;
       whenDone.run();
     });
   }
+
   public void cancelCountdown() {
     if (timerId != null) {
       vertx.cancelTimer(timerId);

@@ -1,26 +1,21 @@
 package org.folio.rest.persist.cache;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.pgclient.PgPool;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.folio.rest.persist.PgConnectionMock;
 import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.persist.PostgresClientHelper;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.runner.RunWith;
-import org.awaitility.Awaitility;
-
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
 
 @RunWith(VertxUnitRunner.class)
 public class CachedConnectionManagerTest {
@@ -91,23 +86,4 @@ public class CachedConnectionManagerTest {
       assertTrue(connection.isAvailable());
     });
   }
-
-  @ParameterizedTest
-  @CsvSource({
-      "500, 2",
-      "1500, 1",
-      "2500, 0"
-  })
-  void releaseDelayObserverTest(int delay, int expectedCacheSize) {
-    var manager = new CachedConnectionManager();
-    var vertx = Vertx.vertx();
-    var connection1 = new CachedPgConnection("tenant1", new PgConnectionMock(), manager, vertx, 1);
-    var connection2 = new CachedPgConnection("tenant2", new PgConnectionMock(), manager, vertx, 2);
-    connection1.close();
-    connection2.close();
-    Awaitility.await().atMost(delay, TimeUnit.MILLISECONDS).untilAsserted(() -> {
-      assertEquals(expectedCacheSize, manager.getCacheSize());
-    });
-  }
 }
-

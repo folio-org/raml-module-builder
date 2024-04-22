@@ -16,10 +16,9 @@ import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
+import java.util.UUID;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import java.util.UUID;
 
 /**
  * Both wraps and implements a {@link PgConnection} to provide additional connection features to allow for tenant

@@ -1,15 +1,14 @@
 package org.folio.rest.persist.cache;
 
-import org.apache.logging.log4j.Level;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 /**
  * Provides a thread-safe cache that stores {@link CachedPgConnection} objects.
@@ -116,18 +115,17 @@ public class ConnectionCache {
    * @param context Any details that help contextualize the event.
    */
   public void log(String context) {
-    var level = LOG.getLevel();
     var threshold = 100;
-    if (level == Level.INFO && (metrics.hits % threshold != 0 && metrics.misses % threshold != 0)) {
-      return;
+    Supplier<String> msgSupplier = () -> metrics.toString(LOGGER_LABEL + ": " + context);
+    Supplier<String> msgDebugSupplier = metrics::toStringDebug;
+
+    if (LOG.isDebugEnabled() || LOG.isTraceEnabled()) {
+      LOG.debug("{} {}", msgSupplier.get(), msgDebugSupplier.get());
     }
 
-    var msg = metrics.toString(LOGGER_LABEL + ": " + context);
-    if (level == Level.DEBUG) {
-      var debugMsg = msg + metrics.toStringDebug();
-      LOG.debug(debugMsg);
+    if (LOG.isInfoEnabled() && (metrics.hits % threshold == 0 || metrics.misses % threshold == 0)) {
+      LOG.info(msgSupplier.get());
     }
-    LOG.info(msg);
   }
 
   public void incrementHits() {
