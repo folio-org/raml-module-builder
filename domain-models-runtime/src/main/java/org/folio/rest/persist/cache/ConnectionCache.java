@@ -119,8 +119,12 @@ public class ConnectionCache {
     Supplier<String> msgSupplier = () -> metrics.toString(LOGGER_LABEL + ": " + context);
     Supplier<String> msgDebugSupplier = metrics::toStringDebug;
 
-    if (LOG.isDebugEnabled() || LOG.isTraceEnabled()) {
+    if (LOG.isDebugEnabled()) {
       LOG.debug("{} {}", msgSupplier.get(), msgDebugSupplier.get());
+    }
+
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("{} {}", msgSupplier.get(), msgDebugSupplier.get());
     }
 
     if (LOG.isInfoEnabled() && (metrics.hits % threshold == 0 || metrics.misses % threshold == 0)) {
