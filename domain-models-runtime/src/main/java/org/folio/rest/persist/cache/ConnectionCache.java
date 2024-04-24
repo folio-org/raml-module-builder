@@ -17,7 +17,7 @@ import org.apache.logging.log4j.Logger;
 public class ConnectionCache {
   private static final Logger LOG = LogManager.getLogger(ConnectionCache.class);
   private static final String LOGGER_LABEL = "CONNECTION MANAGER CACHE STATE";
-
+  private static final int INFO_LOG_LIMIT = 100;
   private final List<CachedPgConnection> cache;
   private final Metrics metrics = new Metrics();
 
@@ -115,7 +115,6 @@ public class ConnectionCache {
    * @param context Any details that help contextualize the event.
    */
   public void log(String context) {
-    var threshold = 100;
     Supplier<String> msgSupplier = () -> metrics.toString(LOGGER_LABEL + ": " + context);
     Supplier<String> msgDebugSupplier = metrics::toStringDebug;
 
@@ -127,7 +126,7 @@ public class ConnectionCache {
       LOG.trace("{} {}", msgSupplier.get(), msgDebugSupplier.get());
     }
 
-    if (LOG.isInfoEnabled() && (metrics.hits % threshold == 0 || metrics.misses % threshold == 0)) {
+    if (LOG.isInfoEnabled() && (metrics.hits % INFO_LOG_LIMIT == 0 || metrics.misses % INFO_LOG_LIMIT == 0)) {
       LOG.info(msgSupplier.get());
     }
   }

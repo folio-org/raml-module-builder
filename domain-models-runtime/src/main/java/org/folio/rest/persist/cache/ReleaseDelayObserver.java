@@ -21,6 +21,7 @@ import io.vertx.sqlclient.PoolOptions;
  * @see CachedPgConnection
  */
 public class ReleaseDelayObserver {
+  private static final long MS_CONVERTER = 1000L;
   private final int releaseDelaySeconds;
   private final Vertx vertx;
   private Long timerId;
@@ -56,7 +57,7 @@ public class ReleaseDelayObserver {
     }
   }
 
-  private Long toMilliseconds(int seconds) {
-    return seconds * 1000L;
+  private static Long toMilliseconds(int seconds) {
+    return seconds * MS_CONVERTER;
   }
 }
