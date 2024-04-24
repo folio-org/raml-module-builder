@@ -12,17 +12,17 @@ public class Enum2Annotation {
 
     switch(anno.toUpperCase()){
       case "PATTERN":
-        return "javax.validation.constraints.Pattern";
+        return "jakarta.validation.constraints.Pattern";
       case "MIN":
-        return "javax.validation.constraints.Min";
+        return "jakarta.validation.constraints.Min";
       case "MAX":
-        return "javax.validation.constraints.Max";
+        return "jakarta.validation.constraints.Max";
       case "REQUIRED":
-        return "javax.validation.constraints.NotNull";
+        return "jakarta.validation.constraints.NotNull";
       case "DEFAULTVALUE":
         return "javax.ws.rs.DefaultValue";
       case "SIZE":
-        return "javax.validation.constraints.Size";
+        return "jakarta.validation.constraints.Size";
       default:
           return null;
     }

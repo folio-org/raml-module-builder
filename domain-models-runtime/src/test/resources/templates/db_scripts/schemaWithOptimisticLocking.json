@@ -2,22 +2,27 @@
   "tables": [
     {
       "tableName": "tab_ol_off",
-      "withOptimisticLocking": "off"
+      "withOptimisticLocking": "off",
+      "withMetadata": true
     },
     {
       "tableName": "tab_ol_log",
-      "withOptimisticLocking": "logOnConflict"
+      "withOptimisticLocking": "logOnConflict",
+      "withMetadata": true
     },
     {
       "tableName": "tab_ol_fail",
-      "withOptimisticLocking": "failOnConflict"
+      "withOptimisticLocking": "failOnConflict",
+      "withMetadata": true
     },
     {
       "tableName": "tab_ol_fail_suppress",
-      "withOptimisticLocking": "failOnConflictUnlessSuppressed"
+      "withOptimisticLocking": "failOnConflictUnlessSuppressed",
+      "withMetadata": true
     },
     {
-      "tableName": "tab_ol_none"
+      "tableName": "tab_ol_none",
+      "withMetadata": true
     }
   ]
 }

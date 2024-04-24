@@ -30,9 +30,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import javax.validation.Valid;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Null;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Null;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.ResponseBuilder;
 import java.nio.charset.StandardCharsets;
@@ -88,7 +88,7 @@ public class RestRoutingTest {
   void isValidRequestFail() {
     Errors errors = new Errors();
     RestRouting.isValidRequest(null, new Foo(null, null), errors, List.of(), null);
-    assertThat(errors.getErrors().get(0).getCode(), is("javax.validation.constraints.NotNull.message"));
+    assertThat(errors.getErrors().get(0).getCode(), is("jakarta.validation.constraints.NotNull.message"));
   }
 
   @Test

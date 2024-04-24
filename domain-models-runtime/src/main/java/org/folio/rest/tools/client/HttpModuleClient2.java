@@ -6,7 +6,6 @@ import io.vertx.ext.web.client.HttpResponse;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.WebClientOptions;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -15,6 +14,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import org.apache.commons.collections4.map.CaseInsensitiveMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
@@ -59,7 +60,7 @@ public class HttpModuleClient2 implements HttpClientInterface {
   private WebClient webClient;
   private Vertx vertx;
   private boolean autoCloseConnections = true;
-  private Map<String, String> headers = new HashMap<>();
+  private Map<String, String> headers = new CaseInsensitiveMap<>();
   private long cacheTO = 30; //minutes
   private boolean absoluteHostAddr = false;
 

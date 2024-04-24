@@ -12,6 +12,7 @@ import io.vertx.ext.web.client.WebClient;
 import java.util.Date;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.dbschema.ObjectMapperTool;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.RestVerticle;
 import org.folio.rest.client.AdminClient;
@@ -59,6 +60,7 @@ import org.folio.rest.persist.PostgresClient;
 public class DemoRamlRestTest {
 
   private static final Logger log = LogManager.getLogger(DemoRamlRestTest.class);
+  private static final ObjectMapper om = ObjectMapperTool.getDefaultMapper();
 
   private static Vertx vertx;
   private static int port;
@@ -233,7 +235,6 @@ public class DemoRamlRestTest {
     d.setGenre("g");
     d.setDescription("asdfss");
     b.setData(d);
-    ObjectMapper om = new ObjectMapper();
     String book = "";
     try {
       book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
@@ -344,7 +345,6 @@ public class DemoRamlRestTest {
     b.setStatus(0);
     b.setSuccess(true);
 
-    ObjectMapper om = new ObjectMapper();
     return om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
   }
   /**
@@ -421,7 +421,6 @@ public class DemoRamlRestTest {
     d.setLink("link");
     b.setStatus(0);
     b.setSuccess(true);
-    ObjectMapper om = new ObjectMapper();
     String book = om.writerWithDefaultPrettyPrinter().writeValueAsString(b);
 
     postData(context, "http://localhost:" + port + "/rmbtests/books", Buffer.buffer(book), 201, HttpMethod.POST, "application/json", TENANT, true);

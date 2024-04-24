@@ -1,3 +1,30 @@
+## 35.2.2 2024-04-12
+
+Bug fixes:
+* [RMB-943](https://folio-org.atlassian.net/browse/RMB-943) Support deserialization of long to Date
+
+## 35.2.1 2024-04-06
+
+Bug fixes:
+* [RMB-991](https://folio-org.atlassian.net/browse/RMB-991) Vert.x 4.5.5 fixing PostgreSQL SSL/TLS/https hostname verification
+* [RMB-943](https://folio-org.atlassian.net/browse/RMB-943) Some dates are not deserialized properly (year 0)
+* [RMB-992](https://folio-org.atlassian.net/browse/RMB-992) Don't increment optimistic locking \_version when updating non-jsonb columns
+
+## 35.2.0 2024-03-01
+
+Quesnelia release, see [upgrade notes](doc/upgrading.md#version-360).
+
+New features:
+* [RMB-990](https://folio-org.atlassian.net/browse/RMB-990) Quesnelia dependencies: Vert.x 4.5.4, jakarta.validation, …
+
+## 35.1.2 2024-02-19
+
+Bug fixes:
+* [RMB-984](https://folio-org.atlassian.net/browse/RMB-984) Rename TESTCONTAINERS\_POSTGRES to TESTCONTAINERS\_POSTGRES\_IMAGE
+* [RMB-987](https://folio-org.atlassian.net/browse/RMB-987) Put empty lines before and after snippet and snippetPath
+* [RMB-929](https://folio-org.atlassian.net/browse/RMB-929) Use a case insensitive Map to merge headers in HttpModuleClient2
+* [RMB-989](https://folio-org.atlassian.net/browse/RMB-989) Vert.x 4.4.7 fixing FastThreadLocal memory leak CVE-2024-1023
+
 ## 35.1.1 2023-10-20
 
 Bug fixes:

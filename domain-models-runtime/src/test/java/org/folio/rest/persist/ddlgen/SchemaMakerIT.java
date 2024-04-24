@@ -424,7 +424,7 @@ public class SchemaMakerIT extends PostgresClientITBase {
     });
     assertVersion(context, 0, 1, 1, 1);
 
-    // test update
+    // update of jsonb column
     tables.forEach(table -> {
       String updateSql = "UPDATE " + table + " SET jsonb=jsonb_set(jsonb, '{_version}', to_jsonb('2'::text))";
       if (table.equals("tab_ol_fail") || table.equals("tab_ol_fail_suppress")) {
@@ -433,6 +433,12 @@ public class SchemaMakerIT extends PostgresClientITBase {
       } else {
         execute(context, updateSql);
       }
+    });
+    assertVersion(context, 2, 2, 1, 1);
+
+    // update of created_by column should not touch _version
+    tables.forEach(table -> {
+      execute(context, "UPDATE " + table + " SET created_by='foo'");
     });
     assertVersion(context, 2, 2, 1, 1);
 

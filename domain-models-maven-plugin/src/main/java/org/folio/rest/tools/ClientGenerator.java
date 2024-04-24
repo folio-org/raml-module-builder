@@ -56,7 +56,8 @@ import org.folio.util.PercentCodec;
 public class ClientGenerator implements ClientGrabber {
 
   public static final String  CLIENT_CLASS_SUFFIX    = "Client";
-  @SuppressWarnings("squid:S1075")  // suppress "URIs should not be hardcoded"
+  @SuppressWarnings("squid:S1075")  // suppress "URIs should not be hardcoded" because a parameterized path
+                                    // is not needed for testing
   public static final String  PATH_TO_GENERATE_TO    = "/target/generated-sources/raml-jaxrs/";
   public static final String  OKAPI_HEADER_TENANT    = "x-okapi-tenant";
   public static final String  APPEND                 = "append";
