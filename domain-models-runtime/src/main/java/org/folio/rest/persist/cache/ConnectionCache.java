@@ -122,10 +122,6 @@ public class ConnectionCache {
       LOG.debug("{} {}", msgSupplier.get(), msgDebugSupplier.get());
     }
 
-    if (LOG.isTraceEnabled()) {
-      LOG.trace("{} {}", msgSupplier.get(), msgDebugSupplier.get());
-    }
-
     if (LOG.isInfoEnabled() && (metrics.hits % INFO_LOG_LIMIT == 0 || metrics.misses % INFO_LOG_LIMIT == 0)) {
       LOG.info(msgSupplier.get());
     }
