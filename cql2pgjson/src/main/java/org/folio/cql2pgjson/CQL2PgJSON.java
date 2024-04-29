@@ -1,12 +1,14 @@
 package org.folio.cql2pgjson;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.ObjectUtils;
@@ -65,6 +67,8 @@ public class CQL2PgJSON {
   private static Logger logger = LogManager.getLogger(CQL2PgJSON.class);
 
   private static final String JSONB_COLUMN_NAME = "jsonb";
+  /** map schemaPath to Schema */
+  private static Map<String, Schema> dbSchemaCache = new ConcurrentHashMap<>();
 
   private final Pattern uuidPattern = Pattern.compile("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$");
 
@@ -168,15 +172,19 @@ public class CQL2PgJSON {
   }
 
   private void loadDbSchema(String schemaPath) {
+    if (schemaPath == null) {
+      schemaPath = "templates/db_scripts/schema.json";
+    }
+    dbSchema = dbSchemaCache.computeIfAbsent(schemaPath, CQL2PgJSON::loadDbSchemaFromResource);
+  }
+
+  private static Schema loadDbSchemaFromResource(String schemaPath) {
     try {
-      if (schemaPath == null) {
-        schemaPath = "templates/db_scripts/schema.json";
-      }
       String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
       logger.info("loadDbSchema: Loaded {} OK", schemaPath);
-      dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
-    } catch (IOException ex) {
-      logger.error("No schema.json found", ex);
+      return ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
     }
   }
 
