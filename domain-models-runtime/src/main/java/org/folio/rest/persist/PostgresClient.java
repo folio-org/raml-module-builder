@@ -519,8 +519,6 @@ public class PostgresClient {
       client = initializer.getClient();
       readClient = initializer.getReadClient();
     }
-
-    readClient = readClient != null ? readClient : client;
   }
 
   /**
