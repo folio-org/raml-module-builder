@@ -71,11 +71,8 @@ import org.folio.util.PostgresTester;
  * currently does not support binary data unless base64 encoded
  */
 public class PostgresClient {
-
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
-
-  static Logger log = LogManager.getLogger(PostgresClient.class);
 
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
@@ -84,6 +81,19 @@ public class PostgresClient {
 
   static final int               STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
   static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
+  static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
+
+  static Logger log = LogManager.getLogger(PostgresClient.class);
+  @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
+  // we use it as a key in the config. We use it as a default password only when testing
+  // using embedded postgres, see getPostgreSQLClientConfig
+  static final String    PASSWORD = "password";
+  static final String    USERNAME = "username";
+  static final String    HOST      = "host";
+  static final String    HOST_READER = "host_reader";
+  static final String    PORT      = "port";
+  static final String    PORT_READER = "port_reader";
+  static final String    DATABASE  = "database";
 
   /**
    * True if all tenants of a Vertx share one PgPool, false for having a separate PgPool for
@@ -95,14 +105,17 @@ public class PostgresClient {
    */
   static boolean sharedPgPool = false;
 
+  private static final String    POSTGRES_TESTER = "postgres_tester";
+
+  private static final String    GET_STAT_METHOD = "get";
+  private static final String    EXECUTE_STAT_METHOD = "execute";
+
+  private static final String    PROCESS_RESULTS_STAT_METHOD = "processResults";
+
   private static final String    MODULE_NAME              = getModuleName("org.folio.rest.tools.utils.ModuleName");
   private static final String    ID_FIELD                 = "id";
 
-  private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
-  private static final String    MAX_POOL_SIZE = "maxPoolSize";
-  private static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
   /** default release delay in milliseconds; after this time an idle database connection is closed */
-  private static final int       DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
 
   private static PostgresTester postgresTester;
@@ -110,26 +123,6 @@ public class PostgresClient {
   private static final String    SELECT = "SELECT ";
   private static final String    FROM   = " FROM ";
   private static final String    WHERE  = " WHERE ";
-
-  @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
-  // we use it as a key in the config. We use it as a default password only when testing
-  // using embedded postgres, see getPostgreSQLClientConfig
-  private static final String    PASSWORD = "password";
-  private static final String    USERNAME = "username";
-  private static final String    HOST      = "host";
-  private static final String    HOST_READER = "host_reader";
-  private static final String    PORT      = "port";
-  private static final String    PORT_READER = "port_reader";
-  private static final String    DATABASE  = "database";
-  private static final String    RECONNECT_ATTEMPTS = "reconnectAttempts";
-  private static final String    RECONNECT_INTERVAL = "reconnectInterval";
-  private static final String    SERVER_PEM = "server_pem";
-  private static final String    POSTGRES_TESTER = "postgres_tester";
-
-  private static final String    GET_STAT_METHOD = "get";
-  private static final String    EXECUTE_STAT_METHOD = "execute";
-
-  private static final String    PROCESS_RESULTS_STAT_METHOD = "processResults";
 
   private static final String    SPACE = " ";
   private static final String    DOT = ".";
@@ -166,6 +159,7 @@ public class PostgresClient {
 
   private final Vertx vertx;
   private JsonObject postgreSQLClientConfig = null;
+
   /**
    * PgPool client that is initialized with mainly the database writer instance's connection string.
    */
@@ -499,73 +493,6 @@ public class PostgresClient {
     PG_POOLS_READER.clear();
   }
 
-  static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, boolean isReader) {
-    PgConnectOptions pgConnectOptions = new PgConnectOptions();
-    String hostToResolve = HOST;
-    String portToResolve = PORT;
-
-    if (isReader) {
-       hostToResolve = HOST_READER;
-       portToResolve = PORT_READER;
-    }
-
-    String host = sqlConfig.getString(hostToResolve);
-    if (host != null) {
-      pgConnectOptions.setHost(host);
-    }
-
-    Integer port;
-    port = sqlConfig.getInteger(portToResolve);
-
-    if (port != null) {
-      pgConnectOptions.setPort(port);
-    }
-
-    if (isReader && (host == null || port == null)) {
-      return null;
-    }
-
-    String username = sqlConfig.getString(USERNAME);
-    if (username != null) {
-      pgConnectOptions.setUser(username);
-    }
-    String password = sqlConfig.getString(PASSWORD);
-    if (password != null) {
-      pgConnectOptions.setPassword(password);
-    }
-    String database = sqlConfig.getString(DATABASE);
-    if (database != null) {
-      pgConnectOptions.setDatabase(database);
-    }
-    Integer reconnectAttempts = sqlConfig.getInteger(RECONNECT_ATTEMPTS);
-    if (reconnectAttempts != null) {
-      pgConnectOptions.setReconnectAttempts(reconnectAttempts);
-    }
-    Long reconnectInterval = sqlConfig.getLong(RECONNECT_INTERVAL);
-    if (reconnectInterval != null) {
-      pgConnectOptions.setReconnectInterval(reconnectInterval);
-    }
-    String serverPem = sqlConfig.getString(SERVER_PEM);
-    if (serverPem != null) {
-      pgConnectOptions.setSslMode(SslMode.VERIFY_FULL);
-      pgConnectOptions.setHostnameVerificationAlgorithm("HTTPS");
-      pgConnectOptions.setPemTrustOptions(
-          new PemTrustOptions().addCertValue(Buffer.buffer(serverPem)));
-      pgConnectOptions.setEnabledSecureTransportProtocols(Collections.singleton("TLSv1.3"));
-      if (OpenSSLEngineOptions.isAvailable()) {
-        pgConnectOptions.setOpenSslEngineOptions(new OpenSSLEngineOptions());
-      } else {
-        pgConnectOptions.setJdkSslEngineOptions(new JdkSSLEngineOptions());
-        log.error("Cannot run OpenSSL, using slow JDKSSL. Is netty-tcnative-boringssl-static for windows-x86_64, "
-            + "osx-x86_64 or linux-x86_64 installed? https://netty.io/wiki/forked-tomcat-native.html "
-            + "Is libc6-compat installed (if required)? https://github.com/pires/netty-tcnative-alpine");
-      }
-      log.debug("Enforcing SSL encryption for PostgreSQL connections, "
-          + "requiring TLSv1.3 with server name certificate, "
-          + "using " + (OpenSSLEngineOptions.isAvailable() ? "OpenSSL " + OpenSsl.versionString() : "JDKSSL"));
-    }
-    return pgConnectOptions;
-  }
 
   private void init() throws Exception {
 
@@ -584,32 +511,16 @@ public class PostgresClient {
     }
     logPostgresConfig();
 
+    var initializer = new PostgresClientInitializer(vertx, postgreSQLClientConfig);
     if (sharedPgPool) {
-      client = PG_POOLS.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, false));
-      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> createPgPool(vertx, postgreSQLClientConfig, true));
+      client = PG_POOLS.computeIfAbsent(vertx, x -> initializer.getClient());
+      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> initializer.getReadClient());
     } else {
-      client = createPgPool(vertx, postgreSQLClientConfig, false);
-      readClient = createPgPool(vertx, postgreSQLClientConfig, true);
+      client = initializer.getClient();
+      readClient = initializer.getReadClient();
     }
 
     readClient = readClient != null ? readClient : client;
-  }
-
-  static PgPool createPgPool(Vertx vertx, JsonObject configuration, Boolean isReader) {
-    PgConnectOptions connectOptions = createPgConnectOptions(configuration, isReader);
-
-    if (connectOptions == null) {
-      return null;
-    }
-
-    PoolOptions poolOptions = new PoolOptions();
-    poolOptions.setMaxSize(
-        configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, 4)));
-    Integer connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
-    poolOptions.setIdleTimeout(connectionReleaseDelay);
-    poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
-
-    return PgPool.pool(vertx, connectOptions, poolOptions);
   }
 
   /**

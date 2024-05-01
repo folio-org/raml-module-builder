@@ -24,6 +24,7 @@ See the file ["LICENSE"](LICENSE) for more information.
 * [Command-line options](#command-line-options)
 * [Environment Variables](#environment-variables)
 * [Read and write database instances setup](#read-and-write-database-instances-setup)
+* [Asynchronously replicated read and write database instances setup](#read-and-write-database-instances-setup-async)
 * [Local development server](#local-development-server)
 * [Creating a new module](#creating-a-new-module)
     * [Step 1: Create new project directory layout](#step-1-create-new-project-directory-layout)
@@ -408,6 +409,8 @@ and pass it to the RMB method that starts the connection, transaction or query.
 
 The environment variables `DB_HOST_READER` and `DB_PORT_READER` are for the [Read and write database instances setup](#read-and-write-database-instances-setup).
 
+The environment variables `DB_HOST_ASYNC_READER` and `DB_PORT_ASYNC_READER` the [Asynchronously replicated read and write database instances setup](#read-and-write-database-instances-setup-async).
+
 `DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING` is a timestamp in the format `2022-12-31T23:59:59Z`. Setting it disables optimistic locking when sending a record that contains `"_version":-1` before that time, after that time `"_version":-1` is rejected. This applies only to tables with `failOnConflictUnlessSuppressed`, see below. The timestamp ensures that disabling this option cannot be forgotten. Suppressing optimistic locking is known to lead to data loss in some cases, don't use in production, you have been warned!
 
 `TESTCONTAINERS_POSTGRES_IMAGE` changes the PostgreSQL container image name used at build time for testing; it is not used at runtime.
@@ -419,9 +422,11 @@ A PostgreSQL instance (the write instance) can be replicated for horizontal scal
 
 RMB supports separating read and write requests. By default the write instance configured with `DB_HOST` and `DB_PORT` environment variables is used for reading as well, but optionally a read instance (or a load balancer for multiple read instances) can be configured by setting its host and port using the `DB_HOST_READER` and `DB_PORT_READER` environment variables. If either of these reader variables are not set then it will default to use the writer instance.
 
-RMB only supports [synchronous standby servers](https://www.postgresql.org/docs/current/warm-standby.html#SYNCHRONOUS-REPLICATION). The write instance must list the `DB_*_READER` instance(s) in its `synchronous_standby_names` configuration. This ensures ACID for both write and read instance.
+## Read and write database instances setup async
 
-PostgreSQL's default asynchronous replication is not supported by RMB and will result in errors caused by outdated data the replica may return. Asynchronous replication is eventual consistency suitable for read-only applications like reporting, analytics, and data warehouse.
+RMB supports both [synchronous standby servers](https://www.postgresql.org/docs/current/warm-standby.html#SYNCHRONOUS-REPLICATION) and [asynchronously replicated standby servers](TODO). When using synchronous replication, write instance must list the `DB_*_READER` instance(s) in its `synchronous_standby_names` configuration. This ensures ACID for both write and read instance.
+
+PostgreSQL's default asynchronous replication is now supported by RMB when `DB_HOST_ASYNC_READER` and `DB_PORT_ASYNC_READER` are configured. Asynchronous replication is eventually consistent and suitable for read-only applications like reporting, analytics, and data warehouse.
 
 ## Local development server
 

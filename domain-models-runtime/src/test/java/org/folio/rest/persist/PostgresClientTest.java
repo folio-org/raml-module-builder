@@ -168,7 +168,7 @@ public class PostgresClientTest {
   @Test
   public void testPgConnectOptionsEmpty() {
     JsonObject conf = new JsonObject();
-    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, false);
+    PgConnectOptions options = PostgresClientInitializer.createPgConnectOptions(conf, false);
     assertThat("localhost", is(options.getHost()));
     assertThat(5432, is(options.getPort()));
     assertThat("user", is(options.getUser()));
@@ -193,7 +193,7 @@ public class PostgresClientTest {
           "DB_RECONNECTINTERVAL", "2000"
           ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
-      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, false);
+      PgConnectOptions options = PostgresClientInitializer.createPgConnectOptions(conf, false);
       assertThat(options.getHost(), is("myhost"));
       assertThat(options.getPort(), is(5433));
       assertThat(options.getUser(), is("myuser"));
@@ -226,7 +226,7 @@ public class PostgresClientTest {
           "DB_RECONNECTINTERVAL", "2000"
       ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
-      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, true);
+      PgConnectOptions options = PostgresClientInitializer.createPgConnectOptions(conf, true);
       assertThat(options.getHost(), is("myhost_reader"));
       assertThat(options.getPort(), is(12345));
       assertThat(options.getUser(), is("myuser"));
@@ -255,7 +255,7 @@ public class PostgresClientTest {
           "DB_RECONNECTINTERVAL", "2000"
       ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
-      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, true);
+      PgConnectOptions options = PostgresClientInitializer.createPgConnectOptions(conf, true);
       assertNull(options);
     } finally {
       // restore defaults
@@ -270,8 +270,8 @@ public class PostgresClientTest {
       config.put("DB_PORT_READER", "5433")
             .put("DB_USERNAME", "myuser")
             .put("DB_PASSWORD", "mypassword");
-
-      PgPool pgPool = PostgresClient.createPgPool(Vertx.vertx(), config, true);
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), config);
+      PgPool pgPool = initializer.getReadClient();
       assertNull(pgPool);
     } finally {
       // restore defaults

@@ -8,8 +8,10 @@ import java.util.Map;
 public enum Envs {
   DB_HOST,
   DB_HOST_READER,
+  DB_HOST_ASYNC_READER,
   DB_PORT,
   DB_PORT_READER,
+  DB_PORT_ASYNC_READER,
   DB_USERNAME,
   DB_PASSWORD,
   DB_DATABASE,
