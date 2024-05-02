@@ -275,8 +275,37 @@ public class PostgresClientTest {
       ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
       var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
       assertNotNull(initializer.getReadClient());
+      assertNotNull(initializer.getReadClientAsync());
       assertEquals(initializer.getClient(), initializer.getReadClient());
+      assertEquals(initializer.getClient(), initializer.getReadClientAsync());
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testGettingPgPoolWithNoReader() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
+      assertNotNull(initializer.getReadClient());
+      assertNotNull(initializer.getReadClientAsync());
+      assertEquals(initializer.getClient(), initializer.getReadClient());
+      assertEquals(initializer.getClient(), initializer.getReadClientAsync());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());
@@ -300,8 +329,8 @@ public class PostgresClientTest {
       ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
       var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
-      assertNotNull(initializer.getReadClient());
       assertNotEquals(initializer.getClient(), initializer.getReadClient());
+      assertEquals(initializer.getReadClient(), initializer.getReadClientAsync());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());
@@ -325,6 +354,7 @@ public class PostgresClientTest {
       ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
       var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
       assertNotNull(initializer.getReadClient());
       assertNotNull(initializer.getReadClientAsync());
       assertEquals(initializer.getClient(), initializer.getReadClient());
@@ -335,6 +365,53 @@ public class PostgresClientTest {
     }
   }
 
+  @Test
+  public void testGettingPgPoolWithAllThreeHostTypes() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_PORT_READER_ASYNC", "12345",
+          "DB_HOST_READER_ASYNC", "myhost_reader_async",
+          "DB_PORT_READER", "54321",
+          "DB_HOST_READER", "myhost_reader",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
+      assertNotNull(initializer.getReadClient());
+      assertNotNull(initializer.getReadClientAsync());
+      assertNotEquals(initializer.getClient(), initializer.getReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getReadClientAsync());
+      assertNotEquals(initializer.getReadClient(), initializer.getReadClientAsync());
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testGettingPgPoolWithSharedReader() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_PORT_READER", "54321",
+          "DB_HOST_READER", "myhost_reader",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
+      assertNotNull(initializer.getReadClient());
+      assertNotNull(initializer.getReadClientAsync());
+      assertNotEquals(initializer.getClient(), initializer.getReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getReadClientAsync());
+      assertEquals(initializer.getReadClient(), initializer.getReadClientAsync());
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
 
   @Test
   public void closePostgresTester() {
