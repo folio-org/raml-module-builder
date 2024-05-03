@@ -458,7 +458,7 @@ public class PostgresClientIT {
     postgresClient = createA(context, TENANT);
     JsonObject configuration = postgresClient.getConnectionConfig().copy()
         .put("maxPoolSize", maxPoolSize);
-    var initializer = new PostgresClientInitializer(vertx, configuration);
+    var initializer = new PostgresClientInitializer(Vertx.vertx(), configuration);
     postgresClient.setClient(initializer.getClient());
     List<Future> futures = new ArrayList<>();
     for (int i=0; i<maxPoolSize; i++) {

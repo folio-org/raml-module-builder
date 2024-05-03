@@ -51,7 +51,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
 

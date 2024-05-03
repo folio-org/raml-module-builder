@@ -38,7 +38,7 @@ public class PostgresClientInitializer {
    * @param vertx A reference to the current vertex instance.
    * @param configuration A reference to the current database configuration.
    */
-  public PostgresClientInitializer(Vertx vertx, JsonObject configuration) {
+  protected PostgresClientInitializer(Vertx vertx, JsonObject configuration) {
     client = createPgPool(vertx, configuration, PostgresClient.HOST, PostgresClient.PORT);
     readClient = createPgPool(vertx, configuration, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
     readClientAsync = createPgPool(vertx, configuration, HOST_READER_ASYNC, PORT_READER_ASYNC);
@@ -64,7 +64,7 @@ public class PostgresClientInitializer {
   }
 
   public PgPool getReadClient() {
-    return readClient;
+    return  readClient;
   }
 
   public PgPool getReadClientAsync() {

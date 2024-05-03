@@ -3,23 +3,15 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
-import io.netty.handler.ssl.OpenSsl;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.net.JdkSSLEngineOptions;
-import io.vertx.core.net.OpenSSLEngineOptions;
-import io.vertx.core.net.PemTrustOptions;
-import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
-import io.vertx.pgclient.SslMode;
-import io.vertx.sqlclient.PoolOptions;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
@@ -42,7 +34,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.regex.Matcher;
@@ -171,6 +162,7 @@ public class PostgresClient {
   private PgPool readClient;
   private final String tenantId;
   private final String schemaName;
+  private PostgresClientInitializer postgresClientInitializer;
 
   protected PostgresClient(Vertx vertx, String tenantId) throws Exception {
     this.tenantId = tenantId;
@@ -298,7 +290,7 @@ public class PostgresClient {
    * @param tenantId the tenantId the instance is for
    * @return the PostgresClient instance, or null on error
    */
-  private static PostgresClient getInstanceInternal(Vertx vertx, String tenantId) {
+  protected static PostgresClient getInstanceInternal(Vertx vertx, String tenantId) {
     // assumes a single thread vertx model so no sync needed
     PostgresClient postgresClient = CONNECTION_POOL.get(vertx, tenantId);
     try {
@@ -414,6 +406,10 @@ public class PostgresClient {
     this.client = client;
   }
 
+  PostgresClientInitializer getPostgresClientInitializer() {
+    return this.postgresClientInitializer;
+  }
+
   /**
    * Close the SQL client of this PostgresClient instance.
    * This is idempotent: additional close invocations are always successful.
@@ -511,13 +507,13 @@ public class PostgresClient {
     }
     logPostgresConfig();
 
-    var initializer = new PostgresClientInitializer(vertx, postgreSQLClientConfig);
+    this.postgresClientInitializer = new PostgresClientInitializer(vertx, postgreSQLClientConfig);
     if (sharedPgPool) {
-      client = PG_POOLS.computeIfAbsent(vertx, x -> initializer.getClient());
-      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> initializer.getReadClient());
+      client = PG_POOLS.computeIfAbsent(vertx, x -> postgresClientInitializer.getClient());
+      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> postgresClientInitializer.getReadClient());
     } else {
-      client = initializer.getClient();
-      readClient = initializer.getReadClient();
+      client = postgresClientInitializer.getClient();
+      readClient = postgresClientInitializer.getReadClient();
     }
   }
 
