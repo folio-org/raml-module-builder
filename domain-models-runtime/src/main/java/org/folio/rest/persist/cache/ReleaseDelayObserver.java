@@ -57,7 +57,7 @@ public class ReleaseDelayObserver {
     }
   }
 
-  private static Long toMilliseconds(int seconds) {
+  private static long toMilliseconds(int seconds) {
     return seconds * MS_CONVERTER;
   }
 }
