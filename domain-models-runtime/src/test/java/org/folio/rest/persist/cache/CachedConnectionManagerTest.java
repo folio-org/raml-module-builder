@@ -78,12 +78,14 @@ public class CachedConnectionManagerTest {
   }
 
   @Test
-  public void closeWithHandlerAsyncResultTest() {
+  public void closeWithHandlerAsyncResultTest(TestContext context) {
+    var async = context.async();
     var manager = new CachedConnectionManager();
     var connection = new CachedPgConnection("tenant1", new PgConnectionMock(), manager, Vertx.vertx(), 1);
     assertFalse(connection.isAvailable());
     connection.close(event -> {
       assertTrue(connection.isAvailable());
+      async.complete();
     });
   }
 }

@@ -77,7 +77,7 @@ public class ConnectionCacheTest {
     assertFalse(connOptional2.isPresent());
     var connOptional3 = cache.getAvailableConnection("tenant3");
     assertFalse(connOptional3.isPresent());
-    var connOptional4 = cache.getAvailableConnection("tenant4"); //
+    var connOptional4 = cache.getAvailableConnection("tenant4");
     assertFalse(connOptional4.isPresent());
   }
 
