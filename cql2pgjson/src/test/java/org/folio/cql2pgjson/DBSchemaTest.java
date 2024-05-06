@@ -1,12 +1,15 @@
 package org.folio.cql2pgjson;
 
+import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.Assert.assertThrows;
 
+import com.fasterxml.jackson.core.JsonParseException;
+import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-
 import org.folio.dbschema.Table;
 import org.junit.Test;
 
@@ -32,5 +35,13 @@ public class DBSchemaTest {
       }
       assertThat(tableName, found, is(true));
     }
+  }
+
+  @Test
+  public void invalidJson() throws Exception {
+    var cql2pgJson = new CQL2PgJSON("foo");
+    var e = assertThrows(UncheckedIOException.class, ()
+        -> cql2pgJson.setDbSchemaPath("templates/db_scripts/invalidJson.json"));
+    assertThat(e.getCause(), instanceOf(JsonParseException.class));
   }
 }
