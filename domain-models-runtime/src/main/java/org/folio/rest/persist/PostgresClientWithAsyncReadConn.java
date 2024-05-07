@@ -8,9 +8,9 @@ public class PostgresClientWithAsyncReadConn extends PostgresClient {
   }
 
   public static PostgresClient getInstance(Vertx vertx, String tenantId) {
-    var client = getInstanceInternal(vertx, tenantId);
-    var initializer = client.getPostgresClientInitializer();
-    client.setReaderClient(initializer.getReadClientAsync());
-    return client;
+    var postgresClient = getInstanceInternal(vertx, tenantId);
+    var initializer = postgresClient.getPostgresClientInitializer();
+    postgresClient.setReaderClient(initializer.getReadClientAsync());
+    return postgresClient;
   }
 }

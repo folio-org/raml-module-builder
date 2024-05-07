@@ -28,7 +28,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;

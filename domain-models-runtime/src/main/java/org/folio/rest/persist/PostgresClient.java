@@ -75,6 +75,7 @@ public class PostgresClient {
   static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
 
   static Logger log = LogManager.getLogger(PostgresClient.class);
+
   @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
   // we use it as a key in the config. We use it as a default password only when testing
   // using embedded postgres, see getPostgreSQLClientConfig
@@ -96,13 +97,6 @@ public class PostgresClient {
    */
   static boolean sharedPgPool = false;
 
-  private static final String    POSTGRES_TESTER = "postgres_tester";
-
-  private static final String    GET_STAT_METHOD = "get";
-  private static final String    EXECUTE_STAT_METHOD = "execute";
-
-  private static final String    PROCESS_RESULTS_STAT_METHOD = "processResults";
-
   private static final String    MODULE_NAME              = getModuleName("org.folio.rest.tools.utils.ModuleName");
   private static final String    ID_FIELD                 = "id";
 
@@ -114,6 +108,12 @@ public class PostgresClient {
   private static final String    SELECT = "SELECT ";
   private static final String    FROM   = " FROM ";
   private static final String    WHERE  = " WHERE ";
+
+  private static final String    POSTGRES_TESTER = "postgres_tester";
+
+  private static final String    GET_STAT_METHOD = "get";
+  private static final String    EXECUTE_STAT_METHOD = "execute";
+  private static final String    PROCESS_RESULTS_STAT_METHOD = "processResults";
 
   private static final String    SPACE = " ";
   private static final String    DOT = ".";
@@ -406,6 +406,10 @@ public class PostgresClient {
     this.client = client;
   }
 
+  /**
+   * Get the {@link PostgresClientInitializer} for this {@link PostgresClient} instance.
+   * @return A reference to the initializer.
+   */
   PostgresClientInitializer getPostgresClientInitializer() {
     return this.postgresClientInitializer;
   }

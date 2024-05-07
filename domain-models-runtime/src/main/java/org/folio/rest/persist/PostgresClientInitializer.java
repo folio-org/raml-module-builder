@@ -11,20 +11,19 @@ import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.SslMode;
 import io.vertx.sqlclient.PoolOptions;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class PostgresClientInitializer {
   static final String HOST_READER_ASYNC = "host_reader_async";
   static final String PORT_READER_ASYNC = "port_reader_async";
 
   private static final Logger LOG = LogManager.getLogger(PostgresClientInitializer.class);
+  private static final int DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
   private static final String MAX_POOL_SIZE = "maxPoolSize";
-  private static final int DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String RECONNECT_ATTEMPTS = "reconnectAttempts";
   private static final String RECONNECT_INTERVAL = "reconnectInterval";
   private static final String SERVER_PEM = "server_pem";
