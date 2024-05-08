@@ -34,6 +34,7 @@
     <maven.version>3.9.6</maven.version>
     <vertx.version>4.5.5</vertx.version>
     <micrometer.version>1.12.3</micrometer.version> <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
+    <awaitility.version>4.2.0</awaitility.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->

@@ -13,7 +13,7 @@ public final class PostgresClientHelper {
   /**
    * For testing only circumvent the package visibility of PostgresClient.sharedPgPool.
    */
-  public static final void setSharedPgPool(boolean sharedPgPool) {
-    PostgresClient.sharedPgPool = sharedPgPool;
+  public static void setSharedPgPool(boolean sharedPgPool) {
+    PostgresClient.setSharedPgPool(sharedPgPool);
   }
 }
