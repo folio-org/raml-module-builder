@@ -1607,7 +1607,7 @@ For each **table** in `tables` property:
     * `arraySubfield` - is the key of the object that is used for the primary term when array relation modifiers are in use. This is typically also defined when `arrayModifiers` are also defined.
     * `multiFieldNames` - see [CQL2PgJSON: Multi Field Index](#cql2pgjson-multi-field-index) above
     * `sqlExpression` - see [CQL2PgJSON: Multi Field Index](#cql2pgjson-multi-field-index) above
-    * `sqlExpressionQuery` - How to wrap the query string $ before matching against the index expression. This overwrites any `caseSensitive` and `removeAccents` wrapping. Example that manually implements case insensitive matching: `"sqlExpression": "lower(jsonb->>'name')", "sqlExpressionQuery": "lower($)"`
+    * `sqlExpressionQuery` - How to wrap the query string $ before matching against the index expression. This overwrites any `caseSensitive` and `removeAccents` wrapping. Example that manually implements case insensitive matching: `"sqlExpression": "lower(jsonb->>'name')", "sqlExpressionQuery": "lower($)"`. Example for plain field, note the required braces: `"sqlExpression": "(jsonb->>'name')", "sqlExpressionQuery": "$"`.
     * Do not manually add an index for an `id` field or a foreign key field. They get indexed automatically.
 7. `ginIndex` - generate an inverted index on the JSON using the `gin_trgm_ops` extension. Allows for left and right truncation LIKE queries and regex queries to run in an optimal manner (similar to a simple search engine). Note that the generated index is large and does not support the full field match (SQL `=` operator and CQL `==` operator without wildcards). See the `likeIndex` for available options.
 8. `uniqueIndex` - create a unique index on a field in the JSON
@@ -1709,7 +1709,7 @@ The fields in the **script** section include:
 1. `run` - either `before` or `after` the tables / views are generated
 2. `snippet` - the SQL to run. There is no variable replacement. Use `snippetPath` if variable replacement or line breaks for readability are needed.
 3. `snippetPath` - relative path to a file with SQL script to run. If `snippetPath` is set then `snippet` field will be ignored.
-4. `fromModuleVersion` - same as `fromModuleVersion` for table. If no fromModuleVersion is provided the SQL runs on each upgrade. This is reasonable if the SQL runs fast and is idempotent, for example ```CREATE OR REPLACE FUNCTION``` and you want to avoid the error-prone fromModuleVersion value maintenance needed when changing the function.
+4. `fromModuleVersion` - same as `fromModuleVersion` for table. If no fromModuleVersion is provided the SQL runs on each upgrade. This is reasonable if the SQL runs fast and is idempotent, for example ```CREATE OR REPLACE FUNCTION``` and you want to avoid the error-prone fromModuleVersion value maintenance needed when changing the function. The SQL also runs on the initial install of a tenant.
 
 A `snippetPath` SQL file (but not a `snippet` SQL statement) can make use of
 [FreeMarker template engine](https://freemarker.apache.org) that runs and evaluates on runtime. For examples, see RMB's

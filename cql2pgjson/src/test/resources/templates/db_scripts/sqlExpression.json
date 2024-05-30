@@ -1,0 +1,32 @@
+{
+  "tables": [
+    {
+      "tableName": "t",
+      "index": [
+        {
+          "fieldName": "f",
+          "sqlExpression": "(jsonb->>'f')",
+          "sqlExpressionQuery": "$",
+          "caseSensitive": true,
+          "removeAccents": false
+        },
+        {
+          "fieldName": "g",
+          "sqlExpression": "(jsonb->>'g')",
+          "sqlExpressionQuery": "$",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ],
+      "fullTextIndex": [
+        {
+          "fieldName": "h",
+          "sqlExpression": "(jsonb->>'h')",
+          "sqlExpressionQuery": "$",
+          "caseSensitive": false,
+          "removeAccents": true
+        }
+      ]
+    }
+  ]
+}
