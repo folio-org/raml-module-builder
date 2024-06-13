@@ -2517,7 +2517,9 @@ RMB handles all routing, so this is abstracted from the developer. However, ther
 
 #### De-Serializers
 
-At runtime RMB will serialize/deserialize the received JSON in the request body of PUT, PATCH and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. A module can implement its own version of this. For example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
+At runtime RMB will serialize/deserialize the received JSON in the request body of PUT, PATCH and POST requests into a POJO and pass this on to an implementing function, as well as the POJO returned by the implementing function into JSON. The ObjectMapperTool provides the serializer and de-serializer. Note that `JsonObject.mapFrom` is incompatible, use `ObjectMapperTool.valueAsString` instead.
+
+A module can implement its own version of the de-serializer, for example, the below will register a de-serializer that will tell RMB to set a User to not active if the expiration date has passed. This will be run when a User JSON is passed in as part of a request
 
 ```java
 ObjectMapperTool.registerDeserializer(User.class, new UserDeserializer());

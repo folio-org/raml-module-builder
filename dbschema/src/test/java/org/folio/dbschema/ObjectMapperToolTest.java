@@ -84,7 +84,7 @@ class ObjectMapperToolTest {
   void date(String input, String expected) throws Exception {
     var json = '"' + input + '"';
     var date = ObjectMapperTool.readValue(json, Date.class);
-    var json2 = ObjectMapperTool.getMapper().writeValueAsString(date);
+    var json2 = ObjectMapperTool.valueAsString(date);
     assertThat(json2, is('"' + expected + '"'));
   }
 
@@ -98,7 +98,7 @@ class ObjectMapperToolTest {
   void date(long input, String expected) throws Exception {
     var date = ObjectMapperTool.readValue("" + input, Date.class);
     assertThat(date, is(new Date(input)));
-    var json = ObjectMapperTool.getMapper().writeValueAsString(date);
+    var json = ObjectMapperTool.valueAsString(date);
     assertThat(json, is('"' + expected + '"'));
   }
 
@@ -113,7 +113,7 @@ class ObjectMapperToolTest {
     var foo = ObjectMapperTool.readValue(json, Foo.class);
     assertThat(foo.s, is("a"));
     assertThat(foo.dueDate.toInstant(), is(Instant.parse("1970-01-01T00:00:00.000+00:00")));
-    var json2 = ObjectMapperTool.getMapper().writeValueAsString(foo);
+    var json2 = ObjectMapperTool.valueAsString(foo);
     var expected = json.replace("+1970", "1970");
     assertThat(json2, is(expected));
   }
