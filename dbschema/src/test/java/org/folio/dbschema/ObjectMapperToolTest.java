@@ -7,19 +7,16 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
 import java.util.Date;
-
 import org.folio.okapi.testing.UtilityClassTester;
 import org.folio.util.ResourceUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 
 class ObjectMapperToolTest {
 
@@ -42,9 +39,9 @@ class ObjectMapperToolTest {
   }
 
   @Test
-  void canReadSchema() throws Throwable {
+  void canReadSchema() {
     String dbJson = ResourceUtil.asString("schema.json");
-    Schema dbSchema = ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
+    Schema dbSchema = ObjectMapperTool.readValue(dbJson, Schema.class);
     assertThat(dbSchema.getTables().get(0).getTableName(), is("item"));
     assertThat(dbSchema.getTables().get(0).getLikeIndex().get(0)
       .getArraySubfield(), is("name"));
@@ -81,7 +78,7 @@ class ObjectMapperToolTest {
     "+0000-01-01T00:00:00.000+00:00, 0000-01-01T00:00:00.000+00:00",
     "+0000-12-31T23:59:59.999+00:00, 0000-12-31T23:59:59.999+00:00",
   })
-  void date(String input, String expected) throws Exception {
+  void date(String input, String expected) {
     var json = '"' + input + '"';
     var date = ObjectMapperTool.readValue(json, Date.class);
     var json2 = ObjectMapperTool.valueAsString(date);
@@ -95,7 +92,7 @@ class ObjectMapperToolTest {
     "            1, 1970-01-01T00:00:00.001+00:00",
     "1800000000000, 2027-01-15T08:00:00.000+00:00",
   })
-  void date(long input, String expected) throws Exception {
+  void date(long input, String expected) {
     var date = ObjectMapperTool.readValue("" + input, Date.class);
     assertThat(date, is(new Date(input)));
     var json = ObjectMapperTool.valueAsString(date);
@@ -108,7 +105,7 @@ class ObjectMapperToolTest {
   }
 
   @Test
-  void foo() throws JsonProcessingException {
+  void foo() {
     var json = "{\"s\":\"a\",\"dueDate\":\"+1970-01-01T00:00:00.000+00:00\"}";
     var foo = ObjectMapperTool.readValue(json, Foo.class);
     assertThat(foo.s, is("a"));
