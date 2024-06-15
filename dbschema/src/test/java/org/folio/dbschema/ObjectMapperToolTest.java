@@ -130,7 +130,8 @@ class ObjectMapperToolTest {
 
   @Test
   void valueAsStringException() {
-    var e = assertThrows(UncheckedIOException.class, () -> ObjectMapperTool.valueAsString(new EmptyBean()));
+    var emptyBean = new EmptyBean();
+    var e = assertThrows(UncheckedIOException.class, () -> ObjectMapperTool.valueAsString(emptyBean));
     assertThat(e.getCause(), instanceOf(InvalidDefinitionException.class));
   }
 }
