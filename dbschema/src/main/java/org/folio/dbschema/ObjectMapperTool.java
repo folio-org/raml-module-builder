@@ -42,7 +42,7 @@ public final class ObjectMapperTool {
   }
 
   /**
-   * Map JSON to type.
+   * Map (deserialize) JSON String to java type instance.
    *
    * @param content JSON content
    * @param valueType Resulting type.
@@ -52,6 +52,20 @@ public final class ObjectMapperTool {
   public static <T> T readValue(String content, Class<T> valueType) {
     try {
       return getMapper().readValue(content, valueType);
+    } catch (IOException e) {
+      throw new UncheckedIOException(e);
+    }
+  }
+
+  /**
+   * Map (serialize) java type instance to JSON String.
+   *
+   * @param o java class value
+   * @return serialized JSON String
+   */
+  public static <T> String valueAsString(T o) {
+    try {
+      return getMapper().writeValueAsString(o);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
     }
