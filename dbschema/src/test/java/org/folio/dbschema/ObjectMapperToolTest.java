@@ -7,6 +7,7 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.fasterxml.jackson.databind.exc.InvalidDefinitionException;
 import com.fasterxml.jackson.databind.exc.MismatchedInputException;
 import java.io.UncheckedIOException;
 import java.time.Instant;
@@ -122,5 +123,14 @@ class ObjectMapperToolTest {
     assertThat(e.getMessage(), containsString("expected string containing a date"));
     assertThat(e.getMessage(), containsString("Foo[\"dueDate\"]"));
     assertThat(e.getCause(), instanceOf(MismatchedInputException.class));
+  }
+
+  static class EmptyBean {
+  }
+
+  @Test
+  void valueAsStringException() {
+    var e = assertThrows(UncheckedIOException.class, () -> ObjectMapperTool.valueAsString(new EmptyBean()));
+    assertThat(e.getCause(), instanceOf(InvalidDefinitionException.class));
   }
 }
