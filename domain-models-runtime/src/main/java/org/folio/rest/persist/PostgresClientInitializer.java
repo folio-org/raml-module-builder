@@ -17,11 +17,12 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class PostgresClientInitializer {
+  /** default release delay in milliseconds; after this time an idle database connection is closed */
+  public static final int DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   static final String HOST_READER_ASYNC = "host_reader_async";
   static final String PORT_READER_ASYNC = "port_reader_async";
 
   private static final Logger LOG = LogManager.getLogger(PostgresClientInitializer.class);
-  private static final int DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
   private static final String CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
   private static final String MAX_POOL_SIZE = "maxPoolSize";
   private static final String RECONNECT_ATTEMPTS = "reconnectAttempts";
@@ -81,17 +82,23 @@ public class PostgresClientInitializer {
     }
 
     var poolOptions = new PoolOptions();
-    poolOptions.setMaxSize(
-        configuration.getInteger(PostgresClient.MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, 4)));
-    var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
-    poolOptions.setIdleTimeout(connectionReleaseDelay);
+    poolOptions.setMaxSize(configuration.getInteger(PostgresClient.MAX_SHARED_POOL_SIZE,
+            configuration.getInteger(MAX_POOL_SIZE, PostgresClient.DEFAULT_MAX_POOL_SIZE)));
+
     poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
+    if (PostgresClient.isSharedPool()) {
+      poolOptions.setIdleTimeout(0); // The connection manager fully manages this.
+    } else {
+      var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
+      poolOptions.setIdleTimeout(connectionReleaseDelay);
+    }
 
     return PgPool.pool(vertx, connectOptions, poolOptions);
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, String hostToResolve, String portToResolve) {
     var pgConnectOptions = new PgConnectOptions();
+    pgConnectOptions.addProperty("application_name", PostgresClient.PG_APPLICATION_NAME);
 
     if (!trySetHostAndPort(pgConnectOptions, sqlConfig, hostToResolve, portToResolve)) {
       return null;

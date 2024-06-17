@@ -3,13 +3,11 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
-import io.netty.handler.ssl.OpenSsl;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
@@ -68,8 +66,11 @@ public class PostgresClient {
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
   public static final int        DEFAULT_MAX_POOL_SIZE = 4;
-  /** default release delay in milliseconds; after this time an idle database connection is closed */
-  public static final int        DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
+
+  protected static final String    MODULE_NAME = getModuleNameValue("getModuleName");
+  protected static final String    PG_APPLICATION_NAME = MODULE_NAME.replace('_', '-') + "-"
+      + getModuleNameValue("getModuleVersion");
+  protected static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
 
   static Logger log = LogManager.getLogger(PostgresClient.class);
 
@@ -81,6 +82,17 @@ public class PostgresClient {
   static final int               STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
   static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
 
+  @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
+  // we use it as a key in the config. We use it as a default password only when testing
+  // using embedded postgres, see getPostgreSQLClientConfig
+  static final String    PASSWORD = "password";
+  static final String    USERNAME = "username";
+  static final String    HOST      = "host";
+  static final String    HOST_READER = "host_reader";
+  static final String    PORT      = "port";
+  static final String    PORT_READER = "port_reader";
+  static final String    DATABASE  = "database";
+
   /**
    * True if all tenants of a Vertx share one PgPool, false for having a separate PgPool for
    * each combination of tenant and Vertx (= each PostgresClient has its own PgPool).
@@ -91,14 +103,8 @@ public class PostgresClient {
    */
   private static boolean sharedPgPool;
 
-  private static final String    MODULE_NAME = getModuleNameValue("getModuleName");
-  private static final String    PG_APPLICATION_NAME = MODULE_NAME.replace('_', '-') + "-"
-                                     + getModuleNameValue("getModuleVersion");
   private static final String    ID_FIELD                 = "id";
 
-  private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
-  private static final String    MAX_POOL_SIZE = "maxPoolSize";
-  private static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
 
   private static PostgresTester postgresTester;
@@ -171,7 +177,6 @@ public class PostgresClient {
     init();
   }
 
-
   /**
    * test constructor for unit testing
    */
@@ -222,6 +227,14 @@ public class PostgresClient {
       long endNanoTime = System.nanoTime();
       logTimer(descriptionKey, sql, startNanoTime, endNanoTime);
     }
+  }
+
+  public static boolean isSharedPool() {
+    return sharedPgPool;
+  }
+
+  public static void setSharedPgPool(boolean shared) {
+    sharedPgPool = shared;
   }
 
   /**
@@ -521,29 +534,6 @@ public class PostgresClient {
       client = postgresClientInitializer.getClient();
       readClient = postgresClientInitializer.getReadClient();
     }
-  }
-
-  static PgPool createPgPool(Vertx vertx, JsonObject configuration, Boolean isReader) {
-    PgConnectOptions connectOptions = createPgConnectOptions(configuration, isReader);
-
-    if (connectOptions == null) {
-      return null;
-    }
-
-    PoolOptions poolOptions = new PoolOptions();
-    poolOptions.setMaxSize(
-        configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, DEFAULT_MAX_POOL_SIZE)));
-
-    poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
-
-    if (sharedPgPool) {
-      poolOptions.setIdleTimeout(0); // The manager fully manages this.
-    } else {
-      var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
-      poolOptions.setIdleTimeout(connectionReleaseDelay);
-    }
-
-    return PgPool.pool(vertx, connectOptions, poolOptions);
   }
 
   /**
@@ -3461,7 +3451,7 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    */
   public Future<PgConnection> getConnection(PgPool client) {
-    if (!isSharedPool()) {
+    if (!sharedPgPool) {
       return client.getConnection().map(PgConnection.class::cast);
     }
 
