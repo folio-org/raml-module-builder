@@ -3,11 +3,13 @@ package org.folio.rest.persist;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import freemarker.template.TemplateException;
+import io.netty.handler.ssl.OpenSsl;
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
@@ -17,7 +19,6 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.RowStream;
-import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.Tuple;
 
@@ -46,6 +47,7 @@ import org.apache.logging.log4j.Logger;
 import org.folio.rest.jaxrs.model.ResultInfo;
 import org.folio.rest.persist.Criteria.Criterion;
 import org.folio.rest.persist.Criteria.UpdateSection;
+import org.folio.rest.persist.cache.CachedConnectionManager;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
 import org.folio.rest.persist.facets.FacetManager;
@@ -62,8 +64,14 @@ import org.folio.util.PostgresTester;
  * currently does not support binary data unless base64 encoded
  */
 public class PostgresClient {
+
   public static final String     DEFAULT_SCHEMA           = "public";
   public static final String     DEFAULT_JSONB_FIELD_NAME = "jsonb";
+  public static final int        DEFAULT_MAX_POOL_SIZE = 4;
+  /** default release delay in milliseconds; after this time an idle database connection is closed */
+  public static final int        DEFAULT_CONNECTION_RELEASE_DELAY = 60000;
+
+  static Logger log = LogManager.getLogger(PostgresClient.class);
 
   /** default analyze threshold value in milliseconds */
   static final long              EXPLAIN_QUERY_THRESHOLD_DEFAULT = 1000;
@@ -72,20 +80,6 @@ public class PostgresClient {
 
   static final int               STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
   static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
-  static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
-
-  static Logger log = LogManager.getLogger(PostgresClient.class);
-
-  @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
-  // we use it as a key in the config. We use it as a default password only when testing
-  // using embedded postgres, see getPostgreSQLClientConfig
-  static final String    PASSWORD = "password";
-  static final String    USERNAME = "username";
-  static final String    HOST      = "host";
-  static final String    HOST_READER = "host_reader";
-  static final String    PORT      = "port";
-  static final String    PORT_READER = "port_reader";
-  static final String    DATABASE  = "database";
 
   /**
    * True if all tenants of a Vertx share one PgPool, false for having a separate PgPool for
@@ -95,12 +89,16 @@ public class PostgresClient {
    *
    * @see #PG_POOLS
    */
-  static boolean sharedPgPool = false;
+  private static boolean sharedPgPool;
 
-  private static final String    MODULE_NAME              = getModuleName("org.folio.rest.tools.utils.ModuleName");
+  private static final String    MODULE_NAME = getModuleNameValue("getModuleName");
+  private static final String    PG_APPLICATION_NAME = MODULE_NAME.replace('_', '-') + "-"
+                                     + getModuleNameValue("getModuleVersion");
   private static final String    ID_FIELD                 = "id";
 
-  /** default release delay in milliseconds; after this time an idle database connection is closed */
+  private static final String    CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
+  private static final String    MAX_POOL_SIZE = "maxPoolSize";
+  private static final String    MAX_SHARED_POOL_SIZE = "maxSharedPoolSize";
   private static final String    POSTGRES_LOCALHOST_CONFIG = "/postgres-conf.json";
 
   private static PostgresTester postgresTester;
@@ -144,6 +142,8 @@ public class PostgresClient {
   private static final Pattern POSTGRES_COPY_FROM_STDIN =
       // \\b = a word boundary
       Pattern.compile("^\\s*COPY\\b.*\\bFROM\\s+STDIN\\b.*", Pattern.CASE_INSENSITIVE);
+
+  private static final CachedConnectionManager CACHED_CONNECTION_MANAGER = new CachedConnectionManager();
 
   /** analyze threshold value in milliseconds */
   private static long explainQueryThreshold = EXPLAIN_QUERY_THRESHOLD_DEFAULT;
@@ -487,6 +487,8 @@ public class PostgresClient {
       client.closeClient();
     }
 
+    CACHED_CONNECTION_MANAGER.clearCache();
+
     PG_POOLS.values().forEach(PgPool::close);
     PG_POOLS.clear();
     PG_POOLS_READER.values().forEach(PgPool::close);
@@ -519,6 +521,29 @@ public class PostgresClient {
       client = postgresClientInitializer.getClient();
       readClient = postgresClientInitializer.getReadClient();
     }
+  }
+
+  static PgPool createPgPool(Vertx vertx, JsonObject configuration, Boolean isReader) {
+    PgConnectOptions connectOptions = createPgConnectOptions(configuration, isReader);
+
+    if (connectOptions == null) {
+      return null;
+    }
+
+    PoolOptions poolOptions = new PoolOptions();
+    poolOptions.setMaxSize(
+        configuration.getInteger(MAX_SHARED_POOL_SIZE, configuration.getInteger(MAX_POOL_SIZE, DEFAULT_MAX_POOL_SIZE)));
+
+    poolOptions.setIdleTimeoutUnit(TimeUnit.MILLISECONDS);
+
+    if (sharedPgPool) {
+      poolOptions.setIdleTimeout(0); // The manager fully manages this.
+    } else {
+      var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
+      poolOptions.setIdleTimeout(connectionReleaseDelay);
+    }
+
+    return PgPool.pool(vertx, connectOptions, poolOptions);
   }
 
   /**
@@ -558,6 +583,8 @@ public class PostgresClient {
       PostgresClient.setExplainQueryThreshold((Long) v);
     }
     sharedPgPool |= config.containsKey(MAX_SHARED_POOL_SIZE);
+    log.info("Shared pool for tenant {} is set: {}", tenantId, sharedPgPool);
+
     if (tenantId.equals(DEFAULT_SCHEMA) || sharedPgPool) {
       config.put(PASSWORD, decodePassword( config.getString(PASSWORD) ));
     } else {
@@ -3434,18 +3461,11 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    */
   public Future<PgConnection> getConnection(PgPool client) {
-    Future<SqlConnection> future = client.getConnection();
-    if (! sharedPgPool) {
-      return future.map(sqlConnection -> (PgConnection) sqlConnection);
+    if (!isSharedPool()) {
+      return client.getConnection().map(PgConnection.class::cast);
     }
-    // running the two SET queries adds about 1.5 ms execution time
-    // "SET SCHEMA ..." sets the search_path because neither "SET ROLE" nor "SET SESSION AUTHORIZATION" set it
-    String sql = DEFAULT_SCHEMA.equals(tenantId)
-        ? "SET ROLE NONE; SET SCHEMA ''"
-        : "SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'";
-    return future.compose(sqlConnection ->
-        sqlConnection.query(sql).execute()
-            .map((PgConnection) sqlConnection));
+
+    return CACHED_CONNECTION_MANAGER.getConnection(vertx, client, schemaName, tenantId);
   }
   /**
    * Get Vert.x {@link PgConnection}.
@@ -4294,7 +4314,11 @@ public class PostgresClient {
     return MODULE_NAME;
   }
 
-  static String getModuleName(final String className) {
+  static String getModuleNameValue(final String methodName) {
+    return getModuleNameValue("org.folio.rest.tools.utils.ModuleName", methodName);
+  }
+
+  static String getModuleNameValue(final String className, final String methodName) {
     try {
       // there might be multiple class loaders: raml-module-builder, folio-some-library, mod-example
       StackWalker stackWalker = StackWalker.getInstance(Option.RETAIN_CLASS_REFERENCE);
@@ -4302,7 +4326,7 @@ public class PostgresClient {
       while (classLoader != null) {
         try {
           Class<?> moduleNameClass = Class.forName(className, true, classLoader);
-          return moduleNameClass.getMethod("getModuleName").invoke(null).toString();
+          return moduleNameClass.getMethod(methodName).invoke(null).toString();
         } catch (ClassNotFoundException e) {
           classLoader = classLoader.getParent();
         }

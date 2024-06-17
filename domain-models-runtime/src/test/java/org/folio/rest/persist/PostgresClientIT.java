@@ -142,7 +142,7 @@ public class PostgresClientIT {
       postgresClient.closeClient(context.asyncAssertSuccess());
       postgresClient = null;
     }
-    PostgresClient.sharedPgPool = false;
+    PostgresClient.setSharedPgPool(false);
   }
 
   private static <T> void assertSuccess(TestContext context, AsyncResult<T> result) {
@@ -297,7 +297,7 @@ public class PostgresClientIT {
 
   private void assertPoolsOfTwoTenants(TestContext context, boolean shared, int expectedPools) {
     PostgresClient.closeAllClients();
-    PostgresClient.sharedPgPool = shared;
+    PostgresClient.setSharedPgPool(shared);
     PostgresClient c1 = createA(context, "t1");
     PostgresClient c2 = createA(context, "t2");
     c1.execute("INSERT INTO a VALUES (1)")

@@ -890,7 +890,8 @@ public class CQL2PgJSON {
       return indexText + " ~ ''";
     }
 
-    boolean removeAccents = schemaIndex == null || schemaIndex.isRemoveAccents();
+    boolean removeAccents = schemaIndex == null ||
+        (schemaIndex.getSqlExpression() == null && schemaIndex.isRemoveAccents());
     StringBuilder tsTerm = new StringBuilder();
     switch (comparator) {
       case "=":
@@ -951,16 +952,17 @@ public class CQL2PgJSON {
       String likeOperator = comparator.equals("<>") ? "NOT LIKE" : "LIKE";
       String term = "'" + Cql2SqlUtil.cql2like(node.getTerm()) + "'";
       String indexMod;
+      boolean hasSqlExpression = schemaIndex != null && schemaIndex.getSqlExpression() != null;
 
       if (schemaIndex != null && schemaIndex.getMultiFieldNames() != null) {
         indexMod = schemaIndex.getFinalSqlExpression(targetTable.getTableName());
-      } else if (schemaIndex != null && schemaIndex.getSqlExpression() != null) {
+      } else if (hasSqlExpression) {
         indexMod = schemaIndex.getSqlExpression();
       } else {
         indexMod = wrapIndexExpression(indexText, schemaIndex);
       }
 
-      if (schemaIndex != null && schemaIndex == dbIndex.getIndex()) {
+      if (schemaIndex != null && schemaIndex == dbIndex.getIndex() && !hasSqlExpression) {
         sql = createLikeLengthCase(comparator, indexMod, schemaIndex, likeOperator, term);
       } else {
         sql = indexMod + " " + likeOperator + " " + wrapQueryExpression(term, schemaIndex);
