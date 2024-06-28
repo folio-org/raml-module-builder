@@ -407,7 +407,7 @@ to a running PostgreSQL query. 0 disables this timeout and is the default.
 To take effect an RMB based module must get it via PostgresClient.getConnectionConfig().getInteger("queryTimeout")
 and pass it to the RMB method that starts the connection, transaction or query.
 
-The environment variables `DB_HOST_READER` and `DB_PORT_READER` are for the [Read and write database instances setup](#read-and-write-database-instances-setup).
+The environment variables `DB_HOST_READER` and `DB_PORT_READER` are for the synchronously replicated [Read and write database instances setup](#read-and-write-database-instances-setup).
 
 The environment variables `DB_HOST_ASYNC_READER` and `DB_PORT_ASYNC_READER` are for the [Asynchronously replicated read and write database instances setup](#asynchronously-replicated-read-and-write-database-instances-setup).
 
@@ -422,11 +422,13 @@ A PostgreSQL instance (the write instance) can be replicated for horizontal scal
 
 RMB supports separating read and write requests. By default the write instance configured with `DB_HOST` and `DB_PORT` environment variables is used for reading as well, but optionally a read instance (or a load balancer for multiple read instances) can be configured by setting its host and port using the `DB_HOST_READER` and `DB_PORT_READER` environment variables. If either of these reader variables are not set then it will default to use the writer instance.
 
-## Asynchronously replicated read and write database instances setup
-
-RMB supports both [synchronous standby servers](https://www.postgresql.org/docs/current/warm-standby.html#SYNCHRONOUS-REPLICATION) and asynchronously replicated standby servers (the default)[https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION]. When using synchronous replication, write instance must list the `DB_*_READER` instance(s) in its `synchronous_standby_names` configuration. This ensures ACID for both write and read instance.
+RMB supports both [synchronous standby servers](https://www.postgresql.org/docs/current/warm-standby.html#SYNCHRONOUS-REPLICATION) and asynchronously replicated standby servers (the default)[https://www.postgresql.org/docs/current/warm-standby.html#STREAMING-REPLICATION]. When using synchronous replication, write instance must list the `DB_HOST_READER` instance(s) in its `synchronous_standby_names` configuration. This ensures ACID for both write and read instance.
 
 PostgreSQL's default asynchronous replication is supported by RMB by configuring `DB_HOST_ASYNC_READER` and `DB_PORT_ASYNC_READER`. Asynchronous replication is eventually consistent and suitable for read-only applications like reporting, analytics, and data warehousing. To use the async read host in queries, get an instance of `PostgresClient` using `PostgresClientWithAsyncReadConn.getInstance(...)`.
+
+AWS RDS does not support synchronous replication. For AWS it is recommended to only use `DB_HOST` and `DB_HOST_ASYNC_READER` in a given deployment.
+
+APIs using the async client should provide a warning in the API documentation that it uses stale data (for performance reasons).
 
 ## Local development server
 

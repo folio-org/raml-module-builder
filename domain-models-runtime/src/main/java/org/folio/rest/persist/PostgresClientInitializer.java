@@ -43,19 +43,14 @@ public class PostgresClientInitializer {
     readClient = createPgPool(vertx, configuration, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
     readClientAsync = createPgPool(vertx, configuration, HOST_READER_ASYNC, PORT_READER_ASYNC);
 
-    // If neither read clients are defined, they must both use the r/w client.
-    if (readClient == null && readClientAsync == null) {
+    // If there is no read client defined, then use the r/w client for it.
+    // If there is no async read client defined, then use the sync read client for it if it exists,
+    // otherwise all 3 clients are the r/w client.
+    if (readClient == null) {
       readClient = client;
-      readClientAsync = client;
     }
-    // If there is only the synchronous read client, then it is fine that the async read client code can use it.
-    if (readClient != null && readClientAsync == null) {
+    if (readClientAsync == null) {
       readClientAsync = readClient;
-    }
-    // If only the async read client is defined (as will be the desired state for AWS RDS), then any code
-    // which uses the sync read client must use the w/r client.
-    if (readClient == null && readClientAsync != null) {
-      readClient = client;
     }
   }
 
