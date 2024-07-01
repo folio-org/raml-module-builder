@@ -529,10 +529,10 @@ public class PostgresClient {
     this.postgresClientInitializer = new PostgresClientInitializer(vertx, postgreSQLClientConfig);
     if (sharedPgPool) {
       client = PG_POOLS.computeIfAbsent(vertx, x -> postgresClientInitializer.getClient());
-      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> postgresClientInitializer.getReadClient());
+      readClient = PG_POOLS_READER.computeIfAbsent(vertx, x -> postgresClientInitializer.getSyncReadClient());
     } else {
       client = postgresClientInitializer.getClient();
-      readClient = postgresClientInitializer.getReadClient();
+      readClient = postgresClientInitializer.getSyncReadClient();
     }
   }
 

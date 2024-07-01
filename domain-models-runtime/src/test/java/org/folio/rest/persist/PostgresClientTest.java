@@ -276,10 +276,10 @@ public class PostgresClientTest {
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
       var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
       assertNotNull(initializer.getClient());
-      assertNotNull(initializer.getReadClient());
-      assertNotNull(initializer.getReadClientAsync());
-      assertEquals(initializer.getClient(), initializer.getReadClient());
-      assertEquals(initializer.getClient(), initializer.getReadClientAsync());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getAsyncReadClient());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());
@@ -302,10 +302,10 @@ public class PostgresClientTest {
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
       var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
       assertNotNull(initializer.getClient());
-      assertNotNull(initializer.getReadClient());
-      assertNotNull(initializer.getReadClientAsync());
-      assertEquals(initializer.getClient(), initializer.getReadClient());
-      assertEquals(initializer.getClient(), initializer.getReadClientAsync());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getAsyncReadClient());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());
@@ -330,11 +330,11 @@ public class PostgresClientTest {
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
       var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
       assertNotNull(initializer.getClient());
-      assertNotNull(initializer.getReadClient());
-      assertNotNull(initializer.getReadClientAsync());
-      assertNotEquals(initializer.getClient(), initializer.getReadClient());
-      assertNotEquals(initializer.getClient(), initializer.getReadClientAsync());
-      assertEquals(initializer.getReadClient(), initializer.getReadClientAsync());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getAsyncReadClient());
+      assertEquals(initializer.getSyncReadClient(), initializer.getAsyncReadClient());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());
@@ -359,10 +359,10 @@ public class PostgresClientTest {
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
       var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
       assertNotNull(initializer.getClient());
-      assertNotNull(initializer.getReadClient());
-      assertNotNull(initializer.getReadClientAsync());
-      assertEquals(initializer.getClient(), initializer.getReadClient());
-      assertNotEquals(initializer.getClient(), initializer.getReadClientAsync());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getAsyncReadClient());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());
@@ -383,11 +383,11 @@ public class PostgresClientTest {
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
       var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
       assertNotNull(initializer.getClient());
-      assertNotNull(initializer.getReadClient());
-      assertNotNull(initializer.getReadClientAsync());
-      assertNotEquals(initializer.getClient(), initializer.getReadClient());
-      assertNotEquals(initializer.getClient(), initializer.getReadClientAsync());
-      assertNotEquals(initializer.getReadClient(), initializer.getReadClientAsync());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getAsyncReadClient());
+      assertNotEquals(initializer.getSyncReadClient(), initializer.getAsyncReadClient());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());

@@ -1,7 +1,6 @@
 package org.folio.rest.persist;
 
 import io.vertx.core.Vertx;
-import org.folio.rest.persist.cache.ConnectionCache;
 
 /**
  * Clients which, for performance reasons, would like to take advantage of asynchronous read replication can use
@@ -22,7 +21,7 @@ public class PostgresClientWithAsyncReadConn extends PostgresClient {
   public static PostgresClient getInstance(Vertx vertx, String tenantId) {
     var postgresClient = getInstanceInternal(vertx, tenantId);
     var initializer = postgresClient.getPostgresClientInitializer();
-    postgresClient.setReaderClient(initializer.getReadClientAsync());
+    postgresClient.setReaderClient(initializer.getAsyncReadClient());
     return postgresClient;
   }
 }

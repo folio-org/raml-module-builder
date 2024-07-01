@@ -31,6 +31,6 @@ public class PostgresClientWithAsyncReadConnTest {
     assertNotNull(client);
     assertNotNull(client.getReaderClient());
     assertNotEquals(client.getClient(), client.getReaderClient());
-    assertEquals(client.getReaderClient(), initializer.getReadClientAsync());
+    assertEquals(client.getReaderClient(), initializer.getAsyncReadClient());
   }
 }

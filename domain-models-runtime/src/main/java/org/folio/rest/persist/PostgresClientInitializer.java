@@ -30,8 +30,8 @@ public class PostgresClientInitializer {
   private static final String SERVER_PEM = "server_pem";
 
   private final PgPool client;
-  private PgPool readClient;
-  private PgPool readClientAsync;
+  private PgPool syncReadClient;
+  private PgPool asyncReadClient;
 
   /**
    * Defines the various clients (PgPool instances) based on their configured hosts in any supported combination.
@@ -40,17 +40,17 @@ public class PostgresClientInitializer {
    */
   protected PostgresClientInitializer(Vertx vertx, JsonObject configuration) {
     client = createPgPool(vertx, configuration, PostgresClient.HOST, PostgresClient.PORT);
-    readClient = createPgPool(vertx, configuration, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
-    readClientAsync = createPgPool(vertx, configuration, HOST_READER_ASYNC, PORT_READER_ASYNC);
+    syncReadClient = createPgPool(vertx, configuration, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
+    asyncReadClient = createPgPool(vertx, configuration, HOST_READER_ASYNC, PORT_READER_ASYNC);
 
     // If there is no read client defined, then use the r/w client for it.
     // If there is no async read client defined, then use the sync read client for it if it exists,
     // otherwise all 3 clients are the r/w client.
-    if (readClient == null) {
-      readClient = client;
+    if (syncReadClient == null) {
+      syncReadClient = client;
     }
-    if (readClientAsync == null) {
-      readClientAsync = readClient;
+    if (asyncReadClient == null) {
+      asyncReadClient = syncReadClient;
     }
   }
 
@@ -58,12 +58,12 @@ public class PostgresClientInitializer {
     return client;
   }
 
-  public PgPool getReadClient() {
-    return  readClient;
+  public PgPool getSyncReadClient() {
+    return syncReadClient;
   }
 
-  public PgPool getReadClientAsync() {
-    return readClientAsync;
+  public PgPool getAsyncReadClient() {
+    return asyncReadClient;
   }
 
   private static PgPool createPgPool(Vertx vertx,
