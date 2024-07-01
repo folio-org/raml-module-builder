@@ -85,13 +85,13 @@ public class PostgresClient {
   @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
   // we use it as a key in the config. We use it as a default password only when testing
   // using embedded postgres, see getPostgreSQLClientConfig
-  static final String    PASSWORD = "password";
-  static final String    USERNAME = "username";
-  static final String    HOST      = "host";
-  static final String    HOST_READER = "host_reader";
-  static final String    PORT      = "port";
-  static final String    PORT_READER = "port_reader";
-  static final String    DATABASE  = "database";
+  static final String PASSWORD = "password";
+  static final String USERNAME = "username";
+  static final String HOST = "host";
+  static final String HOST_READER = "host_reader";
+  static final String PORT = "port";
+  static final String PORT_READER = "port_reader";
+  static final String DATABASE  = "database";
 
   /**
    * True if all tenants of a Vertx share one PgPool, false for having a separate PgPool for
