@@ -8,8 +8,10 @@ import java.util.Map;
 public enum Envs {
   DB_HOST,
   DB_HOST_READER,
+  DB_HOST_READER_ASYNC,
   DB_PORT,
   DB_PORT_READER,
+  DB_PORT_READER_ASYNC,
   DB_USERNAME,
   DB_PASSWORD,
   DB_DATABASE,
@@ -66,6 +68,7 @@ public enum Envs {
       switch (envs) {
       case DB_PORT:
       case DB_PORT_READER:
+      case DB_PORT_READER_ASYNC:
       case DB_QUERYTIMEOUT:
       case DB_MAXPOOLSIZE:
       case DB_MAXSHAREDPOOLSIZE:

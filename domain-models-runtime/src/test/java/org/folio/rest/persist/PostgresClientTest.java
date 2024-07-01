@@ -8,9 +8,7 @@ import static org.hamcrest.collection.ArrayMatching.hasItemInArray;
 import static org.hamcrest.collection.IsMapContaining.hasEntry;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.StringContainsInOrder.stringContainsInOrder;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.*;
 import static org.mockito.Mockito.*;
 
 import java.lang.reflect.Method;
@@ -31,7 +29,6 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
@@ -54,7 +51,6 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-
 public class PostgresClientTest {
   // See PostgresClientIT.java for the tests that require a postgres database!
 
@@ -65,11 +61,6 @@ public class PostgresClientTest {
   private static final int DEFAULT_OFFSET = 0;
 
   private static final int DEFAULT_LIMIT = 10;
-
-  private static final String HOST = "host";
-  private static final String HOST_READER = "host_reader";
-  private static final String POST = "post";
-  private static final String POST_READER = "post_reader";
 
   @Before
   public void initConfig() {
@@ -169,7 +160,8 @@ public class PostgresClientTest {
   @Test
   public void testPgConnectOptionsEmpty() {
     JsonObject conf = new JsonObject();
-    PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, false);
+    PgConnectOptions options =
+        PostgresClientInitializer.createPgConnectOptions(conf, PostgresClient.HOST, PostgresClient.PORT);
     assertThat("localhost", is(options.getHost()));
     assertThat(5432, is(options.getPort()));
     assertThat("user", is(options.getUser()));
@@ -195,7 +187,8 @@ public class PostgresClientTest {
           "DB_RECONNECTINTERVAL", "2000"
           ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
-      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, false);
+      PgConnectOptions options =
+          PostgresClientInitializer.createPgConnectOptions(conf, PostgresClient.HOST, PostgresClient.PORT);
       assertThat(options.getHost(), is("myhost"));
       assertThat(options.getPort(), is(5433));
       assertThat(options.getUser(), is("myuser"));
@@ -228,7 +221,8 @@ public class PostgresClientTest {
           "DB_RECONNECTINTERVAL", "2000"
       ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
-      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, true);
+      PgConnectOptions options =
+          PostgresClientInitializer.createPgConnectOptions(conf, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
       assertThat(options.getHost(), is("myhost_reader"));
       assertThat(options.getPort(), is(12345));
       assertThat(options.getUser(), is("myuser"));
@@ -257,8 +251,35 @@ public class PostgresClientTest {
           "DB_RECONNECTINTERVAL", "2000"
       ));
       JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
-      PgConnectOptions options = PostgresClient.createPgConnectOptions(conf, true);
+      PgConnectOptions options = PostgresClientInitializer.createPgConnectOptions(conf,
+          PostgresClientInitializer.HOST_READER_ASYNC, PostgresClientInitializer.PORT_READER_ASYNC);
       assertNull(options);
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+  @Test
+  public void testGettingPgPoolWithMissingReaderHost() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_PORT_READER", "12345",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getAsyncReadClient());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());
@@ -266,15 +287,107 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void testGettingPgPoolWithMissingReaderHost() throws Exception {
+  public void testGettingPgPoolWithNoReader() throws Exception {
     try {
-      JsonObject config = new JsonObject();
-      config.put("DB_PORT_READER", "5433")
-            .put("DB_USERNAME", "myuser")
-            .put("DB_PASSWORD", "mypassword");
+      Envs.setEnv(Map.of(
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getAsyncReadClient());
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
 
-      PgPool pgPool = PostgresClient.createPgPool(Vertx.vertx(), config, true);
-      assertNull(pgPool);
+  @Test
+  public void testGettingPgPoolWithReaderHost() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_PORT_READER", "12345",
+          "DB_HOST_READER", "myhost_reader",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getAsyncReadClient());
+      assertEquals(initializer.getSyncReadClient(), initializer.getAsyncReadClient());
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testGettingPgPoolWithAsyncReaderHostOnly() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_PORT_READER_ASYNC", "12345",
+          "DB_HOST_READER_ASYNC", "myhost_reader",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433",
+          "DB_USERNAME", "myuser",
+          "DB_PASSWORD", "mypassword",
+          "DB_DATABASE", "mydatabase",
+          "DB_CONNECTIONRELEASEDELAY", "1000",
+          "DB_RECONNECTATTEMPTS", "3",
+          "DB_RECONNECTINTERVAL", "2000"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getAsyncReadClient());
+    } finally {
+      // restore defaults
+      Envs.setEnv(System.getenv());
+    }
+  }
+
+  @Test
+  public void testGettingPgPoolWithAllThreeHostTypes() throws Exception {
+    try {
+      Envs.setEnv(Map.of(
+          "DB_PORT_READER_ASYNC", "12345",
+          "DB_HOST_READER_ASYNC", "myhost_reader_async",
+          "DB_PORT_READER", "54321",
+          "DB_HOST_READER", "myhost_reader",
+          "DB_HOST", "myhost",
+          "DB_PORT", "5433"
+      ));
+      JsonObject conf = new PostgresClient(Vertx.vertx(), "public").getConnectionConfig();
+      var initializer = new PostgresClientInitializer(Vertx.vertx(), conf);
+      assertNotNull(initializer.getClient());
+      assertNotNull(initializer.getSyncReadClient());
+      assertNotNull(initializer.getAsyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getSyncReadClient());
+      assertNotEquals(initializer.getClient(), initializer.getAsyncReadClient());
+      assertNotEquals(initializer.getSyncReadClient(), initializer.getAsyncReadClient());
     } finally {
       // restore defaults
       Envs.setEnv(System.getenv());
