@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 35.3](#version-353)
 * [Version 35.2](#version-352)
 * [Version 35.1](#version-351)
 * [Version 35.0](#version-350)
@@ -24,6 +25,12 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 35.3
+
+Don't use `JsonObject.mapFrom` to serialize a Java class instance to JSON,
+RMB's database methods automatically do this. When writing custom SQL use
+`ObjectMapperTool.valueAsString` to serialize in a way compatible with RMB's deserializer.
 
 ## Version 35.2
 
@@ -46,6 +53,11 @@ because the
 [package name](https://github.com/jakartaee/validation/commit/a5e6c1829b110bc10cde0d30756073b28ffc2a29)
 and [artifact name](https://github.com/jakartaee/validation/commit/80f3223c3aa7696e3a732ae802baac8fc529f785)
 have changed.
+
+Don't use `JsonObject.mapFrom` to serialize a Java class instance to JSON,
+RMB's database methods automatically do this. When writing custom SQL use
+`ObjectMapperTool.getMapper().writeValueAsString` to serialize
+in a way compatible with RMB's deserializer.
 
 ## Version 35.1
 
