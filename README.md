@@ -408,7 +408,7 @@ and pass it to the RMB method that starts the connection, transaction or query.
 
 The environment variables `DB_HOST_READER` and `DB_PORT_READER` are for the synchronously replicated [Read and write database instances setup](#read-and-write-database-instances-setup).
 
-The environment variables `DB_HOST_ASYNC_READER` and `DB_PORT_ASYNC_READER` are for the [Asynchronously replicated read and write database instances setup](#asynchronously-replicated-read-and-write-database-instances-setup).
+The environment variables `DB_HOST_ASYNC_READER` and `DB_PORT_ASYNC_READER` are for the asynchronously replicated read and write database instances setup.
 
 `DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING` is a timestamp in the format `2022-12-31T23:59:59Z`. Setting it disables optimistic locking when sending a record that contains `"_version":-1` before that time, after that time `"_version":-1` is rejected. This applies only to tables with `failOnConflictUnlessSuppressed`, see below. The timestamp ensures that disabling this option cannot be forgotten. Suppressing optimistic locking is known to lead to data loss in some cases, don't use in production, you have been warned!
 
