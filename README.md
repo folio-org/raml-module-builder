@@ -406,7 +406,7 @@ to a running PostgreSQL query. 0 disables this timeout and is the default.
 To take effect an RMB based module must get it via PostgresClient.getConnectionConfig().getInteger("queryTimeout")
 and pass it to the RMB method that starts the connection, transaction or query.
 
-The environment variables `DB_HOST_READER` and `DB_PORT_READER` are for the synchronously replicated [Read and write database instances setup](#read-and-write-database-instances-setup).
+The environment variables `DB_HOST_READER` and `DB_PORT_READER` are for the synchronously replicated [read and write database instances setup](#read-and-write-database-instances-setup).
 
 The environment variables `DB_HOST_ASYNC_READER` and `DB_PORT_ASYNC_READER` are for the asynchronously replicated read and write database instances setup.
 
