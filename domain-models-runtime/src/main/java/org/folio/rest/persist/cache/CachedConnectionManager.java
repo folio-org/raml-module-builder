@@ -3,6 +3,7 @@ package org.folio.rest.persist.cache;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 import org.folio.rest.persist.PostgresClient;
+import org.folio.rest.persist.PostgresClientInitializer;
 import org.folio.rest.tools.utils.Envs;
 import io.vertx.core.Vertx;
 import io.vertx.core.Future;
@@ -24,8 +25,8 @@ public class CachedConnectionManager {
   private static final Logger LOG = LogManager.getLogger(CachedConnectionManager.class);
   private static final int MAX_POOL_SIZE =
       getIntFromEnvOrDefault(Envs.DB_MAXSHAREDPOOLSIZE, PostgresClient.DEFAULT_MAX_POOL_SIZE);
-  private static final int CONNECTION_RELEASE_DELAY_SECONDS =
-      getIntFromEnvOrDefault(Envs.DB_CONNECTIONRELEASEDELAY, PostgresClient.DEFAULT_CONNECTION_RELEASE_DELAY);
+  private static final int CONNECTION_RELEASE_DELAY_SECONDS = getIntFromEnvOrDefault(Envs.DB_CONNECTIONRELEASEDELAY,
+      PostgresClientInitializer.DEFAULT_CONNECTION_RELEASE_DELAY);
 
   private final ConnectionCache connectionCache = new ConnectionCache();
 
