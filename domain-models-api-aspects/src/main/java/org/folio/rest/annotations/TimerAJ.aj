@@ -2,9 +2,8 @@ package org.folio.rest.annotations;
 
 import java.util.UUID;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.aspectj.lang.reflect.MethodSignature;
 
 import io.vertx.core.Handler;
@@ -19,7 +18,7 @@ public aspect TimerAJ { //pertarget(timerCall1()) { // percflow(timerCall2()){
 /*  private long            timer  = 0;
   private String          methodName;
   private UUID            id ;
-  private static Logger logger = LoggerFactory.getLogger(TimerAJ.class);
+  private static Logger logger = LogManager.getLogger(TimerAJ.class);
 
   // aspectj maven plugin <includes> controls compile scope - see projects depending on this one for
   // examples
@@ -51,7 +50,9 @@ public aspect TimerAJ { //pertarget(timerCall1()) { // percflow(timerCall2()){
 
   after() : timerCall2()  { // cflow( timerCall1() && timerCall2()) {
     System.out.println("id = " + id + " method " + methodName + " in timer ------------------->" + timer + " location " + thisEnclosingJoinPointStaticPart.getSourceLocation().getLine());
-    logger.info(String.format("%s "+methodName+" took %d ms", thisEnclosingJoinPointStaticPart.getSourceLocation().getWithinType().getName(),
-      (System.currentTimeMillis() - timer)));
+    logger.info("{} {} took {} ms",
+      thisEnclosingJoinPointStaticPart.getSourceLocation().getWithinType().getName(),
+      methodName,
+      (System.currentTimeMillis() - timer));
   }*/
 }
