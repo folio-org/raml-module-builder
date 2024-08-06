@@ -1,8 +1,5 @@
 package org.folio.rest.annotations;
 
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-
 import java.util.Arrays;
 import java.util.Set;
 
@@ -12,13 +9,15 @@ import jakarta.validation.ValidationException;
 import jakarta.validation.ValidatorFactory;
 import jakarta.validation.executable.ExecutableValidator;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.aspectj.lang.annotation.SuppressAjWarnings;
 
 public aspect RestValidator {
 
   static private ValidatorFactory factory;
-  static final Logger log = LoggerFactory.getLogger(RestValidator.class);
+  static final Logger log = LogManager.getLogger(RestValidator.class);
 
   static {
     factory = Validation.buildDefaultValidatorFactory();
@@ -44,9 +43,9 @@ public aspect RestValidator {
         methodSignature.getMethod(), thisJoinPoint.getArgs());
 
     if (validationErrors.isEmpty()) {
-      log.debug("Valid call: with args " + methodSignature.getMethod() + Arrays.toString(thisJoinPoint.getArgs()));
+      log.debug("Valid call: with args {}", () -> methodSignature.getMethod() + Arrays.toString(thisJoinPoint.getArgs()));
     } else {
-      log.debug("Invalid call: with args " + methodSignature.getMethod() + Arrays.toString(thisJoinPoint.getArgs()));
+      log.debug("Invalid call: with args {}", () -> methodSignature.getMethod() + Arrays.toString(thisJoinPoint.getArgs()));
       RuntimeException ex = buildValidationException(validationErrors, params);
       throw ex;
     }
