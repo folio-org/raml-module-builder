@@ -18,9 +18,12 @@ CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_internal (
       jsonb JSONB NOT NULL
     );
 
-insert into ${myuniversity}_${mymodule}.rmb_internal (jsonb) values ('{"rmbVersion": "${rmbVersion}", "moduleVersion": "${newVersion}"}'::jsonb);
-
 </#if>
+
+<#-- Insert row if table is empty -->
+INSERT INTO ${myuniversity}_${mymodule}.rmb_internal (jsonb)
+SELECT '{"rmbVersion": "${rmbVersion}", "moduleVersion": "${version}"}'::jsonb
+WHERE NOT EXISTS (SELECT * FROM ${myuniversity}_${mymodule}.rmb_internal);
 
 CREATE TABLE IF NOT EXISTS ${myuniversity}_${mymodule}.rmb_job (
       id UUID PRIMARY KEY,
