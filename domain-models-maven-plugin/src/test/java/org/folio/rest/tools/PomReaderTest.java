@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.text.MatchesPattern.matchesPattern;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.isOneOf;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PomReaderTest {
@@ -47,8 +48,8 @@ class PomReaderTest {
     PomReader pom = PomReader.INSTANCE;
 
     pom.readIt(null, "META-INF/maven/io.vertx");  // force reading from Jar
-    // first dependency in main pom
-    assertThat(pom.getModuleName(), is("vertx_parent"));
+    // first dependency in main pom of Vert.x 4 and Vert.x 5
+    assertThat(pom.getModuleName(), isOneOf("vertx_parent", "vertx_core_aggregator"));
   }
 
   @Test
