@@ -1069,7 +1069,7 @@ Example using [StringUtil](util/src/main/java/org/folio/util/StringUtil.java):
 
 ```java
 String query = "username==" + StringUtil.cqlEncode(username);
-String url = "https://example.com/users?query=" + StringUtil.urlEncode(query);
+String url = "https://example.com/users?query=" + PercentCodec.encode(query);
 ```
 
 Use quotes if the search string contains a space, for example `title = "Harry Potter"`.
