@@ -117,6 +117,9 @@ public final class ObjectMapperTool {
       return switch (parser.currentToken()) {
         case VALUE_STRING -> {
           var v = parser.getValueAsString();
+          if (v.isEmpty()) {
+            yield null;
+          }
           // remove preceding + that Jackson's default Date formatter have created
           // for year 0 dates like "+0000-01-01T00:00:00.000+00:00"
           if (v.startsWith("+")) {

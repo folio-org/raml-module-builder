@@ -3,6 +3,7 @@ package org.folio.dbschema;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -100,6 +101,11 @@ class ObjectMapperToolTest {
     assertThat(json, is('"' + expected + '"'));
   }
 
+  @Test
+  void emptyStringToNullDate() {
+    assertThat(ObjectMapperTool.readValue("\"\"", Date.class), is(nullValue()));
+  }
+
   static class Foo {
     public String s;
     public Date dueDate;
@@ -114,6 +120,12 @@ class ObjectMapperToolTest {
     var json2 = ObjectMapperTool.valueAsString(foo);
     var expected = json.replace("+1970", "1970");
     assertThat(json2, is(expected));
+  }
+
+  @Test
+  void fooEmptyStringToNullDate() {
+    var foo = ObjectMapperTool.readValue("{ \"dueDate\": \"\" }", Foo.class);
+    assertThat(foo.dueDate, is(nullValue()));
   }
 
   @Test
