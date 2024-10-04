@@ -29,7 +29,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 ## Version 35.3
 
 Don't use `JsonObject.mapFrom` to serialize a Java class instance to JSON,
-RMB's database methods automatically do this. When writing custom SQL use
+RMB's database methods take a Java class and automatically serialize it. When writing custom SQL use
 `ObjectMapperTool.valueAsString` to serialize in a way compatible with RMB's deserializer.
 
 ## Version 35.2
@@ -55,7 +55,7 @@ and [artifact name](https://github.com/jakartaee/validation/commit/80f3223c3aa76
 have changed.
 
 Don't use `JsonObject.mapFrom` to serialize a Java class instance to JSON,
-RMB's database methods automatically do this. When writing custom SQL use
+RMB's database methods take a Java class and automatically serialize it. When writing custom SQL use
 `ObjectMapperTool.getMapper().writeValueAsString` to serialize
 in a way compatible with RMB's deserializer.
 
