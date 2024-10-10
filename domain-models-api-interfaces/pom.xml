@@ -6,6 +6,15 @@
     <version>35.3.0-SNAPSHOT</version>
   </parent>
   <artifactId>domain-models-api-interfaces</artifactId>
+
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
   <properties>
     <jaxrsVersion>2.0</jaxrsVersion>
     <generate_routing_context>/rmbtests/test,/rmbtests/testForm</generate_routing_context>
