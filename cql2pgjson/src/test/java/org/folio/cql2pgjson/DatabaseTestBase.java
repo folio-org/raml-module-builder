@@ -143,7 +143,7 @@ public class DatabaseTestBase {
     }
 
     try {
-      postgresSQLContainer = new PostgreSQLContainer<>("postgres:12-alpine")
+      postgresSQLContainer = new PostgreSQLContainer<>("postgres:16-alpine")
           .withDatabaseName(DB_NAME)
           .withUsername(EMBEDDED_USERNAME)
           .withPassword(EMBEDDED_PASSWORD);

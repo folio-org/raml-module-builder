@@ -260,15 +260,21 @@ public final class Cql2SqlUtil {
   }
 
   /**
-   * Convert a CQL string to an SQL tsquery where each word matches in any order.
+   * Convert a CQL string to an SQL tsquery where the words matches consecutively and in that order (phrase search).
    *
    * @param s CQL string without leading or trailing double quote
    * @param removeAccents whether to wrap all words in f_unaccent().
    * @return SQL term
    * @throws QueryValidationException if s contains an unmasked wildcard question mark
    */
-  @SuppressWarnings("squid:S3776")  // suppress "Cognitive Complexity of methods should not be too high"
-  public static StringBuilder cql2tsqueryAnd(String s, boolean removeAccents) throws QueryValidationException {
+  @SuppressWarnings({
+    "java:S3776", // suppress "Cognitive Complexity of methods should not be too high"
+    "java:S1541", // suppress "Methods should not be too complex"
+    "java:S138",  // suppress "Methods should not have too many lines"
+    "java:S6541", // suppress "Methods should not perform too many tasks (aka Brain method)"
+    // False positive, extracting parts of the method doesn't make it easier to read and understand
+  })
+  public static StringBuilder cql2tsqueryPhrase(String s, boolean removeAccents) throws QueryValidationException {
     // We cannot use plainto_tsquery and phraseto_tsquery because they do not support right truncation.
     // to_tsquery supports right truncation but spaces must be replaced by some operator.
 
@@ -339,28 +345,32 @@ public final class Cql2SqlUtil {
         } else {
           t.append("''')) ");
         }
-        t.append(removeAccents ? "&& to_tsquery('simple', f_unaccent('''"
-                               : "&& to_tsquery('simple', ('''");
+        t.append(removeAccents ? "<-> to_tsquery('simple', f_unaccent('''"
+                               : "<-> to_tsquery('simple', ('''");
         break;
-      case '&':   // Replace & by , so that we can replace all tsquery & by <-> for phrase search.
         // Replace regular single quote and all other characters that f_unaccent converts into
         // a regular single quote. This avoids masking the single quote (sql injection).
         // How to find these characters:
-        // select * from (select chr(generate_series(1,       55295))) x(s) where f_unaccent(s) LIKE '%''%'
-        // select * from (select chr(generate_series(57344, 1114111))) x(s) where f_unaccent(s) LIKE '%''%'
+        // select * from (select chr(generate_series(1,       55295))) x(s) where unaccent(s) LIKE '%''%'
+        // select * from (select chr(generate_series(57344, 1114111))) x(s) where unaccent(s) LIKE '%''%'
         // Or search on
         // https://git.postgresql.org/gitweb/?p=postgresql.git;a=blob;f=contrib/unaccent/unaccent.rules;hb=HEAD
       case '\'':  // a regular single quote
+      case 'ʹ':
+      case 'ʻ':
+      case 'ʼ':
+      case 'ʽ':
+      case 'ˈ':
       case '‘':
       case '’':
       case '‛':
       case '′':
       case '＇':
-        t.append(',');  // replace by comma to avoid masking and sql injection
+        t.append(',');  // replace by comma to avoid masking and to avoid sql injection
         backslash = false;
         break;
       case 'ŉ':  // f_unaccent('ŉ') = regular single quote + n, see comment above
-        t.append(",n");  // replace single quote by comma to avoid masking and sql injection
+        t.append(",n");  // replace single quote by comma to avoid masking and to avoid sql injection
         backslash = false;
         break;
       default:
@@ -386,40 +396,40 @@ public final class Cql2SqlUtil {
    * @throws QueryValidationException if s contains an unmasked wildcard question mark
    */
   public static StringBuilder cql2tsqueryOr(String s, boolean removeAccents) throws QueryValidationException {
-    // implementation idea: Replace the tsquery AND operator & by the tsquery OR operator |
+    // implementation idea: Replace the tsquery phrase operator <-> by the tsquery OR operator |
 
     // to_tsquery('simple', '''abc,xyz''')
-    // = 'abc' & 'xyz'
+    // = 'abc' <-> 'xyz'
 
-    // replace(to_tsquery('simple', '''abc,xyz''')::text, '&', '|')::tsquery
+    // replace(to_tsquery('simple', '''abc,xyz''')::text, '<->', '|')::tsquery
     // =  'abc' | 'xyz'
 
-    StringBuilder t = cql2tsqueryAnd(s, removeAccents);
+    StringBuilder t = cql2tsqueryPhrase(s, removeAccents);
     t.insert(0, "replace(");
-    t.append("::text, '&', '|')::tsquery");
+    t.append("::text, '<->', '|')::tsquery");
     return t;
   }
 
   /**
-   * Convert a CQL string to an SQL tsquery where the words matches consecutively and in that order (phrase search).
+   * Convert a CQL string to an SQL tsquery where each word matches in any order.
    *
    * @param s CQL string without leading or trailing double quote
    * @param removeAccents whether to wrap all words in f_unaccent().
    * @return SQL term
    * @throws QueryValidationException if s contains an unmasked wildcard question mark
    */
-  public static StringBuilder cql2tsqueryPhrase(String s, boolean removeAccents) throws QueryValidationException {
-    // implementation idea: Replace the tsquery AND operator & by the tsquery phrase operator <->
+  public static StringBuilder cql2tsqueryAnd(String s, boolean removeAccents) throws QueryValidationException {
+    // implementation idea: Replace the tsquery phrase operator <-> by the tsquery AND operator &
 
     // to_tsquery('simple', '''Vigneras, Louis-André''')
-    // = 'vigneras' & 'louis-andré' & 'louis' & 'andré'
-
-    // replace(to_tsquery('simple', '''Vigneras, Louis-André''')::text, '&', '<->')::tsquery
     // =  'vigneras' <-> 'louis-andré' <-> 'louis' <-> 'andré'
 
-    StringBuilder t = cql2tsqueryAnd(s, removeAccents);
+    // replace(to_tsquery('simple', '''Vigneras, Louis-André''')::text, '<->', '&')::tsquery
+    // = 'vigneras' & 'louis-andré' & 'louis' & 'andré'
+
+    StringBuilder t = cql2tsqueryPhrase(s, removeAccents);
     t.insert(0, "replace(");
-    t.append("::text, '&', '<->')::tsquery");
+    t.append("::text, '<->', '&')::tsquery");
     return t;
   }
 

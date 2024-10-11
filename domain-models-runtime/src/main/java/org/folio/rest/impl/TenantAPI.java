@@ -45,6 +45,9 @@ public class TenantAPI implements Tenant {
 
   private static Map<String, List<Promise<Void>>> waiters = new HashMap<>();
 
+  private static final String DEFAULT_POSTGRES_SERVER_VERSION = "16.0";
+  private static final int DEFAULT_POSTGRES_SERVER_VERSION_NUM = 16_00_00;
+
   PostgresClient postgresClient(Context context) {
     return PostgresClient.getInstance(context.owner());
   }
@@ -77,7 +80,7 @@ public class TenantAPI implements Tenant {
     String minNum = getLocalString(context, "postgres_min_version_num");
     String min = getLocalString(context, "postgres_min_version");
     if (minNum == null || min == null) {
-      return requirePostgres(context, 120000, "12.0");
+      return requirePostgres(context, DEFAULT_POSTGRES_SERVER_VERSION_NUM, DEFAULT_POSTGRES_SERVER_VERSION);
     }
     return requirePostgres(context, Integer.parseInt(minNum), min);
   }
