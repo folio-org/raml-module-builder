@@ -83,12 +83,17 @@ public class TenantAPI implements Tenant {
   }
 
   Future<Boolean> tenantExists(Context context, String tenantId){
-    /* connect as user in postgres-conf.json file (super user) - so that all commands will be available */
-    return postgresClient(context).select(
-        "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = '"
-            + PostgresClient.convertToPsqlStandard(tenantId) +"');")
-        .map(result -> result.iterator().next().getBoolean(0))
-        .onFailure(e -> log.error(e.getMessage(), e));
+    /* Connect as super user so that all commands will be available.
+     * Return true if at least one table exists (rmb_internal).
+     * Reason: Some installations create role (with restricted permissions) and
+     * empty schema before enabling a tenant therefore we cannot simply check
+     * whether schema exists.
+     */
+    var sql = "SELECT 1 FROM information_schema.tables WHERE table_schema=$1";
+    return postgresClient(context)
+        .selectSingle(sql, Tuple.of(PostgresClient.convertToPsqlStandard(tenantId)))
+        .map(row -> row != null)
+        .onFailure(e -> log.error("{}: {}", sql, e.getMessage(), e));
   }
 
   /**
