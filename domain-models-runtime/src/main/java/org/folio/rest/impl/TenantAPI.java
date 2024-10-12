@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import javax.ws.rs.core.Response;
 import org.apache.commons.io.IOUtils;
@@ -92,7 +93,7 @@ public class TenantAPI implements Tenant {
     var sql = "SELECT 1 FROM information_schema.tables WHERE table_schema=$1";
     return postgresClient(context)
         .selectSingle(sql, Tuple.of(PostgresClient.convertToPsqlStandard(tenantId)))
-        .map(row -> row != null)
+        .map(Objects::nonNull)
         .onFailure(e -> log.error("{}: {}", sql, e.getMessage(), e));
   }
 
