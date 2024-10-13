@@ -9,6 +9,14 @@
     <version>35.3.0-SNAPSHOT</version>
   </parent>
 
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
   <repositories>
     <repository>
       <id>folio-nexus</id>
@@ -20,7 +28,7 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <ramlfiles_path>${basedir}/ramls</ramlfiles_path>
-    <aspectj.version>1.9.19</aspectj.version>
+    <aspectj.version>1.9.22.1</aspectj.version>
   </properties>
 
   <dependencies>
@@ -103,7 +111,7 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
+          <complianceLevel>17</complianceLevel>
           <includes>
             <include>**/impl/*.java</include>
             <include>**/*.aj</include>

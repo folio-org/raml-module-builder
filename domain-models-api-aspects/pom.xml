@@ -7,6 +7,13 @@
   </parent>
   <artifactId>domain-models-api-aspects</artifactId>
 
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
 
   <dependencies>
 
@@ -57,7 +64,7 @@
     <dependency>
       <groupId>org.javassist</groupId>
       <artifactId>javassist</artifactId>
-      <version>3.29.2-GA</version>
+      <version>3.30.2-GA</version>
     </dependency>
 
     <!-- test dependencies -->
@@ -100,7 +107,7 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <complianceLevel>1.8</complianceLevel>
+          <complianceLevel>17</complianceLevel>
 
           <XaddSerialVersionUID>true</XaddSerialVersionUID>
           <showWeaveInfo>true</showWeaveInfo>
