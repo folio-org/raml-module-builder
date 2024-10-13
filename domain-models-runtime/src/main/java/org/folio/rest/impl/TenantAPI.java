@@ -86,7 +86,7 @@ public class TenantAPI implements Tenant {
     return requirePostgres(context, Integer.parseInt(minNum), min);
   }
 
-  Future<Boolean> tenantExists(Context context, String tenantId){
+  Future<Boolean> tenantExists(Context context, String tenantId) {
     /* Connect as super user so that all commands will be available.
      * Return true if at least one table exists (rmb_internal).
      * Reason: Some installations create role (with restricted permissions) and
