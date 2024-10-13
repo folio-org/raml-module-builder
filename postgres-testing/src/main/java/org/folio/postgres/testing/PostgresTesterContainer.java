@@ -12,7 +12,7 @@ import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
 
 public class PostgresTesterContainer implements PostgresTester {
-  public static final String DEFAULT_IMAGE_NAME = "postgres:12-alpine";
+  public static final String DEFAULT_IMAGE_NAME = "postgres:16-alpine";
 
   /**
    * the Docker network the hostname alias for the primary container.

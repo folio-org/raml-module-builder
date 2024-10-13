@@ -313,6 +313,12 @@ public class Cql2SqlUtilTest extends DatabaseTestBase {
     "abc＇def",
     "abc＇＇def",
     "abc＇＇＇def",
+    "abcʻdef",
+    "abcʼdef",
+    "abcʽdef",
+    "abcˈdef",
+    "abc‘def",
+    "abc’def",
   })
   public void cql2tsquerySingleQuote(String term) {
     assertCql2tsqueryAnd   (term, term, true, "t");

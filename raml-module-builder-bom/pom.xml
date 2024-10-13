@@ -13,6 +13,14 @@
   <packaging>pom</packaging>
   <name>raml-module-builder-bom</name>
 
+  <licenses>
+    <license>
+      <name>Apache-2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
   <dependencyManagement>
     <dependencies>
       <dependency>
@@ -107,12 +115,5 @@
       </plugins>
     </pluginManagement>
   </build>
-
-  <licenses>
-    <license>
-      <name>Apache License 2.0</name>
-      <url>http://spdx.org/licenses/Apache-2.0</url>
-    </license>
-  </licenses>
 
 </project>

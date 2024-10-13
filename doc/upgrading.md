@@ -28,9 +28,64 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 ## Version 35.3
 
+35.3.\* is the Ramsons (R2 2024) version.
+
 Don't use `JsonObject.mapFrom` to serialize a Java class instance to JSON,
 RMB's database methods take a Java class and automatically serialize it. When writing custom SQL use
 `ObjectMapperTool.valueAsString` to serialize in a way compatible with RMB's deserializer.
+
+For tests with a PostgreSQL container you may use PostgresTesterContainer that automatically uses
+the correct version and handles the `TESTCONTAINERS_POSTGRES_IMAGE` environment variable.
+Or bump the PostgreSQL container used for testing to `postgres:16-alpine` and
+[manually handle the variable](https://github.com/folio-org/mod-permissions/blob/eef80d81294b35d1d1c4d8c690a19e0ea292a63c/src/test/java/org/folio/permstest/PermsIT.java#L39).
+
+Add `.github/workflows/postgres.yml` like
+[mod-permission's postgres.yml](https://github.com/folio-org/mod-permissions/blob/eef80d81294b35d1d1c4d8c690a19e0ea292a63c/.github/workflows/postgres.yml).
+
+The next steps are not strictly required but are strongly recommended to fix wrong API documentation and to to comply with the
+[Technical Council decision DR-000012](https://wiki.folio.org/display/TC/DR-000012+-+Localization+parameter+for+back-end).
+
+Updating the raml submodule fixes the API documentation,
+removes the deprecated language query parameter, and introduces the totalRecords
+query parameter that exists since RMB 33.2.\*.
+Some modules might already have done this step.
+
+It assumes that https://github.com/folio-org/raml is used as a git submodule at
+`ramls/raml-util/` directory. Update the submodule to the latest commit:
+```
+git submodule update --remote ramls/raml-util/
+git add ramls/raml-util/
+```
+
+`git add` prevents `pom.xml` from reverting the update when it runs `git submodule update`.
+
+This removes the language trait and adds totalRecords to the pageable trait:
+
+* https://github.com/folio-org/raml/pull/141/files
+* https://github.com/folio-org/raml/pull/140/files
+
+Therefore you need to change the parameters of your methods that implement the RAML generated interfaces -
+remove the lang parameter, and add the `String totalRecords` parameter before the `int offset` parameter.
+The compile will fail unless this is done so it's easy to find affected code.
+
+Examples:
+
+Replace
+
+`public void getMyitems(String query, int offset, int limit, String lang, Map<String, String> okapiHeaders,`
+
+by
+
+`public void getMyitems(String query, String totalRecords, int offset, int limit, Map<String, String> okapiHeaders,`
+
+Replace
+
+`public void postMyitems(String lang, Myitem entity, Map<String, String> okapiHeaders,`
+
+by
+
+`public void postMyitems(Myitem entity, Map<String, String> okapiHeaders,`
+
 
 ## Version 35.2
 
