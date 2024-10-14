@@ -1,3 +1,25 @@
+## 35.3.0 2024-10-14
+
+Ramsons (2024 R2) release, see [upgrade notes](doc/upgrading.md#version-353).
+
+New features:
+* [RMB-993](https://folio-org.atlassian.net/browse/RMB-993) Set db connection application\_name for Postgres' pg\_stat\_activity
+* [RMB-994](https://folio-org.atlassian.net/browse/RMB-994) Cache loading of schema.json in CQL2PgJSON 
+* [RMB-997](https://folio-org.atlassian.net/browse/RMB-997) Avoid left(...,600) for sqlExpression/sqlExpressionQuery
+* [RMB-998](https://folio-org.atlassian.net/browse/RMB-998), [RMB-1007](https://folio-org.atlassian.net/browse/RMB-1007) Upgrade dependencies for Ramsons; add license
+* [RMB-985](https://folio-org.atlassian.net/browse/RMB-985) Avoid SET ROLE/SET SCHEMA in Shared Pool
+* [RMB-1000](https://folio-org.atlassian.net/browse/RMB-1000) Provide ObjectMapperTool.valueAsString
+* [RMB-975](https://folio-org.atlassian.net/browse/RMB-975) Define DB\_HOST\_ASYNC\_READER, DB\_PORT\_ASYNC\_READER
+* [RMB-1003](https://folio-org.atlassian.net/browse/RMB-1003) Replace deprecated io.vertx.core.logging.Logger by org.apache.logging.log4j.Logger
+* [RMB-1008](https://folio-org.atlassian.net/browse/RMB-1008) Upgrade PostgreSQL from 12 to 16 for Ramsons
+* [RMB-360](https://folio-org.atlassian.net/browse/RMB-360) db init without superuser/create rule/create schema privileges
+
+Bug fixes:
+* [RMB-1005](https://folio-org.atlassian.net/browse/RMB-1005) Unset DB_ env fixing Failed to resolve 'myhost'
+* [RMB-1004](https://folio-org.atlassian.net/browse/RMB-1004) Recreate rmb\_internal row
+* Fix wrong urlEncode example code, use PercentCodec instead
+* [RMB-1001](https://folio-org.atlassian.net/browse/RMB-1001) API is unable to parse "" (empty string) as an optionally empty field
+
 ## 35.2.2 2024-04-12
 
 Bug fixes:
@@ -12,7 +34,7 @@ Bug fixes:
 
 ## 35.2.0 2024-03-01
 
-Quesnelia release, see [upgrade notes](doc/upgrading.md#version-360).
+Quesnelia release, see [upgrade notes](doc/upgrading.md#version-352).
 
 New features:
 * [RMB-990](https://folio-org.atlassian.net/browse/RMB-990) Quesnelia dependencies: Vert.x 4.5.4, jakarta.validation, …
