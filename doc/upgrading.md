@@ -42,6 +42,8 @@ Or bump the PostgreSQL container used for testing to `postgres:16-alpine` and
 Add `.github/workflows/postgres.yml` like
 [mod-permission's postgres.yml](https://github.com/folio-org/mod-permissions/blob/eef80d81294b35d1d1c4d8c690a19e0ea292a63c/.github/workflows/postgres.yml).
 
+Upgrade the (test) dependency `log4j-slf4j-impl` to `log4j-slf4j2-impl` to allow for `Testcontainers` (including RMB's `PostgresTesterContainer`) logging.
+
 The next steps are not strictly required but are strongly recommended to fix wrong API documentation and to to comply with the
 [Technical Council decision DR-000012](https://wiki.folio.org/display/TC/DR-000012+-+Localization+parameter+for+back-end).
 
