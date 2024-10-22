@@ -401,7 +401,7 @@ PostgresClient.select and PostgresClient.join. Not for methods such
 as PostgresClient.getById or PostgresClient.streamGet.
 
 The environment variable `DB_QUERYTIMEOUT` sets the number of milliseconds after which RMB sends a
-<a href=https://www.postgresql.org/docs/14/protocol-flow.html#id-1.10.5.7.10">cancel request</a>
+<a href="https://www.postgresql.org/docs/14/protocol-flow.html#id-1.10.5.7.10">cancel request</a>
 to a running PostgreSQL query. 0 disables this timeout and is the default.
 To take effect an RMB based module must get it via PostgresClient.getConnectionConfig().getInteger("queryTimeout")
 and pass it to the RMB method that starts the connection, transaction or query.
