@@ -3431,7 +3431,7 @@ public class PostgresClient {
           }
           if (postgreSQLClientConfig.containsKey(HOST_READER) &&
               postgreSQLClientConfig.containsKey(PORT_READER)) {
-            return Future.failedFuture("TTimeout when trying to connect to DB_HOST_READER:DB_PORT_READER="
+            return Future.failedFuture("Timeout when trying to connect to DB_HOST_READER:DB_PORT_READER="
                 + postgreSQLClientConfig.getString(HOST_READER) + ":"
                 + postgreSQLClientConfig.getString(PORT_READER));
           }
