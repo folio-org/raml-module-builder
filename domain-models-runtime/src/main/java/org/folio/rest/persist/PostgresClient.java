@@ -3414,7 +3414,7 @@ public class PostgresClient {
           if (! "Timeout".equals(e.getMessage())) {
             return Future.failedFuture(e);
           }
-          return Future.failedFuture("Timeout for DB_HOST:DB_PORT="
+          return Future.failedFuture("Timeout when trying to connect to DB_HOST:DB_PORT="
               + postgreSQLClientConfig.getString(HOST) + ":"
               + postgreSQLClientConfig.getString(PORT));
         });
@@ -3431,11 +3431,11 @@ public class PostgresClient {
           }
           if (postgreSQLClientConfig.containsKey(HOST_READER) &&
               postgreSQLClientConfig.containsKey(PORT_READER)) {
-            return Future.failedFuture("Timeout for DB_HOST_READER:DB_PORT_READER="
+            return Future.failedFuture("TTimeout when trying to connect to DB_HOST_READER:DB_PORT_READER="
                 + postgreSQLClientConfig.getString(HOST_READER) + ":"
                 + postgreSQLClientConfig.getString(PORT_READER));
           }
-          return Future.failedFuture("Timeout for DB_HOST:DB_PORT="
+          return Future.failedFuture("Timeout when trying to connect to DB_HOST:DB_PORT="
                 + postgreSQLClientConfig.getString(HOST) + ":"
                 + postgreSQLClientConfig.getString(PORT));
         });
