@@ -676,7 +676,8 @@ public class PostgresClientIT {
   public void getByIdTimoutConnection(TestContext context) {
     postgresClientGetConnectionTimeout()
         .getById(FOO, "id").onComplete(context.asyncAssertFailure(e -> {
-          assertThat(e.getMessage(), is("Timeout for DB_HOST_READER:DB_PORT_READER=pg-ro:5433"));
+          assertThat(e.getMessage(), is(
+              "Timeout when trying to connect to DB_HOST_READER:DB_PORT_READER=pg-ro:5433"));
         }));
   }
 
@@ -686,7 +687,8 @@ public class PostgresClientIT {
     postgresClient.getConnectionConfig().remove("port_reader");
     postgresClient
         .getById(FOO, "id").onComplete(context.asyncAssertFailure(e -> {
-          assertThat(e.getMessage(), is("Timeout for DB_HOST:DB_PORT=pg-rw:5432"));
+          assertThat(e.getMessage(), is(
+              "Timeout when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
         }));
   }
 
@@ -706,7 +708,8 @@ public class PostgresClientIT {
   public void updateTimoutConnection(TestContext context) {
     postgresClientGetConnectionTimeout()
         .update(FOO, xPojo, randomUuid()).onComplete(context.asyncAssertFailure(e -> {
-          assertThat(e.getMessage(), is("Timeout for DB_HOST:DB_PORT=pg-rw:5432"));
+          assertThat(e.getMessage(), is(
+              "Timeout when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
         }));
   }
 
