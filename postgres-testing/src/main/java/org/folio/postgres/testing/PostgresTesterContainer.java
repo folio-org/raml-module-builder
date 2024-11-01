@@ -41,6 +41,7 @@ public class PostgresTesterContainer implements PostgresTester {
   private static final String IMAGE_NAME = getImageName(System.getenv());
 
   private static final int READY_MESSAGE_TIMES = 2;
+  private static final int STARTUP_ATTEMPTS = 3;
 
   private static final Logger LOG = LoggerFactory.getLogger(PostgresTesterContainer.class);
 
@@ -141,6 +142,7 @@ public class PostgresTesterContainer implements PostgresTester {
         .withPassword(password)
         .withNetwork(network)
         .withNetworkAliases(PRIMARY_ALIAS)
+        .withStartupAttempts(STARTUP_ATTEMPTS)
         .waitingFor(Wait.forLogMessage(".*database system is ready to accept connections.*\\n", READY_MESSAGE_TIMES));
     primary.start();
     if (hasLog) {
@@ -160,6 +162,7 @@ public class PostgresTesterContainer implements PostgresTester {
         .withDatabaseName(database)
         .withNetwork(network)
         .withNetworkAliases(STANDBY_ALIAS)
+        .withStartupAttempts(STARTUP_ATTEMPTS)
         .waitingFor(Wait.forLogMessage(".*started streaming WAL.*", READY_MESSAGE_TIMES));
     standby.start();
     if (hasLog) {
