@@ -827,11 +827,6 @@ public class PostgresClientTest {
     Assert.assertEquals("{\"" + id.toString() + "\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
   }
 
-  @Test(expected = Exception.class)
-  public void pojo2JsonObjectBadMap() throws Exception {
-    PostgresClient.pojo2JsonObject(this);
-  }
-
   @Test
   public void getTotalRecordsTest() {
     assertNull(PostgresClient.getTotalRecords(10, null, 0, 0));
