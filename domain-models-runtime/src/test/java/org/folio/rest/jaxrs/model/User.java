@@ -1,12 +1,15 @@
 
 package org.folio.rest.jaxrs.model;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 import com.fasterxml.jackson.annotation.JsonPropertyOrder;
-
+import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * User Schema
@@ -67,6 +70,16 @@ public class User {
     @JsonProperty("dummy")
     @JsonPropertyDescription("A dummy field to be set by testing trigger")
     private String dummy;
+
+    /**
+     * Administrative notes
+     *
+     */
+    @JsonProperty("administrativeNotes")
+    @JsonPropertyDescription("Administrative notes")
+    @Size(min = 0)
+    @Valid
+    private List<String> administrativeNotes = new ArrayList<String>();
 
 
     /**
@@ -168,6 +181,21 @@ public class User {
 
     public void setDummy(String dummy) {
       this.dummy = dummy;
+    }
+
+    @JsonProperty("administrativeNotes")
+    public List<String> getAdministrativeNotes() {
+        return administrativeNotes;
+    }
+
+    @JsonProperty("administrativeNotes")
+    public void setAdministrativeNotes(List<String> administrativeNotes) {
+        this.administrativeNotes = administrativeNotes;
+    }
+
+    public User withAdministrativeNotes(List<String> administrativeNotes) {
+        this.administrativeNotes = administrativeNotes;
+        return this;
     }
 
 }

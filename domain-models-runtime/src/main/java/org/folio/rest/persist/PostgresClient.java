@@ -80,7 +80,8 @@ public class PostgresClient {
   static final String            COUNT_FIELD = "count";
 
   static final int               STREAM_GET_DEFAULT_CHUNK_SIZE = 100;
-  static final ObjectMapper      MAPPER                   = ObjectMapperTool.getMapper();
+  static final ObjectMapper      READ_MAPPER = ObjectMapperTool.getMapper();
+  static final ObjectMapper      WRITE_MAPPER = ObjectMapperTool.getWriteMapper();
 
   @SuppressWarnings("java:S2068")  // suppress "Hard-coded credentials are security-sensitive"
   // we use it as a key in the config. We use it as a default password only when testing
@@ -623,7 +624,7 @@ public class PostgresClient {
     if (entity instanceof JsonObject) {
       return ((JsonObject) entity);
     } else {
-      return new JsonObject(MAPPER.writeValueAsString(entity));
+      return new JsonObject(WRITE_MAPPER.writeValueAsString(entity));
     }
   }
 
@@ -2635,7 +2636,7 @@ public class PostgresClient {
    */
   public <T> void getById(AsyncResult<SQLConnection> conn,
       String table, String id, Class<T> clazz, Handler<AsyncResult<T>> replyHandler) {
-    getById(conn, false, table, id, json -> MAPPER.readValue(json, clazz), replyHandler);
+    getById(conn, false, table, id, json -> READ_MAPPER.readValue(json, clazz), replyHandler);
   }
 
   /**
@@ -2648,7 +2649,7 @@ public class PostgresClient {
    */
   public <T> void getByIdForUpdate(AsyncResult<SQLConnection> conn,
       String table, String id, Class<T> clazz, Handler<AsyncResult<T>> replyHandler) {
-    getById(conn, true, table, id, json -> MAPPER.readValue(json, clazz), replyHandler);
+    getById(conn, true, table, id, json -> READ_MAPPER.readValue(json, clazz), replyHandler);
   }
 
   /**
@@ -2740,7 +2741,7 @@ public class PostgresClient {
    */
   public <T> void getById(String table, JsonArray ids, Class<T> clazz,
       Handler<AsyncResult<Map<String,T>>> replyHandler) {
-    getById(table, ids, json -> MAPPER.readValue(json, clazz), replyHandler);
+    getById(table, ids, json -> READ_MAPPER.readValue(json, clazz), replyHandler);
   }
 
   static class ResultsHelper<T> {
@@ -2863,7 +2864,7 @@ public class PostgresClient {
       try {
         // is this a facet entry - if so process it, otherwise will throw an exception
         // and continue trying to map to the pojos
-        o =  MAPPER.readValue(jo.toString(), org.folio.rest.jaxrs.model.Facet.class);
+        o =  READ_MAPPER.readValue(jo.toString(), org.folio.rest.jaxrs.model.Facet.class);
         org.folio.rest.jaxrs.model.Facet of = (org.folio.rest.jaxrs.model.Facet) o;
         org.folio.rest.jaxrs.model.Facet facet = resultsHelper.facets.get(of.getType());
         if (facet == null) {
@@ -2874,7 +2875,7 @@ public class PostgresClient {
         resultsHelper.facet = true;
         return o;
       } catch (Exception e) {
-        o = MAPPER.readValue(jo.toString(), resultsHelper.clazz);
+        o = READ_MAPPER.readValue(jo.toString(), resultsHelper.clazz);
       }
     } else {
       o = resultsHelper.clazz.newInstance();

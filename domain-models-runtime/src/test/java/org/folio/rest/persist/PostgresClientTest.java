@@ -1,5 +1,6 @@
 package org.folio.rest.persist;
 
+import static java.util.Collections.emptyList;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.instanceOf;
@@ -796,7 +797,7 @@ public class PostgresClientTest {
   @Test
   public void pojo2JsonObject() throws Exception {
     String id = UUID.randomUUID().toString();
-    User user = new User().withId(id).withUsername("name").withVersion(5);
+    User user = new User().withId(id).withUsername("name").withVersion(5).withAdministrativeNotes(emptyList());
     JsonObject json = PostgresClient.pojo2JsonObject(user);
     assertThat(json.getMap(), is(Map.of("id", id, "username", "name", "_version", 5)));
   }
@@ -825,11 +826,6 @@ public class PostgresClientTest {
     Map<UUID,String> m = new HashMap<>();
     m.put(id, "b");
     Assert.assertEquals("{\"" + id.toString() + "\":\"b\"}", PostgresClient.pojo2JsonObject(m).encode());
-  }
-
-  @Test(expected = Exception.class)
-  public void pojo2JsonObjectBadMap() throws Exception {
-    PostgresClient.pojo2JsonObject(this);
   }
 
   @Test

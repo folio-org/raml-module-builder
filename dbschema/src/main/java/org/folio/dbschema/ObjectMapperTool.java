@@ -1,23 +1,23 @@
 package org.folio.dbschema;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.introspect.ClassIntrospector;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Date;
-
 import org.folio.dbschema.util.DateDeserializer;
 import org.folio.dbschema.util.DateSerializer;
 
 /**
  * @author shale
- *
  */
 public final class ObjectMapperTool {
   private static final ObjectMapper DEFAULT_MAPPER = createDefaultMapper();
   private static final ObjectMapper MAPPER = createDefaultMapper();
+  private static final ObjectMapper WRITE_MAPPER = createDefaultWriteMapper();
 
   private ObjectMapperTool() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
@@ -31,6 +31,10 @@ public final class ObjectMapperTool {
     return MAPPER;
   }
 
+  public static ObjectMapper getWriteMapper() {
+    return WRITE_MAPPER;
+  }
+
   public static <M, D extends JsonDeserializer<M>> void registerDeserializer(Class<M> clazz, D deserializer) {
     SimpleModule module = new SimpleModule();
     module.addDeserializer(clazz, deserializer);
@@ -40,9 +44,9 @@ public final class ObjectMapperTool {
   /**
    * Map (deserialize) JSON String to java type instance.
    *
-   * @param content JSON content
+   * @param content   JSON content
    * @param valueType Resulting type.
-   * @param <T> Type
+   * @param <T>       Type
    * @return instance of type.
    */
   public static <T> T readValue(String content, Class<T> valueType) {
@@ -72,8 +76,32 @@ public final class ObjectMapperTool {
     module.addSerializer(Date.class, new DateSerializer(Date.class));
     module.addDeserializer(Date.class, new DateDeserializer(Date.class));
     var mapper = new ObjectMapper();
+    mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
     mapper.registerModule(module);
     return mapper;
   }
 
+  private static ObjectMapper createDefaultWriteMapper() {
+    var mapper = createDefaultMapper();
+    mapper.setSerializationInclusion(JsonInclude.Include.NON_EMPTY);
+    mapper.setMixInResolver(new WriteMixInResolver());
+    return mapper;
+  }
+
+  @JsonInclude(JsonInclude.Include.NON_EMPTY)
+  private static class MixIn {
+  }
+
+  private static class WriteMixInResolver implements ClassIntrospector.MixInResolver {
+
+    @Override
+    public Class<?> findMixInClassFor(Class<?> cls) {
+      return MixIn.class;
+    }
+
+    @Override
+    public ClassIntrospector.MixInResolver copy() {
+      return new WriteMixInResolver();
+    }
+  }
 }

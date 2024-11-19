@@ -146,7 +146,7 @@ public class Conn {
    * @return the JSON converted into a T pojo.
    */
   public <T> Future<T> getById(String table, String id, Class<T> clazz) {
-    return getById(false, table, id, json -> PostgresClient.MAPPER.readValue(json, clazz));
+    return getById(false, table, id, json -> PostgresClient.READ_MAPPER.readValue(json, clazz));
   }
 
   /**
@@ -157,7 +157,7 @@ public class Conn {
    * @return the JSON converted into a T pojo.
    */
   public <T> Future<T> getByIdForUpdate(String table, String id, Class<T> clazz) {
-    return getById(true, table, id, json -> PostgresClient.MAPPER.readValue(json, clazz));
+    return getById(true, table, id, json -> PostgresClient.READ_MAPPER.readValue(json, clazz));
   }
 
   /**
@@ -313,7 +313,7 @@ public class Conn {
         String updatedEntityString = rowSet.iterator().next().getValue(0).toString();
         try {
           @SuppressWarnings("unchecked")
-          T updatedEntity = (T) PostgresClient.MAPPER.readValue(updatedEntityString, entity.getClass());
+          T updatedEntity = (T) PostgresClient.READ_MAPPER.readValue(updatedEntityString, entity.getClass());
           return updatedEntity;
         } catch (JsonProcessingException e) {
           throw new UncheckedIOException(e);
