@@ -6,6 +6,7 @@ import static org.hamcrest.Matchers.*;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -110,6 +111,8 @@ public class ApiTestBase {
       statusCode(200).
       body("total_records", lessThan(100)).
     extract().path(arrayName);
+
+    array = Objects.requireNonNullElse(array, List.of());
 
     for (Map<String,String> item : array) {
       given(r).

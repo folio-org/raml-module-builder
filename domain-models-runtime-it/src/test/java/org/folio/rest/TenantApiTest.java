@@ -1,8 +1,11 @@
 package org.folio.rest;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.anyOf;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.startsWith;
-import static org.hamcrest.Matchers.hasSize;
 
 import java.util.Random;
 
@@ -38,7 +41,7 @@ public class TenantApiTest extends ApiTestBase {
         get(location + "?wait=5000").
         then().
         statusCode(200).
-        body("messages", hasSize(0));  // JSON list of commands that have failed
+        body("messages", is(anyOf(nullValue(), empty())));  // JSON list of commands that have failed
   }
 
   // https://issues.folio.org/browse/RMB-508 https://issues.folio.org/browse/RMB-511 https://issues.folio.org/browse/MODEVENTC-14
@@ -62,6 +65,6 @@ public class TenantApiTest extends ApiTestBase {
         get(location + "?wait=5000").
         then().
         statusCode(200).
-        body("messages", hasSize(0));  // JSON list of commands that have failed
+        body("messages", is(anyOf(nullValue(), empty())));  // JSON list of commands that have failed
   }
 }
