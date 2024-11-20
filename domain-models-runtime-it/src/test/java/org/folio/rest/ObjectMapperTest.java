@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 class ObjectMapperTest {
 
   @Test
+  @SuppressWarnings("java:S125")  // suppress false positive "block of commented-out lines of code should be removed."
   void skipEmptyArrayOnWrite() {
     var bees = new Bees();
     var s = ObjectMapperTool.valueAsString(bees);
@@ -26,6 +27,7 @@ class ObjectMapperTest {
   }
 
   @Test
+  @SuppressWarnings("java:S125")  // suppress false positive "block of commented-out lines of code should be removed."
   void skipEmptyHashOnWrite() {
     var bee = new Bee();
     var s = ObjectMapperTool.valueAsString(bee);
