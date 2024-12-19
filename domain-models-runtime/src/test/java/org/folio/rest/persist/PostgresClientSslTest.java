@@ -3,6 +3,7 @@ package org.folio.rest.persist;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.vertx.core.Vertx;
 import io.vertx.junit5.Timeout;
@@ -41,9 +42,7 @@ class PostgresClientSslTest {
     try {
       var result = POSTGRES.execInContainer(command);
       if (result.getExitCode() != 0) {
-        var msg = String.join(" ", command) + ": "
-            + result.getStdout() + "\n" + result.getStderr();
-        throw new RuntimeException(msg);
+        throw new RuntimeException(String.join(" ", command) + ": " + result);
       }
     } catch (InterruptedException | IOException | UnsupportedOperationException e) {
       throw new RuntimeException(e);
@@ -94,6 +93,13 @@ class PostgresClientSslTest {
   @AfterAll
   static void afterAll() {
     Envs.setEnv(System.getenv());
+  }
+
+  @Test
+  void execReportsFailure() {
+    var e = assertThrows(RuntimeException.class, () -> exec("cat", "file_that_does_not_exist"));
+    assertThat(e.getMessage(), containsString("exitCode=1,"));
+    assertThat(e.getMessage(), containsString("file_that_does_not_exist"));
   }
 
   @Test
