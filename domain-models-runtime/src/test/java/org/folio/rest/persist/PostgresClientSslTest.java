@@ -3,6 +3,7 @@ package org.folio.rest.persist;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.vertx.core.Vertx;
 import io.vertx.junit5.Timeout;
@@ -39,7 +40,10 @@ class PostgresClientSslTest {
 
   static void exec(String... command) {
     try {
-      POSTGRES.execInContainer(command);
+      var result = POSTGRES.execInContainer(command);
+      if (result.getExitCode() != 0) {
+        throw new RuntimeException(String.join(" ", command) + ": " + result);
+      }
     } catch (InterruptedException | IOException | UnsupportedOperationException e) {
       throw new RuntimeException(e);
     }
@@ -80,7 +84,7 @@ class PostgresClientSslTest {
     MountableFile serverCrtFile = MountableFile.forClasspathResource("ssl/server.crt");
     POSTGRES.copyFileToContainer(serverKeyFile, KEY_PATH);
     POSTGRES.copyFileToContainer(serverCrtFile, CRT_PATH);
-    exec("chown", "postgres.postgres", KEY_PATH, CRT_PATH);
+    exec("chown", "postgres:postgres", KEY_PATH, CRT_PATH);
     exec("chmod", "400", KEY_PATH, CRT_PATH);
 
     exec("cp", "-p", CONF_PATH, CONF_BAK_PATH);
@@ -89,6 +93,13 @@ class PostgresClientSslTest {
   @AfterAll
   static void afterAll() {
     Envs.setEnv(System.getenv());
+  }
+
+  @Test
+  void execReportsFailure() {
+    var e = assertThrows(RuntimeException.class, () -> exec("cat", "file_that_does_not_exist"));
+    assertThat(e.getMessage(), containsString("exitCode=1,"));
+    assertThat(e.getMessage(), containsString("file_that_does_not_exist"));
   }
 
   @Test
