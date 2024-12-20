@@ -134,7 +134,7 @@ public final class PgUtil {
    *
    * <p>All exceptions are caught and reported via the returned Future.
    */
-  static <T> Future<Response> response(T entity, String location,
+  public static <T> Future<Response> response(T entity, String location,
       Method headersMethod, Method withLocationMethod,
       Method okResponseMethod, Method failResponseMethod) {
     try {
@@ -161,7 +161,7 @@ public final class PgUtil {
    * @return  The first non-null value of these: t.getMessage(), t.getCause().getMessage().
    *          Null if both are null.
    */
-  static String message(Throwable t) {
+  public static String message(Throwable t) {
     String message = t.getMessage();
     if (message != null) {
       return message;
@@ -204,7 +204,7 @@ public final class PgUtil {
    * the developers can use to find and fix the causing code. We expect this during
    * development only, not in production.
    */
-  static <T> Future<Response> response(T value, Method valueMethod, Method failResponseMethod) {
+  public static <T> Future<Response> response(T value, Method valueMethod, Method failResponseMethod) {
     try {
       if (valueMethod == null) {
         throw new NullPointerException("valueMethod must not be null (" + value + ")");
@@ -230,7 +230,7 @@ public final class PgUtil {
    *
    * <p>All exceptions are caught and reported via the returned Future.
    */
-  static Future<Response> response(Method responseMethod, Method failResponseMethod) {
+  public static Future<Response> response(Method responseMethod, Method failResponseMethod) {
     try {
       // the null check is redundant but avoids several sonarlint warnings
       if (responseMethod == null) {
@@ -246,7 +246,21 @@ public final class PgUtil {
     }
   }
 
-  static Future<Response> respond422(Method response422Method, String key, String value, String message) {
+  /**
+   * Return a Response using response422Method() with an {@code Errors} JSON
+   * made from the key, value and message parameters.
+   *
+   * <p>
+   * On exception create a Response using failResponseMethod(String
+   * exceptionMessage) wrapped in a succeeded future.
+   *
+   * <p>
+   * If that also throws an exception create a failed future.
+   *
+   * <p>
+   * All exceptions are caught and reported via the returned Future.
+   */
+  public static Future<Response> respond422(Method response422Method, String key, String value, String message) {
     try {
       Errors errors = ValidationHelper.createValidationErrorMessage(key, value, message);
       Response response = (Response) response422Method.invoke(null, errors);
@@ -257,11 +271,14 @@ public final class PgUtil {
   }
 
   /**
-   * Return the <code>respond422WithApplicationJson(Errors entity)</code> method.
-   * @param clazz class to search in
-   * @return the found method, or null if not found
+   * Return the <code>respond422WithApplicationJson(Errors entity)</code>
+   * method.
+   *
+   * @param clazz
+   *          class to search in
+   * @return the method if found, or null if not found
    */
-  static Method respond422method(Class<? extends ResponseDelegate> clazz) {
+  public static Method respond422method(Class<? extends ResponseDelegate> clazz) {
     // this loop is 20 times faster than getMethod(...) if the method doesn't exist
     // because it avoids the Exception that getMethod(...) throws.
     for (Method method : clazz.getMethods()) {
@@ -282,7 +299,7 @@ public final class PgUtil {
    *
    * <p>All exceptions are caught and reported via the returned Future.
    */
-  static Future<Response> responseInvalidUuid(String field, String uuid,
+  public static Future<Response> responseInvalidUuid(String field, String uuid,
       Class<? extends ResponseDelegate> clazz, Method valueMethod, Method failResponseMethod) {
 
     try {
@@ -296,7 +313,13 @@ public final class PgUtil {
     }
   }
 
-  static Future<Response> responseForeignKeyViolation(String table, String id, PgExceptionFacade pgException,
+  /**
+   * Create a Response about a foreign key violation.
+   *
+   * <p>
+   * All exceptions are caught and reported via the returned Future.
+   */
+  public static Future<Response> responseForeignKeyViolation(String table, String id, PgExceptionFacade pgException,
       Method response422method, Method valueMethod, Method failResponseMethod) {
     try {
       String detail = pgException.getDetail();
@@ -336,7 +359,13 @@ public final class PgUtil {
     }
   }
 
-  static Future<Response> responseUniqueViolation(String table, String id, PgExceptionFacade pgException,
+  /**
+   * Create a Response about a unique violation (= key already exists).
+   *
+   * <p>
+   * All exceptions are caught and reported via the returned Future.
+   */
+  public static Future<Response> responseUniqueViolation(String table, String id, PgExceptionFacade pgException,
       Method response422method, Method valueMethod, Method failResponseMethod) {
     try {
       String detail = pgException.getDetail();
@@ -368,7 +397,7 @@ public final class PgUtil {
    *
    * <p>All exceptions are caught and reported via the returned Future.
    */
-  static Future<Response> response(String table, String id, Throwable cause,
+  public static Future<Response> response(String table, String id, Throwable cause,
       Class<? extends ResponseDelegate> clazz, Method valueMethod, Method failResponseMethod) {
 
     try {
