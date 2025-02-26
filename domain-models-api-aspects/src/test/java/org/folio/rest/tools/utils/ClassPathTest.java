@@ -61,6 +61,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.rest.tools.utils.ClassPath.ClassInfo;
 import org.folio.rest.tools.utils.ClassPath.ResourceInfo;
+import org.junit.Ignore;
 
 /** Functional tests of {@link ClassPath}. */
 public class ClassPathTest extends TestCase {
@@ -434,7 +435,8 @@ public class ClassPathTest extends TestCase {
     assertThat(scanner.resources).contains("org/folio/rest/tools/utils/ClassPathTest.class");
   }
 
-  public void testExistsThrowsSecurityException() throws IOException, URISyntaxException {
+  @Ignore("System.setSecurityManager is unsupported since Java 21")
+  public void ingoreTestExistsThrowsSecurityException() throws IOException, URISyntaxException {
     SecurityManager oldSecurityManager = System.getSecurityManager();
     try {
       doTestExistsThrowsSecurityException();
