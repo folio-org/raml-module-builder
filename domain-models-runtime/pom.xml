@@ -299,7 +299,7 @@
         <configuration>
           <verbose>true</verbose>
           <showWeaveInfo>false</showWeaveInfo>
-          <release>17</release>
+          <release>21</release>
           <includes>
             <include>**/*.java</include>
             <include>**/*.aj</include>
