@@ -1,3 +1,13 @@
+## 35.4.0 2025-02-28
+
+Sunflower (2025 R1) release.
+
+* [RMB-1010](https://folio-org.atlassian.net/browse/RMB-1010): PostgreSQLContainer withStartupAttempts(3)
+* [RMB-1011](https://folio-org.atlassian.net/browse/RMB-1011): Timeout when trying to connect to DB\_HOST:DB\_PORT
+* [RMB-1013](https://folio-org.atlassian.net/browse/RMB-1013): make helper functions public in PgUtil class
+* [RMB-1021](https://folio-org.atlassian.net/browse/RMB-1021): Upgrade Java from 17 to 21
+* [RMB-1022](https://folio-org.atlassian.net/browse/RMB-1022), [RMB-1014](https://folio-org.atlassian.net/browse/RMB-1014): Vert.x 4.5.13, other dep upgrades for Sunflower
+
 ## 35.3.0 2024-10-14
 
 Ramsons (2024 R2) release, see [upgrade notes](doc/upgrading.md#version-353).
