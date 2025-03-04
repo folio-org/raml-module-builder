@@ -1439,6 +1439,32 @@ public final class PgUtil {
   }
 
   /**
+   * Post a list of entities to the database. Fail all if any of them fails.
+   *
+   * <p>To enforce optimistic locking, each entity's version is set to null if it is -1.
+   *
+   * @param <T>               The type of the entities to be posted.
+   * @param table             The database table to store into.
+   * @param entities          The records to store.
+   * @param maxEntities       Fail with HTTP 413 if entities.size() > maxEntities to avoid out of memory;
+   *                          suggested value is from 100 to 10000.
+   * @param upsert            True to update records with the same id, false to fail all entities if one has an existing id.
+   * @param optimisticLocking If false and DB_ALLOW_SUPPRESS_OPTIMISTIC_LOCKING allows this, then optimistic locking is disabled.
+   *                          Otherwise, each entity's version is set to null if it is -1 to enforce optimistic locking.
+   * @param okapiHeaders      HTTP headers provided by Okapi.
+   * @param vertxContext      The current context.
+   * @param responseClass     The ResponseDelegate class created from the RAML file with these methods:
+   *                          respond201(), respond409WithTextPlain(Object), respond413WithTextPlain(Object), respond500WithTextPlain(Object).
+   * @return A Future containing the Response created by responseClass.
+   */
+  public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities,
+                                              boolean upsert, boolean optimisticLocking,
+                                              Map<String, String> okapiHeaders, Context vertxContext,
+                                              Class<? extends ResponseDelegate> responseClass) {
+    return postSync(null, table, entities, maxEntities, upsert, true, okapiHeaders, vertxContext, responseClass);
+  }
+
+  /**
    * Post a list of T entities to the database. Fail all if any of them fails.
    * @param table database table to store into
    * @param entities  the records to store
@@ -1454,7 +1480,7 @@ public final class PgUtil {
    * @return result created by responseClass
    */
   @SuppressWarnings("squid:S107")  // Suppress "Method has 8 parameters, which is greater than 7 authorized."
-  public static <T> Future<Response> postSync(String table, List<T> entities, int maxEntities,
+  public static <T> Future<Response> postSync(AsyncResult<SQLConnection> sqlConnection, String table, List<T> entities, int maxEntities,
       boolean upsert, boolean optimisticLocking,
       Map<String, String> okapiHeaders, Context vertxContext,
       Class<? extends ResponseDelegate> responseClass) {
@@ -1506,9 +1532,17 @@ public final class PgUtil {
         response(respond201, respond500).onComplete(promise);
       };
       if (upsert) {
-        postgresClient.upsertBatch(table, entities, replyHandler);
+        if (sqlConnection == null) {
+          postgresClient.upsertBatch(table, entities, replyHandler);
+        } else {
+          postgresClient.upsertBatch(sqlConnection, table, entities, replyHandler);
+        }
       } else {
-        postgresClient.saveBatch(table, entities, replyHandler);
+        if (sqlConnection == null) {
+          postgresClient.saveBatch(table, entities, replyHandler);
+        } else {
+          postgresClient.saveBatch(sqlConnection, table, entities, replyHandler);
+        }
       }
       return promise.future();
     } catch (Exception e) {
