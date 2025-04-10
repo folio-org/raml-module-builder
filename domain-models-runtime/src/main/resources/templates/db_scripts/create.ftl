@@ -10,8 +10,9 @@ BEGIN
   CREATE ROLE ${myuniversity}_${mymodule} PASSWORD '${myuniversity}' NOSUPERUSER NOCREATEDB INHERIT LOGIN;
   ALTER ROLE ${myuniversity}_${mymodule} SET search_path = "${myuniversity}_${mymodule}";
   GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
-  CREATE SCHEMA ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
 END $$;
+
+CREATE SCHEMA IF NOT EXISTS ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
 
 </#if>
 
