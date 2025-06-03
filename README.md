@@ -1238,8 +1238,9 @@ And to match any of the sub properties type1, type2, you could use:
 property =/@type1/@type2 value
 ```
 
-In schema.json two new properties, `arraySubfield` and `arrayModifiers`,
-specifies the subfield and the list of modifiers respectively.
+To enable the `@`-relation modifiers for an array the module must define
+it in schema.json. The properties `arraySubfield` and `arrayModifiers`
+specify the subfield and the list of modifiers respectively.
 This can be applied to `ginIndex` or `fullTextIndex`.
 schema.json example:
 
