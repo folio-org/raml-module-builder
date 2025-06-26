@@ -831,7 +831,8 @@ public final class RestRouting {
 
   /**
    * This method works around sonar's code smell report
-   * <a href="https://sonarcloud.io/organizations/folio-org/rules?open=javasecurity%3AS5145&rule_key=javasecurity%3AS5145">
+   * <a href=
+   * "https://sonarcloud.io/organizations/folio-org/rules?open=javasecurity%3AS5145&rule_key=javasecurity%3AS5145">
    * Logging should not be vulnerable to injection attacks</a>.
    * <p>
    * URI is safe as special characters are already encoded using
