@@ -3,9 +3,9 @@ package org.folio.rest.tools;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 
 import java.io.File;
@@ -96,7 +96,8 @@ public class GenerateRunnerTest {
     assertThat(jobJava(), allOf(
         containsString("String getModule("),
         containsString("setModule(String"),
-        containsString("withModule(String")));
+        containsString("withModule(String"),
+        containsString("@jakarta.validation.constraints.Null")));
     assertThat(msgsSchema(), containsString("\"messages\""));
   }
 

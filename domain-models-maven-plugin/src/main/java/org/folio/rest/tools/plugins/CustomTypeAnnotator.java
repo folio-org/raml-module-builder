@@ -38,8 +38,9 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
 
   private static final Logger log = Logger.getLogger(CustomTypeAnnotator.class.getName());
 
-  private static final String[] DEFAULT_CUSTOM_FIELD = new String[]
-    {"{\"fieldname\":\"readonly\",\"fieldvalue\":true,\"annotation\":{\"type\":\"javax.validation.constraints.Null\"}}"};
+  private static final String[] DEFAULT_CUSTOM_FIELD = new String[] { """
+      {"fieldname":"readonly","fieldvalue":true,"annotation":{"type":"jakarta.validation.constraints.Null"}}
+      """};
 
   private static String [] schemaCustomFields = DEFAULT_CUSTOM_FIELD;
 
@@ -161,16 +162,18 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
    * @param customFields the semicolon separated schemas, or null for default custom fields.
    */
   public static void setCustomFields(String customFields) {
-    if (customFields != null) {
-      schemaCustomFields = customFields.split(";");
-    }
+    schemaCustomFields = customFields == null ? DEFAULT_CUSTOM_FIELD : customFields.split(";");
   }
 
+  /**
+   * Set the JSON schemas of custom fields.
+   * @param customFields the custom fields, {} and {""} indicate default custom fields.
+   */
+  @SuppressWarnings("java:S2384")  // suppress "Store a copy of customFields"
   public static void setCustomFields(String[] customFields) {
-    if (customFields.length == 1 && "".equals(customFields[0])) {
-      return;  // { "" } indicates to use the default custom fields
-    }
-    schemaCustomFields = customFields;
+    var isDefault = (customFields.length == 0)
+        || (customFields.length == 1 && "".equals(customFields[0]));
+    schemaCustomFields = isDefault ? DEFAULT_CUSTOM_FIELD : customFields;
   }
 
   private JsonObject getValue(String key, JsonNode value){

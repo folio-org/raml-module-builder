@@ -3,6 +3,7 @@ package org.folio.rest;
 import static io.restassured.RestAssured.*;
 import static org.hamcrest.Matchers.*;
 
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -11,7 +12,7 @@ import org.junit.jupiter.api.TestMethodOrder;
 import io.vertx.core.json.JsonObject;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class BeesApiTest extends ApiTestBase {
+class BeesApiTest extends ApiTestBase {
 
   @Test
   @Order(1)
@@ -23,7 +24,7 @@ public class BeesApiTest extends ApiTestBase {
       body("total_records", is(1)); // there's already one in reference-data
 
     String id = UUID.randomUUID().toString();
-    JsonObject foo = new JsonObject().put("id", id).put("name", "Willy");
+    JsonObject foo = new JsonObject(Map.of("id", id, "name", "Willy", "generatedStatus", "old"));
     given(r).body(foo.encode()).
     when().post("/bees/bees").
     then().
@@ -34,9 +35,10 @@ public class BeesApiTest extends ApiTestBase {
     then().
       statusCode(200).
       body("id", is(id)).
-      body("name", is("Willy"));
+      body("name", is("Willy")).
+      body("generatedStatus", is(nullValue()));  // should remove readonly property
 
-    given(r).body(new JsonObject().put("name", "Maya").encode()).
+    given(r).body(new JsonObject(Map.of("name", "Maya", "generatedStatus", "new")).encode()).
     when().put("/bees/bees/" + id).
     then().
       statusCode(204);
@@ -46,7 +48,8 @@ public class BeesApiTest extends ApiTestBase {
     then().
       statusCode(200).
       body("id", is(id)).
-      body("name", is("Maya"));
+      body("name", is("Maya")).
+      body("generatedStatus", is(nullValue()));  // should remove readonly property
 
     given(r).
     when().delete("/bees/bees/" + id).
