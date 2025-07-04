@@ -176,6 +176,10 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
     schemaCustomFields = isDefault ? DEFAULT_CUSTOM_FIELD : customFields;
   }
 
+  protected static String[] getCustomFields() {
+    return schemaCustomFields;
+  }
+
   private JsonObject getValue(String key, JsonNode value){
     if(value.isTextual()){
       return annotationLookUp.get(key, value.asText());
