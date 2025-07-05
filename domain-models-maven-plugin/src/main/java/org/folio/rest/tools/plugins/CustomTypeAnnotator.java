@@ -169,15 +169,14 @@ public class CustomTypeAnnotator extends Jackson2Annotator {
    * Set the JSON schemas of custom fields.
    * @param customFields the custom fields, {} and {""} indicate default custom fields.
    */
-  @SuppressWarnings("java:S2384")  // suppress "Store a copy of customFields"
   public static void setCustomFields(String[] customFields) {
     var isDefault = (customFields.length == 0)
         || (customFields.length == 1 && "".equals(customFields[0]));
-    schemaCustomFields = isDefault ? DEFAULT_CUSTOM_FIELD : customFields;
+    schemaCustomFields = isDefault ? DEFAULT_CUSTOM_FIELD : customFields.clone();
   }
 
   protected static String[] getCustomFields() {
-    return schemaCustomFields;
+    return schemaCustomFields.clone();
   }
 
   private JsonObject getValue(String key, JsonNode value){
