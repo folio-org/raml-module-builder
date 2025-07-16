@@ -170,11 +170,11 @@ Build the `raml-module-builder` project to generate the needed jars, then add th
 
 ### Generate-time workflow
 
-Call a Maven exec plugin with a class from the interfaces jar to generate POJOs and interfaces within your project.
+Call the domain-models-maven-plugin to generate POJOs and interfaces within your project.
 
 ![](images/generate.png)
 
-See the call to `com.sling.rest.tooks.GenerateRunner` in the circulation project's `pom.xml` for an example.
+See the [domain-models-runtime-it/pom.xml](domain-models-runtime-it/pom.xml) for an example.
 
 #### Generated Files
 
@@ -592,7 +592,7 @@ or to avoid a misleading name. Otherwise the field name in the .json schema file
 See [jsonschema2pojo Reference](https://github.com/joelittlejohn/jsonschema2pojo/wiki/Reference)
 for JSON schema details.
 
-The GenerateRunner automatically dereferences the schema files and places them into the
+The domain-models-maven-plugin automatically dereferences the schema files and places them into the
 `target/classes/ramls/` directory. It scans the `${basedir}/ramls/` directory including
 subdirectories, if not found then `${basedir}/../ramls/` supporting maven submodules with
 common ramls directory.
@@ -2107,7 +2107,7 @@ A `readonly` field is not allowed to be passed in as part of the request. A requ
 
 This is part of a framework exposed by RMB which allows creating a field and associating a validation constraint on that field.
 
-To add a custom field, add a system property (in the configuration) to the plugin definition (in the `pom.xml`) running the `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`
+To add a custom field, add a system property (in the configuration) to the domain-models-maven-plugin definition (in the `pom.xml`)
 
 for example:
 ```xml
@@ -2121,7 +2121,7 @@ the `jsonschema.customfield` key can contain multiple JSON values (delimited by 
 A list of available annotations:
 https://docs.oracle.com/javaee/7/api/javax/validation/constraints/package-summary.html
 
-To customize generation of java classes, add a system property to plugin definition running `<mainClass>org.folio.rest.tools.GenerateRunner</mainClass>`.
+To customize generation of java classes, add a system property to domain-models-maven-plugin definition.
 Properties that start with `jsonschema2pojo.config` will be passed to underlying library that generates java classes.
 Incomplete list of available properties:
 - jsonschema2pojo.config.includeHashcodeAndEquals - adds hashCode and equals methods
