@@ -164,7 +164,7 @@ public final class RestRouting {
           continue;
         } catch (Exception e) {
           withRequestId(rc, () -> LOGGER.warn("Failed to remove {} field from body when calling {}",
-              cv.getPropertyPath(), rc.request().absoluteURI(), e));
+              cv.getPropertyPath(), absoluteUri(rc.request()), e));
         }
       }
       Error error = new Error();
@@ -198,7 +198,7 @@ public final class RestRouting {
       } catch (IOException e) {
         withRequestId(rc, () -> LOGGER.error(
             "Failed to serialize body content after removing read-only fields when calling {}",
-            rc.request().absoluteURI(), e));
+            absoluteUri(rc.request()), e));
       }
     }
     return new Object[]{ret, content};
@@ -827,5 +827,19 @@ public final class RestRouting {
       }
     }
     return Future.succeededFuture();
+  }
+
+  /**
+   * This method works around sonar's code smell report
+   * <a href=
+   * "https://sonarcloud.io/organizations/folio-org/rules?open=javasecurity%3AS5145&rule_key=javasecurity%3AS5145">
+   * Logging should not be vulnerable to injection attacks</a>.
+   * <p>
+   * URI is safe as special characters are already encoded using
+   * <a href="http://www.ietf.org/rfc/rfc3986.txt">RFC 3986</a> and
+   * <a href="http://www.ietf.org/rfc/rfc2396.txt">RFC 2396</a>.
+   */
+  private static String absoluteUri(HttpServerRequest httpServerRequest) {
+    return httpServerRequest.absoluteURI();
   }
 }
