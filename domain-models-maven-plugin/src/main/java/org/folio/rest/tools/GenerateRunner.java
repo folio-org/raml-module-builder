@@ -184,25 +184,31 @@ public class GenerateRunner {
         log.info(ramls[j] + " has a .raml suffix but does not start with #%RAML");
       }
     }
-    migrateToJakarta();
+    runPostProcessor();
     log.info("processed: " + numMatches + " raml files");
   }
 
-  private void migrateToJakarta() {
+  private void runPostProcessor() {
     try {
-      Files.walkFileTree(Path.of(outputDirectory), new JakartaMigrator());
+      Files.walkFileTree(Path.of(outputDirectory), new PostProcessor());
     } catch (IOException e) {
       throw new UncheckedException(e);
     }
   }
 
-  private static class JakartaMigrator extends SimpleFileVisitor<Path> {
+  /**
+   * Fix generated files by replacing "import javax.validation." with "import jakarta.validation."
+   * and by replacing "@JsonInclude(JsonInclude.Include.NON_NULL)" with
+   * "@JsonInclude(JsonInclude.Include.NON_EMPTY)".
+   */
+  private static class PostProcessor extends SimpleFileVisitor<Path> {
     @SuppressWarnings("java:S6212")  // suppress 'Declare this local variable with "var" instead.'
                                      // because aspectj AJC doesn't support "var"
     @Override
     public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
       String java = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-      java = java.replace("import javax.validation.", "import jakarta.validation.");
+      java = java.replace("import javax.validation.", "import jakarta.validation.")
+          .replace("@JsonInclude(JsonInclude.Include.NON_NULL)", "@JsonInclude(JsonInclude.Include.NON_EMPTY)");
       Files.write(file, java.getBytes(StandardCharsets.UTF_8));
       return FileVisitResult.CONTINUE;
     }

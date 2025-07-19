@@ -26,6 +26,10 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
+## Version 35.4
+
+Serialization no longer produces a property if its value is an empty list `[]` or an empty object `{}`: `{ "mylist": [] }` has become `{}` and `{ "myObj": {} }` has become `{}`. This affects `ObjectMapper` and the JSON written into the database. Deserialization to POJO generates an empty list or an empty object, but rest-assured tests need to switch from `is(empty())` and from `hasSize(0)` to `anyOf(nullValue(), empty())` (or `anyOf(nullValue(), hasSize(0))`).
+
 ## Version 35.3
 
 35.3.\* is the Ramsons (R2 2024) version.
