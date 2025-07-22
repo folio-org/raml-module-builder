@@ -15,6 +15,11 @@
       "type": "integer",
       "minimum": 0
     },
+    "generatedStatus":{
+      "description": "name",
+      "type": "string",
+      "readonly": true
+    },
     "metadata": {
       "description" : "metadata",
       "$ref": "raml-util/schemas/metadata.schema",
