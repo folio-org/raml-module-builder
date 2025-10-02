@@ -6,6 +6,9 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -40,8 +43,8 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.impl.RowImpl;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Query;
@@ -126,8 +129,9 @@ public class PostgresClientIT {
     PostgresClient.stopPostgresTester();
     PostgresClient.setExplainQueryThreshold(PostgresClient.EXPLAIN_QUERY_THRESHOLD_DEFAULT);
     if (vertx != null) {
-      vertx.close(context.asyncAssertSuccess());
-      vertx = null;
+      vertx.close()
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(x -> vertx = null);
     }
   }
 
@@ -460,12 +464,11 @@ public class PostgresClientIT {
         .put("maxPoolSize", maxPoolSize);
     var initializer = new PostgresClientInitializer(Vertx.vertx(), configuration);
     postgresClient.setClient(initializer.getClient());
-    List<Future> futures = new ArrayList<>();
+    List<Future<?>> futures = new ArrayList<>();
     for (int i=0; i<maxPoolSize; i++) {
-      futures.add(Future.<RowSet<Row>>future(promise ->
-        postgresClient.execute("SELECT pg_sleep(1)", promise)));
+      futures.add(postgresClient.execute("SELECT pg_sleep(1)"));
     }
-    CompositeFuture.all(futures).onComplete(context.asyncAssertSuccess());
+    Future.all(futures).onComplete(context.asyncAssertSuccess());
   }
 
   public static class StringPojo {
@@ -596,6 +599,7 @@ public class PostgresClientIT {
   @Test
   public void deleteByCriterionThatThrowsException(TestContext context) {
     Criterion criterion = new Criterion() {
+      @Override
       public String toString() {
         throw new RuntimeException("missing towel");
       }
@@ -2032,7 +2036,7 @@ public class PostgresClientIT {
    * a null result value and success status.
    */
   private PostgresClient postgresClientNullConnection() {
-    PgPool client = new PgPoolBase();
+    Pool client = new PoolBase();
     try {
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setClient(client);
@@ -2047,7 +2051,7 @@ public class PostgresClientIT {
    * a null result value and success status.
    */
   private PostgresClient postgresReadClientNullConnection() {
-    PgPool client = new PgPoolBase();
+    Pool client = new PoolBase();
     try {
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setReaderClient(client);
@@ -2061,7 +2065,7 @@ public class PostgresClientIT {
    * @return a PostgresClient where getConnection(handler) invokes the handler with a failure.
    */
   private PostgresClient postgresClientGetConnectionFails() {
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.failedFuture("postgresClientGetConnectionFails");
@@ -2080,7 +2084,7 @@ public class PostgresClientIT {
    * @return a PostgresClient where the client's getConnection() returns a "Timeout" failure.
    */
   private PostgresClient postgresClientGetConnectionTimeout() {
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.failedFuture("Timeout");
@@ -2107,7 +2111,7 @@ public class PostgresClientIT {
    */
   private PostgresClient postgresClientConnectionThrowsException() {
     PgConnection pgConnection = new PgConnectionMock();
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
@@ -2132,11 +2136,6 @@ public class PostgresClientIT {
       public Query<RowSet<Row>> query(String s)
       {
         return new Query<RowSet<Row>> () {
-
-          @Override
-          public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
-            handler.handle(execute());
-          }
 
           @Override
           public Future<RowSet<Row>> execute() {
@@ -2166,7 +2165,7 @@ public class PostgresClientIT {
       }
     };
 
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
@@ -2186,7 +2185,7 @@ public class PostgresClientIT {
    */
   private PostgresClient postgresClientQueryReturnBadResults() {
     PgConnection pgConnection = new PgConnectionMock();
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
@@ -3208,11 +3207,6 @@ public class PostgresClientIT {
     public Future<Void> close() {
       return Future.succeededFuture();
     }
-
-    @Override
-    public void close(Handler<AsyncResult<Void>> handler) {
-
-    }
   }
 
   @Test
@@ -3813,7 +3807,7 @@ public class PostgresClientIT {
         });
         return null;
       };
-      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", resultSetMapper)
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, resultSetMapper)
       .onComplete(context.asyncAssertSuccess());
     }));
   }
@@ -3825,7 +3819,7 @@ public class PostgresClientIT {
       QueryHelper queryHelper = new QueryHelper("table");
       queryHelper.selectQuery = "'";
       queryHelper.countQuery = "'";
-      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", null)
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, null)
       .onComplete(context.asyncAssertFailure(fail -> {
         assertThat(fail.getMessage(), containsString("unterminated quoted string"));
       }));
@@ -4019,8 +4013,9 @@ public class PostgresClientIT {
   @Test
   public void selectReturnOneRow(TestContext context) {
     List<String> columns = List.of("field");
-    List<Row> rows = List.of(new RowImpl(new LocalRowDesc(columns)));
-    rows.get(0).addString("value");
+    Row row = mock(Row.class);
+    when(row.getString(0)).thenReturn("value");
+    List<Row> rows = List.of(row);
     RowSet<Row> rowSet = new LocalRowSet(1).withColumns(columns).withRows(rows);
     PostgresClient.selectReturn(Future.succeededFuture(rowSet), context.asyncAssertSuccess(res ->
         context.assertEquals("value", res.getString(0))));

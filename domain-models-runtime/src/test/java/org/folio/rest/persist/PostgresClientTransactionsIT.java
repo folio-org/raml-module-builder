@@ -1,11 +1,10 @@
 package org.folio.rest.persist;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotification;
-import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.PreparedStatement;
@@ -396,24 +395,9 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     }
 
     @Override
-    public void commit(Handler<AsyncResult<Void>> handler) {
-      commit().onComplete(handler);
-    }
-
-    @Override
     public Future<Void> rollback() {
       active.decrementAndGet();
       return transaction.rollback();
-    }
-
-    @Override
-    public void rollback(Handler<AsyncResult<Void>> handler) {
-      rollback().onComplete(handler);
-    }
-
-    @Override
-    public void completion(Handler<AsyncResult<Void>> handler) {
-      transaction.completion(handler);
     }
 
     @Override
@@ -441,9 +425,8 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     }
 
     @Override
-    public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
-      conn.cancelRequest(handler);
-      return this;
+    public Future<Void> cancelRequest() {
+      return conn.cancelRequest();
     }
 
     @Override
@@ -457,20 +440,8 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
     }
 
     @Override
-    public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-      conn.prepare(s, handler);
-      return this;
-    }
-
-    @Override
     public Future<PreparedStatement> prepare(String s) {
       return conn.prepare(s);
-    }
-
-    @Override
-    public SqlConnection prepare(String sql, PrepareOptions options, Handler<AsyncResult<PreparedStatement>> handler) {
-      conn.prepare(sql, options, handler);
-      return this;
     }
 
     @Override
@@ -531,8 +502,8 @@ public class PostgresClientTransactionsIT extends PostgresClientITBase {
   private PostgresClient postgresClientMonitor(AtomicInteger open, AtomicInteger active) {
     try {
       PostgresClient postgresClient = new PostgresClient(vertx, tenant);
-      PgPool ePool = postgresClient.getClient();
-      PgPool client = new PgPoolBase() {
+      Pool ePool = postgresClient.getClient();
+      Pool client = new PoolBase() {
 
         @Override
         public Future<SqlConnection> getConnection() {

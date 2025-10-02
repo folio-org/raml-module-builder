@@ -69,21 +69,8 @@ public class TenantAPI implements Tenant {
         });
   }
 
-  private String getLocalString(Context context, String key) {
-    Object object = context.getLocal(key);
-    if (object == null) {
-      return null;
-    }
-    return object.toString();
-  }
-
   Future<Void> requirePostgresVersion(Context context) {
-    String minNum = getLocalString(context, "postgres_min_version_num");
-    String min = getLocalString(context, "postgres_min_version");
-    if (minNum == null || min == null) {
-      return requirePostgres(context, DEFAULT_POSTGRES_SERVER_VERSION_NUM, DEFAULT_POSTGRES_SERVER_VERSION);
-    }
-    return requirePostgres(context, Integer.parseInt(minNum), min);
+    return requirePostgres(context, DEFAULT_POSTGRES_SERVER_VERSION_NUM, DEFAULT_POSTGRES_SERVER_VERSION);
   }
 
   Future<Boolean> tenantExists(Context context, String tenantId) {

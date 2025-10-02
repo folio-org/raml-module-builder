@@ -36,7 +36,8 @@ public class RamlsAPIIT {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+    vertx.close()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @Test

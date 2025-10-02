@@ -5,7 +5,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import java.util.*;
 import javax.ws.rs.core.Response;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.rest.jaxrs.model.TenantAttributes;
 import org.folio.rest.jaxrs.model.TenantJob;
 import org.folio.rest.persist.PostgresClient;
@@ -29,7 +28,7 @@ public class TenantHelper {
     Map<String,String> headers = tenantId == null ? Map.of() : Map.of("X-Okapi-Tenant", tenantId);
     TenantAttributes attributes = new TenantAttributes().withPurge(true);
     return Future.future(promise -> new TenantAPI()
-        .postTenantSync(attributes, headers, promise, vertx.getOrCreateContext()));
+        .postTenantSync(attributes, headers, promise::handle, vertx.getOrCreateContext()));
   }
 
   /**
@@ -73,7 +72,7 @@ public class TenantHelper {
    * Four parallel checks inspect four connections (idle or newly created).
    */
   protected CompositeFuture assertCountFour(TestContext context, String tenant, int expectedCount) {
-    return GenericCompositeFuture.all(List.of(
+    return Future.all(List.of(
         assertCount(context, tenant, expectedCount),
         assertCount(context, tenant, expectedCount),
         assertCount(context, tenant, expectedCount),

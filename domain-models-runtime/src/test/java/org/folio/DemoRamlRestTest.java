@@ -40,6 +40,7 @@ import io.restassured.RestAssured;
 import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
@@ -95,12 +96,10 @@ public class DemoRamlRestTest {
   }
 
   private static void deployRestVerticle(TestContext context) {
-    Async async = context.async();
     DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(
         new JsonObject().put("http.port", port));
-    vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions,
-        context.asyncAssertSuccess(done -> async.complete()));
-    async.await(5000);
+    vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions)
+    .onComplete(context.asyncAssertSuccess());
   }
 
   /**
@@ -110,10 +109,12 @@ public class DemoRamlRestTest {
    */
   @AfterClass
   public static void tearDown(TestContext context) {
-    TenantInit.purge(client, 60000).onComplete(context.asyncAssertSuccess(x -> {
+    TenantInit.purge(client, 60000)
+    .compose(x -> {
       PostgresClient.stopPostgresTester();
-      vertx.close(context.asyncAssertSuccess());
-    }));
+      return vertx.close();
+    })
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @Test
@@ -452,48 +453,41 @@ public class DemoRamlRestTest {
     checkURLs(context, "http://localhost:" + port + "/admin/loglevel", 200);
   }
 
-  private void testStreamTcpClient(TestContext context, int size) {
-    Async async = context.async();
+  private Future<NetSocket> streamTcpClient(int size) {
+    Buffer buf = Buffer.buffer();
     NetClient netClient = vertx.createNetClient();
-    netClient.connect(port, "localhost", con -> {
-      context.assertTrue(con.succeeded());
-      if (con.failed()) {
-        async.complete();
-        return;
-      }
-      NetSocket socket = con.result();
-      socket.write("POST /rmbtests/testStream HTTP/1.1\r\n");
-      socket.write("Host: localhost:" + Integer.toString(port) + "\r\n");
-      socket.write("Content-Type: application/octet-stream\r\n");
-      socket.write("Accept: application/json,text/plain\r\n");
-      socket.write("X-Okapi-Tenant: " + TENANT + "\r\n");
-      socket.write("Content-Length: " + Integer.toString(size) + "\r\n");
-      socket.write("\r\n");
-      socket.write("123\r\n");  // body is 5 bytes
-      Buffer buf = Buffer.buffer();
-      socket.handler(buf::appendBuffer);
-      vertx.setTimer(100, x -> {
-        socket.end();
-        if (!async.isCompleted()) {
-          async.complete();
-        }
-      });
-      socket.endHandler(x -> {
-        if (!async.isCompleted()) {
-          async.complete();
-        }
-      });
-    });
+    return netClient.connect(port, "localhost")
+        .map(socket -> {
+          socket.write("POST /rmbtests/testStream HTTP/1.1\r\n");
+          socket.write("Host: localhost:" + Integer.toString(port) + "\r\n");
+          socket.write("Content-Type: application/octet-stream\r\n");
+          socket.write("Accept: application/json,text/plain\r\n");
+          socket.write("X-Okapi-Tenant: " + TENANT + "\r\n");
+          socket.write("Content-Length: " + Integer.toString(size) + "\r\n");
+          socket.write("\r\n");
+          socket.write("123\r\n");  // body is 5 bytes
+          socket.handler(buf::appendBuffer);
+          return socket;
+        });
   }
 
   @Test
   public void testStreamManual(TestContext context) {
-    testStreamTcpClient(context, 5);
+    var async = context.async();
+    streamTcpClient(5)
+    .onSuccess(socket -> {
+      socket.endHandler(x -> async.complete());
+    })
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @Test
   public void testStreamAbort(TestContext context) {
-    testStreamTcpClient(context, 10);
+    streamTcpClient(10)
+    .onSuccess(socket -> {
+      socket.endHandler(x -> context.fail("called of endHandler before sending all 10 bytes"));
+    })
+    .onComplete(context.asyncAssertSuccess());
   }
 
   private void testStream(TestContext context, boolean chunked) {
@@ -505,7 +499,8 @@ public class DemoRamlRestTest {
     .onComplete(context.asyncAssertSuccess(request -> {
       request.response().onComplete(context.asyncAssertSuccess(response -> {
         assertThat(response.statusCode(), is(200));
-        response.body(context.asyncAssertSuccess(body -> {
+        response.body()
+        .onComplete(context.asyncAssertSuccess(body -> {
           assertThat(body.toJsonObject().getBoolean("complete"), is(true));
           async.complete();
         }));
@@ -523,7 +518,8 @@ public class DemoRamlRestTest {
       for (int i = 0; i < numberChunks; i++) {
         request.write(chunk);
       }
-      request.end(context.asyncAssertSuccess());
+      request.end()
+      .onComplete(context.asyncAssertSuccess());
     }));
   }
 
@@ -575,22 +571,13 @@ public class DemoRamlRestTest {
       if (accept != null) {
         request.headers().add("Accept", accept);
       }
-      request.send(x -> {
-        x.map(httpClientResponse->
-        {
-          res.appendBuffer(httpClientResponse.body());
-          log.info(httpClientResponse.statusCode() + ", " + codeExpected + " status expected: " + url);
-          log.info(res);
-          context.assertEquals(codeExpected, httpClientResponse.statusCode(), url);
-          async.complete();
-          return null;
-        }).otherwise(f-> {
-              context.fail(url + " - " + f.getMessage());
-              async.complete();
-              return null;
-            }
-        );
-      });
+      request.send()
+      .onComplete(context.asyncAssertSuccess(httpResponse-> {
+        res.appendBuffer(httpResponse.body());
+        log.info(res);
+        context.assertEquals(codeExpected, httpResponse.statusCode(), url);
+        async.complete();
+      }));
       async.await();
     } catch (Throwable e) {
       log.error(e.getMessage(), e);
@@ -621,10 +608,12 @@ public class DemoRamlRestTest {
     }
     StringBuilder location = new StringBuilder();
     if (buffer != null) {
-      request.sendBuffer(buffer, e-> postDataHandler(e, async, context, errorCode,
+      request.sendBuffer(buffer)
+      .onComplete(e -> postDataHandler(e, async, context, errorCode,
           stacktrace, method, url, userIdHeader, location));
     } else {
-      request.send(e -> postDataHandler(e, async, context, errorCode,
+      request.send()
+      .onComplete(e -> postDataHandler(e, async, context, errorCode,
           stacktrace, method, url, userIdHeader, location));
     }
     async.await();

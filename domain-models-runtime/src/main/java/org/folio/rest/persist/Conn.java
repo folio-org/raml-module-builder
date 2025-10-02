@@ -836,9 +836,9 @@ public class Conn {
       Function<TotaledResults, Results<T>> resultSetMapper = totaledResults ->
       postgresClient.processResults(totaledResults.set, totaledResults.estimatedTotal, queryHelper.offset, queryHelper.limit, clazz);
       if (returnCount) {
-        return postgresClient.processQueryWithCount(pgConnection, queryHelper, "get", resultSetMapper);
+        return postgresClient.processQueryWithCount(pgConnection, queryHelper, resultSetMapper);
       } else {
-        return Future.future(promise -> postgresClient.processQuery(pgConnection, queryHelper, null, "get", resultSetMapper, promise));
+        return postgresClient.processQuery(pgConnection, queryHelper, null, resultSetMapper);
       }
     } catch (Exception e) {
       log.error(e.getMessage(), e);
@@ -1009,11 +1009,11 @@ public class Conn {
       .compose(preparedStatement -> {
         PreparedRowStream rowStream = new PreparedRowStream(preparedStatement, chunkSize, params);
         rowStreamHandler.handle(rowStream);
-        return rowStream.getResult().eventually(x -> preparedStatement.close());
+        return rowStream.getResult().eventually(() -> preparedStatement.close());
       });
     } catch (Throwable e) {
       log.error(e.getMessage() + " - " + sql, e);
-      return Future.failedFuture(e);
+      return Future.<Void>failedFuture(e);
     }
   }
 
@@ -1099,7 +1099,7 @@ public class Conn {
       long start = log.isDebugEnabled() ? System.nanoTime() : 0;
       return pgConnection.prepare(sql)
           .compose(preparedStatement -> preparedStatement.query().executeBatch(params)
-              .eventually(x -> preparedStatement.close()))
+              .eventually(() -> preparedStatement.close()))
           .onComplete(x -> log.debug(() -> durationMsg("execute", sql, start)));
     } catch (Exception e) {
       log.error(e.getMessage(), e);

@@ -246,20 +246,14 @@ public class TenantAPIIT extends TenantHelper {
 
   @Test
   public void requireCustomPostgresFail(TestContext textContext) {
-    Context context = vertx.getOrCreateContext();
-    context.putLocal("postgres_min_version_num", "1000000");
-    context.putLocal("postgres_min_version", "100.0");
-    new TenantAPI().requirePostgresVersion(context)
+    new TenantAPI().requirePostgres(vertx.getOrCreateContext(), 1000000, "100.0")
     .onComplete(textContext.asyncAssertFailure(
         e -> assertThat(e.getMessage(), startsWith("Expected PostgreSQL server version 100.0 or later"))));
   }
 
   @Test
   public void requireCustomPostgresSuccess(TestContext textContext) {
-    Context context = vertx.getOrCreateContext();
-    context.putLocal("postgres_min_version_num", "100000");
-    context.putLocal("postgres_min_version", "10.0");
-    new TenantAPI().requirePostgresVersion(context)
+    new TenantAPI().requirePostgres(vertx.getOrCreateContext(), 100000, "10.0")
     .onComplete(textContext.asyncAssertSuccess());
   }
 
