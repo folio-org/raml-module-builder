@@ -96,10 +96,12 @@ public class DemoRamlRestTest {
   }
 
   private static void deployRestVerticle(TestContext context) {
+    Async async = context.async();
     DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(
         new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions)
-    .onComplete(context.asyncAssertSuccess());
+      .onComplete(x -> async.complete());
+    async.await(5000);
   }
 
   /**
