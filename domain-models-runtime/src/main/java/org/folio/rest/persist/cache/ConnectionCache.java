@@ -75,12 +75,12 @@ public class ConnectionCache {
    * @param tenantId The tenant to check first.
    * @return An optional wrapping the potentially null connection.
    */
-  public Optional<CachedPgConnection> getAvailableConnection(String tenantId) {
+  public Optional<CachedPgConnection> getAvailableConnection(String tenantId, String schemaName) {
     synchronized (cache) {
       // First attempt to find a connection for the tenant that is available.
       Optional<CachedPgConnection> connectionOptional =
           cache.stream().filter(connection ->
-              connection.getTenantId().equals(tenantId) && connection.isAvailable()).findFirst();
+              connection.getTenantId().equals(tenantId) && connection.getSchemaName().equals(schemaName) && connection.isAvailable()).findFirst();
 
       // If The first attempt fails, try to find the oldest connection for another tenant that is available.
       if (connectionOptional.isEmpty()) {
@@ -172,11 +172,12 @@ public class ConnectionCache {
       var items = "\nCONNECTION MANAGER CACHE ITEMS (DEBUG):\n" ;
       synchronized (cache) {
         items += cache.stream()
-            .map(item -> String.format("%s %s %s %s",
+            .map(item -> String.format("%s %s %s %s %s",
                 item.getSessionId(),
                 item.isAvailable(),
                 item.getIdleSince(),
-                item.getTenantId()
+                item.getTenantId(),
+                item.getSchemaName()
             ))
             .collect(Collectors.joining("\n"));
       }

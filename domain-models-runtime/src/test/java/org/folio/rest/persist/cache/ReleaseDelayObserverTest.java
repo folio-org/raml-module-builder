@@ -25,8 +25,8 @@ public class ReleaseDelayObserverTest {
   void releaseDelayObserverTest(int delay, int expectedCacheSize) {
     var manager = new CachedConnectionManager();
     var vertx = Vertx.vertx();
-    var connection1 = new CachedPgConnection("tenant1", new PgConnectionMock(), manager, vertx, 1);
-    var connection2 = new CachedPgConnection("tenant2", new PgConnectionMock(), manager, vertx, 2);
+    var connection1 = new CachedPgConnection("tenant1", "schema1", new PgConnectionMock(), manager, vertx, 1);
+    var connection2 = new CachedPgConnection("tenant2", "schema2", new PgConnectionMock(), manager, vertx, 2);
     connection1.close();
     connection2.close();
     Awaitility.await().atMost(delay, TimeUnit.MILLISECONDS).untilAsserted(() -> {

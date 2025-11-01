@@ -57,16 +57,18 @@ public class CachedConnectionManager {
    * will be recycled and used for the provided tenant.
    */
   public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId);
+    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId, schemaName);
 
     if (connectionOptional.isPresent()) {
       connectionCache.incrementHits();
       CachedPgConnection connection = connectionOptional.get();
 
       // If it is being used from another tenant (recycled), we now need to set a new role and schema for it.
-      if (!connection.getTenantId().equals(tenantId)) {
-        connection.setTenantId(tenantId);
-        return setRoleAndSchema(vertx, schemaName, tenantId, connection);
+      if (!connection.getTenantId().equals(tenantId) || !connection.getSchemaName().equals(schemaName)) {
+        return executeSetRoleAndSchema(connection, schemaName, tenantId).map(v -> {
+          connection.setTenantAndSchema(tenantId, schemaName);
+          return connection;
+        });
       }
 
       var event = String.format("cache hit %s %s", connection.getTenantId(), connection.getSessionId());
@@ -109,19 +111,20 @@ public class CachedConnectionManager {
 
   private Future<PgConnection> createConnectionSession(Vertx vertx, Pool pool, String schemaName, String tenantId) {
     connectionCache.setPoolSizeMetric(pool.size());
-    return pool.getConnection().compose(sqlConnection -> setRoleAndSchema(vertx, schemaName, tenantId, sqlConnection));
+    return pool
+        .getConnection()
+        .compose(sqlConnection -> executeSetRoleAndSchema(sqlConnection, schemaName, tenantId)
+            .map(v -> {
+      connectionCache.incrementActive();
+      return new CachedPgConnection(tenantId, schemaName, (PgConnection) sqlConnection,
+          this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
+    }));
   }
 
-  private Future<PgConnection> setRoleAndSchema(Vertx vertx,
-                                                String schemaName,
-                                                String tenantId,
-                                                SqlConnection sqlConnection) {
-    connectionCache.incrementActive();
+  private Future<Void> executeSetRoleAndSchema(SqlConnection connection, String schemaName, String tenantId) {
     String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
         ? "SET ROLE NONE; SET SCHEMA ''"
         : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
-    var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection,
-        this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
-    return sqlConnection.query(sql).execute().map(cachedConnection);
+    return connection.query(sql).execute().mapEmpty();
   }
 }
