@@ -141,14 +141,14 @@ public class TenantAPI implements Tenant {
       throw new NoSchemaJsonException();
     }
 
-    TenantOperation op = TenantOperation.CREATE;
     String newVersion = tenantAttributes == null ? null : tenantAttributes.getModuleTo();
     if (newVersion != null) {
-      ModuleId newModuleId = new ModuleId(newVersion); // validate
+      var newModuleId = new ModuleId(newVersion); // validate
       if (newModuleId.getSemVer() == null) {
         throw new IllegalArgumentException("Invalid module_to: " + newVersion);
       }
     }
+    TenantOperation op = TenantOperation.CREATE;
     if (tenantExists) {
       op = TenantOperation.UPDATE;
     }
