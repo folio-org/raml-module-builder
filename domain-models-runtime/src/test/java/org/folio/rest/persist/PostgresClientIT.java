@@ -3992,30 +3992,26 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void selectReturnFail(TestContext context) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    promise.complete(null);
-    PostgresClient.selectReturn(promise.future(), context.asyncAssertFailure());
+  public void selectSingleFail(TestContext context) {
+    var asyncResult = Future.succeededFuture(new SQLConnection(null, null, null));
+    PostgresClient.getInstance(vertx)
+    .selectSingle(asyncResult, "SELECT 1", context.asyncAssertFailure());
   }
 
   @Test
-  public void selectReturnEmptySet(TestContext context) {
-    RowSet rowSet = new LocalRowSet(0);
-    Promise<RowSet<Row>> promise = Promise.promise();
-    promise.complete(rowSet);
-    PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
-      context.assertEquals(null, res)));
+  public void selectSingleEmptySet(TestContext context) {
+    PostgresClient.getInstance(vertx)
+    .selectSingle("SELECT 1 WHERE FALSE", context.asyncAssertSuccess(row -> {
+      assertThat(row, is(nullValue()));
+    }));
   }
 
   @Test
-  public void selectReturnOneRow(TestContext context) {
-    List<String> columns = List.of("field");
-    Row row = mock(Row.class);
-    when(row.getString(0)).thenReturn("value");
-    List<Row> rows = List.of(row);
-    RowSet<Row> rowSet = new LocalRowSet(1).withColumns(columns).withRows(rows);
-    PostgresClient.selectReturn(Future.succeededFuture(rowSet), context.asyncAssertSuccess(res ->
-        context.assertEquals("value", res.getString(0))));
+  public void selectSingleOneRow(TestContext context) {
+    PostgresClient.getInstance(vertx)
+    .selectSingle("SELECT 5", context.asyncAssertSuccess(row -> {
+      assertThat(row.getInteger(0), is(5));
+    }));
   }
 
 }

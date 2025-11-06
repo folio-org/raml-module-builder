@@ -3251,23 +3251,6 @@ public class PostgresClient {
     return withConn(conn -> selectSingle(conn.getPgConnection(), sql, params));
   }
 
-  static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<Row>> replyHandler) {
-    if (res.failed()) {
-      replyHandler.handle(Future.failedFuture(res.cause()));
-      return;
-    }
-    try {
-      if (!res.result().iterator().hasNext()) {
-        replyHandler.handle(Future.succeededFuture(null));
-        return;
-      }
-      replyHandler.handle(Future.succeededFuture(res.result().iterator().next()));
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
-  }
-
   /**
    * Run a parameterized/prepared select query and return the first record, or null if there is no result.
    *
