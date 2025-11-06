@@ -30,6 +30,7 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.dbschema.TenantOperation;
+import org.folio.okapi.common.ModuleId;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.TenantTool;
@@ -127,8 +128,14 @@ public class TenantAPI implements Tenant {
       throw new NoSchemaJsonException();
     }
 
-    TenantOperation op = TenantOperation.CREATE;
     String newVersion = tenantAttributes == null ? null : tenantAttributes.getModuleTo();
+    if (newVersion != null) {
+      var newModuleId = new ModuleId(newVersion); // validate
+      if (newModuleId.getSemVer() == null) {
+        throw new IllegalArgumentException("Invalid module_to: " + newVersion);
+      }
+    }
+    TenantOperation op = TenantOperation.CREATE;
     if (tenantExists) {
       op = TenantOperation.UPDATE;
     }

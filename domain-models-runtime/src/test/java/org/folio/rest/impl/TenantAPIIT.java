@@ -560,6 +560,19 @@ public class TenantAPIIT extends TenantHelper {
     tenantAttributes.setModuleTo("mod-1.0.0");
     tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
       assertThat(result.getStatus(), is(204));
+
+    }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postTenantEnableMissingVersion(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantAttributes tenantAttributes = new TenantAttributes();
+    tenantAttributes.setModuleFrom("mod-0.0.0");
+    tenantAttributes.setModuleTo("mod");
+    tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(400));
+      assertThat((String) result.getEntity(), is("Invalid module_to: mod"));
     }), vertx.getOrCreateContext());
   }
 
