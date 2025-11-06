@@ -35,9 +35,9 @@ public class PostgresClientInitializer {
    * @param configuration A reference to the current database configuration.
    */
   protected PostgresClientInitializer(Vertx vertx, JsonObject configuration) {
-    client = createPool(configuration, PostgresClient.HOST, PostgresClient.PORT);
-    syncReadClient = createPool(configuration, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
-    asyncReadClient = createPool(configuration, HOST_READER_ASYNC, PORT_READER_ASYNC);
+    client = createPool(vertx, configuration, PostgresClient.HOST, PostgresClient.PORT);
+    syncReadClient = createPool(vertx, configuration, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
+    asyncReadClient = createPool(vertx, configuration, HOST_READER_ASYNC, PORT_READER_ASYNC);
 
     // If there is no read client defined, then use the r/w client for it.
     // If there is no async read client defined, then use the sync read client for it if it exists,
@@ -62,9 +62,9 @@ public class PostgresClientInitializer {
     return asyncReadClient;
   }
 
-  private static Pool createPool(JsonObject configuration,
-                                   String hostToResolve,
-                                   String portToResolve) {
+  private static Pool createPool(Vertx vertx,
+      JsonObject configuration, String hostToResolve, String portToResolve) {
+
     var connectOptions = createPgConnectOptions(configuration, hostToResolve, portToResolve);
 
     if (connectOptions == null) {
@@ -83,7 +83,7 @@ public class PostgresClientInitializer {
       poolOptions.setIdleTimeout(connectionReleaseDelay);
     }
 
-    return PgBuilder.pool().connectingTo(connectOptions).with(poolOptions).build();
+    return PgBuilder.pool().using(vertx).connectingTo(connectOptions).with(poolOptions).build();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, String hostToResolve, String portToResolve) {

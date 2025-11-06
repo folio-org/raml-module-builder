@@ -85,20 +85,14 @@ public class DemoRamlRestTest {
     RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     tenant = new RequestSpecBuilder().addHeader("x-okapi-tenant", TENANT).build();
 
-    try {
-      deployRestVerticle(context);
-      client = new TenantClient("http://localhost:" + port, TENANT, null);
-      TenantAttributes ta = new TenantAttributes().withModuleTo("raml-module-builder-1.0.0");
-      TenantInit.exec(client, ta, 60000).onComplete(context.asyncAssertSuccess());
-    } catch (Exception e) {
-      context.fail(e);
-    }
-  }
-
-  private static void deployRestVerticle(TestContext context) {
     DeploymentOptions deploymentOptions = new DeploymentOptions().setConfig(
         new JsonObject().put("http.port", port));
     vertx.deployVerticle(RestVerticle.class.getName(), deploymentOptions)
+    .compose(x -> {
+      client = new TenantClient("http://localhost:" + port, TENANT, null);
+      TenantAttributes ta = new TenantAttributes().withModuleTo("raml-module-builder-1.0.0");
+      return TenantInit.exec(client, ta, 60000);
+    })
     .onComplete(context.asyncAssertSuccess());
   }
 
@@ -458,6 +452,7 @@ public class DemoRamlRestTest {
     NetClient netClient = vertx.createNetClient();
     return netClient.connect(port, "localhost")
         .map(socket -> {
+          socket.handler(buf::appendBuffer);
           socket.write("POST /rmbtests/testStream HTTP/1.1\r\n");
           socket.write("Host: localhost:" + Integer.toString(port) + "\r\n");
           socket.write("Content-Type: application/octet-stream\r\n");
@@ -466,7 +461,7 @@ public class DemoRamlRestTest {
           socket.write("Content-Length: " + Integer.toString(size) + "\r\n");
           socket.write("\r\n");
           socket.write("123\r\n");  // body is 5 bytes
-          socket.handler(buf::appendBuffer);
+          socket.end();
           return socket;
         });
   }

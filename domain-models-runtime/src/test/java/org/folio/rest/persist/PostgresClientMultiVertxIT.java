@@ -1,7 +1,10 @@
 package org.folio.rest.persist;
 
 import io.vertx.core.VerticleBase;
+
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -32,6 +35,11 @@ public class PostgresClientMultiVertxIT {
 
   @Rule
   public RunTestOnContext contextRule = new RunTestOnContext();  // different vertx for each @Test
+
+  @BeforeClass
+  public static void setUp() {
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
+  }
 
   private void run(TestContext context) {
     Async async = context.async();
@@ -64,8 +72,7 @@ public class PostgresClientMultiVertxIT {
     }
 
     public Future<Void> undeploy() {
-      return vertx.undeploy(deploymentId)
-          .compose(x -> vertx.close());
+      return vertx.undeploy(deploymentId);
     }
 
     @Override

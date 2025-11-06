@@ -168,13 +168,14 @@ public class RestVerticle extends AbstractVerticle {
    * resultHandler.handle(io.vertx.core.Future.succeededFuture(true)); or this will hang
    */
   private Future<Boolean> runHook() {
-    Promise<Boolean> promise = Promise.promise();
     try {
       ArrayList<Class<?>> aClass = convert2impl("InitAPI", false);
+      final Promise<Boolean> promise = Promise.promise();
+      final Handler<AsyncResult<Boolean>> handler = promise::handle;
       for (Class<?> value : aClass) {
         Class<?>[] paramArray = new Class[]{Vertx.class, Context.class, Handler.class};
         Method method = value.getMethod("init", paramArray);
-        method.invoke(value.newInstance(), vertx, context, promise);
+        method.invoke(value.newInstance(), vertx, context, handler);
         log.info("Init hook called with implemented class named {}", value.getName());
       }
       return promise.future();

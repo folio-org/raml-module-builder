@@ -31,7 +31,6 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -43,7 +42,6 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
@@ -72,7 +70,6 @@ import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.helpers.LocalRowDesc;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.helpers.Poline;
 import org.folio.rest.persist.helpers.SimplePojo;
@@ -681,7 +678,7 @@ public class PostgresClientIT {
     postgresClientGetConnectionTimeout()
         .getById(FOO, "id").onComplete(context.asyncAssertFailure(e -> {
           assertThat(e.getMessage(), is(
-              "Timeout when trying to connect to DB_HOST_READER:DB_PORT_READER=pg-ro:5433"));
+              "Timeout (connection pool or network) when trying to connect to DB_HOST_READER:DB_PORT_READER=pg-ro:5433"));
         }));
   }
 
@@ -692,7 +689,7 @@ public class PostgresClientIT {
     postgresClient
         .getById(FOO, "id").onComplete(context.asyncAssertFailure(e -> {
           assertThat(e.getMessage(), is(
-              "Timeout when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
+              "Timeout (connection pool or network) when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
         }));
   }
 
@@ -713,7 +710,7 @@ public class PostgresClientIT {
     postgresClientGetConnectionTimeout()
         .update(FOO, xPojo, randomUuid()).onComplete(context.asyncAssertFailure(e -> {
           assertThat(e.getMessage(), is(
-              "Timeout when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
+              "Timeout (connection pool or network) when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
         }));
   }
 
@@ -2824,12 +2821,12 @@ public class PostgresClientIT {
 
   @Test
   public void selectSingleTxException(TestContext context) {
-    postgresClient().selectSingle(null, "SELECT 1", context.asyncAssertFailure());
+    postgresClient().selectSingle(Future.failedFuture("fail"), "SELECT 1", context.asyncAssertFailure());
   }
 
   @Test
   public void selectSingleParamTxException(TestContext context) {
-    postgresClient().selectSingle(null, "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
+    postgresClient().selectSingle(Future.failedFuture("fail"), "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
