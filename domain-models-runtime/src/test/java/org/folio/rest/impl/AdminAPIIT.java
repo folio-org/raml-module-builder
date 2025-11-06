@@ -50,7 +50,8 @@ public class AdminAPIIT {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+    vertx.close()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   private String body(Response response) {

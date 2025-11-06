@@ -87,7 +87,8 @@ public class PgUtilIT {
 
   @AfterClass
   public static void tearDownClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+    vertx.close()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   private static final String DUMMY_VAL = "dummy value set by trigger";
@@ -123,7 +124,8 @@ public class PgUtilIT {
   private static void execute(TestContext context, String sql) {
     StackTraceElement[] stackTrace = Thread.currentThread().getStackTrace();
     Async async = context.async();
-    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
+    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute()
+    .onComplete(reply -> {
       if (reply.failed()) {
         Throwable throwable = new AssertionFailedError(reply.cause().getMessage() + ": " + sql);
         throwable.setStackTrace(stackTrace);
@@ -136,7 +138,8 @@ public class PgUtilIT {
 
   private static void executeIgnore(TestContext context, String sql) {
     Async async = context.async();
-    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
+    PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute()
+    .onComplete(reply -> {
       async.complete();
     });
     async.awaitSuccess();

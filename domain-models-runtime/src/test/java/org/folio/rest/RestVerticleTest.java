@@ -32,14 +32,15 @@ public class RestVerticleTest implements InitAPI, PostDeployVerticle, ShutdownAP
   private static int shutdownCalls;
 
   @BeforeClass
-  public static void setUp(TestContext context) {
+  public static void setUp() {
     vertx = Vertx.vertx();
     port = NetworkUtils.nextFreePort();
   }
 
   @AfterClass
   public static void afterClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+    vertx.close()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @Override

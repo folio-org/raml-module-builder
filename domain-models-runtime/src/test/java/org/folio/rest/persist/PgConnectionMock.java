@@ -1,6 +1,5 @@
 package org.folio.rest.persist;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.pgclient.PgConnection;
@@ -13,7 +12,6 @@ import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
 
@@ -26,11 +24,6 @@ public class PgConnectionMock implements PgConnection {
 
   @Override
   public PgConnection notificationHandler(Handler<PgNotification> handler) {
-    return this;
-  }
-
-  @Override
-  public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
     return this;
   }
 
@@ -50,20 +43,8 @@ public class PgConnectionMock implements PgConnection {
   }
 
   @Override
-  public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-    prepare(s).onComplete(handler);
-    return this;
-  }
-
-  @Override
   public Future<PreparedStatement> prepare(String s) {
     return Future.failedFuture(new PgConnectionMockException());
-  }
-
-  @Override
-  public SqlConnection prepare(String sql, PrepareOptions options, Handler<AsyncResult<PreparedStatement>> handler) {
-    prepare(sql, options).onComplete(handler);
-    return this;
   }
 
   @Override
@@ -84,11 +65,6 @@ public class PgConnectionMock implements PgConnection {
   @Override
   public PgConnection noticeHandler(Handler<PgNotice> handler) {
     throw new RuntimeException();
-  }
-
-  @Override
-  public void begin(Handler<AsyncResult<Transaction>> handler) {
-    begin().onComplete(handler);
   }
 
   @Override
@@ -119,11 +95,6 @@ public class PgConnectionMock implements PgConnection {
   @Override
   public PreparedQuery<RowSet<Row>> preparedQuery(String sql, PrepareOptions options) {
     throw new PgConnectionMockException();
-  }
-
-  @Override
-  public void close(Handler<AsyncResult<Void>> handler) {
-    close().onComplete(handler);
   }
 
   @Override

@@ -131,7 +131,8 @@ public class HttpModuleClient2 implements HttpClientInterface {
         this.headers.putAll(headers);
       }
       request.headers().setAll(this.headers);
-      request.sendBuffer(data, responseHandler);
+      request.sendBuffer(data)
+      .onComplete(responseHandler);
     } catch (Exception e) {
       Response r = new Response();
       r.populateError(endpoint, -1, e.getMessage());

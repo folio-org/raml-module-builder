@@ -25,6 +25,7 @@ import org.apache.logging.log4j.ThreadContext;
 import org.folio.HttpStatus;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.okapi.common.logging.FolioLocal;
 import org.folio.okapi.common.logging.FolioLoggingContext;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
@@ -434,10 +435,10 @@ public final class RestRouting {
   static void invoke(Method method, Object[] params, Object o, RoutingContext rc,
                      Map<String, String> headers, Handler<AsyncResult<Response>> resultHandler) {
 
-    FolioLoggingContext.put(FolioLoggingContext.TENANT_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_HEADER_TENANT));
-    FolioLoggingContext.put(FolioLoggingContext.REQUEST_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_REQUESTID_HEADER));
-    FolioLoggingContext.put(FolioLoggingContext.USER_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_USERID_HEADER));
-    FolioLoggingContext.put(FolioLoggingContext.MODULE_ID_LOGGING_VAR_NAME, PostgresClient.getModuleName());
+    FolioLoggingContext.put(FolioLocal.TENANT_ID, headers.get(RestVerticle.OKAPI_HEADER_TENANT));
+    FolioLoggingContext.put(FolioLocal.REQUEST_ID, headers.get(RestVerticle.OKAPI_REQUESTID_HEADER));
+    FolioLoggingContext.put(FolioLocal.USER_ID, headers.get(RestVerticle.OKAPI_USERID_HEADER));
+    FolioLoggingContext.put(FolioLocal.MODULE_ID, PostgresClient.getModuleName());
 
     withRequestId(rc, () -> LOGGER.info("invoking {}", method.getName()));
 

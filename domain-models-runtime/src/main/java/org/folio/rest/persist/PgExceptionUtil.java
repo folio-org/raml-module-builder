@@ -104,19 +104,17 @@ public final class PgExceptionUtil {
     }
     String detail = fields.getOrDefault('D', "");
     String message = fields.getOrDefault('M', "");
-    switch (sqlstate) {
-      case FOREIGN_KEY_VIOLATION:
-        // insert or update on table "item" violates foreign key constraint "item_permanentloantypeid_fkey":
-        // Key (permanentloantypeid)=(5573df18-043f-4228-b108-483fd3a0cb57) is not present in table "loan_type".
-      case UNIQUE_VIOLATION:
-        // duplicate key value violates unique constraint "loan_type_unique_idx":
-        // Key ((jsonb ->> 'name'::text))=(Can circulate) already exists.
-        return message + ": " + detail;
-      case INVALID_TEXT_REPRESENTATION:  // invalid input syntax for uuid: "1234"
-        return message;
-      default:
-        return null;
-    }
+    return switch (sqlstate) {
+      case
+          // insert or update on table "item" violates foreign key constraint "item_permanentloantypeid_fkey":
+          // Key (permanentloantypeid)=(5573df18-043f-4228-b108-483fd3a0cb57) is not present in table "loan_type".
+          FOREIGN_KEY_VIOLATION,
+          // duplicate key value violates unique constraint "loan_type_unique_idx":
+          // Key ((jsonb ->> 'name'::text))=(Can circulate) already exists.
+          UNIQUE_VIOLATION -> message + ": " + detail;
+      case INVALID_TEXT_REPRESENTATION -> message;  // invalid input syntax for uuid: "1234"
+      default -> null;
+    };
   }
 
   /**
@@ -140,7 +138,7 @@ public final class PgExceptionUtil {
     PgException e = (PgException) throwable;
     return "ErrorMessage(fields=["
         + "(Severity, " + e.getSeverity() + "), "
-        + "(SQLSTATE, " + e.getCode() + "), "
+        + "(SQLSTATE, " + e.getSqlState() + "), "
         + "(Message, " + e.getErrorMessage() + "), "
         + "(Detail, " + e.getDetail() + ")])";
   }
@@ -153,7 +151,7 @@ public final class PgExceptionUtil {
     map.put('M', ((PgException) throwable).getErrorMessage());
     map.put('D', ((PgException) throwable).getDetail());
     map.put('S', ((PgException) throwable).getSeverity());
-    map.put('C', ((PgException) throwable).getCode());
+    map.put('C', ((PgException) throwable).getSqlState());
     return map;
   }
 

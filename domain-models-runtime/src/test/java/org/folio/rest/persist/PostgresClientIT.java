@@ -6,6 +6,7 @@ import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
@@ -28,7 +29,6 @@ import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Stream;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -40,8 +40,7 @@ import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgPool;
-import io.vertx.pgclient.impl.RowImpl;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Query;
@@ -69,8 +68,6 @@ import org.folio.rest.persist.Criteria.Offset;
 import org.folio.rest.persist.Criteria.UpdateSection;
 import org.folio.rest.persist.cql.CQLWrapper;
 import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.helpers.LocalRowDesc;
-import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.persist.helpers.Poline;
 import org.folio.rest.persist.helpers.SimplePojo;
 import org.folio.rest.persist.interfaces.Results;
@@ -126,8 +123,9 @@ public class PostgresClientIT {
     PostgresClient.stopPostgresTester();
     PostgresClient.setExplainQueryThreshold(PostgresClient.EXPLAIN_QUERY_THRESHOLD_DEFAULT);
     if (vertx != null) {
-      vertx.close(context.asyncAssertSuccess());
-      vertx = null;
+      vertx.close()
+      .onComplete(context.asyncAssertSuccess())
+      .onSuccess(x -> vertx = null);
     }
   }
 
@@ -460,12 +458,11 @@ public class PostgresClientIT {
         .put("maxPoolSize", maxPoolSize);
     var initializer = new PostgresClientInitializer(Vertx.vertx(), configuration);
     postgresClient.setClient(initializer.getClient());
-    List<Future> futures = new ArrayList<>();
+    List<Future<?>> futures = new ArrayList<>();
     for (int i=0; i<maxPoolSize; i++) {
-      futures.add(Future.<RowSet<Row>>future(promise ->
-        postgresClient.execute("SELECT pg_sleep(1)", promise)));
+      futures.add(postgresClient.execute("SELECT pg_sleep(1)"));
     }
-    CompositeFuture.all(futures).onComplete(context.asyncAssertSuccess());
+    Future.all(futures).onComplete(context.asyncAssertSuccess());
   }
 
   public static class StringPojo {
@@ -596,6 +593,7 @@ public class PostgresClientIT {
   @Test
   public void deleteByCriterionThatThrowsException(TestContext context) {
     Criterion criterion = new Criterion() {
+      @Override
       public String toString() {
         throw new RuntimeException("missing towel");
       }
@@ -677,7 +675,7 @@ public class PostgresClientIT {
     postgresClientGetConnectionTimeout()
         .getById(FOO, "id").onComplete(context.asyncAssertFailure(e -> {
           assertThat(e.getMessage(), is(
-              "Timeout when trying to connect to DB_HOST_READER:DB_PORT_READER=pg-ro:5433"));
+              "Timeout (connection pool or network) when trying to connect to DB_HOST_READER:DB_PORT_READER=pg-ro:5433"));
         }));
   }
 
@@ -688,7 +686,7 @@ public class PostgresClientIT {
     postgresClient
         .getById(FOO, "id").onComplete(context.asyncAssertFailure(e -> {
           assertThat(e.getMessage(), is(
-              "Timeout when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
+              "Timeout (connection pool or network) when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
         }));
   }
 
@@ -709,7 +707,7 @@ public class PostgresClientIT {
     postgresClientGetConnectionTimeout()
         .update(FOO, xPojo, randomUuid()).onComplete(context.asyncAssertFailure(e -> {
           assertThat(e.getMessage(), is(
-              "Timeout when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
+              "Timeout (connection pool or network) when trying to connect to DB_HOST:DB_PORT=pg-rw:5432"));
         }));
   }
 
@@ -2032,7 +2030,7 @@ public class PostgresClientIT {
    * a null result value and success status.
    */
   private PostgresClient postgresClientNullConnection() {
-    PgPool client = new PgPoolBase();
+    Pool client = new PoolBase();
     try {
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setClient(client);
@@ -2047,7 +2045,7 @@ public class PostgresClientIT {
    * a null result value and success status.
    */
   private PostgresClient postgresReadClientNullConnection() {
-    PgPool client = new PgPoolBase();
+    Pool client = new PoolBase();
     try {
       PostgresClient postgresClient = new PostgresClient(vertx, TENANT);
       postgresClient.setReaderClient(client);
@@ -2061,7 +2059,7 @@ public class PostgresClientIT {
    * @return a PostgresClient where getConnection(handler) invokes the handler with a failure.
    */
   private PostgresClient postgresClientGetConnectionFails() {
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.failedFuture("postgresClientGetConnectionFails");
@@ -2080,7 +2078,7 @@ public class PostgresClientIT {
    * @return a PostgresClient where the client's getConnection() returns a "Timeout" failure.
    */
   private PostgresClient postgresClientGetConnectionTimeout() {
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.failedFuture("Timeout");
@@ -2107,7 +2105,7 @@ public class PostgresClientIT {
    */
   private PostgresClient postgresClientConnectionThrowsException() {
     PgConnection pgConnection = new PgConnectionMock();
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
@@ -2132,11 +2130,6 @@ public class PostgresClientIT {
       public Query<RowSet<Row>> query(String s)
       {
         return new Query<RowSet<Row>> () {
-
-          @Override
-          public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
-            handler.handle(execute());
-          }
 
           @Override
           public Future<RowSet<Row>> execute() {
@@ -2166,7 +2159,7 @@ public class PostgresClientIT {
       }
     };
 
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
@@ -2186,7 +2179,7 @@ public class PostgresClientIT {
    */
   private PostgresClient postgresClientQueryReturnBadResults() {
     PgConnection pgConnection = new PgConnectionMock();
-    PgPool client = new PgPoolBase() {
+    Pool client = new PoolBase() {
       @Override
       public Future<SqlConnection> getConnection() {
         return Future.succeededFuture(pgConnection);
@@ -2825,12 +2818,12 @@ public class PostgresClientIT {
 
   @Test
   public void selectSingleTxException(TestContext context) {
-    postgresClient().selectSingle(null, "SELECT 1", context.asyncAssertFailure());
+    postgresClient().selectSingle(Future.failedFuture("fail"), "SELECT 1", context.asyncAssertFailure());
   }
 
   @Test
   public void selectSingleParamTxException(TestContext context) {
-    postgresClient().selectSingle(null, "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
+    postgresClient().selectSingle(Future.failedFuture("fail"), "SELECT 1", Tuple.tuple(), context.asyncAssertFailure());
   }
 
   @Test
@@ -3207,11 +3200,6 @@ public class PostgresClientIT {
     @Override
     public Future<Void> close() {
       return Future.succeededFuture();
-    }
-
-    @Override
-    public void close(Handler<AsyncResult<Void>> handler) {
-
     }
   }
 
@@ -3813,7 +3801,7 @@ public class PostgresClientIT {
         });
         return null;
       };
-      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", resultSetMapper)
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, resultSetMapper)
       .onComplete(context.asyncAssertSuccess());
     }));
   }
@@ -3825,7 +3813,7 @@ public class PostgresClientIT {
       QueryHelper queryHelper = new QueryHelper("table");
       queryHelper.selectQuery = "'";
       queryHelper.countQuery = "'";
-      postgresClient.processQueryWithCount(conn.conn, queryHelper, "statMethod", null)
+      postgresClient.processQueryWithCount(conn.conn, queryHelper, null)
       .onComplete(context.asyncAssertFailure(fail -> {
         assertThat(fail.getMessage(), containsString("unterminated quoted string"));
       }));
@@ -4001,29 +3989,26 @@ public class PostgresClientIT {
   }
 
   @Test
-  public void selectReturnFail(TestContext context) {
-    Promise<RowSet<Row>> promise = Promise.promise();
-    promise.complete(null);
-    PostgresClient.selectReturn(promise.future(), context.asyncAssertFailure());
+  public void selectSingleFail(TestContext context) {
+    var asyncResult = Future.succeededFuture(new SQLConnection(null, null, null));
+    PostgresClient.getInstance(vertx)
+    .selectSingle(asyncResult, "SELECT 1", context.asyncAssertFailure());
   }
 
   @Test
-  public void selectReturnEmptySet(TestContext context) {
-    RowSet rowSet = new LocalRowSet(0);
-    Promise<RowSet<Row>> promise = Promise.promise();
-    promise.complete(rowSet);
-    PostgresClient.selectReturn(promise.future(), context.asyncAssertSuccess(res ->
-      context.assertEquals(null, res)));
+  public void selectSingleEmptySet(TestContext context) {
+    PostgresClient.getInstance(vertx)
+    .selectSingle("SELECT 1 WHERE FALSE", context.asyncAssertSuccess(row -> {
+      assertThat(row, is(nullValue()));
+    }));
   }
 
   @Test
-  public void selectReturnOneRow(TestContext context) {
-    List<String> columns = List.of("field");
-    List<Row> rows = List.of(new RowImpl(new LocalRowDesc(columns)));
-    rows.get(0).addString("value");
-    RowSet<Row> rowSet = new LocalRowSet(1).withColumns(columns).withRows(rows);
-    PostgresClient.selectReturn(Future.succeededFuture(rowSet), context.asyncAssertSuccess(res ->
-        context.assertEquals("value", res.getString(0))));
+  public void selectSingleOneRow(TestContext context) {
+    PostgresClient.getInstance(vertx)
+    .selectSingle("SELECT 5", context.asyncAssertSuccess(row -> {
+      assertThat(row.getInteger(0), is(5));
+    }));
   }
 
 }

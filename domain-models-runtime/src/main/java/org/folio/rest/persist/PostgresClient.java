@@ -11,7 +11,7 @@ import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
@@ -115,7 +115,6 @@ public class PostgresClient {
 
   private static final String    POSTGRES_TESTER = "postgres_tester";
 
-  private static final String    GET_STAT_METHOD = "get";
   private static final String    EXECUTE_STAT_METHOD = "execute";
   private static final String    PROCESS_RESULTS_STAT_METHOD = "processResults";
 
@@ -129,12 +128,12 @@ public class PostgresClient {
   /**
    * Used only if {@link #sharedPgPool} is true.
    */
-  private static final Map<Vertx,PgPool> PG_POOLS = new HashMap<>();
+  private static final Map<Vertx,Pool> PG_POOLS = new HashMap<>();
 
   /**
    * Used only if {@link #sharedPgPool} is true.
    */
-  private static final Map<Vertx,PgPool> PG_POOLS_READER = new HashMap<>();
+  private static final Map<Vertx,Pool> PG_POOLS_READER = new HashMap<>();
 
   /** map (Vertx, String tenantId) to PostgresClient */
   private static final MultiKeyMap<Object, PostgresClient> CONNECTION_POOL =
@@ -160,12 +159,12 @@ public class PostgresClient {
   /**
    * PgPool client that is initialized with mainly the database writer instance's connection string.
    */
-  private PgPool client;
+  private Pool client;
   /**
    * PgPool client that is initialized with mainly the database reader instance's connection string.
    * When there is no reader instance, then this client should be initialized with the writer's connection string
    */
-  private PgPool readClient;
+  private Pool readClient;
   private final String tenantId;
   private final String schemaName;
   private PostgresClientInitializer postgresClientInitializer;
@@ -282,8 +281,8 @@ public class PostgresClient {
    *   this is never null
    */
   public static String getConfigFilePath(){
-    if (configPath == null){
-      configPath = POSTGRES_LOCALHOST_CONFIG;
+    if (configPath == null) {
+      configPath = System.getProperty("db_connection", POSTGRES_LOCALHOST_CONFIG);
     }
     return configPath;
   }
@@ -382,7 +381,7 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    * @see #getClient()
    */
-  PgPool getReaderClient() {
+  Pool getReaderClient() {
     return readClient;
   }
 
@@ -390,7 +389,7 @@ public class PostgresClient {
    * Set this instance's Reader PgPool that can connect to Postgres.
    * @param readClient  the new client
    */
-  void setReaderClient(PgPool readClient) {
+  void setReaderClient(Pool readClient) {
     this.readClient = readClient;
   }
 
@@ -407,7 +406,7 @@ public class PostgresClient {
    * @see #withTransaction(Function)
    * @see #getReaderClient()
    */
-  PgPool getClient() {
+  Pool getClient() {
     return client;
   }
 
@@ -415,7 +414,7 @@ public class PostgresClient {
    * Set this instance's PgPool that can connect to Postgres.
    * @param client  the new client
    */
-  void setClient(PgPool client) {
+  void setClient(Pool client) {
     this.client = client;
   }
 
@@ -435,8 +434,8 @@ public class PostgresClient {
     if (client == null) {
       return Future.succeededFuture();
     }
-    PgPool clientToClose = client;
-    PgPool readClientToClose = client == readClient ? null : readClient;
+    Pool clientToClose = client;
+    Pool readClientToClose = client == readClient ? null : readClient;
     client = null;
     readClient = null;
 
@@ -445,7 +444,7 @@ public class PostgresClient {
     return closeClient(readClientToClose);
   }
 
-  private Future<Void> closeClient(PgPool clientToClose) {
+  private Future<Void> closeClient(Pool clientToClose) {
     if (clientToClose == null) {
       return Future.succeededFuture();
     }
@@ -502,9 +501,9 @@ public class PostgresClient {
 
     CACHED_CONNECTION_MANAGER.clearCache();
 
-    PG_POOLS.values().forEach(PgPool::close);
+    PG_POOLS.values().forEach(Pool::close);
     PG_POOLS.clear();
-    PG_POOLS_READER.values().forEach(PgPool::close);
+    PG_POOLS_READER.values().forEach(Pool::close);
     PG_POOLS_READER.clear();
   }
 
@@ -693,7 +692,8 @@ public class PostgresClient {
         done.handle(Future.failedFuture(trans.cause()));
         return;
       }
-      trans.result().tx.rollback(res -> finalizeTx(res, trans.result().conn, done));
+      trans.result().tx.rollback()
+      .onComplete(res -> finalizeTx(res, trans.result().conn, done));
     } catch (Exception e) {
       done.handle(Future.failedFuture(e));
     }
@@ -717,7 +717,8 @@ public class PostgresClient {
         done.handle(Future.failedFuture(trans.cause()));
         return;
       }
-      trans.result().tx.commit(res -> finalizeTx(res, trans.result().conn, done));
+      trans.result().tx.commit()
+      .onComplete(res -> finalizeTx(res, trans.result().conn, done));
     } catch (Exception e) {
       done.handle(Future.failedFuture(e));
     }
@@ -1816,8 +1817,9 @@ public class PostgresClient {
       CQLWrapper filter, boolean returnIdField, String distinctOn,
       List<FacetField> facets, int queryTimeout) {
 
-    return Future.future(promise -> streamGet(table, clazz, fieldName, filter, returnIdField,
-            distinctOn, facets, queryTimeout, promise));
+    Promise<PostgresClientStreamResult<T>> promise = Promise.promise();
+    streamGet(table, clazz, fieldName, filter, returnIdField, distinctOn, facets, queryTimeout, promise::handle);
+    return promise.future();
   }
 
   /**
@@ -1975,7 +1977,8 @@ public class PostgresClient {
       ResultInfo resultInfo, Class<T> clazz,
       Handler<AsyncResult<PostgresClientStreamResult<T>>> replyHandler, Transaction transaction) {
 
-    connection.prepare(queryHelper.selectQuery, prepareRes -> {
+    connection.prepare(queryHelper.selectQuery)
+    .onComplete(prepareRes -> {
       if (prepareRes.failed()) {
         closeIfNonNull(transaction).onComplete(ignore -> {
           log.error(prepareRes.cause().getMessage(), prepareRes.cause());
@@ -2145,36 +2148,34 @@ public class PostgresClient {
   }
 
   <T> Future<T> processQueryWithCount(
-      PgConnection connection, QueryHelper queryHelper, String statMethod,
+      PgConnection connection, QueryHelper queryHelper,
       Function<TotaledResults, T> resultSetMapper) {
     long start = log.isDebugEnabled() ? System.nanoTime() : 0;
 
-    log.debug("Attempting count query: " + queryHelper.countQuery);
+    log.debug(() -> "Attempting count query: " + queryHelper.countQuery);
     return connection.query(queryHelper.countQuery).execute()
     .compose(countQueryResult -> {
       log.debug(() -> "timer: get " + queryHelper.countQuery + " " + (System.nanoTime() - start) + " ns");
       int estimatedTotal = countQueryResult.iterator().next().getInteger(0);
-      return Future.<T>future(promise -> processQuery(connection, queryHelper, estimatedTotal, statMethod, resultSetMapper, promise));
+      return processQuery(connection, queryHelper, estimatedTotal, resultSetMapper);
     })
     .onFailure(e -> log.error("query with count: {} - {}", e.getMessage(), queryHelper.countQuery, e));
   }
 
+  <T> Future<T> processQuery(PgConnection connection, QueryHelper queryHelper, Integer estimatedTotal,
+      Function<TotaledResults, T> resultSetMapper) {
+
+    return queryAndAnalyze(connection, queryHelper.selectQuery)
+        .map(result -> resultSetMapper.apply(new TotaledResults(result, estimatedTotal)))
+        .onFailure(e -> log.error("{}", e.getMessage(), e));
+  }
+
   <T> void processQuery(
-    PgConnection connection, QueryHelper queryHelper, Integer estimatedTotal, String statMethod,
-    Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler
-  ) {
-    try {
-      queryAndAnalyze(connection, queryHelper.selectQuery, statMethod, query -> {
-        if (query.failed()) {
-          replyHandler.handle(Future.failedFuture(query.cause()));
-          return;
-        }
-        replyHandler.handle(Future.succeededFuture(resultSetMapper.apply(new TotaledResults(query.result(), estimatedTotal))));
-      });
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+      PgConnection connection, QueryHelper queryHelper, Integer estimatedTotal,
+      Function<TotaledResults, T> resultSetMapper, Handler<AsyncResult<T>> replyHandler) {
+
+    processQuery(connection, queryHelper, estimatedTotal, resultSetMapper)
+    .onComplete(replyHandler);
   }
 
   private FacetManager buildFacetManager(CQLWrapper wrapper, QueryHelper queryHelper,
@@ -2257,7 +2258,9 @@ public class PostgresClient {
   public <T> Future<Results<T>> get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
     boolean returnCount, boolean setId, List<FacetField> facets) {
 
-    return Future.future(promise -> get(table, clazz, fields, filter, returnCount, setId, facets, promise));
+    Promise<Results<T>> promise = Promise.promise();
+    get(table, clazz, fields, filter, returnCount, setId, facets, promise::handle);
+    return promise.future();
   }
 
   /**
@@ -2312,7 +2315,9 @@ public class PostgresClient {
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
       boolean returnCount) {
-    return Future.future(promise -> get(table, clazz, fields, filter, returnCount, promise));
+    Promise<Results<T>> promise = Promise.promise();
+    get(table, clazz, fields, filter, returnCount, promise::handle);
+    return promise.future();
   }
 
   public <T> void get(String table, Class<T> clazz, String[] fields, CQLWrapper filter,
@@ -2370,7 +2375,9 @@ public class PostgresClient {
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, CQLWrapper filter,
       boolean returnCount, List<FacetField> facets) {
-    return Future.future(promise -> get(table, clazz, filter, returnCount, facets, promise));
+    Promise<Results<T>> promise = Promise.promise();
+    get(table, clazz, filter, returnCount, facets, promise::handle);
+    return promise.future();
   }
 
   public <T> void get(String table, Class<T> clazz, CQLWrapper filter,
@@ -2428,7 +2435,9 @@ public class PostgresClient {
    */
   public <T> Future<Results<T>> get(String table, Class<T> clazz, Criterion filter, boolean returnCount, boolean setId,
       List<FacetField> facets) {
-    return Future.future(promise -> get(null, table, clazz, filter, returnCount, setId, facets, promise));
+    Promise<Results<T>> promise = Promise.promise();
+    get(null, table, clazz, filter, returnCount, setId, facets, promise::handle);
+    return promise.future();
   }
 
   /**
@@ -2496,13 +2505,17 @@ public class PostgresClient {
   private <R> void getById(final AsyncResult<SQLConnection> conn, boolean lock, String table, String id,
                            FunctionWithException<String, R, Exception> function,
                            Handler<AsyncResult<R>> replyHandler) {
-    Promise<PgConnection> promise = Promise.promise();
+    Future<PgConnection> future;
     if (conn != null) {
-      promise.handle(conn.map(sqlConnection -> sqlConnection.conn));
+      if (conn.succeeded()) {
+        future = Future.succeededFuture(conn.result().conn);
+      } else {
+        future = Future.failedFuture(conn.cause());
+      }
     } else {
-      getReadConnection(promise);
+      future = getReadConnection();
     }
-    promise.future()
+    future
     .compose(connection -> new Conn(this, connection)
         .getById(lock, table, id, function)
         .onComplete(x -> {
@@ -2688,7 +2701,8 @@ public class PostgresClient {
         sql.append(", $" + i);
       }
       sql.append(")");
-      connection.preparedQuery(sql.toString()).execute(list, query -> {
+      connection.preparedQuery(sql.toString()).execute(list)
+      .onComplete(query -> {
         connection.close();
         if (query.failed()) {
           replyHandler.handle(Future.failedFuture(query.cause()));
@@ -3006,7 +3020,7 @@ public class PostgresClient {
    * @return future result
    */
   public Future<RowSet<Row>> select(String sql) {
-    return Future.future(promise -> select(sql, promise));
+    return Future.future(promise -> select(sql, promise::handle));
   }
 
   /**
@@ -3039,38 +3053,37 @@ public class PostgresClient {
     );
   }
 
-  static void queryAndAnalyze(PgConnection conn, String sql, String statMethod,
-    Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+  static void queryAndAnalyze(PgConnection conn, String sql, Handler<AsyncResult<RowSet<Row>>> replyHandler) {
+    queryAndAnalyze(conn, sql)
+    .onComplete(replyHandler);
+  }
+
+  static Future<RowSet<Row>> queryAndAnalyze(PgConnection conn, String sql) {
+    if (conn == null) {
+      return Future.failedFuture(new NullPointerException("PgConnection must not be null"));
+    }
 
     long start = System.nanoTime();
-    conn.query(sql).execute(res -> {
-      long queryTime = (System.nanoTime() - start);
-      if (res.failed()) {
-        log.error("queryAndAnalyze: " + res.cause().getMessage() + " - "
-          + sql, res.cause());
-        replyHandler.handle(Future.failedFuture(res.cause()));
-        return;
-      }
-      if (queryTime >= explainQueryThreshold * 1000000) {
-        final String explainQuery = "EXPLAIN ANALYZE " + sql;
-        conn.query(explainQuery).execute(explain -> {
-          replyHandler.handle(res); // not before, so we have conn if it gets closed
-          if (explain.failed()) {
-            log.warn(explainQuery + ": ", explain.cause().getMessage(), explain.cause());
-            return;
+    return conn.query(sql).execute()
+        .compose(rowSet -> {
+          long queryTime = (System.nanoTime() - start);
+          if (queryTime < explainQueryThreshold * 1000000) {
+            return Future.succeededFuture(rowSet);
           }
-          StringBuilder e = new StringBuilder(explainQuery);
-          RowIterator<Row> iterator = explain.result().iterator();
-          while (iterator.hasNext()) {
-            Row row = iterator.next();
-            e.append('\n').append(row.getValue(0));
-          }
-          log.warn(e.toString());
-        });
-      } else {
-        replyHandler.handle(res);
-      }
-    });
+          final String explainQuery = "EXPLAIN ANALYZE " + sql;
+          return conn.query(explainQuery).execute()
+              .onSuccess(explain -> {
+                var stringBuilder = new StringBuilder(explainQuery);
+                RowIterator<Row> iterator = explain.iterator();
+                while (iterator.hasNext()) {
+                  var row = iterator.next();
+                  stringBuilder.append('\n').append(row.getValue(0));
+                }
+                log.warn("{}", stringBuilder);
+              })
+              .map(rowSet);
+        })
+        .onFailure(e -> log.warn("{}: {}", sql, e.getMessage(), e));
   }
 
   /**
@@ -3090,7 +3103,7 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      queryAndAnalyze(conn.result().conn, sql, GET_STAT_METHOD, replyHandler);
+      queryAndAnalyze(conn.result().conn, sql, replyHandler);
     } catch (Exception e) {
       log.error("select sql: " + e.getMessage() + " - " + sql, e);
       replyHandler.handle(Future.failedFuture(e));
@@ -3143,7 +3156,8 @@ public class PostgresClient {
         replyHandler.handle(Future.failedFuture(conn.cause()));
         return;
       }
-      conn.result().conn.preparedQuery(sql).execute(params, replyHandler);
+      conn.result().conn.preparedQuery(sql).execute(params)
+      .onComplete(replyHandler);
     } catch (Exception e) {
       log.error("select sql: " + e.getMessage() + " - " + sql, e);
       replyHandler.handle(Future.failedFuture(e));
@@ -3234,24 +3248,7 @@ public class PostgresClient {
    * @return future.
    */
   public Future<Row> selectSingle(String sql, Tuple params) {
-    return Future.future(promise -> selectSingle(sql, params, promise));
-  }
-
-  static void selectReturn(AsyncResult<RowSet<Row>> res, Handler<AsyncResult<Row>> replyHandler) {
-    if (res.failed()) {
-      replyHandler.handle(Future.failedFuture(res.cause()));
-      return;
-    }
-    try {
-      if (!res.result().iterator().hasNext()) {
-        replyHandler.handle(Future.succeededFuture(null));
-        return;
-      }
-      replyHandler.handle(Future.succeededFuture(res.result().iterator().next()));
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+    return withConn(conn -> selectSingle(conn.getPgConnection(), sql, params));
   }
 
   /**
@@ -3268,19 +3265,32 @@ public class PostgresClient {
    */
   public void selectSingle(AsyncResult<SQLConnection> conn, String sql, Tuple params,
                            Handler<AsyncResult<Row>> replyHandler) {
+    selectSingle(conn, sql, params)
+    .onComplete(replyHandler);
+  }
+
+  private static Future<Row> selectSingle(AsyncResult<SQLConnection> conn, String sql, Tuple params) {
+    if (conn.failed()) {
+      return Future.failedFuture(conn.cause());
+    }
+    return selectSingle(conn.result().conn, sql, params);
+  }
+
+  private static Future<Row> selectSingle(PgConnection conn, String sql, Tuple params) {
     try {
-      if (conn.failed()) {
-        replyHandler.handle(Future.failedFuture(conn.cause()));
-        return;
-      }
+      Future<RowSet<Row>> future;
       if (params.size() == 0) {
-        conn.result().conn.query(sql).execute(res -> selectReturn(res, replyHandler));
+        future = conn.query(sql).execute();
       } else {
-        conn.result().conn.preparedQuery(sql).execute(params, res -> selectReturn(res, replyHandler));
+        future = conn.preparedQuery(sql).execute(params);
       }
+      return future.map(rowSet -> {
+        var iterator = rowSet.iterator();
+        return iterator.hasNext() ? iterator.next() : null;
+      });
     } catch (Exception e) {
       log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
+      return Future.failedFuture(e);
     }
   }
 
@@ -3345,7 +3355,7 @@ public class PostgresClient {
    *
    * <p>This never closes the connection conn.
    *
-   * <p>Always call {@link RowStream#close()} or {@link RowStream#close(Handler)}
+   * <p>Always call {@link RowStream#close()}
    * to release the underlying prepared statement.
    *
    * @param conn  The connection on which to execute the query on.
@@ -3362,7 +3372,7 @@ public class PostgresClient {
    *
    * <p>This never closes the connection conn.
    *
-   * <p>Always call {@link RowStream#close()} or {@link RowStream#close(Handler)}
+   * <p>Always call {@link RowStream#close()}
    * to release the underlying prepared statement.
    *
    * @param conn  The connection on which to execute the query on.
@@ -3414,7 +3424,8 @@ public class PostgresClient {
           if (! "Timeout".equals(e.getMessage())) {
             return Future.failedFuture(e);
           }
-          return Future.failedFuture("Timeout when trying to connect to DB_HOST:DB_PORT="
+          return Future.failedFuture(
+              "Timeout (connection pool or network) when trying to connect to DB_HOST:DB_PORT="
               + postgreSQLClientConfig.getString(HOST) + ":"
               + postgreSQLClientConfig.getString(PORT));
         });
@@ -3431,11 +3442,13 @@ public class PostgresClient {
           }
           if (postgreSQLClientConfig.containsKey(HOST_READER) &&
               postgreSQLClientConfig.containsKey(PORT_READER)) {
-            return Future.failedFuture("Timeout when trying to connect to DB_HOST_READER:DB_PORT_READER="
+            return Future.failedFuture(
+                "Timeout (connection pool or network) when trying to connect to DB_HOST_READER:DB_PORT_READER="
                 + postgreSQLClientConfig.getString(HOST_READER) + ":"
                 + postgreSQLClientConfig.getString(PORT_READER));
           }
-          return Future.failedFuture("Timeout when trying to connect to DB_HOST:DB_PORT="
+          return Future.failedFuture(
+              "Timeout (connection pool or network) when trying to connect to DB_HOST:DB_PORT="
                 + postgreSQLClientConfig.getString(HOST) + ":"
                 + postgreSQLClientConfig.getString(PORT));
         });
@@ -3444,13 +3457,13 @@ public class PostgresClient {
   /**
    * Get vertx-pg-client connection
    *
-   * @param client pgPool (read or write) client
+   * @param client Pool (read or write) client
    * @see #withConn(Function)
    * @see #withConnection(Function)
    * @see #withTrans(Function)
    * @see #withTransaction(Function)
    */
-  public Future<PgConnection> getConnection(PgPool client) {
+  public Future<PgConnection> getConnection(Pool client) {
     if (!sharedPgPool) {
       return client.getConnection().map(PgConnection.class::cast);
     }
@@ -3545,15 +3558,9 @@ public class PostgresClient {
       return;
     }
 
-    long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
-      if (ar.succeeded()) {
-        log.warn(
-            String.format("Cancelling request due to timeout after : %d ms",
-                queryTimeout));
-      } else {
-        log.warn("Failed to send cancelling request", ar.cause());
-      }
-    }));
+    long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest()
+        .onSuccess(x -> log.warn("Cancelling request due to timeout after : {} ms", queryTimeout))
+        .onFailure(e -> log.warn("Failed to send cancelling request", e)));
 
     SQLConnection sqlConnection = new SQLConnection(pgConnection, null, timerId);
     handler.handle(Future.succeededFuture(sqlConnection));
@@ -3613,16 +3620,12 @@ public class PostgresClient {
       return function.apply(new Conn(this, pgConnection));
     }
 
-    long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest(ar -> {
-      if (ar.succeeded()) {
-        log.warn("Cancelling request due to timeout after {} ms", queryTimeout);
-      } else {
-        log.warn("Failed to send cancelling request", ar.cause());
-      }
-    }));
+    long timerId = vertx.setTimer(queryTimeout, id -> pgConnection.cancelRequest()
+        .onSuccess(x -> log.warn("Cancelling request due to timeout after {} ms", queryTimeout))
+        .onFailure(e -> log.warn("Failed to send cancelling request", e)));
 
     return function.apply(new Conn(this, pgConnection))
-        .onComplete(done -> vertx.cancelTimer(timerId));
+        .andThen(done -> vertx.cancelTimer(timerId));
   }
 
   /**
@@ -3644,7 +3647,7 @@ public class PostgresClient {
 
   /**
    * Execute the given function within a transaction.
-   * <p>Similar to {@link PgPool#withTransaction(Function)}
+   * <p>Similar to {@link Pool#withTransaction(Function)}
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The transaction is automatically committed if the function returns a succeeded Future.
@@ -3682,12 +3685,12 @@ public class PostgresClient {
                     err -> tx
                         .rollback()
                         .compose(v -> Future.failedFuture(err), failure -> Future.failedFuture(err))))
-            .onComplete(ar -> conn.close()));
+            .andThen(ar -> conn.close()));
   }
 
   /**
    * Get a {@link PgConnection} from the pool and execute the given function.
-   * <p>Similar to {@link PgPool#withConnection(Function)} but with RMB specific {@link Conn}.
+   * <p>Similar to {@link Pool#withConnection(Function)} but with RMB specific {@link Conn}.
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
@@ -3702,7 +3705,7 @@ public class PostgresClient {
 
   /**
    * Get a readonly {@link PgConnection} from the pool and execute the given function.
-   * <p>Similar to {@link PgPool#withConnection(Function)} but with RMB specific readonly {@link Conn}.
+   * <p>Similar to {@link Pool#withConnection(Function)} but with RMB specific readonly {@link Conn}.
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
@@ -3768,7 +3771,7 @@ public class PostgresClient {
 
   /**
    * Get a {@link PgConnection} from the pool and execute the given function.
-   * <p>Similar to {@link PgPool#withConnection(Function)}
+   * <p>Similar to {@link Pool#withConnection(Function)}
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
@@ -3781,12 +3784,12 @@ public class PostgresClient {
    * @param function code to execute
    */
   public <T> Future<T> withConnection(Function<PgConnection, Future<T>> function) {
-    return getConnection().flatMap(conn -> function.apply(conn).onComplete(ar -> conn.close()));
+    return getConnection().flatMap(conn -> function.apply(conn).andThen(ar -> conn.close()));
   }
 
   /**
    * Get a readonly {@link PgConnection} from the pool and execute the given function.
-   * <p>Similar to {@link PgPool#withConnection(Function)}
+   * <p>Similar to {@link Pool#withConnection(Function)}
    * <ul>
    *   <li>The connection is automatically closed in all cases when the function exits.</li>
    *   <li>The method returns the Future returned by the function, or a failed Future with the Throwable
@@ -3799,7 +3802,7 @@ public class PostgresClient {
    * @param function code to execute
    */
   public <T> Future<T> withReadConnection(Function<PgConnection, Future<T>> function) {
-    return getReadConnection().flatMap(conn -> function.apply(conn).onComplete(ar -> conn.close()));
+    return getReadConnection().flatMap(conn -> function.apply(conn).andThen(ar -> conn.close()));
   }
 
   /**
@@ -4008,15 +4011,10 @@ public class PostgresClient {
       String q = "CREATE UNLOGGED TABLE IF NOT EXISTS "
           + schemaName + DOT + cacheName +" AS " + sql2cache;
       log.info(q);
-      connection.query(q).execute(
-          query -> {
-            statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start);
-            if (query.failed()) {
-              replyHandler.handle(Future.failedFuture(query.cause()));
-            } else {
-              replyHandler.handle(Future.succeededFuture(query.result().rowCount()));
-            }
-          });
+      connection.query(q).execute()
+      .map(RowSet::rowCount)
+      .andThen(x -> statsTracker("persistentlyCacheResult", "CREATE TABLE AS", start))
+      .andThen(replyHandler::handle);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
@@ -4036,14 +4034,10 @@ public class PostgresClient {
       }
       long start = System.nanoTime();
       PgConnection connection = conn.result().conn;
-      connection.query("DROP TABLE " + schemaName + DOT + cacheName).execute(query -> {
-        statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start);
-        if (query.failed()) {
-          replyHandler.handle(Future.failedFuture(query.cause()));
-        } else {
-          replyHandler.handle(Future.succeededFuture(query.result().rowCount()));
-        }
-      });
+      connection.query("DROP TABLE " + schemaName + DOT + cacheName).execute()
+      .map(RowSet::rowCount)
+      .andThen(x -> statsTracker("removePersistentCacheResult", "DROP TABLE " + cacheName, start))
+      .andThen(replyHandler::handle);
     } catch (Exception e) {
       log.error(e.getMessage(), e);
       replyHandler.handle(Future.failedFuture(e));
@@ -4132,7 +4126,7 @@ public class PostgresClient {
    * @param sqlFile - string of sql statements
    */
   public Future<Void> runSqlFile(String sqlFile) {
-    return Future.<List<String>>future(promise -> runSQLFile(sqlFile, true, promise))
+    return runSQLFile(sqlFile, true)
         .compose(errors -> {
           if (errors.isEmpty()) {
             return Future.succeededFuture();
@@ -4158,7 +4152,12 @@ public class PostgresClient {
   // non-deprecated method has correct camel case: https://google.github.io/styleguide/javaguide.html#s5.3-camel-case
   @Deprecated
   public Future<List<String>> runSQLFile(String sqlFile, boolean stopOnError) {
-    return Future.future(promise -> runSQLFile(sqlFile, stopOnError, promise));
+    try {
+      return execute(preprocessSqlStatements(sqlFile), stopOnError);
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return Future.failedFuture(e);
+    }
   }
 
   /**
@@ -4176,14 +4175,9 @@ public class PostgresClient {
   @SuppressWarnings("java:S1845")  // suppress "Methods should not differ only by capitalization", the
   // non-deprecated method has correct camel case: https://google.github.io/styleguide/javaguide.html#s5.3-camel-case
   @Deprecated
-  public void runSQLFile(String sqlFile, boolean stopOnError,
-      Handler<AsyncResult<List<String>>> replyHandler){
-    try {
-      execute(preprocessSqlStatements(sqlFile), stopOnError, replyHandler);
-    } catch (Exception e) {
-      log.error(e.getMessage(), e);
-      replyHandler.handle(Future.failedFuture(e));
-    }
+  public void runSQLFile(String sqlFile, boolean stopOnError, Handler<AsyncResult<List<String>>> replyHandler) {
+    runSQLFile(sqlFile, stopOnError)
+    .onComplete(replyHandler);
   }
 
   /**
@@ -4195,18 +4189,16 @@ public class PostgresClient {
    *   with list of failures, each failure is a string with the SQL command that failed and the error message,
    *   failing AsyncResult if connection to database fails
    */
-  private void execute(String[] sql, boolean stopOnError,
-                       Handler<AsyncResult<List<String>>> replyHandler) {
-
+  private Future<List<String>> execute(String[] sql, boolean stopOnError) {
     long s = System.nanoTime();
-    log.info("Executing multiple statements with id " + Arrays.hashCode(sql));
+    var sqlHash = Arrays.hashCode(sql);
+    log.info("Executing multiple statements with id {}", sqlHash);
     List<String> results = new LinkedList<>();
     PostgresClient postgresClient = getInstance(vertx);
     if (postgresClient == null) {
-      replyHandler.handle(Future.failedFuture("Cannot create PostgresClient instance"));
-      return;
+      return Future.failedFuture("Cannot create PostgresClient instance");
     }
-    postgresClient.getConnection()
+    return postgresClient.getConnection()
         .compose(conn -> conn.begin()
             .compose(tx -> {
               Future<Void> future = Future.succeededFuture();
@@ -4219,7 +4211,7 @@ public class PostgresClient {
                         log.info("Successfully executed: {}", stmt);
                         return Future.succeededFuture();
                       }, res -> {
-                        log.error(res.getMessage(), res);
+                        log.error("Statements with id {} caused error {}", sqlHash, res.getMessage(), res);
                         results.add(stmt + "\n" + res.getMessage());
                         if (stopOnError) {
                           return Future.failedFuture(stmt);
@@ -4237,14 +4229,14 @@ public class PostgresClient {
                       return tx.rollback();
                     }
                   }, x -> tx.rollback())
-                  .eventually(y -> conn.close());
+                  .eventually(conn::close);
             }))
+        .map(results)
         .onComplete(x -> {
           if (x.failed()) {
-            log.error(x.cause().getMessage(), x.cause());
+            log.error("{}", x.cause().getMessage(), x.cause());
           }
-          logTimer(EXECUTE_STAT_METHOD, "" + Arrays.hashCode(sql), s);
-          replyHandler.handle(Future.succeededFuture(results));
+          logTimer(EXECUTE_STAT_METHOD, "" + sqlHash, s);
         });
   }
 
