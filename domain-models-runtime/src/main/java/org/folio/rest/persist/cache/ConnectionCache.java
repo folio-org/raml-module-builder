@@ -139,6 +139,26 @@ public class ConnectionCache {
     metrics.active++;
   }
 
+  public void decrementActive() {
+    metrics.active--;
+  }
+
+  public void incrementRecycled() {
+    metrics.incrementRecycled();
+  }
+
+  public void incrementRecycleErrors() {
+    metrics.incrementRecycleErrors();
+  }
+
+  public void incrementNewConnections() {
+    metrics.incrementNewConnections();
+  }
+
+  public void incrementNewConnectionErrors() {
+    metrics.incrementNewConnectionErrors();
+  }
+
   public void setPoolSizeMetric(int size) {
     metrics.poolSize = size;
   }
@@ -148,11 +168,19 @@ public class ConnectionCache {
     int misses;
     int active;
     int poolSize;
+    int recycled;
+    int recycleErrors;
+    int newConnections;
+    int newConnectionErrors;
 
     void clear() {
       hits = 0;
       misses = 0;
       active = 0;
+      recycled = 0;
+      recycleErrors = 0;
+      newConnections = 0;
+      newConnectionErrors = 0;
     }
 
     void incrementHits() {
@@ -163,9 +191,25 @@ public class ConnectionCache {
       misses = (misses == Integer.MAX_VALUE) ? 0 : (misses + 1);
     }
 
+    void incrementNewConnections() {
+      newConnections = (newConnections == Integer.MAX_VALUE) ? 0 : (newConnections + 1);
+    }
+
+    void incrementNewConnectionErrors() {
+      newConnectionErrors = (newConnectionErrors == Integer.MAX_VALUE) ? 0 : (newConnectionErrors + 1);
+    }
+
+    void incrementRecycled() {
+      recycled = (recycled == Integer.MAX_VALUE) ? 0 : (recycled + 1);
+    }
+
+    void incrementRecycleErrors() {
+      recycleErrors = (recycleErrors == Integer.MAX_VALUE) ? 0 : (recycleErrors + 1);
+    }
+
     String toString(String msg) {
-      return msg + String.format(":: %s hits, %s misses, %s size, %s active, %s pool",
-          hits, misses, cache.size(), active, poolSize);
+      return msg + String.format(":: %s hits, %s misses, %s recycled, %s recycleErrors, %s newConnections, %s newConnectionErrors, %s size, %s active, %s pool",
+          hits, misses, recycled, recycleErrors, newConnections, newConnectionErrors, cache.size(), active, poolSize);
     }
 
     String toStringDebug() {
