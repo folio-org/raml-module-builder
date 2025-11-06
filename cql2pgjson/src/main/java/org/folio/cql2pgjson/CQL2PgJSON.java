@@ -181,7 +181,7 @@ public class CQL2PgJSON {
   private static Schema loadDbSchemaFromResource(String schemaPath) {
     try {
       String dbJson = ResourceUtil.asString(schemaPath, CQL2PgJSON.class);
-      logger.info("loadDbSchema: Loaded {} OK", schemaPath);
+      logger.debug("loadDbSchema: Loaded {} OK", schemaPath);
       return ObjectMapperTool.getMapper().readValue(dbJson, Schema.class);
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -923,7 +923,7 @@ public class CQL2PgJSON {
     }
     String sql = "get_tsvector(" + indexText + ") " + "@@ " + tsTerm.toString();
 
-    logger.info("full text index {} generated SQL {}", indexText, sql);
+    logger.debug("full text index {} generated SQL {}", indexText, sql);
     return sql;
   }
 
@@ -981,7 +981,7 @@ public class CQL2PgJSON {
       }
     }
 
-    logger.info("index {} generated SQL {}", indexText, sql);
+    logger.debug("index {} generated SQL {}", indexText, sql);
     return sql;
   }
 
@@ -1016,7 +1016,7 @@ public class CQL2PgJSON {
       logger.warn("Doing SQL query without index for {}", s);
     }
 
-    logger.info("index {} generated SQL {}", indexMod, sql);
+    logger.debug("index {} generated SQL {}", indexMod, sql);
     return sql;
   }
 
