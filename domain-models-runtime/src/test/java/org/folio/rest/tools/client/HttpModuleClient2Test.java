@@ -5,7 +5,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.vertx.core.Future;
 import io.vertx.core.MultiMap;
-import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
@@ -19,7 +18,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -64,21 +62,20 @@ public class HttpModuleClient2Test {
 
     router.routeWithRegex("/test.*").handler(this::myPreHandle);
 
-    Promise<Void> promise = Promise.promise();
     HttpServerOptions so = new HttpServerOptions().setHandle100ContinueAutomatically(true);
-    vertx.createHttpServer(so)
+    return vertx.createHttpServer(so)
         .requestHandler(router)
-        .listen(port1, x -> promise.handle(x.mapEmpty()));
-    return promise.future();
-
+        .listen(port1)
+        .mapEmpty();
   }
+
   @Before
   public void before(TestContext context) {
     vertx = Vertx.vertx();
     port1 = NetworkUtils.nextFreePort();
     port2 = NetworkUtils.nextFreePort();
-    Future<Void> future = startServer();
-    future.onComplete(context.asyncAssertSuccess());
+    startServer()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @After

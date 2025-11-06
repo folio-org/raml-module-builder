@@ -63,7 +63,8 @@ public class RunSQLIT {
   @After
   public void tearDown(TestContext context) {
     client.closeClient(context.asyncAssertSuccess());
-    vertx.close(context.asyncAssertSuccess());
+    vertx.close()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @Test

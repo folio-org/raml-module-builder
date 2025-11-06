@@ -7,7 +7,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -32,7 +31,7 @@ public class ApiTestBase {
    *  and ErrorLoggingFilter (logs to System.out).
    */
   static RequestSpecification r;
-  private static final CompletableFuture<String> deploymentFuture = new CompletableFuture<String>();
+  private static boolean isDeployed = false;
 
   @BeforeAll
   static void beforeAll() {
@@ -42,26 +41,23 @@ public class ApiTestBase {
     vertx = VertxUtils.getVertxWithExceptionHandler();
 
     // once for all test classes: starting and tenant initialization
-    if (deploymentFuture.isDone()) {
+    if (isDeployed) {
       return;
     }
 
     PostgresClient.setPostgresTester(new PostgresTesterContainer());
     DeploymentOptions deploymentOptions = new DeploymentOptions()
         .setConfig(new JsonObject().put("http.port", RestAssured.port));
-
-    vertx.deployVerticle(RestVerticle.class, deploymentOptions, deploy -> {
-      if (deploy.failed()) {
-        deploymentFuture.completeExceptionally(deploy.cause());
-        return;
-      }
-      deploymentFuture.complete(deploy.result());
-    });
     try {
-      deploymentFuture.get(10, TimeUnit.SECONDS);
+      vertx.deployVerticle(RestVerticle.class, deploymentOptions)
+      .toCompletionStage()
+      .toCompletableFuture()
+      .get(10, TimeUnit.SECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       throw new RuntimeException(e);
     }
+
+    isDeployed = true;
 
     r = given().
         filter(new ErrorLoggingFilter()).

@@ -4,6 +4,7 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 36.0](#version-360)
 * [Version 35.3](#version-353)
 * [Version 35.2](#version-352)
 * [Version 35.1](#version-351)
@@ -25,6 +26,19 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 26](#version-26)
 * [Version 25](#version-25)
 * [Version 20](#version-20)
+
+## Version 36.0
+
+36.0.\* is the Trillium version.
+
+All command line options must be passed as system properties using `-D` before the `-jar` argument. `MODULE_SPECIFIC_ARGS` no longer exists.
+Modules should prefer environment variables.
+
+In the log4j pattern (used in log4j2.properties and log4j2-json.properties) upcase id:
+* `FolioLoggingContext:requestid` -> `FolioLoggingContext:requestId`
+* `FolioLoggingContext:tenantid` -> `FolioLoggingContext:tenantId`
+* `FolioLoggingContext:userid` -> `FolioLoggingContext:userId`
+* `FolioLoggingContext:moduleid` -> `FolioLoggingContext:moduleId`
 
 ## Version 35.3
 

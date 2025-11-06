@@ -24,24 +24,18 @@ import java.util.stream.Collector;
 
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
-import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.JsonObject;
 import io.vertx.pgclient.PgConnectOptions;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.impl.RowImpl;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.SqlResult;
-import io.vertx.sqlclient.impl.RowDesc;
-import org.folio.rest.persist.facets.FacetField;
-import org.folio.rest.persist.helpers.LocalRowDesc;
 import org.folio.rest.persist.helpers.LocalRowSet;
 import org.folio.rest.security.AES;
 import org.folio.rest.security.AESTest;
 import org.folio.rest.tools.utils.Envs;
-import org.folio.rest.tools.utils.NetworkUtils;
 import org.folio.util.PostgresTester;
 import org.folio.util.ResourceUtil;
 import org.folio.rest.jaxrs.model.User;
@@ -51,9 +45,10 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
+/**
+ * @see PostgresClientIT for the tests that require a postgres database
+ */
 public class PostgresClientTest {
-  // See PostgresClientIT.java for the tests that require a postgres database!
-
   private String oldConfigFilePath;
   /** empty = no environment variables */
   private JsonObject empty = new JsonObject();
@@ -94,7 +89,6 @@ public class PostgresClientTest {
 
   @Test
   public void configDefaultWithPortAndTenant() throws Exception {
-    int port = NetworkUtils.nextFreePort();
     PostgresClient.setConfigFilePath("nonexisting");
     JsonObject config = PostgresClient.getPostgreSQLClientConfig("footenant", "barschema", empty, false);
     assertThat(config.getBoolean("postgres_tester"), is(false));
@@ -409,31 +403,6 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void testProcessResults() {
-    PostgresClient testClient = PostgresClient.testClient();
-
-    int total = 15;
-    RowSet<Row> rs = getMockTestPojoResultSet(total);
-
-    List<TestPojo> results = testClient.processResults(rs, total, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class).getResults();
-
-    assertTestPojoResults(results, total);
-  }
-
-  @Test
-  public void testDeserializeResults() {
-    PostgresClient testClient = PostgresClient.testClient();
-
-    int total = 25;
-    RowSet<Row> rs = getMockTestPojoResultSet(total);
-    PostgresClient.ResultsHelper<TestPojo> resultsHelper = new PostgresClient.ResultsHelper<>(rs, total, TestPojo.class);
-
-    testClient.deserializeResults(resultsHelper);
-
-    assertTestPojoResults(resultsHelper.list, total);
-  }
-
-  @Test
   public void testIsAuditFlavored() {
     PostgresClient testClient = PostgresClient.testClient();
     assertThat(testClient.isAuditFlavored(TestJsonbPojo.class), is(true));
@@ -470,12 +439,7 @@ public class PostgresClientTest {
     Double biz = 1.0;
     String [] baz = new String[] { "This", "is", "a", "test" };
 
-    RowDesc desc = new LocalRowDesc(List.of("foo", "bar", "biz", "baz"));
-    Row row = new RowImpl(desc);
-    row.addString(foo);
-    row.addString(bar);
-    row.addDouble(biz);
-    row.addArrayOfString(baz);
+    var row = mockRow(foo, bar, biz, baz);
 
     testClient.populateExternalColumns(externalColumnSetters, o, row);
     assertThat(o.getFoo(), is(foo));
@@ -510,26 +474,22 @@ public class PostgresClientTest {
       return new Query<RowSet<Row>>() {
 
         @Override
-        public void execute(Handler<AsyncResult<RowSet<Row>>> handler) {
+        public Future<RowSet<Row>> execute() {
           if (s.startsWith("EXPLAIN") && failExplain) {
-            handler.handle(Future.failedFuture("failExplain"));
-          } else if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
+            return Future.failedFuture("failExplain");
+          }
+          if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
             List<String> columnNames = List.of("COUNT");
-            RowDesc rowDesc = new LocalRowDesc(columnNames);
-            Row row = new RowImpl(rowDesc);
+            Row row = mock(Row.class);
             row.addInteger(asyncResult.result().size());
             List<Row> rows = new LinkedList<>();
             rows.add(row);
-            RowSet rowSet = new LocalRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
-            handler.handle(Future.succeededFuture(rowSet));
-          } else {
-            handler.handle(asyncResult);
+            RowSet<Row> rowSet = new LocalRowSet(asyncResult.result().size()).withColumns(columnNames).withRows(rows);
+            return Future.succeededFuture(rowSet);
           }
-        }
-
-        @Override
-        public Future<RowSet<Row>> execute() {
-          return Future.future(promise -> execute(promise));
+          return asyncResult.failed()
+              ? Future.failedFuture(asyncResult.cause())
+              : Future.succeededFuture(asyncResult.result());
         }
 
         @Override
@@ -546,50 +506,6 @@ public class PostgresClientTest {
   }
 
   @Test
-  public void testProcessQueryWithCount()  {
-    PostgresClient testClient = PostgresClient.testClient();
-    QueryHelper queryHelper = new QueryHelper("test_pojo");
-    queryHelper.selectQuery = "SELECT * FROM test_pojo";
-    queryHelper.countQuery = "COUNT (*) FROM test_pojo";
-
-    int total = 10;
-
-    PgConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), false);
-
-    testClient.processQueryWithCount(connection, queryHelper, "get",
-      totaledResults -> {
-        assertThat(totaledResults.estimatedTotal, is(total));
-        return testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestPojo.class);
-      }).onSuccess(reply -> assertTestPojoResults(reply.getResults(), total));
-  }
-
-  @Test
-  public void testProcessQuery() {
-    PostgresClient testClient = PostgresClient.testClient();
-    List<FacetField> facets = new ArrayList<FacetField>() {
-      {
-        add(new FacetField("jsonb->>'biz'"));
-      }
-    };
-    QueryHelper queryHelper = new QueryHelper("test_jsonb_pojo");
-    queryHelper.selectQuery = "SELECT id, foo, bar FROM test_jsonb_pojo LIMIT 30 OFFSET 1";
-
-    int total = 30;
-
-    PgConnection connection = new FakeSqlConnection(Future.succeededFuture(getMockTestJsonbPojoResultSet(total)), true);
-
-    testClient.processQuery(connection, queryHelper, total, "get",
-      totaledResults -> testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
-      reply -> {
-        List<TestJsonbPojo> results = reply.result().getResults();
-
-        assertTestJsonbPojoResults(results, total);
-      }
-    );
-
-  }
-
-  @Test
   public void testProcessQueryFails() {
     PostgresClient testClient = PostgresClient.testClient();
     QueryHelper queryHelper = new QueryHelper("test_jsonb_pojo");
@@ -597,7 +513,7 @@ public class PostgresClientTest {
 
     PgConnection connection = new FakeSqlConnection(Future.failedFuture("Bad query"), false);
 
-    testClient.processQuery(connection, queryHelper, 30, "get",
+    testClient.processQuery(connection, queryHelper, 30,
       totaledResults -> testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
         assertThat(reply.failed(), is(true));
@@ -613,7 +529,7 @@ public class PostgresClientTest {
     queryHelper.selectQuery = "SELECT foo";
 
     PgConnection connection = null;
-    testClient.processQuery(connection, queryHelper, 30, "get",
+    testClient.processQuery(connection, queryHelper, 30,
       totaledResults -> testClient.processResults(totaledResults.set, totaledResults.estimatedTotal, DEFAULT_OFFSET, DEFAULT_LIMIT, TestJsonbPojo.class),
       reply -> {
         assertThat(reply.failed(), is(true));
@@ -622,71 +538,18 @@ public class PostgresClientTest {
     );
   }
 
-  private RowSet<Row> getMockTestPojoResultSet(int total) {
-    List<String> columnNames = List.of("id", "foo", "bar", "biz", "baz");
-    RowDesc rowDesc = new LocalRowDesc(columnNames);
-    List<Row> rows = new LinkedList<>();
-    for (int i = 0; i < total; i++) {
-      Row row = new RowImpl(rowDesc);
-      row.addUUID(UUID.randomUUID());
-      row.addString("foo " + i);
-      row.addString("bar " + i);
-      row.addDouble((double) i);
-      row.addArrayOfString(new String[] { "This", "is", "a", "test" } );
-      rows.add(row);
-    }
-    return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
-  }
-
-  private void assertTestPojoResults(List<TestPojo> results, int total) {
-    assertThat(results.size(), is(total));
-
-    for(int i = 0; i < total; i++) {
-      assertThat(results.get(i).getFoo(), is("foo " + i));
-      assertThat(results.get(i).getBar(), is("bar " + i));
-      assertThat(results.get(i).getBiz(), is((double)i));
-      assertThat(results.get(i).getBaz().size(), is(4));
-      assertThat(results.get(i).getBaz().get(0), is("This"));
-      assertThat(results.get(i).getBaz().get(1), is("is"));
-      assertThat(results.get(i).getBaz().get(2), is("a"));
-      assertThat(results.get(i).getBaz().get(3), is("test"));
-    }
-  }
-
-  private RowSet<Row> getMockTestJsonbPojoResultSet(int total) {
-    List<String> columnNames = List.of("jsonb");
-    RowDesc rowDesc = new LocalRowDesc(columnNames);
-    List<String> baz = new ArrayList<String>(Arrays.asList(new String[] {
-        "This", "is", "a", "test"
-    }));
-    List<Row> rows = new LinkedList<>();
-    for (int i = 0; i < total; i++) {
-      Row row = new RowImpl(rowDesc);
-      row.addValue(new JsonObject()
-          .put("id", UUID.randomUUID().toString())
-          .put("foo", "foo " + i)
-          .put("bar", "bar " + i)
-          .put("biz", (double) i)
-          .put("baz", baz)
-      );
-      rows.add(row);
-    }
-    return new LocalRowSet(total).withColumns(columnNames).withRows(rows);
-  }
-
-  private void assertTestJsonbPojoResults(List<TestJsonbPojo> results, int total) {
-    assertThat(results.size(), is(total));
-
-    for(int i = 0; i < total; i++) {
-      assertThat(results.get(i).getJsonb().getString("foo"), is("foo " + i));
-      assertThat(results.get(i).getJsonb().getString("bar"), is("bar " + i));
-      assertThat(results.get(i).getJsonb().getDouble("biz"), is((double)i));
-      assertThat(results.get(i).getJsonb().getJsonArray("baz").size(), is(4));
-      assertThat(results.get(i).getJsonb().getJsonArray("baz").getString(0), is("This"));
-      assertThat(results.get(i).getJsonb().getJsonArray("baz").getString(1), is("is"));
-      assertThat(results.get(i).getJsonb().getJsonArray("baz").getString(2), is("a"));
-      assertThat(results.get(i).getJsonb().getJsonArray("baz").getString(3), is("test"));
-    }
+  private static Row mockRow(String foo, String bar, Double biz, String[] baz) {
+    var row = mock(Row.class);
+    when(row.getColumnIndex("foo")).thenReturn(0);
+    when(row.getValue(0)).thenReturn(foo);
+    when(row.getColumnIndex("bar")).thenReturn(1);
+    when(row.getValue(1)).thenReturn(bar);
+    when(row.getColumnIndex("biz")).thenReturn(2);
+    when(row.getValue(2)).thenReturn(biz);
+    when(row.getColumnIndex("baz")).thenReturn(3);
+    when(row.getValue(3)).thenReturn(baz);
+    when(row.getArrayOfStrings(3)).thenReturn(baz);
+    return row;
   }
 
   static class TestPojo {

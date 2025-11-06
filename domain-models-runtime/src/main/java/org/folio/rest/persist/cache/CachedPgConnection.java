@@ -1,6 +1,5 @@
 package org.folio.rest.persist.cache;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
@@ -13,7 +12,6 @@ import io.vertx.sqlclient.PreparedStatement;
 import io.vertx.sqlclient.Query;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
-import io.vertx.sqlclient.SqlConnection;
 import io.vertx.sqlclient.Transaction;
 import io.vertx.sqlclient.spi.DatabaseMetadata;
 import java.util.UUID;
@@ -71,12 +69,6 @@ public class CachedPgConnection implements PgConnection {
   }
 
   @Override
-  public void close(Handler<AsyncResult<Void>> handler) {
-    LOG.debug("Calling close: Handler<AsyncResult<Void>>");
-    close().onComplete(handler);
-  }
-
-  @Override
   public PgConnection closeHandler(Handler<Void> handler) {
     LOG.debug("Calling closeHandler: Handler<Void>");
     closeHandler = handler;
@@ -94,11 +86,6 @@ public class CachedPgConnection implements PgConnection {
   }
 
   @Override
-  public PgConnection cancelRequest(Handler<AsyncResult<Void>> handler) {
-    return connection.cancelRequest(handler);
-  }
-
-  @Override
   public Future<Void> cancelRequest() {
     return connection.cancelRequest();
   }
@@ -113,20 +100,10 @@ public class CachedPgConnection implements PgConnection {
     return connection.secretKey();
   }
 
-  @Override
-  public PgConnection prepare(String s, Handler<AsyncResult<PreparedStatement>> handler) {
-    return connection.prepare(s, handler);
-  }
 
   @Override
   public Future<PreparedStatement> prepare(String s) {
     return connection.prepare(s);
-  }
-
-  @Override
-  public SqlConnection prepare(String s, PrepareOptions prepareOptions,
-                               Handler<AsyncResult<PreparedStatement>> handler) {
-    return connection.prepare(s, prepareOptions, handler);
   }
 
   @Override
@@ -137,11 +114,6 @@ public class CachedPgConnection implements PgConnection {
   @Override
   public PgConnection exceptionHandler(Handler<Throwable> handler) {
     return connection.exceptionHandler(handler);
-  }
-
-  @Override
-  public void begin(Handler<AsyncResult<Transaction>> handler) {
-    connection.begin(handler);
   }
 
   @Override

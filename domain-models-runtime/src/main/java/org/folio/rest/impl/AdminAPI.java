@@ -11,9 +11,7 @@ import java.text.DecimalFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.BiConsumer;
-
 import javax.ws.rs.core.Response;
-
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
@@ -90,109 +88,105 @@ public class AdminAPI implements Admin {
 
   @Override
   public void getAdminJstack(java.util.Map<String, String>okapiHeaders, Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
+    vertxContext.owner().executeBlocking(() -> getAdminJstack())
+    .onComplete(asyncResultHandler::handle);
+  }
 
-    final StringBuilder dump = new StringBuilder();
-    vertxContext.owner().executeBlocking(
-      code -> {
-        try {
-          dump.append("<html><body>");
-          final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-          final ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(
-            threadMXBean.getAllThreadIds(), 100);
-          for (ThreadInfo threadInfo : threadInfos) {
-            dump.append(threadInfo.getThreadName());
-            final Thread.State state = threadInfo.getThreadState();
-            dump.append("</br>   java.lang.Thread.State: ");
-            dump.append(state);
-            final StackTraceElement[] stackTraceElements = threadInfo.getStackTrace();
-            for (final StackTraceElement stackTraceElement : stackTraceElements) {
-              dump.append("</br>        at ");
-              dump.append(stackTraceElement);
-            }
-            dump.append("</br></br>");
-          }
-          dump.append("</body></html>");
-          code.complete(dump);
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.respond500WithTextPlain("ERROR"
-              + e.getMessage())));
+  private static Response getAdminJstack() {
+    try {
+      final StringBuilder dump = new StringBuilder();
+      dump.append("<html><body>");
+      final ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+      final ThreadInfo[] threadInfos = threadMXBean.getThreadInfo(
+        threadMXBean.getAllThreadIds(), 100);
+      for (ThreadInfo threadInfo : threadInfos) {
+        dump.append(threadInfo.getThreadName());
+        final Thread.State state = threadInfo.getThreadState();
+        dump.append("</br>   java.lang.Thread.State: ");
+        dump.append(state);
+        final StackTraceElement[] stackTraceElements = threadInfo.getStackTrace();
+        for (final StackTraceElement stackTraceElement : stackTraceElements) {
+          dump.append("</br>        at ");
+          dump.append(stackTraceElement);
         }
-      },
-      result -> {
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminJstackResponse.respond200WithTextHtml(result.result().toString())));
-      });
+        dump.append("</br></br>");
+      }
+      dump.append("</body></html>");
+      return GetAdminJstackResponse.respond200WithTextHtml(dump.toString());
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return GetAdminJstackResponse.respond500WithTextPlain("ERROR: " + e.getMessage());
+    }
   }
 
   @Validate
   @Override
   public void getAdminMemory(boolean history, java.util.Map<String, String>okapiHeaders,
       Handler<AsyncResult<Response>> asyncResultHandler, Context vertxContext) {
-    final StringBuilder dump = new StringBuilder();
-    vertxContext.owner().executeBlocking(
-      code -> {
-        try {
-          dump.append("<br><table>");
-          for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
-            MemoryUsage mem = pool.getCollectionUsage();
-            MemoryUsage curMem = pool.getUsage();
-            MemoryUsage peakMem = pool.getPeakUsage();
-            long usageAfterGC = -1;
-            long currentUsage = -1;
-            double usageAfterGCPercent = -1;
-            double currentUsagePercent = -1;
-            long peakUsage = -1;
-            if (mem != null) {
-              usageAfterGC = mem.getUsed() / 1024 / 1024;
-              usageAfterGCPercent = (double) mem.getUsed() / (double) mem.getCommitted() * 100; // Mimic jstat behavior
-            }
-            if (curMem != null) {
-              currentUsage = curMem.getUsed() / 1024 / 1024;
-              if (curMem.getMax() > 0) {
-                currentUsagePercent = (double) curMem.getUsed() / (double) curMem.getCommitted()
-                    * 100; // Mimic jstat behavior
-              }
-            }
-            if (peakMem != null) {
-              peakUsage = peakMem.getUsed() / 1024 / 1024;
-            }
-            dump.append("<tr><td>name: ").append(pool.getName()).append("   </td>").append(
-              "<td>memory usage after latest gc: <b>").append(usageAfterGC).append(
-              "</b>MB.   </td>").append("<td>type: ").append(pool.getType()).append("   </td>").append(
-              "<td>estimate of memory usage: <b>").append(currentUsage).append("</b>MB.   </td>").append(
-              "<td>peak usage: ").append(peakUsage).append("MB.   </td>").append(
-              "<td> % used memory after GC: <b>").append(DECFORMAT.format(usageAfterGCPercent)).append(
-              "</b>  </td>").append("<td> % used memory current: <b>").append(
-              DECFORMAT.format(currentUsagePercent)).append("</b>   </td></tr>");
-          }
-          dump.append("</table><br><br>");
-          final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
-          final MemoryUsage memInfo = memoryMXBean.getHeapMemoryUsage();
-          long memCommittedToJVMByOS = memInfo.getCommitted();
-          long memUsedByJVM = memInfo.getUsed();
-          dump.append("<b>Total: </b> Memory used/available(MB): ").append(
-            (memUsedByJVM / 1024 / 1024)).append("/").append(memCommittedToJVMByOS / 1024 / 1024).append(
-            "<br>");
-          if (history) {
-            StringBuilder historyMem = new StringBuilder();
-            jvmMemoryHistory.put(new Date(), dump.toString());
-            BiConsumer<Date, String> biConsumer = (key, value) -> historyMem.append(key.toInstant().toString()
-                + "<br>" + value);
-            jvmMemoryHistory.forEach(biConsumer);
-            code.complete(historyMem);
-          } else {
-            jvmMemoryHistory.clear();
-            code.complete(dump);
-          }
-        } catch (Exception e) {
-          log.error(e.getMessage(), e);
-          asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.respond500WithTextPlain("ERROR"
-              + e.getMessage())));
+
+    vertxContext.owner().executeBlocking(() -> getAdminMemory(history))
+    .onComplete(asyncResultHandler::handle);
+  }
+
+  private static Response getAdminMemory(boolean history) {
+    try {
+      final StringBuilder dump = new StringBuilder();
+      dump.append("<br><table>");
+      for (MemoryPoolMXBean pool : ManagementFactory.getMemoryPoolMXBeans()) {
+        MemoryUsage mem = pool.getCollectionUsage();
+        MemoryUsage curMem = pool.getUsage();
+        MemoryUsage peakMem = pool.getPeakUsage();
+        long usageAfterGC = -1;
+        long currentUsage = -1;
+        double usageAfterGCPercent = -1;
+        double currentUsagePercent = -1;
+        long peakUsage = -1;
+        if (mem != null) {
+          usageAfterGC = mem.getUsed() / 1024 / 1024;
+          usageAfterGCPercent = (double) mem.getUsed() / (double) mem.getCommitted() * 100; // Mimic jstat behavior
         }
-      },
-      result -> {
-        asyncResultHandler.handle(io.vertx.core.Future.succeededFuture(GetAdminMemoryResponse.respond200WithTextHtml(result.result().toString())));
-      });
+        if (curMem != null) {
+          currentUsage = curMem.getUsed() / 1024 / 1024;
+          if (curMem.getMax() > 0) {
+            currentUsagePercent = (double) curMem.getUsed() / (double) curMem.getCommitted()
+                * 100; // Mimic jstat behavior
+          }
+        }
+        if (peakMem != null) {
+          peakUsage = peakMem.getUsed() / 1024 / 1024;
+        }
+        dump.append("<tr><td>name: ").append(pool.getName()).append("   </td>").append(
+          "<td>memory usage after latest gc: <b>").append(usageAfterGC).append(
+          "</b>MB.   </td>").append("<td>type: ").append(pool.getType()).append("   </td>").append(
+          "<td>estimate of memory usage: <b>").append(currentUsage).append("</b>MB.   </td>").append(
+          "<td>peak usage: ").append(peakUsage).append("MB.   </td>").append(
+          "<td> % used memory after GC: <b>").append(DECFORMAT.format(usageAfterGCPercent)).append(
+          "</b>  </td>").append("<td> % used memory current: <b>").append(
+          DECFORMAT.format(currentUsagePercent)).append("</b>   </td></tr>");
+      }
+      dump.append("</table><br><br>");
+      final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+      final MemoryUsage memInfo = memoryMXBean.getHeapMemoryUsage();
+      long memCommittedToJVMByOS = memInfo.getCommitted();
+      long memUsedByJVM = memInfo.getUsed();
+      dump.append("<b>Total: </b> Memory used/available(MB): ").append(
+        (memUsedByJVM / 1024 / 1024)).append("/").append(memCommittedToJVMByOS / 1024 / 1024).append(
+        "<br>");
+      if (history) {
+        StringBuilder historyMem = new StringBuilder();
+        jvmMemoryHistory.put(new Date(), dump.toString());
+        BiConsumer<Date, String> biConsumer = (key, value) -> historyMem.append(key.toInstant().toString()
+            + "<br>" + value);
+        jvmMemoryHistory.forEach(biConsumer);
+        return GetAdminMemoryResponse.respond200WithTextHtml(historyMem.toString());
+      } else {
+        jvmMemoryHistory.clear();
+        return GetAdminMemoryResponse.respond200WithTextHtml(dump.toString());
+      }
+    } catch (Exception e) {
+      log.error(e.getMessage(), e);
+      return GetAdminMemoryResponse.respond500WithTextPlain("ERROR: " + e.getMessage());
+    }
   }
 
   @Validate
