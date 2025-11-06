@@ -1009,7 +1009,7 @@ public class Conn {
       .compose(preparedStatement -> {
         PreparedRowStream rowStream = new PreparedRowStream(preparedStatement, chunkSize, params);
         rowStreamHandler.handle(rowStream);
-        return rowStream.getResult().eventually(() -> preparedStatement.close());
+        return rowStream.getResult().eventually(preparedStatement::close);
       });
     } catch (Throwable e) {
       log.error(e.getMessage() + " - " + sql, e);
@@ -1099,7 +1099,7 @@ public class Conn {
       long start = log.isDebugEnabled() ? System.nanoTime() : 0;
       return pgConnection.prepare(sql)
           .compose(preparedStatement -> preparedStatement.query().executeBatch(params)
-              .eventually(() -> preparedStatement.close()))
+              .eventually(preparedStatement::close))
           .onComplete(x -> log.debug(() -> durationMsg("execute", sql, start)));
     } catch (Exception e) {
       log.error(e.getMessage(), e);

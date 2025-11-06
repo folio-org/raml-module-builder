@@ -480,7 +480,6 @@ public class PostgresClientTest {
           }
           if (s.startsWith("COUNT ") && asyncResult.succeeded()) {
             List<String> columnNames = List.of("COUNT");
-            // RowDesc rowDesc = new LocalRowDesc(columnNames);
             Row row = mock(Row.class);
             row.addInteger(asyncResult.result().size());
             List<Row> rows = new LinkedList<>();
