@@ -281,8 +281,8 @@ public class PostgresClient {
    *   this is never null
    */
   public static String getConfigFilePath(){
-    if (configPath == null){
-      configPath = POSTGRES_LOCALHOST_CONFIG;
+    if (configPath == null) {
+      configPath = System.getProperty("db_connection", POSTGRES_LOCALHOST_CONFIG);
     }
     return configPath;
   }

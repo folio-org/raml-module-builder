@@ -320,13 +320,15 @@ we will get your local development server running and populated with test data.
 
 ## Command-line options
 
+Use the `-D` option before the `-jar` argument to pass options as system properties.
+
 - `-Dhttp.port=8080` Optional -- defaults to 8081
 
 - `-Ddebug_log_package=*` Optional -- Set log level to debug for all packages.
 Or use `org.folio.rest.*` for all classes within a specific package,
 or `org.folio.rest.RestVerticle` for a specific class.
 
-- `db_connection=[path]` Optional -- path to a JSON config file with
+- `-Ddb_connection=[path]` Optional -- path to a JSON config file with
   connection parameters to a PostgreSQL DB
 
   - for example Postgres: `{"host":"localhost", "port":5432, "maxPoolSize":50,
@@ -338,14 +340,6 @@ or `org.folio.rest.RestVerticle` for a specific class.
   - tries to read a file at the path if the path is absolute
 
   - if file not found or path is relative tries to read a class path resource with that path
-
-- Other module-specific arguments can be passed via the command line in the format key=value. These will be accessible to implementing modules via `RestVerticle.MODULE_SPECIFIC_ARGS` map.
-
-- Optional JVM arguments can be passed before the `-jar` argument, e.g.
-`-XX:+HeapDumpOnOutOfMemoryError`
-`-XX:+PrintGCDetails`
-`-XX:+PrintGCTimeStamps`
-`-Xloggc:C:\Git\circulation\gc.log`
 
 ## Environment Variables
 

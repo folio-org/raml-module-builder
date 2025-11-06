@@ -4,9 +4,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 
@@ -25,7 +22,6 @@ import io.vertx.ext.web.handler.StaticHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.folio.okapi.common.XOkapiHeaders;
-import org.folio.rest.persist.PostgresClient;
 import org.folio.rest.resource.DomainModelConsts;
 import org.folio.rest.tools.client.HttpClientFactory;
 import org.folio.rest.tools.client.test.HttpClientMock2;
@@ -43,8 +39,6 @@ public class RestVerticle extends AbstractVerticle {
   public static final String        STREAM_COMPLETE                 =  "COMPLETE";
   public static final String        STREAM_ABORT                    =  "STREAMED_ABORT";
 
-  public static final Map<String, String> MODULE_SPECIFIC_ARGS  = new HashMap<>(); //NOSONAR
-
   private static final String       HTTP_PORT_SETTING               = "http.port";
   private static final Logger       log                             = LogManager.getLogger(RestVerticle.class);
   private static String             deploymentId                     = "";
@@ -59,7 +53,7 @@ public class RestVerticle extends AbstractVerticle {
     readInGitProps();
 
     //process cmd line arguments
-    cmdProcessing(processArgs());
+    cmdProcessing();
 
     deploymentId = UUID.randomUUID().toString();
 
@@ -257,37 +251,11 @@ public class RestVerticle extends AbstractVerticle {
     }
   }
 
-  private static void cmdProcessing(List<String> cmdParams) {
-    // TODO need to add a normal command line parser
-
-    if (cmdParams != null) {
-      for (String param : cmdParams) {
-
-        if (param.startsWith("debug_log_package=")) {
-          String debugPackage = param.split("=")[1];
-          if(debugPackage != null && debugPackage.length() > 0){
-            log.info("Setting package {} to debug", debugPackage);
-            LogUtil.updateLogConfiguration(debugPackage, "FINE");
-          }
-        }
-        else if (param.startsWith("db_connection=")) {
-          String dbconnection = param.split("=")[1];
-          PostgresClient.setConfigFilePath(dbconnection);
-          log.info("Setting path to db config file....  " + dbconnection);
-        }
-        else{
-          //assume module specific cmd line args with '=' separator
-          String []arg = param.split("=");
-          if(arg.length == 2){
-            MODULE_SPECIFIC_ARGS.put(arg[0], arg[1]);
-            log.info("module specific argument added: {} with value {}", arg[0], arg[1]);
-          }
-          else{
-            log.warn("The following cmd line parameter was skipped, {}. Expected format key=value\nIf this is a "
-                + "JVM argument, pass it before the jar, not after", param);
-          }
-        }
-      }
+  private static void cmdProcessing() {
+    var debugPackage = System.getProperty("debug_log_package");
+    if (debugPackage != null && !debugPackage.isEmpty()) {
+      log.info("Setting package {} to debug", debugPackage);
+      LogUtil.updateLogConfiguration(debugPackage, "FINE");
     }
   }
 

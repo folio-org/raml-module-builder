@@ -31,6 +31,9 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 36.0.\* is the Trillium version.
 
+All command line options must be passed as system properties using `-D` before the `-jar` argument. `MODULE_SPECIFIC_ARGS` no longer exists.
+Modules should prefer environment variables.
+
 In the log4j pattern (used in log4j2.properties and log4j2-json.properties) upcase id:
 * `FolioLoggingContext:requestid` -> `FolioLoggingContext:requestId`
 * `FolioLoggingContext:tenantid` -> `FolioLoggingContext:tenantId`
