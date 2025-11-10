@@ -517,11 +517,12 @@ public class TenantAPIIT extends TenantHelper {
         return Future.failedFuture("Load Failure");
       }
     };
-    tenantAPI.postTenantSync(new TenantAttributes(), okapiHeaders, context.asyncAssertSuccess(result -> {
+    tenantAPI.postTenantSync(new TenantAttributes(), okapiHeaders, vertx.getOrCreateContext())
+    .onComplete(context.asyncAssertSuccess(result -> {
       assertThat(result.getStatus(), is(400));
       String msg = (String) result.getEntity();
       assertThat(msg, is("Load Failure"));
-    }), vertx.getOrCreateContext());
+    }));
   }
 
   @Test
