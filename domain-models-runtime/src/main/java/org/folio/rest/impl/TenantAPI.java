@@ -344,10 +344,28 @@ public class TenantAPI implements Tenant {
    * @param headers Okapi headers
    * @param handler response handler
    * @param context Vert.x context
+   * @deprecated Use the futurized {@link #postTenantSync(TenantAttributes, Map, Context)} instead.
    */
+  @Deprecated(since = "36.0.0")
   public void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
                              Handler<AsyncResult<Response>> handler, Context context)  {
     postTenant(false, tenantAttributes, headers, handler, context);
+  }
+
+  /**
+   * Initialize tenant, synchronous mode.
+   *
+   * @param tenantAttributes attributes for operation
+   * @param headers Okapi headers
+   * @param context Vert.x context
+   * @return the Response
+   */
+  public Future<Response> postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
+      Context context)  {
+
+    Promise<Response> promise = Promise.promise();
+    postTenant(false, tenantAttributes, headers, promise::handle, context);
+    return promise.future();
   }
 
   Future<TenantJob> checkJob(String tenantId, UUID jobId, Context context) {
