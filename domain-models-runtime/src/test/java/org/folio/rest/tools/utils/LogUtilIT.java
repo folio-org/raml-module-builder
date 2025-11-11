@@ -14,6 +14,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +29,7 @@ class LogUtilIT {
 
   @BeforeAll
   static void setUp() {
+    setLogLevel(Level.DEBUG);
     appender = new Appender();
     logger = (Logger) LogManager.getLogger(LogUtil.class);
     logger.addAppender(appender);
@@ -36,6 +38,11 @@ class LogUtilIT {
   @AfterAll
   static void tearDown() {
     logger.removeAppender(appender);
+    setLogLevel(Level.INFO);
+  }
+
+  private static void setLogLevel(Level level) {
+    Configurator.setLevel(LogManager.getLogger(LogUtil.class), level);
   }
 
   @BeforeEach
