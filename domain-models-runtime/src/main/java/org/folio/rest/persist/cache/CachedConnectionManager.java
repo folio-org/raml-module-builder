@@ -131,7 +131,7 @@ public class CachedConnectionManager {
           connectionCache.incrementActive();
           connectionCache.incrementNewConnections();
 
-          LOG.info("Created new connection session for tenant {}: {}", tenantId, cachedConnection.getSessionId());
+          LOG.debug("Created new connection session for tenant {}: {}", tenantId, cachedConnection.getSessionId());
 
           return (PgConnection) cachedConnection;
         })
@@ -159,7 +159,7 @@ public class CachedConnectionManager {
           connection.setTenantAndSchema(tenantId, schemaName);
           connectionCache.incrementRecycled();
 
-          LOG.info("Recycled connection from {} to {}: {}", originalTenantId, tenantId, connection.getSessionId());
+          LOG.debug("Recycled connection from {} to {}: {}", originalTenantId, tenantId, connection.getSessionId());
 
           return (PgConnection) connection;
         })

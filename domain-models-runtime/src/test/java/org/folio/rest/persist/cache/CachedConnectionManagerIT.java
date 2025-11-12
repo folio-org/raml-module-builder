@@ -41,7 +41,7 @@ public class CachedConnectionManagerIT extends TenantHelper {
     var async = context.async();
     var pgClient1 = PostgresClient.getInstance(vertx, "tenant1");
     pgClient1.getConnection().onComplete(context.asyncAssertSuccess(conn1 -> {
-      // Closing the connection returns it to the cache
+      // Closing the connection returns it to the cache so it can be recycled.
       conn1.close();
 
       var pgClient2 = PostgresClient.getInstance(vertx, "tenant2");
@@ -51,6 +51,39 @@ public class CachedConnectionManagerIT extends TenantHelper {
         // Should still wrap the REAL connection, not the cached one
         assertEquals(PgConnectionImpl.class, recycledCached.getWrappedConnection().getClass());
         assertNotEquals(CachedPgConnection.class, recycledCached.getWrappedConnection().getClass());
+
+        async.complete();
+      }));
+    }));
+  }
+
+  @Test
+  public void shouldUpdateConnectionMetadataAfterConnectionSucceeds(TestContext context) {
+    PostgresClientHelper.setSharedPgPool(true);
+    tenantPost(new TenantAPI(), context, null, "tenant1");
+    tenantPost(new TenantAPI(), context, null, "tenant2");
+
+    var async = context.async();
+    var pgClient1 = PostgresClient.getInstance(vertx, "tenant1");
+    pgClient1.getConnection().onComplete(context.asyncAssertSuccess(conn1 -> {
+      var recycledCached1 = (CachedPgConnection) conn1;
+
+      assertEquals("tenant1", recycledCached1.getTenantId());
+      assertEquals("tenant1_raml_module_builder", recycledCached1.getSchemaName());
+
+      // Closing the connection returns it to the cache so it can be recycled.
+      conn1.close();
+
+      // But before it is recycled, it should still have the previous metadata.
+      assertEquals("tenant1", recycledCached1.getTenantId());
+      assertEquals("tenant1_raml_module_builder", recycledCached1.getSchemaName());
+
+      var pgClient2 = PostgresClient.getInstance(vertx, "tenant2");
+      pgClient2.getConnection().onComplete(context.asyncAssertSuccess(conn2 -> {
+        var recycledCached2 = (CachedPgConnection) conn2;
+
+        assertEquals("tenant2", recycledCached2.getTenantId());
+        assertEquals("tenant2_raml_module_builder", recycledCached2.getSchemaName());
 
         async.complete();
       }));
