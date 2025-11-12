@@ -1,13 +1,10 @@
 package org.folio.rest.persist.cache;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.folio.rest.persist.PgConnectionMock;
@@ -16,6 +13,8 @@ import org.folio.rest.persist.PostgresClientHelper;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+
+import static org.junit.Assert.*;
 
 @RunWith(VertxUnitRunner.class)
 public class CachedConnectionManagerTest {
