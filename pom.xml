@@ -37,7 +37,7 @@
     <micrometer.version>1.15.5</micrometer.version> <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
     <awaitility.version>4.3.0</awaitility.version>
     <hamcrest.version>3.0</hamcrest.version>
-    <okapi.version>7.0.0</okapi.version>
+    <okapi.version>7.0.1</okapi.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
