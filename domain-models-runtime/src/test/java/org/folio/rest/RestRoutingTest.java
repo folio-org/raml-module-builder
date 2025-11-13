@@ -7,8 +7,11 @@ import static org.hamcrest.Matchers.emptyArray;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.hamcrest.collection.ArrayMatching.arrayContaining;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.vertx.core.MultiMap;
@@ -28,8 +31,13 @@ import org.folio.rest.tools.utils.BinaryOutStream;
 import org.folio.rest.tools.utils.OutStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+
 import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
+import jakarta.validation.Path;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Null;
@@ -39,12 +47,30 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 @ExtendWith(VertxExtension.class)
-public class RestRoutingTest {
+class RestRoutingTest {
   @Test
-  public void utilityClass() {
+  void utilityClass() {
     UtilityClassTester.assertUtilityClass(RestRouting.class);
+  }
+
+  static Stream<Arguments> deletePathThrowsIllegalArgumentException() {
+    Path.Node node = when(mock(Path.Node.class).getName()).thenReturn("name").getMock();
+    var path0 = when(mock(Path.class).iterator()).thenReturn(List.<Path.Node>of().iterator()).getMock();
+    var path1 = when(mock(Path.class).iterator()).thenReturn(List.of(node).iterator()).getMock();
+    var path2 = when(mock(Path.class).iterator()).thenReturn(List.of(node, node).iterator()).getMock();
+    return Stream.of(
+        Arguments.of(path0),
+        Arguments.of(path1),
+        Arguments.of(path2));
+  }
+
+  @ParameterizedTest
+  @MethodSource
+  void deletePathThrowsIllegalArgumentException(Path path) {
+    assertThrows(IllegalArgumentException.class, () -> RestRouting.deletePath("", path));
   }
 
   private static class Foo {
@@ -84,6 +110,38 @@ public class RestRoutingTest {
     }
   }
 
+  private static class CatList {
+    @Valid
+    @JsonProperty("cats")
+    private List<Cat> cats;
+    public CatList() {
+    }
+    public CatList(List<Cat> cats) {
+      this.cats = cats;
+    }
+  }
+
+  private static class Cat {
+    @Null
+    @JsonProperty("moos")
+    private List<Moo> moos;
+    public Cat() {
+    }
+    public Cat(List<Moo> moos) {
+      this.moos = moos;
+    }
+  }
+
+  private static class Moo {
+    @JsonProperty("moo")
+    private String moo;
+    public Moo() {
+    }
+    public Moo(String moo) {
+      this.moo = moo;
+    }
+  }
+
   @Test
   void isValidRequestFail() {
     Errors errors = new Errors();
@@ -110,6 +168,14 @@ public class RestRoutingTest {
     assertThat(isValidRequest(new Baz("x"), Baz.class).readme, is(nullValue()));
     assertThat(isValidRequest(new Bar("y"), Bar.class).baz.readme, is(nullValue()));
     assertThat(isValidRequest(new Foo("id", new Bar("z")), Foo.class).bar.baz.readme, is(nullValue()));
+  }
+
+  @Test
+  void isValidRequestRemoveNullSubfieldWithArray() {
+    var catList = new CatList(List.of(new Cat(), new Cat(List.of(new Moo("a")))));
+    assertThat(catList.cats.get(1).moos, is(notNullValue()));
+    catList = isValidRequest(catList, CatList.class);
+    assertThat(catList.cats.get(1).moos, is(nullValue()));
   }
 
   Object parseEnum(String value, String defaultValue) throws Exception {
