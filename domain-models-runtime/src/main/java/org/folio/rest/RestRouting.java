@@ -153,19 +153,27 @@ public final class RestRouting {
           if (!(content instanceof JsonObject)) {
             content = JsonObject.mapFrom(content);
           }
-          JsonObject json = (JsonObject) content;
+          Object current = content;
           Node last = null;
           for (Node node : cv.getPropertyPath()) {
             if (last != null) {
-              json = json.getJsonObject(last.getName());
+              if (current instanceof JsonObject jsonObject) {
+                current = jsonObject.getValue(last.getName());
+              }
+              if (current instanceof JsonArray jsonArray && node.getIndex() != null) {
+                current = jsonArray.getValue(node.getIndex());
+              }
             }
             last = node;
           }
-          json.remove(last.getName());
+          if (current instanceof JsonObject jsonObject && last != null) {
+            jsonObject.remove(last.getName());
+          }
           continue;
         } catch (Exception e) {
+          String uri = rc == null ? "unknown" : absoluteUri(rc.request());
           withRequestId(rc, () -> LOGGER.warn("Failed to remove {} field from body when calling {}",
-              cv.getPropertyPath(), absoluteUri(rc.request()), e));
+              cv.getPropertyPath(), uri, e));
         }
       }
       Error error = new Error();

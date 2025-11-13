@@ -84,6 +84,38 @@ public class RestRoutingTest {
     }
   }
 
+  private static class CatList {
+    @Valid
+    @JsonProperty("cats")
+    private List<Cat> cats;
+    public CatList() {
+    }
+    public CatList(List<Cat> cats) {
+      this.cats = cats;
+    }
+  }
+
+  private static class Cat {
+    @Null
+    @JsonProperty("moos")
+    private List<Moo> moos;
+    public Cat() {
+    }
+    public Cat(List<Moo> moos) {
+      this.moos = moos;
+    }
+  }
+
+  private static class Moo {
+    @JsonProperty("moo")
+    private String moo;
+    public Moo() {
+    }
+    public Moo(String moo) {
+      this.moo = moo;
+    }
+  }
+
   @Test
   void isValidRequestFail() {
     Errors errors = new Errors();
@@ -110,6 +142,7 @@ public class RestRoutingTest {
     assertThat(isValidRequest(new Baz("x"), Baz.class).readme, is(nullValue()));
     assertThat(isValidRequest(new Bar("y"), Bar.class).baz.readme, is(nullValue()));
     assertThat(isValidRequest(new Foo("id", new Bar("z")), Foo.class).bar.baz.readme, is(nullValue()));
+    assertThat(isValidRequest(new CatList(List.of(new Cat(List.of(new Moo("a"))))), CatList.class).cats.getFirst().moos, is(nullValue()));
   }
 
   Object parseEnum(String value, String defaultValue) throws Exception {
