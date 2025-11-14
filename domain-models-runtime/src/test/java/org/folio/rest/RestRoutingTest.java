@@ -80,11 +80,16 @@ class RestRoutingTest {
     @Valid
     @JsonProperty("bar")
     private Bar bar;
+    @Null
+    @Valid
+    @JsonProperty("moo")
+    private Moo moo;
     public Foo() {
     }
-    public Foo(String id, Bar bar) {
+    public Foo(String id, Bar bar, Moo moo) {
       this.id = id;
       this.bar = bar;
+      this.moo = moo;
     }
   };
 
@@ -133,6 +138,7 @@ class RestRoutingTest {
   }
 
   private static class Moo {
+    @Null
     @JsonProperty("moo")
     private String moo;
     public Moo() {
@@ -145,14 +151,14 @@ class RestRoutingTest {
   @Test
   void isValidRequestFail() {
     Errors errors = new Errors();
-    RestRouting.isValidRequest(null, new Foo(null, null), errors, List.of(), null);
+    RestRouting.isValidRequest(null, new Foo(null, null, null), errors, List.of(), null);
     assertThat(errors.getErrors().get(0).getCode(), is("jakarta.validation.constraints.NotNull.message"));
   }
 
   @Test
   void isValidRequestSuccess() {
     Errors errors = new Errors();
-    RestRouting.isValidRequest(null, new Foo("id", null), errors, List.of(), null);
+    RestRouting.isValidRequest(null, new Foo("id", null, null), errors, List.of(), null);
     assertThat(errors.getErrors(), is(empty()));
   }
 
@@ -167,7 +173,8 @@ class RestRoutingTest {
   void isValidRequestRemoveNullSubfield() {
     assertThat(isValidRequest(new Baz("x"), Baz.class).readme, is(nullValue()));
     assertThat(isValidRequest(new Bar("y"), Bar.class).baz.readme, is(nullValue()));
-    assertThat(isValidRequest(new Foo("id", new Bar("z")), Foo.class).bar.baz.readme, is(nullValue()));
+    assertThat(isValidRequest(new Foo("id", new Bar("z"), null), Foo.class).bar.baz.readme, is(nullValue()));
+    assertThat(isValidRequest(new Foo("id", null, new Moo("m")), Foo.class).moo, is(nullValue()));
   }
 
   @Test
