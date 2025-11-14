@@ -149,6 +149,7 @@ public final class RestRouting {
     }
     switch (json) {
       case JsonObject jsonObject -> jsonObject.remove(last.getName());
+      case null -> { /* do nothing */ }
       default -> throw new IllegalArgumentException("Unexpected class: " + json.getClass().getName());
     }
   }
