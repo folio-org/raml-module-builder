@@ -102,6 +102,14 @@ public class ConnectionCache {
     }
   }
 
+  public void closeAll() {
+    synchronized (cache) {
+      for (CachedPgConnection conn : cache) {
+        conn.getWrappedConnection().close();
+      }
+    }
+  }
+
   public int size() {
     synchronized (cache) {
       return cache.size();

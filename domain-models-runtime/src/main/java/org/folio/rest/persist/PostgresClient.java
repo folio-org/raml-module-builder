@@ -508,6 +508,11 @@ public class PostgresClient {
     PG_POOLS_READER.clear();
   }
 
+  public static void clearConnectionCache() {
+    CACHED_CONNECTION_MANAGER.closeAllConnectionsInCache();
+    CACHED_CONNECTION_MANAGER.clearCache();
+  }
+
 
   private void init() throws Exception {
 

@@ -39,6 +39,10 @@ public class CachedConnectionManager {
     LOG.debug("Cleared connection cache");
   }
 
+  public void closeAllConnectionsInCache() {
+    connectionCache.closeAll();
+  }
+
   public void removeFromCache(CachedPgConnection connection)  {
     connectionCache.remove(connection);
   }
