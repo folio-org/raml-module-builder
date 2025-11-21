@@ -47,8 +47,8 @@ import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.util.StringUtil;
-
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Path;
 import jakarta.validation.Path.Node;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
@@ -127,6 +127,34 @@ public final class RestRouting {
   }
 
   /**
+   * Delete the JSON element at the path position in json.
+   */
+  static void deletePath(Object json, Path path) {
+    Node last = null;
+    for (Node node : path) {
+      if (last != null) {
+        if (json instanceof JsonObject jsonObject) {
+          json = jsonObject.getValue(last.getName());
+        } else {
+          throw new IllegalArgumentException("Unexpected class " + json.getClass().getName());
+        }
+        if (json instanceof JsonArray jsonArray) {
+          json = jsonArray.getValue(node.getIndex());
+        }
+      }
+      last = node;
+    }
+    if (last == null) {
+      throw new IllegalArgumentException("Path must not contain null segments");
+    }
+    switch (json) {
+      case JsonObject jsonObject -> jsonObject.remove(last.getName());
+      case null -> { /* do nothing */ }
+      default -> throw new IllegalArgumentException("Unexpected class: " + json.getClass().getName());
+    }
+  }
+
+  /**
    * return whether the request is valid [0] and a cleaned up version of the object [1]
    *
    * @param rc
@@ -153,19 +181,12 @@ public final class RestRouting {
           if (!(content instanceof JsonObject)) {
             content = JsonObject.mapFrom(content);
           }
-          JsonObject json = (JsonObject) content;
-          Node last = null;
-          for (Node node : cv.getPropertyPath()) {
-            if (last != null) {
-              json = json.getJsonObject(last.getName());
-            }
-            last = node;
-          }
-          json.remove(last.getName());
+          deletePath(content, cv.getPropertyPath());
           continue;
         } catch (Exception e) {
+          String uri = rc == null ? "unknown" : absoluteUri(rc.request());
           withRequestId(rc, () -> LOGGER.warn("Failed to remove {} field from body when calling {}",
-              cv.getPropertyPath(), absoluteUri(rc.request()), e));
+              cv.getPropertyPath(), uri, e));
         }
       }
       Error error = new Error();
