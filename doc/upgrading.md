@@ -40,6 +40,17 @@ In the log4j pattern (used in log4j2.properties and log4j2-json.properties) upca
 * `FolioLoggingContext:userid` -> `FolioLoggingContext:userId`
 * `FolioLoggingContext:moduleid` -> `FolioLoggingContext:moduleId`
 
+In pom.xml file add `ServicesResourceTransformer` to the `maven-shade-plugin` configuration.
+```xml
+    <configuration>
+      <transformers>
+        ...
+        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+      </transformers>
+    </configuration>
+```
+
+
 ## Version 35.3
 
 35.3.\* is the Ramsons (R2 2024) version.
