@@ -31,6 +31,8 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 36.0.\* is the Trillium version.
 
+See also the [FOLIO Vert.x 5 migration notes](https://folio-org.atlassian.net/wiki/spaces/FOLIJET/pages/1003847853/Migration+to+Vertx+5).
+
 All command line options must be passed as system properties using `-D` before the `-jar` argument. `MODULE_SPECIFIC_ARGS` no longer exists.
 Modules should prefer environment variables.
 
@@ -49,7 +51,6 @@ In pom.xml file add `ServicesResourceTransformer` to the `maven-shade-plugin` co
       </transformers>
     </configuration>
 ```
-
 
 ## Version 35.3
 
