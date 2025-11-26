@@ -111,4 +111,22 @@ class LogUtilIT {
       message.append(event.getMessage().getFormattedMessage());
     }
   }
+
+  @Test
+  void updateLogConfigurationUnused() {
+    LogUtil.updateLogConfiguration("some.package.UnusedClass", "ERROR");
+    assertThat(LogManager.getLogger("some.package.UnusedClass").getLevel(), is(Level.ERROR));
+  }
+
+  @Test
+  void updateLogConfiguration3() {
+    LogUtil.updateLogConfiguration("foo.X,bar.Y,baz.Z", "WARN");
+    assertThat(LogManager.getLogger("foo.X").getLevel(), is(Level.WARN));
+    assertThat(LogManager.getLogger("bar.Y").getLevel(), is(Level.WARN));
+    assertThat(LogManager.getLogger("baz.Z").getLevel(), is(Level.WARN));
+    LogUtil.updateLogConfiguration("foo.*,bar.*,baz.*", "DEBUG");
+    assertThat(LogManager.getLogger("foo.X").getLevel(), is(Level.DEBUG));
+    assertThat(LogManager.getLogger("bar.Y").getLevel(), is(Level.DEBUG));
+    assertThat(LogManager.getLogger("baz.Z").getLevel(), is(Level.DEBUG));
+  }
 }
