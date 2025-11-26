@@ -104,26 +104,39 @@ public class LogUtil {
 
   /**
    * Update the log level for all packages / a specific package / a specific class
-   * @param packageName - pass "*" for all packages
+   * @param packageNames - pass "*" for all packages, use comma to separate multiple names
    * @param level - see {@link Level}
    * @return - JsonObject with a list of updated loggers and their levels
    */
-  public static JsonObject updateLogConfiguration(String packageName, String level){
-
-    JsonObject updatedLoggers = new JsonObject();
-    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-    Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
-
-    allLoggers.forEach( log -> {
-      if(log != null && packageName != null && (log.getName().startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
-        if(log != null){
-          log.setLevel(getLog4jLevel(level));
-          updatedLoggers.put(log.getName(), log.getLevel().toString());
-        }
-      }
-    });
-
+  public static JsonObject updateLogConfiguration(String packageNames, String level) {
+    var updatedLoggers = new JsonObject();
+    if (packageNames == null) {
+      return updatedLoggers;
+    }
+    for (var packageName : packageNames.split(",")) {
+      updateLogConfiguration(packageName, level, updatedLoggers);
+    }
     return updatedLoggers;
+  }
+
+  private static void updateLogConfiguration(String packageName, String level, JsonObject updatedLoggers) {
+    var prefix = packageName.replace("*", "");
+    if (prefix.equals(packageName)) {
+      // create the logger, it might not have been used since container startup
+      LogManager.getLogger(packageName);
+    }
+
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+
+    for (var log: ctx.getLoggers()) {
+      if (log == null) {
+        continue;
+      }
+      if (log.getName().startsWith(prefix)) {
+        log.setLevel(getLog4jLevel(level));
+        updatedLoggers.put(log.getName(), log.getLevel().toString());
+      }
+    }
   }
 
   /**
