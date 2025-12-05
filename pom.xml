@@ -33,7 +33,7 @@
 
     <aspectj.version>1.9.22.1</aspectj.version>
     <maven.version>3.9.9</maven.version>
-    <vertx.version>4.5.13</vertx.version>
+    <vertx.version>4.5.22</vertx.version>
     <micrometer.version>1.12.13</micrometer.version> <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
     <awaitility.version>4.3.0</awaitility.version>
     <hamcrest.version>3.0</hamcrest.version>
