@@ -80,7 +80,7 @@ class PostgresClientSslTest {
     MountableFile serverCrtFile = MountableFile.forClasspathResource("ssl/server.crt");
     POSTGRES.copyFileToContainer(serverKeyFile, KEY_PATH);
     POSTGRES.copyFileToContainer(serverCrtFile, CRT_PATH);
-    exec("chown", "postgres.postgres", KEY_PATH, CRT_PATH);
+    exec("chown", "postgres:postgres", KEY_PATH, CRT_PATH);
     exec("chmod", "400", KEY_PATH, CRT_PATH);
 
     exec("cp", "-p", CONF_PATH, CONF_BAK_PATH);
