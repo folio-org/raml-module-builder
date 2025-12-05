@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.folio</groupId>
   <artifactId>raml-module-builder</artifactId>
-  <version>35.5.0-SNAPSHOT</version>
+  <version>35.4.1-SNAPSHOT</version>
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
@@ -29,7 +29,7 @@
 
   <properties>
 
-    <project.build.outputTimestamp>2025-02-28T08:32:55Z</project.build.outputTimestamp>
+    <project.build.outputTimestamp>2025-12-05T16:49:22Z</project.build.outputTimestamp>
 
     <aspectj.version>1.9.22.1</aspectj.version>
     <maven.version>3.9.9</maven.version>
