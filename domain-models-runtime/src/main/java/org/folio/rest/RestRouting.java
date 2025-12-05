@@ -91,6 +91,7 @@ public final class RestRouting {
   private static final Messages MESSAGES = Messages.getInstance();
   private static final ObjectMapper MAPPER = ObjectMapperTool.getMapper();
   private static ValidatorFactory validationFactory = Validation.buildDefaultValidatorFactory();
+  private static final Pattern NEWLINE = Pattern.compile("[\n\r]");
 
   private RestRouting() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
@@ -184,9 +185,8 @@ public final class RestRouting {
           deletePath(content, cv.getPropertyPath());
           continue;
         } catch (Exception e) {
-          String uri = rc == null ? "unknown" : absoluteUri(rc.request());
           withRequestId(rc, () -> LOGGER.warn("Failed to remove {} field from body when calling {}",
-              cv.getPropertyPath(), uri, e));
+              cv.getPropertyPath(), absoluteUri(rc), e));
         }
       }
       Error error = new Error();
@@ -220,7 +220,7 @@ public final class RestRouting {
       } catch (IOException e) {
         withRequestId(rc, () -> LOGGER.error(
             "Failed to serialize body content after removing read-only fields when calling {}",
-            absoluteUri(rc.request()), e));
+            absoluteUri(rc), e));
       }
     }
     return new Object[]{ret, content};
@@ -852,16 +852,18 @@ public final class RestRouting {
   }
 
   /**
-   * This method works around sonar's code smell report
+   * Request's absolute URI sanitized.
+   *
+   * <p>See
    * <a href=
    * "https://sonarcloud.io/organizations/folio-org/rules?open=javasecurity%3AS5145&rule_key=javasecurity%3AS5145">
-   * Logging should not be vulnerable to injection attacks</a>.
-   * <p>
-   * URI is safe as special characters are already encoded using
-   * <a href="http://www.ietf.org/rfc/rfc3986.txt">RFC 3986</a> and
-   * <a href="http://www.ietf.org/rfc/rfc2396.txt">RFC 2396</a>.
+   * Logging should not be vulnerable to injection attacks</a>
+   * for details about replacing new line characters.
    */
-  private static String absoluteUri(HttpServerRequest httpServerRequest) {
-    return httpServerRequest.absoluteURI();
+  static String absoluteUri(RoutingContext routingContext) {
+    if (routingContext == null) {
+      return "unknown";
+    }
+    return NEWLINE.matcher(routingContext.request().absoluteURI()).replaceAll("_");
   }
 }
