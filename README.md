@@ -379,7 +379,7 @@ Use `DB_SERVER_PEM` (or `server_pem` in the JSON config) to set SSL/TLS certific
 
 The environment variable `DB_CONNECTIONRELEASEDELAY` sets the delay in milliseconds after which an idle connection is closed. A connection becomes idle if the query ends, it is not idle if it is waiting for a response. Use 0 to keep idle connections open forever. RMB's default is one minute (60000 ms).
 
-`DB_MAX_LIFETIME` limits the lifetime (non-idle time plus idle time) of a database connection in milliseconds. If exceeded the connection is closed if it is or becomes idle. 0 means unlimited lifetime. It defaults to 30000. This options exists since RMB 36.0.0 (Trillium).
+`DB_MAX_LIFETIME` limits the lifetime (non-idle time plus idle time) of a database connection in milliseconds. If exceeded the connection is closed if it is or becomes idle. 0 means unlimited lifetime. It defaults to 1800000 (30 minutes). This options exists since RMB 36.0.0 (Trillium).
 
 `DB_RECONNECTATTEMPTS` and `DB_RECONNECTINTERVAL` set the maximum number of retries after a connect to the database fails, and how many milliseconds to wait before the next reconnect. Reconnecting is disabled by default.
 
