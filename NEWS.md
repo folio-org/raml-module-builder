@@ -1,3 +1,9 @@
+## 35.4.1 2025-12-08
+
+* [RMB-1023](https://folio-org.atlassian.net/browse/RMB-1023) Suppress verbose logging in CQL2PgJSON, CQLWRapper, LogUtil
+* [RMB-1036](https://folio-org.atlassian.net/browse/RMB-1036) Initialize loggers before setting log level
+* [RMB-1038](https://folio-org.atlassian.net/browse/RMB-1038) Vertx 4.5.22 fixing Netty DDoS CVE-2025-55163
+
 ## 35.4.0 2025-02-28
 
 Sunflower (2025 R1) release.
