@@ -20,6 +20,8 @@ public class PostgresClientInitializer {
   static final String PORT_READER_ASYNC = "port_reader_async";
 
   private static final String CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
+  private static final String MAX_LIFETIME = "maxLifetime";
+  private static final int DEFAULT_MAX_LIFETIME = 1_800_000;  // 30 minutes
   private static final String MAX_POOL_SIZE = "maxPoolSize";
   private static final String RECONNECT_ATTEMPTS = "reconnectAttempts";
   private static final String RECONNECT_INTERVAL = "reconnectInterval";
@@ -82,6 +84,9 @@ public class PostgresClientInitializer {
       var connectionReleaseDelay = configuration.getInteger(CONNECTION_RELEASE_DELAY, DEFAULT_CONNECTION_RELEASE_DELAY);
       poolOptions.setIdleTimeout(connectionReleaseDelay);
     }
+
+    poolOptions.setMaxLifetimeUnit(TimeUnit.MILLISECONDS);
+    poolOptions.setMaxLifetime(configuration.getInteger(MAX_LIFETIME, DEFAULT_MAX_LIFETIME));
 
     return PgBuilder.pool().using(vertx).connectingTo(connectOptions).with(poolOptions).build();
   }
