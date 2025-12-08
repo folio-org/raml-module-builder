@@ -40,7 +40,7 @@ traits:
               example: "Internal server error, contact administrator"
   /loglevel:
     put:
-      description: Set logging level for all loggers in the JVM or just for a specific package / class
+      description: Set logging level for the comma separated list of class names.  Use * as tailing wildcard to match all or specific loggers provided they have been used since startup
       is: [log-level]
       responses:
         200:
