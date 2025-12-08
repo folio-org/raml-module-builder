@@ -1,3 +1,10 @@
+## 35.3.1 2025-12-08
+
+Bug fixes:
+* [RMB-1023](https://folio-org.atlassian.net/browse/RMB-1023) Suppress verbose logging in CQL2PgJSON, CQLWRapper, LogUtil
+* [RMB-1036](https://folio-org.atlassian.net/browse/RMB-1036) Initialize loggers before setting log level
+* [RMB-1038](https://folio-org.atlassian.net/browse/RMB-1038) Vertx 4.5.22 fixing Netty DDoS CVE-2025-55163
+
 ## 35.3.0 2024-10-14
 
 Ramsons (2024 R2) release, see [upgrade notes](doc/upgrading.md#version-353).
