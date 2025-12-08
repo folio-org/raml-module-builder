@@ -21,24 +21,25 @@ public class LogUtil {
 
   private static final Logger log = LogManager.getLogger(LogUtil.class);
 
-  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int responseCode, long responseTime,
+  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion,
+      int responseCode, long responseTime,
       long responseSize, String url, String queryParams, String message) {
 
-    String message1 = new StringBuilder(injectDeploymentId()).append(clientIP).append(" ").append(httpMethod).append(" ").append(url).append(" ").append(queryParams)
-        .append(" ").append(httpVersion).append(" ").append(responseCode).append(" ").append(responseSize).append(" ").append(responseTime)
-        .append(" ").append(message).toString();
-
-    log.info(message1);
+    if (log.isDebugEnabled()) {
+      log.debug("{}{} {} {} {} {} {} {} {} {}", injectDeploymentId(), clientIP, httpMethod, url, queryParams,
+          httpVersion, responseCode, responseSize, responseTime, message);
+    }
   }
 
-  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int responseCode, long responseTime,
+  public static void formatStatsLogMessage(String clientIP, String httpMethod,
+      String httpVersion, int responseCode, long responseTime,
       long responseSize, String url, String queryParams, String message, String tenantId, String body) {
 
-    String message1 = new StringBuilder(injectDeploymentId()).append(clientIP).append(" ").append(httpMethod).append(" ").append(url).append(" ").append(queryParams)
-        .append(" ").append(httpVersion).append(" ").append(responseCode).append(" ").append(responseSize).append(" ").append(responseTime)
-        .append(" tid=").append(tenantId).append(" ").append(message).append(" ").append(body).toString();
-
-    log.info(message1);
+    if (log.isDebugEnabled()) {
+      log.debug("{}{} {} {} {} {} {} {} {} tid={} {} {}",
+          injectDeploymentId(), clientIP, httpMethod, url, queryParams,
+          httpVersion, responseCode, responseSize, responseTime, tenantId, message, body);
+    }
   }
 
   /**
@@ -59,7 +60,9 @@ public class LogUtil {
       long responseTime, String tenantId, String body) {
 
     if (routingContext == null) {
-      log.info(injectDeploymentId() + responseTime + " tid=" + tenantId + " " + body);
+      if (log.isDebugEnabled()) {
+        log.debug("{}{} tid={} {}", injectDeploymentId(), responseTime, tenantId, body);
+      }
       return;
     }
     HttpServerRequest request = routingContext.request();
@@ -78,11 +81,24 @@ public class LogUtil {
         body);
   }
 
+  /**
+   * Log the parameters with INFO level and prefix the log message with the deployment id
+   * if the current Vertx' verticle has multiple instances and DEBUG level is enabled.
+   */
   public static void formatLogMessage(String clazz, String function, String message) {
-    log.info(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(function).append(" ").append(message));
+    if (log.isInfoEnabled()) {
+      log.info("{}{} {} {}", injectDeploymentId(), clazz, function, message);
+    }
   }
+
+  /**
+   * Log the parameters with ERROR level and prefix the log message with the deployment id
+   * if the current Vertx' verticle has multiple instances and DEBUG level is enabled.
+   */
   public static void formatErrorLogMessage(String clazz, String function, String message) {
-    log.error(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(function).append(" ").append(message));
+    if (log.isErrorEnabled()) {
+      log.error("{}{} {} {}", injectDeploymentId(), clazz, function, message);
+    }
   }
 
   /**
