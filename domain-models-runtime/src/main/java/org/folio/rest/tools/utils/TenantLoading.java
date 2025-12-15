@@ -369,7 +369,7 @@ public class TenantLoading {
 
     String okapiUrl = headers.get(XOkapiHeaders.URL_TO);
     if (okapiUrl == null) {
-      log.warn("TenantLoading.perform No " + XOkapiHeaders.URL_TO + " header");
+      log.debug("TenantLoading.perform No " + XOkapiHeaders.URL_TO + " header");
       okapiUrl = headers.get(XOkapiHeaders.URL);
     }
     if (okapiUrl == null) {
