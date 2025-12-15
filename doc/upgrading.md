@@ -52,6 +52,14 @@ In pom.xml file add `ServicesResourceTransformer` to the `maven-shade-plugin` co
     </configuration>
 ```
 
+Consider replacing
+* `org.apache.hc.core5.http.HttpHeaders` with `org.folio.HttpHeaders`
+* `org.apache.hc.core5.http.HttpStatus` with `org.folio.HttpStatus`
+* `org.apache.http.HttpHeaders` with `org.folio.HttpHeaders`
+* `org.apache.http.HttpStatus` with `org.folio.HttpStatus`
+They are drop-in replacements and may allow to drop the `org.apache.httpcomponents.core5:httpcore5`
+or `org.apache.httpcomponents:httpcore` dependency reducing the runtime size.
+
 ## Version 35.3
 
 35.3.\* is the Ramsons (R2 2024) version.
