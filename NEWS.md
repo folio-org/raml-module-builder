@@ -1,3 +1,12 @@
+## 35.3.2 2025-12-17
+
+Bug fixes:
+* [RMB-1044](https://folio-org.atlassian.net/browse/RMB-1044) Vert.x 4.5.23 fixing CVE-2025-67735 Netty CRLF injection request smuggling
+
+Vertx compatibility:
+* RMB >= 35.3.2 requires Vert.x >= 4.5.23.
+* RMB 35.3.0 and 35.3.1 require Vert.x <= 4.5.22.
+
 ## 35.3.1 2025-12-08
 
 Bug fixes:
