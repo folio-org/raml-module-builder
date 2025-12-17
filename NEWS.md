@@ -1,3 +1,7 @@
+## 35.4.2 2025-12-17
+
+* [RMB-1043](https://folio-org.atlassian.net/browse/RMB-1043) Vert.x 4.5.23 fixing CVE-2025-67735 Netty CRLF injection
+
 ## 35.4.1 2025-12-08
 
 * [RMB-1023](https://folio-org.atlassian.net/browse/RMB-1023) Suppress verbose logging in CQL2PgJSON, CQLWRapper, LogUtil
