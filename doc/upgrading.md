@@ -5,6 +5,7 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
 * [Version 36.0](#version-360)
+* [Version 35.4](#version-354)
 * [Version 35.3](#version-353)
 * [Version 35.2](#version-352)
 * [Version 35.1](#version-351)
@@ -60,9 +61,21 @@ Consider replacing
 They are drop-in replacements and may allow to drop the `org.apache.httpcomponents.core5:httpcore5`
 or `org.apache.httpcomponents:httpcore` dependency reducing the runtime size.
 
+## Version 35.4
+
+35.4.\* is the Sunflower (R1 2025) version.
+
+RMB >= 35.4.2 requires Vert.x >= 4.5.23.
+
+RMB 35.4.0 and 35.4.1 require Vert.x <= 4.5.22.
+
 ## Version 35.3
 
 35.3.\* is the Ramsons (R2 2024) version.
+
+RMB >= 35.3.2 requires Vert.x >= 4.5.23.
+
+RMB 35.3.0 and 35.3.1 require Vert.x <= 4.5.22.
 
 Don't use `JsonObject.mapFrom` to serialize a Java class instance to JSON,
 RMB's database methods take a Java class and automatically serialize it. When writing custom SQL use
