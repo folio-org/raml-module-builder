@@ -185,21 +185,9 @@
       <dependency>
         <groupId>org.testcontainers</groupId>
         <artifactId>testcontainers-bom</artifactId>
-        <version>1.21.3</version>
+        <version>2.0.3</version>
         <type>pom</type>
         <scope>import</scope>
-      </dependency>
-      <!--
-         remove commons-compress dependency when testcontainers
-         comes with commons-compress >= 1.26.0 fixing
-         https://nvd.nist.gov/vuln/detail/CVE-2024-25710
-         https://nvd.nist.gov/vuln/detail/CVE-2024-26308
-         see https://github.com/testcontainers/testcontainers-java/pull/8354
-      -->
-      <dependency>
-        <groupId>org.apache.commons</groupId>
-        <artifactId>commons-compress</artifactId>
-        <version>1.27.1</version>
       </dependency>
       <!-- remove org.postgresql:postgresql dependency when testcontainers
            comes with postgresql:postgresql >= 42.7.2 fixing
