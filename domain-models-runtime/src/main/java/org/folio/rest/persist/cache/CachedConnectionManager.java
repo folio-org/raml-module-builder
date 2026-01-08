@@ -177,7 +177,7 @@ public class CachedConnectionManager {
         });
   }
 
-  private String getSetRoleAndSchemaSql(String schemaName, String tenantId) {
+  private static String getSetRoleAndSchemaSql(String schemaName, String tenantId) {
     return PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
         ? "SET ROLE NONE; SET SCHEMA ''"
         : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");

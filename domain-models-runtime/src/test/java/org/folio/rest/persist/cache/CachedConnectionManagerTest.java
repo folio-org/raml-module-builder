@@ -4,7 +4,6 @@ import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.folio.rest.persist.PgConnectionMock;

@@ -9,6 +9,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.folio.rest.tools.utils.ConnectionCacheMetrics;
 
 /**
  * Provides a thread-safe cache that stores {@link CachedPgConnection} objects.
@@ -19,7 +20,7 @@ public class ConnectionCache {
   private static final String LOGGER_LABEL = "CONNECTION MANAGER CACHE STATE";
   private static final int INFO_LOG_LIMIT = 100;
   private final List<CachedPgConnection> cache;
-  private final Metrics metrics = new Metrics();
+  private final ConnectionCacheMetrics metrics = new ConnectionCacheMetrics();
 
   public ConnectionCache() {
     cache = Collections.synchronizedList(new ArrayList<>());
@@ -28,7 +29,7 @@ public class ConnectionCache {
   public void remove(CachedPgConnection connection) {
     synchronized (cache) {
       cache.remove(connection);
-      metrics.active--;
+      metrics.decrementActive();
       LOG.debug("Removed connection: {} {}",
           connection.getTenantId(), connection.getSessionId());
     }
@@ -60,7 +61,7 @@ public class ConnectionCache {
           .ifPresent(connection -> {
             connection.getWrappedConnection().close();
             cache.remove(connection);
-            metrics.active--;
+            metrics.decrementActive();
             LOG.debug("Removed and closed oldest available connection: {} {}",
                 connection.getTenantId(), connection.getSessionId());
           });
@@ -80,7 +81,9 @@ public class ConnectionCache {
       // First attempt to find a connection for the tenant that is available.
       Optional<CachedPgConnection> connectionOptional =
           cache.stream().filter(connection ->
-              connection.getTenantId().equals(tenantId) && connection.getSchemaName().equals(schemaName) && connection.isAvailable()).findFirst();
+              connection.getTenantId().equals(tenantId) &&
+              connection.getSchemaName().equals(schemaName) &&
+              connection.isAvailable()).findFirst();
 
       // If The first attempt fails, try to find the oldest connection for another tenant that is available.
       if (connectionOptional.isEmpty()) {
@@ -123,14 +126,14 @@ public class ConnectionCache {
    * @param context Any details that help contextualize the event.
    */
   public void log(String context) {
-    Supplier<String> msgSupplier = () -> metrics.toString(LOGGER_LABEL + ": " + context);
-    Supplier<String> msgDebugSupplier = metrics::toStringDebug;
+    Supplier<String> msgSupplier = () -> metrics.toString(LOGGER_LABEL + ": " + context, cache.size());
+    Supplier<String> msgDebugSupplier = this::toStringDebug;
 
     if (LOG.isDebugEnabled()) {
       LOG.debug("{} {}", msgSupplier.get(), msgDebugSupplier.get());
     }
 
-    if (LOG.isInfoEnabled() && (metrics.hits % INFO_LOG_LIMIT == 0 || metrics.misses % INFO_LOG_LIMIT == 0)) {
+    if (LOG.isInfoEnabled() && (metrics.getHits() % INFO_LOG_LIMIT == 0 || metrics.getMisses() % INFO_LOG_LIMIT == 0)) {
       LOG.info(msgSupplier.get());
     }
   }
@@ -144,11 +147,11 @@ public class ConnectionCache {
   }
 
   public void incrementActive() {
-    metrics.active++;
+    metrics.incrementActive();
   }
 
   public void decrementActive() {
-    metrics.active--;
+    metrics.decrementActive();
   }
 
   public void incrementRecycled() {
@@ -168,72 +171,22 @@ public class ConnectionCache {
   }
 
   public void setPoolSizeMetric(int size) {
-    metrics.poolSize = size;
+    metrics.setPoolSize(size);
   }
 
-  class Metrics {
-    int hits;
-    int misses;
-    int active;
-    int poolSize;
-    int recycled;
-    int recycleErrors;
-    int newConnections;
-    int newConnectionErrors;
-
-    void clear() {
-      hits = 0;
-      misses = 0;
-      active = 0;
-      recycled = 0;
-      recycleErrors = 0;
-      newConnections = 0;
-      newConnectionErrors = 0;
+  private String toStringDebug() {
+    var items = "\nCONNECTION MANAGER CACHE ITEMS (DEBUG):\n" ;
+    synchronized (cache) {
+      items += cache.stream()
+          .map(item -> String.format("%s %s %s %s %s",
+              item.getSessionId(),
+              item.isAvailable(),
+              item.getIdleSince(),
+              item.getTenantId(),
+              item.getSchemaName()
+          ))
+          .collect(Collectors.joining("\n"));
     }
-
-    void incrementHits() {
-      hits = (hits == Integer.MAX_VALUE) ? 0 : (hits + 1);
-    }
-
-    void incrementMisses() {
-      misses = (misses == Integer.MAX_VALUE) ? 0 : (misses + 1);
-    }
-
-    void incrementNewConnections() {
-      newConnections = (newConnections == Integer.MAX_VALUE) ? 0 : (newConnections + 1);
-    }
-
-    void incrementNewConnectionErrors() {
-      newConnectionErrors = (newConnectionErrors == Integer.MAX_VALUE) ? 0 : (newConnectionErrors + 1);
-    }
-
-    void incrementRecycled() {
-      recycled = (recycled == Integer.MAX_VALUE) ? 0 : (recycled + 1);
-    }
-
-    void incrementRecycleErrors() {
-      recycleErrors = (recycleErrors == Integer.MAX_VALUE) ? 0 : (recycleErrors + 1);
-    }
-
-    String toString(String msg) {
-      return msg + String.format(":: %s hits, %s misses, %s recycled, %s recycleErrors, %s newConnections, %s newConnectionErrors, %s size, %s active, %s pool",
-          hits, misses, recycled, recycleErrors, newConnections, newConnectionErrors, cache.size(), active, poolSize);
-    }
-
-    String toStringDebug() {
-      var items = "\nCONNECTION MANAGER CACHE ITEMS (DEBUG):\n" ;
-      synchronized (cache) {
-        items += cache.stream()
-            .map(item -> String.format("%s %s %s %s %s",
-                item.getSessionId(),
-                item.isAvailable(),
-                item.getIdleSince(),
-                item.getTenantId(),
-                item.getSchemaName()
-            ))
-            .collect(Collectors.joining("\n"));
-      }
-      return items;
-    }
+    return items;
   }
 }
