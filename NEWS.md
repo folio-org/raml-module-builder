@@ -1,6 +1,6 @@
 ## 35.4.0 2025-02-28
 
-Sunflower (2025 R1) release.
+Sunflower (2025 R1) release, see [upgrade notes](doc/upgrading.md#version-354).
 
 * [RMB-1010](https://folio-org.atlassian.net/browse/RMB-1010): PostgreSQLContainer withStartupAttempts(3)
 * [RMB-1011](https://folio-org.atlassian.net/browse/RMB-1011): Timeout when trying to connect to DB\_HOST:DB\_PORT

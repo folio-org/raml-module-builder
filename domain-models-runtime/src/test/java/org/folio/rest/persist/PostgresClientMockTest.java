@@ -10,7 +10,7 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.pgclient.PgConnection;
-import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
@@ -38,9 +38,9 @@ public class PostgresClientMockTest {
     .thenReturn(Future.succeededFuture(mockRowSet));
     PgConnection mockPgConnection = mock(PgConnection.class);
     when(mockPgConnection.preparedQuery(anyString())).thenReturn(mockPreparedQuery);
-    PgPool mockPgPool = mock(PgPool.class);
-    when(mockPgPool.getConnection()).thenReturn(Future.succeededFuture(mockPgConnection));
-    when(pc.getReaderClient()).thenReturn(mockPgPool);
+    Pool mockPool = mock(Pool.class);
+    when(mockPool.getConnection()).thenReturn(Future.succeededFuture(mockPgConnection));
+    when(pc.getReaderClient()).thenReturn(mockPool);
     SQLConnection mockSQLConnection = new SQLConnection(mockPgConnection, null, null);
     AsyncResult<SQLConnection> mockConn = Future.succeededFuture(mockSQLConnection);
     // tests
@@ -76,7 +76,7 @@ public class PostgresClientMockTest {
 
     // test exceptions
     pc.getByIdAsString(Future.failedFuture("fail"), table, id, context.asyncAssertFailure());
-    when(mockPgPool.getConnection()).thenReturn(Future.failedFuture("fail"));
+    when(mockPool.getConnection()).thenReturn(Future.failedFuture("fail"));
     pc.getByIdAsString(table, id, context.asyncAssertFailure());
     when(mockPreparedQuery.execute(any(Tuple.class)))
     .thenReturn(Future.failedFuture("fail"));

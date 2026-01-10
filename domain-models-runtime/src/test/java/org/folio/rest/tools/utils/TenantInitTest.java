@@ -79,7 +79,8 @@ public class TenantInitTest {
 
   @AfterClass
   public static void afterClass(TestContext context) {
-    vertx.close(context.asyncAssertSuccess());
+    vertx.close()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @Test

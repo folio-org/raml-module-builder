@@ -1,20 +1,23 @@
 package org.folio.rest.persist.helpers;
 
 import io.vertx.sqlclient.desc.ColumnDescriptor;
-import io.vertx.sqlclient.impl.RowDesc;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
-/**
- * @deprecated This class will no longer extend the Vert.x internal class {@link RowDesc} in RMB 36.0.0.
- */
-@Deprecated
-public class LocalRowDesc extends RowDesc {
+public class LocalRowDesc {
+  private final ColumnDescriptor[] columnDescriptors;
+  private List<String> columnNames;
+  private List<ColumnDescriptor> columnDescriptorsList;
+
   public LocalRowDesc(ColumnDescriptor[] columnDescriptors) {
-    super(columnDescriptors);
+    this.columnDescriptors = columnDescriptors;
   }
 
   public LocalRowDesc(List<String> columnNames) {
-    super(columnDescriptors(columnNames));
+    this(columnDescriptors(columnNames));
   }
 
   private static ColumnDescriptor [] columnDescriptors(List<String> columnNames) {
@@ -23,5 +26,23 @@ public class LocalRowDesc extends RowDesc {
       columnDescriptors[i] = new LocalColumnDescriptor(columnNames.get(i));
     }
     return columnDescriptors;
+  }
+
+  public List<String> columnNames() {
+    if (columnNames == null) {
+      columnNames = new ArrayList<>(columnDescriptors.length);
+      for (var descriptor : columnDescriptors) {
+        columnNames.add(descriptor.name());
+      }
+      columnNames = Collections.unmodifiableList(columnNames);
+    }
+    return columnNames;
+  }
+
+  public List<ColumnDescriptor> columnDescriptor() {
+    if (columnDescriptorsList == null) {
+      columnDescriptorsList = Collections.unmodifiableList(Arrays.asList(columnDescriptors));
+    }
+    return columnDescriptorsList;
   }
 }

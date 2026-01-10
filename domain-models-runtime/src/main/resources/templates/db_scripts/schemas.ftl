@@ -242,7 +242,7 @@ BEGIN
     EXECUTE 'ANALYZE ' || t;
   END LOOP;
 END $$;
-TRUNCATE rmb_internal_analyze;
+DELETE FROM rmb_internal_analyze;
 
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA ${myuniversity}_${mymodule} TO ${myuniversity}_${mymodule};
 

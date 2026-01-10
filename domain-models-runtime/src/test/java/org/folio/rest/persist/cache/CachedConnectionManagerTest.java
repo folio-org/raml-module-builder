@@ -1,10 +1,15 @@
 package org.folio.rest.persist.cache;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
 import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.pgclient.PgPool;
+import io.vertx.sqlclient.Pool;
+import io.vertx.sqlclient.SqlConnectOptions;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.folio.rest.persist.PgConnectionMock;
 import org.folio.rest.persist.PostgresClient;
@@ -12,8 +17,6 @@ import org.folio.rest.persist.PostgresClientHelper;
 import org.junit.AfterClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import static org.junit.Assert.*;
 
 @RunWith(VertxUnitRunner.class)
 public class CachedConnectionManagerTest {
@@ -30,7 +33,8 @@ public class CachedConnectionManagerTest {
     var connectionToGet = new CachedPgConnection("tenant1", "schema1", new PgConnectionMock(), manager, vertx, 1);
     connectionToGet.close();
     manager.tryAddToCache(connectionToGet);
-    manager.getConnection(vertx, PgPool.pool(), "schema1", "tenant1").onComplete(context.asyncAssertSuccess(pgConnection -> {
+    var pool = Pool.pool(new SqlConnectOptions());
+    manager.getConnection(vertx, pool, "schema1", "tenant1").onComplete(context.asyncAssertSuccess(pgConnection -> {
       var gotConnection = (CachedPgConnection) pgConnection;
       assertEquals(connectionToGet.getSessionId(), gotConnection.getSessionId());
       assertFalse(gotConnection.isAvailable());
@@ -81,7 +85,8 @@ public class CachedConnectionManagerTest {
     var manager = new CachedConnectionManager();
     var connection = new CachedPgConnection("tenant1", "schema1", new PgConnectionMock(), manager, Vertx.vertx(), 1);
     assertFalse(connection.isAvailable());
-    connection.close(event -> {
+    connection.close()
+    .onComplete(x -> {
       assertTrue(connection.isAvailable());
       async.complete();
     });

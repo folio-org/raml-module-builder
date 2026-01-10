@@ -1,22 +1,22 @@
 package org.folio.rest.persist;
 
-import io.vertx.core.Promise;
-import java.util.List;
+import io.vertx.core.VerticleBase;
 
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.VertxUtils;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
-import io.vertx.core.AbstractVerticle;
-import io.vertx.core.AsyncResult;
-import io.vertx.core.Handler;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.RunTestOnContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
+import io.vertx.sqlclient.Row;
+import io.vertx.sqlclient.RowSet;
 
 /**
  * Create PostgresClient on different vertx.
@@ -35,6 +35,11 @@ public class PostgresClientMultiVertxIT {
 
   @Rule
   public RunTestOnContext contextRule = new RunTestOnContext();  // different vertx for each @Test
+
+  @BeforeClass
+  public static void setUp() {
+    PostgresClient.setPostgresTester(new PostgresTesterContainer());
+  }
 
   private void run(TestContext context) {
     Async async = context.async();
@@ -56,59 +61,62 @@ public class PostgresClientMultiVertxIT {
     run(context);
   }
 
-  public class Verticle extends AbstractVerticle {
+  public class Verticle extends VerticleBase {
+    private Vertx vertx = VertxUtils.getVertxWithExceptionHandler();
+    private String deploymentId;
     private PostgresClient client;
 
-    @Override
-    public void start(Promise<Void> startPromise) {
-      client = PostgresClient.getInstance(vertx);
-      startPromise.complete();
+    public Future<String> deploy() {
+      return vertx.deployVerticle(this)
+          .onSuccess(id -> deploymentId = id);
+    }
+
+    public Future<Void> undeploy() {
+      return vertx.undeploy(deploymentId);
     }
 
     @Override
-    public void stop(Promise<Void> stopPromise) {
-      client.closeClient(stopPromise);
+    public Future<?> start() {
+      try {
+        client = PostgresClient.getInstance(vertx);
+        return super.start();
+      } catch (Exception e) {
+        return Future.failedFuture(e);
+      }
     }
 
-    public void runSQL(Handler<AsyncResult<List<String>>> handler) {
-      client.runSQLFile("UPDATE pg_database SET datname=null WHERE false;\n", true, handler);
+    @Override
+    public Future<?> stop() {
+      return client.closeClient()
+          .compose(x -> {
+            try {
+              return super.stop();
+            } catch (Exception e) {
+              return Future.failedFuture(e);
+            }
+          });
+    }
+
+    public Future<RowSet<Row>> runSQL() {
+      return client.execute("UPDATE pg_database SET datname=null WHERE false");
     }
   }
 
   @Test
   public void testParallel(TestContext context) {
-    Async async = context.async();
-    Vertx vertx1 = VertxUtils.getVertxWithExceptionHandler();
-    Vertx vertx2 = VertxUtils.getVertxWithExceptionHandler();
-    Vertx vertx3 = VertxUtils.getVertxWithExceptionHandler();
     Verticle v1 = new Verticle();
     Verticle v2 = new Verticle();
     Verticle v3 = new Verticle();
-    vertx1.deployVerticle(v1, d1 -> {
-      vertx2.deployVerticle(v2, d2 -> {
-        vertx3.deployVerticle(v3, d3 -> {
-          v1.runSQL(r1 -> {
-            v2.runSQL(r2 -> {
-              v3.runSQL(r3 -> {
-                vertx1.undeploy(d1.result(), u1 -> {
-                  vertx1.close(c1 -> {
-                    vertx3.undeploy(d3.result(), u3 -> {
-                      vertx3.close(c3 -> {
-                        // does v2 work after v1 and v3 have been removed?
-                        v2.runSQL(v2after -> {
-                          context.assertTrue(v2after.succeeded());
-                          context.assertEquals(0, v2after.result().size());
-                          async.complete();
-                        });
-                      });
-                    });
-                  });
-                });
-              });
-            });
-          });
-        });
-      });
-    });
+    v1.deploy()
+    .compose(x -> v2.deploy())
+    .compose(x -> v3.deploy())
+    .compose(x -> v1.runSQL())
+    .compose(x -> v2.runSQL())
+    .compose(x -> v3.runSQL())
+    .compose(x -> v1.undeploy())
+    .compose(x -> v3.undeploy())
+    // does v2 work after v1 and v3 have been removed?
+    .compose(c3 -> v2.runSQL())
+    .onComplete(context.asyncAssertSuccess());
   }
 }

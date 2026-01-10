@@ -12,13 +12,11 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerOptions;
 import io.vertx.core.json.JsonObject;
-import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.Timeout;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
-
 import java.net.MalformedURLException;
 import java.util.List;
 import java.util.HashMap;
@@ -120,7 +118,6 @@ public class TenantLoadingTest {
   public void setUp(TestContext context) {
     vertx = Vertx.vertx();
     port = NetworkUtils.nextFreePort();;
-    Async async = context.async();
     Router router = Router.router(vertx);
     router.post("/data").handler(this::fakeHttpServerHandler);
     router.getWithRegex("/data/.*").handler(this::fakeHttpServerHandler);
@@ -132,21 +129,14 @@ public class TenantLoadingTest {
     HttpServerOptions so = new HttpServerOptions().setHandle100ContinueAutomatically(true);
     vertx.createHttpServer(so)
       .requestHandler(router)
-      .listen(
-        port,
-        result -> {
-          if (result.failed()) {
-            context.fail(result.cause());
-          }
-          async.complete();
-        }
-      );
+      .listen(port)
+      .onComplete(context.asyncAssertSuccess());
   }
 
   @After
   public void tearDown(TestContext context) {
-    Async async = context.async();
-    vertx.close(x -> async.complete());
+    vertx.close()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @Test

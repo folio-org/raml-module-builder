@@ -246,20 +246,14 @@ public class TenantAPIIT extends TenantHelper {
 
   @Test
   public void requireCustomPostgresFail(TestContext textContext) {
-    Context context = vertx.getOrCreateContext();
-    context.putLocal("postgres_min_version_num", "1000000");
-    context.putLocal("postgres_min_version", "100.0");
-    new TenantAPI().requirePostgresVersion(context)
+    new TenantAPI().requirePostgres(vertx.getOrCreateContext(), 1000000, "100.0")
     .onComplete(textContext.asyncAssertFailure(
         e -> assertThat(e.getMessage(), startsWith("Expected PostgreSQL server version 100.0 or later"))));
   }
 
   @Test
   public void requireCustomPostgresSuccess(TestContext textContext) {
-    Context context = vertx.getOrCreateContext();
-    context.putLocal("postgres_min_version_num", "100000");
-    context.putLocal("postgres_min_version", "10.0");
-    new TenantAPI().requirePostgresVersion(context)
+    new TenantAPI().requirePostgres(vertx.getOrCreateContext(), 100000, "10.0")
     .onComplete(textContext.asyncAssertSuccess());
   }
 
@@ -523,11 +517,12 @@ public class TenantAPIIT extends TenantHelper {
         return Future.failedFuture("Load Failure");
       }
     };
-    tenantAPI.postTenantSync(new TenantAttributes(), okapiHeaders, context.asyncAssertSuccess(result -> {
+    tenantAPI.postTenantSync(new TenantAttributes(), okapiHeaders, vertx.getOrCreateContext())
+    .onComplete(context.asyncAssertSuccess(result -> {
       assertThat(result.getStatus(), is(400));
       String msg = (String) result.getEntity();
       assertThat(msg, is("Load Failure"));
-    }), vertx.getOrCreateContext());
+    }));
   }
 
   @Test
@@ -566,6 +561,19 @@ public class TenantAPIIT extends TenantHelper {
     tenantAttributes.setModuleTo("mod-1.0.0");
     tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
       assertThat(result.getStatus(), is(204));
+
+    }), vertx.getOrCreateContext());
+  }
+
+  @Test
+  public void postTenantEnableMissingVersion(TestContext context) {
+    TenantAPI tenantAPI = new TenantAPI();
+    TenantAttributes tenantAttributes = new TenantAttributes();
+    tenantAttributes.setModuleFrom("mod-0.0.0");
+    tenantAttributes.setModuleTo("mod");
+    tenantAPI.postTenantSync(tenantAttributes, okapiHeaders, context.asyncAssertSuccess(result -> {
+      assertThat(result.getStatus(), is(400));
+      assertThat((String) result.getEntity(), is("Invalid module_to: mod"));
     }), vertx.getOrCreateContext());
   }
 

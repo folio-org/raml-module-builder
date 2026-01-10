@@ -25,6 +25,7 @@ import org.apache.logging.log4j.ThreadContext;
 import org.folio.HttpStatus;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.okapi.common.XOkapiHeaders;
+import org.folio.okapi.common.logging.FolioLocal;
 import org.folio.okapi.common.logging.FolioLoggingContext;
 import org.folio.rest.annotations.Stream;
 import org.folio.rest.jaxrs.model.Error;
@@ -46,8 +47,8 @@ import org.folio.rest.tools.utils.OutStream;
 import org.folio.rest.tools.utils.ResponseImpl;
 import org.folio.rest.tools.utils.ValidationHelper;
 import org.folio.util.StringUtil;
-
 import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Path;
 import jakarta.validation.Path.Node;
 import jakarta.validation.Validation;
 import jakarta.validation.ValidatorFactory;
@@ -90,6 +91,7 @@ public final class RestRouting {
   private static final Messages MESSAGES = Messages.getInstance();
   private static final ObjectMapper MAPPER = ObjectMapperTool.getMapper();
   private static ValidatorFactory validationFactory = Validation.buildDefaultValidatorFactory();
+  private static final Pattern NEWLINE = Pattern.compile("[\n\r]");
 
   private RestRouting() {
     throw new UnsupportedOperationException("Cannot instantiate utility class.");
@@ -126,6 +128,34 @@ public final class RestRouting {
   }
 
   /**
+   * Delete the JSON element at the path position in json.
+   */
+  static void deletePath(Object json, Path path) {
+    Node last = null;
+    for (Node node : path) {
+      if (last != null) {
+        if (json instanceof JsonObject jsonObject) {
+          json = jsonObject.getValue(last.getName());
+        } else {
+          throw new IllegalArgumentException("Unexpected class " + json.getClass().getName());
+        }
+        if (json instanceof JsonArray jsonArray) {
+          json = jsonArray.getValue(node.getIndex());
+        }
+      }
+      last = node;
+    }
+    if (last == null) {
+      throw new IllegalArgumentException("Path must not contain null segments");
+    }
+    switch (json) {
+      case JsonObject jsonObject -> jsonObject.remove(last.getName());
+      case null -> { /* do nothing */ }
+      default -> throw new IllegalArgumentException("Unexpected class: " + json.getClass().getName());
+    }
+  }
+
+  /**
    * return whether the request is valid [0] and a cleaned up version of the object [1]
    *
    * @param rc
@@ -152,19 +182,11 @@ public final class RestRouting {
           if (!(content instanceof JsonObject)) {
             content = JsonObject.mapFrom(content);
           }
-          JsonObject json = (JsonObject) content;
-          Node last = null;
-          for (Node node : cv.getPropertyPath()) {
-            if (last != null) {
-              json = json.getJsonObject(last.getName());
-            }
-            last = node;
-          }
-          json.remove(last.getName());
+          deletePath(content, cv.getPropertyPath());
           continue;
         } catch (Exception e) {
           withRequestId(rc, () -> LOGGER.warn("Failed to remove {} field from body when calling {}",
-              cv.getPropertyPath(), absoluteUri(rc.request()), e));
+              cv.getPropertyPath(), absoluteUri(rc), e));
         }
       }
       Error error = new Error();
@@ -198,7 +220,7 @@ public final class RestRouting {
       } catch (IOException e) {
         withRequestId(rc, () -> LOGGER.error(
             "Failed to serialize body content after removing read-only fields when calling {}",
-            absoluteUri(rc.request()), e));
+            absoluteUri(rc), e));
       }
     }
     return new Object[]{ret, content};
@@ -434,10 +456,10 @@ public final class RestRouting {
   static void invoke(Method method, Object[] params, Object o, RoutingContext rc,
                      Map<String, String> headers, Handler<AsyncResult<Response>> resultHandler) {
 
-    FolioLoggingContext.put(FolioLoggingContext.TENANT_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_HEADER_TENANT));
-    FolioLoggingContext.put(FolioLoggingContext.REQUEST_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_REQUESTID_HEADER));
-    FolioLoggingContext.put(FolioLoggingContext.USER_ID_LOGGING_VAR_NAME, headers.get(RestVerticle.OKAPI_USERID_HEADER));
-    FolioLoggingContext.put(FolioLoggingContext.MODULE_ID_LOGGING_VAR_NAME, PostgresClient.getModuleName());
+    FolioLoggingContext.put(FolioLocal.TENANT_ID, headers.get(RestVerticle.OKAPI_HEADER_TENANT));
+    FolioLoggingContext.put(FolioLocal.REQUEST_ID, headers.get(RestVerticle.OKAPI_REQUESTID_HEADER));
+    FolioLoggingContext.put(FolioLocal.USER_ID, headers.get(RestVerticle.OKAPI_USERID_HEADER));
+    FolioLoggingContext.put(FolioLocal.MODULE_ID, PostgresClient.getModuleName());
 
     withRequestId(rc, () -> LOGGER.info("invoking {}", method.getName()));
 
@@ -830,16 +852,18 @@ public final class RestRouting {
   }
 
   /**
-   * This method works around sonar's code smell report
+   * Request's absolute URI sanitized.
+   *
+   * <p>See
    * <a href=
    * "https://sonarcloud.io/organizations/folio-org/rules?open=javasecurity%3AS5145&rule_key=javasecurity%3AS5145">
-   * Logging should not be vulnerable to injection attacks</a>.
-   * <p>
-   * URI is safe as special characters are already encoded using
-   * <a href="http://www.ietf.org/rfc/rfc3986.txt">RFC 3986</a> and
-   * <a href="http://www.ietf.org/rfc/rfc2396.txt">RFC 2396</a>.
+   * Logging should not be vulnerable to injection attacks</a>
+   * for details about replacing new line characters.
    */
-  private static String absoluteUri(HttpServerRequest httpServerRequest) {
-    return httpServerRequest.absoluteURI();
+  static String absoluteUri(RoutingContext routingContext) {
+    if (routingContext == null) {
+      return "unknown";
+    }
+    return NEWLINE.matcher(routingContext.request().absoluteURI()).replaceAll("_");
   }
 }

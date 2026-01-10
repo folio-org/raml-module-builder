@@ -4,6 +4,8 @@ These are notes to assist upgrading to newer versions.
 See the [NEWS](../NEWS.md) summary of changes for each version.
 
 <!-- ../../okapi/doc/md2toc -l 2 -h 3 upgrading.md -->
+* [Version 36.0](#version-360)
+* [Version 35.4](#version-354)
 * [Version 35.3](#version-353)
 * [Version 35.2](#version-352)
 * [Version 35.1](#version-351)
@@ -26,9 +28,54 @@ See the [NEWS](../NEWS.md) summary of changes for each version.
 * [Version 25](#version-25)
 * [Version 20](#version-20)
 
+## Version 36.0
+
+36.0.\* is the Trillium version.
+
+See also the [FOLIO Vert.x 5 migration notes](https://folio-org.atlassian.net/wiki/spaces/FOLIJET/pages/1003847853/Migration+to+Vertx+5).
+
+All command line options must be passed as system properties using `-D` before the `-jar` argument. `MODULE_SPECIFIC_ARGS` no longer exists.
+Modules should prefer environment variables.
+
+In the log4j pattern (used in log4j2.properties and log4j2-json.properties) upcase id:
+* `FolioLoggingContext:requestid` -> `FolioLoggingContext:requestId`
+* `FolioLoggingContext:tenantid` -> `FolioLoggingContext:tenantId`
+* `FolioLoggingContext:userid` -> `FolioLoggingContext:userId`
+* `FolioLoggingContext:moduleid` -> `FolioLoggingContext:moduleId`
+
+In pom.xml file add `ServicesResourceTransformer` to the `maven-shade-plugin` configuration.
+```xml
+    <configuration>
+      <transformers>
+        ...
+        <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+      </transformers>
+    </configuration>
+```
+
+Consider replacing
+* `org.apache.hc.core5.http.HttpHeaders` with `org.folio.HttpHeaders`
+* `org.apache.hc.core5.http.HttpStatus` with `org.folio.HttpStatus`
+* `org.apache.http.HttpHeaders` with `org.folio.HttpHeaders`
+* `org.apache.http.HttpStatus` with `org.folio.HttpStatus`
+They are drop-in replacements and may allow to drop the `org.apache.httpcomponents.core5:httpcore5`
+or `org.apache.httpcomponents:httpcore` dependency reducing the runtime size.
+
+## Version 35.4
+
+35.4.\* is the Sunflower (R1 2025) version.
+
+RMB >= 35.4.2 requires Vert.x >= 4.5.23.
+
+RMB 35.4.0 and 35.4.1 require Vert.x <= 4.5.22.
+
 ## Version 35.3
 
 35.3.\* is the Ramsons (R2 2024) version.
+
+RMB >= 35.3.2 requires Vert.x >= 4.5.23.
+
+RMB 35.3.0 and 35.3.1 require Vert.x <= 4.5.22.
 
 Don't use `JsonObject.mapFrom` to serialize a Java class instance to JSON,
 RMB's database methods take a Java class and automatically serialize it. When writing custom SQL use

@@ -64,7 +64,8 @@ class RmbtestsClientTest {
     vertx.createHttpServer().requestHandler(req -> vtc.verify(() -> {
       assertThat(req.params().get("publicationDate"), is("1970-01-02T00:00:00"));
       vtc.completeNow();
-    })).listen(8888, server -> {
+    })).listen(8888)
+    .onSuccess(server -> {
       Date date = new Date(24 * 60 * 60 * 1000);  // 1 day (in milliseconds) after 1970-01-01T00:00:00
       new RmbtestsClient("http://localhost:8888", "test_tenant", "token")
           .getRmbtestsBooks("author", date,  0,1, 1, "isbn", false, null, response -> {});

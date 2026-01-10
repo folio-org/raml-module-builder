@@ -90,10 +90,11 @@ class PreparedRowStreamTest {
 
   @Test
   void close() {
+    @SuppressWarnings("unchecked")
     RowStream<Row> rowStream = mock(RowStream.class);
     when(rowStream.close()).thenReturn(Future.succeededFuture());
     PreparedRowStream preparedRowStream = new PreparedRowStream(null, rowStream);
-    preparedRowStream.close(x -> {});
+    preparedRowStream.close();
     verify(rowStream).close();
   }
 }

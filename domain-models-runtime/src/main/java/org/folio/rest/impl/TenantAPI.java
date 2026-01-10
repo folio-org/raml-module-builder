@@ -30,6 +30,7 @@ import org.folio.rest.persist.PostgresClient;
 import org.folio.dbschema.Schema;
 import org.folio.rest.persist.ddlgen.SchemaMaker;
 import org.folio.dbschema.TenantOperation;
+import org.folio.okapi.common.ModuleId;
 import org.folio.dbschema.ObjectMapperTool;
 import org.folio.rest.tools.client.exceptions.ResponseException;
 import org.folio.rest.tools.utils.TenantTool;
@@ -69,21 +70,8 @@ public class TenantAPI implements Tenant {
         });
   }
 
-  private String getLocalString(Context context, String key) {
-    Object object = context.getLocal(key);
-    if (object == null) {
-      return null;
-    }
-    return object.toString();
-  }
-
   Future<Void> requirePostgresVersion(Context context) {
-    String minNum = getLocalString(context, "postgres_min_version_num");
-    String min = getLocalString(context, "postgres_min_version");
-    if (minNum == null || min == null) {
-      return requirePostgres(context, DEFAULT_POSTGRES_SERVER_VERSION_NUM, DEFAULT_POSTGRES_SERVER_VERSION);
-    }
-    return requirePostgres(context, Integer.parseInt(minNum), min);
+    return requirePostgres(context, DEFAULT_POSTGRES_SERVER_VERSION_NUM, DEFAULT_POSTGRES_SERVER_VERSION);
   }
 
   Future<Boolean> tenantExists(Context context, String tenantId) {
@@ -140,8 +128,14 @@ public class TenantAPI implements Tenant {
       throw new NoSchemaJsonException();
     }
 
-    TenantOperation op = TenantOperation.CREATE;
     String newVersion = tenantAttributes == null ? null : tenantAttributes.getModuleTo();
+    if (newVersion != null) {
+      var newModuleId = new ModuleId(newVersion); // validate
+      if (newModuleId.getSemVer() == null) {
+        throw new IllegalArgumentException("Invalid module_to: " + newVersion);
+      }
+    }
+    TenantOperation op = TenantOperation.CREATE;
     if (tenantExists) {
       op = TenantOperation.UPDATE;
     }
@@ -350,10 +344,28 @@ public class TenantAPI implements Tenant {
    * @param headers Okapi headers
    * @param handler response handler
    * @param context Vert.x context
+   * @deprecated Use the futurized {@link #postTenantSync(TenantAttributes, Map, Context)} instead.
    */
+  @Deprecated(since = "36.0.0")
   public void postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
                              Handler<AsyncResult<Response>> handler, Context context)  {
     postTenant(false, tenantAttributes, headers, handler, context);
+  }
+
+  /**
+   * Initialize tenant, synchronous mode.
+   *
+   * @param tenantAttributes attributes for operation
+   * @param headers Okapi headers
+   * @param context Vert.x context
+   * @return the Response
+   */
+  public Future<Response> postTenantSync(TenantAttributes tenantAttributes, Map<String, String> headers,
+      Context context)  {
+
+    Promise<Response> promise = Promise.promise();
+    postTenant(false, tenantAttributes, headers, promise::handle, context);
+    return promise.future();
   }
 
   Future<TenantJob> checkJob(String tenantId, UUID jobId, Context context) {

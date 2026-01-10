@@ -1,75 +1,74 @@
 package org.folio.rest;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
-import org.junit.jupiter.api.Order;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.MethodOrderer.OrderAnnotation;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.is;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
+import io.vertx.launcher.application.HookContext;
+import io.vertx.launcher.application.VertxApplication;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 
 @ExtendWith(VertxExtension.class)
-@TestMethodOrder(OrderAnnotation.class)
-public class RestLauncherTest {
-
-  private static final String JAVA_TEST_VERTICLE =
-      "java:" + TestVerticle.class.getCanonicalName();
-  private static final String DISABLE_METRICS = "-Dvertx.metrics.options.enabled=false";
-  private static final String ENABLE_METRICS = "-Dvertx.metrics.options.enabled=true";
-  private static final String ENABLE_JMX = "-DjmxMetricsOptions={\"domain\":\"org.folio\"}";
-
+class RestLauncherTest {
   private Vertx vertx;
 
   @AfterEach
   void closeVertx(VertxTestContext vtc) {
-    vertx.close(vtc.succeedingThenComplete());
+    vertx.close()
+    .onComplete(vtc.succeedingThenComplete());
+  }
+
+  @BeforeEach
+  void beforeEach() {
+    unsetProperties();
+  }
+
+  @AfterAll
+  static void unsetProperties() {
+    System.clearProperty("vertx.metrics.options.enabled");
+    System.clearProperty("jmxMetricsOptions");
+  }
+
+  void assertLaunch(boolean expectedMetricsEnabled) {
+    String[] args = { RestVerticle.class.getName() };
+    var dummyLauncherHooks = new DummyLauncherHooks();
+    VertxApplication vertxApplication = new RestLauncher(args, dummyLauncherHooks);
+    assertThat(vertxApplication.launch(), is(0));
+    assertThat(dummyLauncherHooks.enabled, is(expectedMetricsEnabled));
   }
 
   @Test
-  @Order(1)
-  public void isMetricsDisabledByDefault() {
-    DummyLauncher launcher = new DummyLauncher();
-    launcher.dispatch(new String[] { "run", JAVA_TEST_VERTICLE });
-    assertFalse(launcher.enabled);
+  void canDisableMetrics() {
+    assertLaunch(false);
   }
 
   @Test
-  @Order(2)
-  public void canEnableMetrics() {
-    DummyLauncher launcher = new DummyLauncher();
-    launcher.dispatch(new String[] { "run", JAVA_TEST_VERTICLE, ENABLE_METRICS, ENABLE_JMX});
-    assertTrue(launcher.enabled);
+  void canEnableMetrics() {
+    System.setProperty("vertx.metrics.options.enabled", "true");
+    System.setProperty("jmxMetricsOptions", "{}");
+    assertLaunch(true);
   }
 
-  @Test
-  @Order(3)
-  public void canDisableMetrics() {
-    DummyLauncher launcher = new DummyLauncher();
-    launcher.dispatch(new String[] { "run", JAVA_TEST_VERTICLE, DISABLE_METRICS });
-    assertFalse(launcher.enabled);
-  }
-
-  private class DummyLauncher extends RestLauncher {
+  private class DummyLauncherHooks extends RestLauchnerHooks {
 
     private boolean enabled = false;
 
     @Override
-    public void beforeStartingVertx(VertxOptions options) {
-      super.beforeStartingVertx(options);
-      enabled = options.getMetricsOptions().isEnabled();
+    public void beforeStartingVertx(HookContext context) {
+      enabled = context.vertxOptions().getMetricsOptions().isEnabled();
+      super.beforeStartingVertx(context);
     }
 
     @Override
-    public void afterStartingVertx(Vertx vertx) {
-      RestLauncherTest.this.vertx = vertx;
+    public void afterVertxStarted(HookContext context) {
+      RestLauncherTest.this.vertx = context.vertx();
     }
   }
 

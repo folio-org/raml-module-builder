@@ -21,24 +21,25 @@ public class LogUtil {
 
   private static final Logger log = LogManager.getLogger(LogUtil.class);
 
-  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int responseCode, long responseTime,
+  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion,
+      int responseCode, long responseTime,
       long responseSize, String url, String queryParams, String message) {
 
-    String message1 = new StringBuilder(injectDeploymentId()).append(clientIP).append(" ").append(httpMethod).append(" ").append(url).append(" ").append(queryParams)
-        .append(" ").append(httpVersion).append(" ").append(responseCode).append(" ").append(responseSize).append(" ").append(responseTime)
-        .append(" ").append(message).toString();
-
-    log.info(message1);
+    if (log.isDebugEnabled()) {
+      log.debug("{}{} {} {} {} {} {} {} {} {}", injectDeploymentId(), clientIP, httpMethod, url, queryParams,
+          httpVersion, responseCode, responseSize, responseTime, message);
+    }
   }
 
-  public static void formatStatsLogMessage(String clientIP, String httpMethod, String httpVersion, int responseCode, long responseTime,
+  public static void formatStatsLogMessage(String clientIP, String httpMethod,
+      String httpVersion, int responseCode, long responseTime,
       long responseSize, String url, String queryParams, String message, String tenantId, String body) {
 
-    String message1 = new StringBuilder(injectDeploymentId()).append(clientIP).append(" ").append(httpMethod).append(" ").append(url).append(" ").append(queryParams)
-        .append(" ").append(httpVersion).append(" ").append(responseCode).append(" ").append(responseSize).append(" ").append(responseTime)
-        .append(" tid=").append(tenantId).append(" ").append(message).append(" ").append(body).toString();
-
-    log.info(message1);
+    if (log.isDebugEnabled()) {
+      log.debug("{}{} {} {} {} {} {} {} {} tid={} {} {}",
+          injectDeploymentId(), clientIP, httpMethod, url, queryParams,
+          httpVersion, responseCode, responseSize, responseTime, tenantId, message, body);
+    }
   }
 
   /**
@@ -59,7 +60,9 @@ public class LogUtil {
       long responseTime, String tenantId, String body) {
 
     if (routingContext == null) {
-      log.info(injectDeploymentId() + responseTime + " tid=" + tenantId + " " + body);
+      if (log.isDebugEnabled()) {
+        log.debug("{}{} tid={} {}", injectDeploymentId(), responseTime, tenantId, body);
+      }
       return;
     }
     HttpServerRequest request = routingContext.request();
@@ -78,11 +81,24 @@ public class LogUtil {
         body);
   }
 
+  /**
+   * Log the parameters with INFO level and prefix the log message with the deployment id
+   * if the current Vertx' verticle has multiple instances and DEBUG level is enabled.
+   */
   public static void formatLogMessage(String clazz, String function, String message) {
-    log.info(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(function).append(" ").append(message));
+    if (log.isInfoEnabled()) {
+      log.info("{}{} {} {}", injectDeploymentId(), clazz, function, message);
+    }
   }
+
+  /**
+   * Log the parameters with ERROR level and prefix the log message with the deployment id
+   * if the current Vertx' verticle has multiple instances and DEBUG level is enabled.
+   */
   public static void formatErrorLogMessage(String clazz, String function, String message) {
-    log.error(new StringBuilder(injectDeploymentId()).append(clazz).append(" ").append(function).append(" ").append(message));
+    if (log.isErrorEnabled()) {
+      log.error("{}{} {} {}", injectDeploymentId(), clazz, function, message);
+    }
   }
 
   /**
@@ -104,26 +120,39 @@ public class LogUtil {
 
   /**
    * Update the log level for all packages / a specific package / a specific class
-   * @param packageName - pass "*" for all packages
+   * @param packageNames - pass "*" for all packages, use comma to separate multiple names
    * @param level - see {@link Level}
    * @return - JsonObject with a list of updated loggers and their levels
    */
-  public static JsonObject updateLogConfiguration(String packageName, String level){
-
-    JsonObject updatedLoggers = new JsonObject();
-    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
-    Collection<org.apache.logging.log4j.core.Logger> allLoggers = ctx.getLoggers();
-
-    allLoggers.forEach( log -> {
-      if(log != null && packageName != null && (log.getName().startsWith(packageName.replace("*", "")) || "*".equals(packageName)) ){
-        if(log != null){
-          log.setLevel(getLog4jLevel(level));
-          updatedLoggers.put(log.getName(), log.getLevel().toString());
-        }
-      }
-    });
-
+  public static JsonObject updateLogConfiguration(String packageNames, String level) {
+    var updatedLoggers = new JsonObject();
+    if (packageNames == null) {
+      return updatedLoggers;
+    }
+    for (var packageName : packageNames.split(",")) {
+      updateLogConfiguration(packageName, level, updatedLoggers);
+    }
     return updatedLoggers;
+  }
+
+  private static void updateLogConfiguration(String packageName, String level, JsonObject updatedLoggers) {
+    var prefix = packageName.replace("*", "");
+    if (prefix.equals(packageName)) {
+      // create the logger, it might not have been used since container startup
+      LogManager.getLogger(packageName);
+    }
+
+    LoggerContext ctx = (LoggerContext) LogManager.getContext(false);
+
+    for (var log: ctx.getLoggers()) {
+      if (log == null) {
+        continue;
+      }
+      if (log.getName().startsWith(prefix)) {
+        log.setLevel(getLog4jLevel(level));
+        updatedLoggers.put(log.getName(), log.getLevel().toString());
+      }
+    }
   }
 
   /**

@@ -1,6 +1,5 @@
 package org.folio.rest.persist;
 
-import io.vertx.core.AsyncResult;
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
@@ -106,20 +105,11 @@ public class PreparedRowStream implements RowStream<Row> {
    */
   @Override
   public Future<Void> close() {
-    return rowStream.close().eventually(x -> {
+    return rowStream.close().eventually(() -> {
       if (preparedStatement == null) {
         return Future.succeededFuture();
       }
       return preparedStatement.close();
     });
-  }
-
-  /**
-   * Close the RowStream and the PreparedStatement. Each PreparedStatement occupies
-   * memory in the database that needs to be freed to avoid out-of-memory error.
-   */
-  @Override
-  public void close(Handler<AsyncResult<Void>> completionHandler) {
-    close().onComplete(completionHandler);
   }
 }

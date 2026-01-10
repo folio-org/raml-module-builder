@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.folio</groupId>
     <artifactId>raml-module-builder</artifactId>
-    <version>35.5.0-SNAPSHOT</version>
+    <version>36.0.0-SNAPSHOT</version>
   </parent>
 
   <licenses>
@@ -77,6 +77,10 @@
     </dependency>
     <dependency>
       <groupId>io.vertx</groupId>
+      <artifactId>vertx-launcher-application</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.vertx</groupId>
       <artifactId>vertx-micrometer-metrics</artifactId>
     </dependency>
     <dependency>
@@ -96,12 +100,6 @@
       <artifactId>netty-tcnative-boringssl-static</artifactId>
       <classifier>linux-x86_64</classifier>
       <scope>runtime</scope>
-    </dependency>
-    <!-- It is needed for SCRAM-SHA-256 authentication in postgres https://github.com/eclipse-vertx/vertx-sql-client/blob/master/vertx-pg-client/src/main/asciidoc/index.adoc#sasl-scram-sha-256-authentication-mechanism -->
-    <dependency>
-      <groupId>com.ongres.scram</groupId>
-      <artifactId>client</artifactId>
-      <version>2.1</version>
     </dependency>
     <dependency>
       <groupId>org.folio.okapi</groupId>
@@ -162,6 +160,7 @@
       <groupId>io.vertx</groupId>
       <artifactId>vertx-pg-client</artifactId>
     </dependency>
+
     <dependency>
       <groupId>javax.ws.rs</groupId>
       <artifactId>jsr311-api</artifactId>
@@ -218,7 +217,7 @@
     </dependency>
     <dependency>
       <groupId>org.testcontainers</groupId>
-      <artifactId>junit-jupiter</artifactId>
+      <artifactId>testcontainers-junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
     <dependency>

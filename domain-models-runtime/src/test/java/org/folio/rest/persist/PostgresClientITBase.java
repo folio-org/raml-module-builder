@@ -53,7 +53,8 @@ public class PostgresClientITBase {
 
   protected static void tearDownClass(TestContext context) {
     dropSchemaAndRole(context);
-    vertx.close(context.asyncAssertSuccess());
+    vertx.close()
+    .onComplete(context.asyncAssertSuccess());
   }
 
   @AfterClass
@@ -114,7 +115,8 @@ public class PostgresClientITBase {
   public static void executeSuperuser(TestContext context, String ... sqlStatements) {
     for (String sql : sqlStatements) {
       Async async = context.async();
-      PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
+      PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute()
+      .onComplete(reply -> {
         if (reply.failed()) {
           context.fail(new RuntimeException(reply.cause().getMessage() + ". SQL: " + sql, reply.cause()));
         }
@@ -130,7 +132,8 @@ public class PostgresClientITBase {
   public static void executeSuperuserIgnore(TestContext context, String ... sqlStatements) {
     for (String sql : sqlStatements) {
       Async async = context.async();
-      PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute(reply -> {
+      PostgresClientHelper.getClient(PostgresClient.getInstance(vertx)).query(sql).execute()
+      .onComplete(reply -> {
         async.complete();
       });
       async.await();

@@ -1,20 +1,17 @@
 package org.folio.rest.persist;
 
-import io.netty.handler.ssl.OpenSsl;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.json.JsonObject;
-import io.vertx.core.net.JdkSSLEngineOptions;
-import io.vertx.core.net.OpenSSLEngineOptions;
+import io.vertx.core.net.ClientSSLOptions;
 import io.vertx.core.net.PemTrustOptions;
+import io.vertx.pgclient.PgBuilder;
 import io.vertx.pgclient.PgConnectOptions;
-import io.vertx.pgclient.PgPool;
 import io.vertx.pgclient.SslMode;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PoolOptions;
 import java.util.Collections;
 import java.util.concurrent.TimeUnit;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class PostgresClientInitializer {
   /** default release delay in milliseconds; after this time an idle database connection is closed */
@@ -22,16 +19,17 @@ public class PostgresClientInitializer {
   static final String HOST_READER_ASYNC = "host_reader_async";
   static final String PORT_READER_ASYNC = "port_reader_async";
 
-  private static final Logger LOG = LogManager.getLogger(PostgresClientInitializer.class);
   private static final String CONNECTION_RELEASE_DELAY = "connectionReleaseDelay";
+  private static final String MAX_LIFETIME = "maxLifetime";
+  private static final int DEFAULT_MAX_LIFETIME = 1_800_000;  // 30 minutes
   private static final String MAX_POOL_SIZE = "maxPoolSize";
   private static final String RECONNECT_ATTEMPTS = "reconnectAttempts";
   private static final String RECONNECT_INTERVAL = "reconnectInterval";
   private static final String SERVER_PEM = "server_pem";
 
-  private final PgPool client;
-  private PgPool syncReadClient;
-  private PgPool asyncReadClient;
+  private final Pool client;
+  private Pool syncReadClient;
+  private Pool asyncReadClient;
 
   /**
    * Defines the various clients (PgPool instances) based on their configured hosts in any supported combination.
@@ -39,9 +37,9 @@ public class PostgresClientInitializer {
    * @param configuration A reference to the current database configuration.
    */
   protected PostgresClientInitializer(Vertx vertx, JsonObject configuration) {
-    client = createPgPool(vertx, configuration, PostgresClient.HOST, PostgresClient.PORT);
-    syncReadClient = createPgPool(vertx, configuration, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
-    asyncReadClient = createPgPool(vertx, configuration, HOST_READER_ASYNC, PORT_READER_ASYNC);
+    client = createPool(vertx, configuration, PostgresClient.HOST, PostgresClient.PORT);
+    syncReadClient = createPool(vertx, configuration, PostgresClient.HOST_READER, PostgresClient.PORT_READER);
+    asyncReadClient = createPool(vertx, configuration, HOST_READER_ASYNC, PORT_READER_ASYNC);
 
     // If there is no read client defined, then use the r/w client for it.
     // If there is no async read client defined, then use the sync read client for it if it exists,
@@ -54,22 +52,21 @@ public class PostgresClientInitializer {
     }
   }
 
-  public PgPool getClient() {
+  public Pool getClient() {
     return client;
   }
 
-  public PgPool getSyncReadClient() {
+  public Pool getSyncReadClient() {
     return syncReadClient;
   }
 
-  public PgPool getAsyncReadClient() {
+  public Pool getAsyncReadClient() {
     return asyncReadClient;
   }
 
-  private static PgPool createPgPool(Vertx vertx,
-                                     JsonObject configuration,
-                                     String hostToResolve,
-                                     String portToResolve) {
+  private static Pool createPool(Vertx vertx,
+      JsonObject configuration, String hostToResolve, String portToResolve) {
+
     var connectOptions = createPgConnectOptions(configuration, hostToResolve, portToResolve);
 
     if (connectOptions == null) {
@@ -88,7 +85,10 @@ public class PostgresClientInitializer {
       poolOptions.setIdleTimeout(connectionReleaseDelay);
     }
 
-    return PgPool.pool(vertx, connectOptions, poolOptions);
+    poolOptions.setMaxLifetimeUnit(TimeUnit.MILLISECONDS);
+    poolOptions.setMaxLifetime(configuration.getInteger(MAX_LIFETIME, DEFAULT_MAX_LIFETIME));
+
+    return PgBuilder.pool().using(vertx).connectingTo(connectOptions).with(poolOptions).build();
   }
 
   static PgConnectOptions createPgConnectOptions(JsonObject sqlConfig, String hostToResolve, String portToResolve) {
@@ -147,21 +147,13 @@ public class PostgresClientInitializer {
 
   private static void setUpSsl(PgConnectOptions pgConnectOptions, String serverPem) {
     pgConnectOptions.setSslMode(SslMode.VERIFY_FULL);
-    pgConnectOptions.setHostnameVerificationAlgorithm("HTTPS");
-    pgConnectOptions.setPemTrustOptions(
+
+    var clientSslOptions = new ClientSSLOptions();
+    clientSslOptions.setHostnameVerificationAlgorithm("HTTPS");
+    clientSslOptions.setTrustOptions(
         new PemTrustOptions().addCertValue(Buffer.buffer(serverPem)));
-    pgConnectOptions.setEnabledSecureTransportProtocols(Collections.singleton("TLSv1.3"));
-    if (OpenSSLEngineOptions.isAvailable()) {
-      pgConnectOptions.setOpenSslEngineOptions(new OpenSSLEngineOptions());
-    } else {
-      pgConnectOptions.setJdkSslEngineOptions(new JdkSSLEngineOptions());
-      LOG.error("Cannot run OpenSSL, using slow JDKSSL. Is netty-tcnative-boringssl-static for windows-x86_64, "
-          + "osx-x86_64 or linux-x86_64 installed? https://netty.io/wiki/forked-tomcat-native.html "
-          + "Is libc6-compat installed (if required)? https://github.com/pires/netty-tcnative-alpine");
-    }
-    LOG.debug("Enforcing SSL encryption for PostgreSQL connections, "
-        + "requiring TLSv1.3 with server name certificate, "
-        + "using {}", (OpenSSLEngineOptions.isAvailable() ? ("OpenSSL " + OpenSsl.versionString()) : "JDKSSL"));
+    clientSslOptions.setEnabledSecureTransportProtocols(Collections.singleton("TLSv1.3"));
+    pgConnectOptions.setSslOptions(clientSslOptions);
   }
 
   private static boolean isReaderHost(String hostToResolve) {

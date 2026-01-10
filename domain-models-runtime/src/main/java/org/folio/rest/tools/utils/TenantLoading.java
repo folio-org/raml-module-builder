@@ -32,7 +32,6 @@ import java.util.jar.JarFile;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.folio.okapi.common.GenericCompositeFuture;
 import org.folio.okapi.common.XOkapiHeaders;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -358,7 +357,7 @@ public class TenantLoading {
       urls.forEach(url -> futures.add(
           loadURL(headers, url, httpClient, loadingEntry, endPointUrl)
           .onSuccess(sum::addAndGet)));
-      return GenericCompositeFuture.all(futures).map(x -> sum.get());
+      return Future.all(futures).map(x -> sum.get());
     } catch (URISyntaxException|IOException ex) {
       log.error("Exception for path " + filePath, ex);
       return Future.failedFuture("Exception for path " + filePath + " ex=" + ex.getMessage());
@@ -370,7 +369,7 @@ public class TenantLoading {
 
     String okapiUrl = headers.get(XOkapiHeaders.URL_TO);
     if (okapiUrl == null) {
-      log.warn("TenantLoading.perform No " + XOkapiHeaders.URL_TO + " header");
+      log.debug("TenantLoading.perform No " + XOkapiHeaders.URL_TO + " header");
       okapiUrl = headers.get(XOkapiHeaders.URL);
     }
     if (okapiUrl == null) {
