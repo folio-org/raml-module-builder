@@ -936,6 +936,8 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
     "name == \"Lea Long\"           # Lea Long",
     "name <> \"Lea Long\"           # Jo Jane; Ka Keller",
     "name = \"Lea *\"               # Lea Long", // Loose '*' should be ignored
+    "name = \"Lea * Long\"          # Lea Long",
+    "name = \"Lea  *  Long\"        # Lea Long",
     "name = \"*\"                   # Jo Jane; Ka Keller; Lea Long", // special case
     "name = \"Le* Lo*\"             # Lea Long",
     "name = \" * * \"               # Jo Jane; Ka Keller; Lea Long",
