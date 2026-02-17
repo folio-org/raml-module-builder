@@ -13,6 +13,7 @@ import java.util.concurrent.TimeoutException;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.http.ContentType;
+import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -26,6 +27,8 @@ import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.jupiter.api.BeforeAll;
 
 public class ApiTestBase {
+  private static final int TENANT_REQUEST_RETRIES = 10;
+  private static final long TENANT_REQUEST_RETRY_DELAY_MS = 500;
   static Vertx vertx;
   /** default request header with "x-okapi-tenant: testlib" and "Content-type: application/json"
    *  and ErrorLoggingFilter (logs to System.out).
@@ -66,24 +69,14 @@ public class ApiTestBase {
 
     // delete tenant (schema, tables, ...) if it exists from previous tests
     TenantAttributes ta = new TenantAttributes().withPurge(true);
-    given(r).header("x-okapi-url-to", "http://localhost:" + port).
-        contentType(ContentType.JSON)
-        .body(Json.encode(ta))
-        .when().post("/_/tenant")
-        .then().statusCode(204);
+    postTenantWithRetry(ta, 204);
 
     List<Parameter> list = new LinkedList<>();
     list.add(new Parameter().withKey("loadReference").withValue("true"));
     ta = new TenantAttributes().withModuleTo("mod-api-1.0.0").withParameters(list);
 
     // create tenant (schema, tables, ...)
-    String location = given(r)
-        .header("x-okapi-url-to", "http://localhost:" + port)
-        .contentType(ContentType.JSON)
-        .body(Json.encode(ta))
-        .when().post("/_/tenant")
-        .then().statusCode(201)
-        .extract().header("Location");
+    String location = postTenantWithRetry(ta, 201).header("Location");
 
     given(r)
         .header("x-okapi-url-to", "http://localhost:" + port)
@@ -92,6 +85,48 @@ public class ApiTestBase {
         .statusCode(200)
         .body("complete", is(true))
         .body("error", is(nullValue()));
+  }
+
+  private static Response postTenantWithRetry(TenantAttributes tenantAttributes, int expectedStatus) {
+    Response lastResponse = null;
+    for (int attempt = 1; attempt <= TENANT_REQUEST_RETRIES; attempt++) {
+      Response response = given(r)
+          .header("x-okapi-url-to", "http://localhost:" + port)
+          .contentType(ContentType.JSON)
+          .body(Json.encode(tenantAttributes))
+          .when()
+          .post("/_/tenant");
+
+      if (response.statusCode() == expectedStatus) {
+        return response;
+      }
+
+      lastResponse = response;
+      if (!isTransientConnectionStartupFailure(response) || attempt == TENANT_REQUEST_RETRIES) {
+        break;
+      }
+
+      try {
+        Thread.sleep(TENANT_REQUEST_RETRY_DELAY_MS);
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new RuntimeException(e);
+      }
+    }
+
+    throw new AssertionError(String.format(
+        "Expected status code <%d> but was <%d>. Response body: %s",
+        expectedStatus,
+        lastResponse == null ? -1 : lastResponse.statusCode(),
+        lastResponse == null ? "<none>" : lastResponse.asString()));
+  }
+
+  private static boolean isTransientConnectionStartupFailure(Response response) {
+    if (response.statusCode() != 400 && response.statusCode() != 500 && response.statusCode() != 503) {
+      return false;
+    }
+    String body = response.asString();
+    return body != null && body.contains("Connection refused");
   }
 
   /**
