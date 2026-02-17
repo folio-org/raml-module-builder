@@ -141,7 +141,6 @@ public class CachedConnectionManager {
         })
         .recover(e -> {
           //  Clean up on failure
-          connectionCache.decrementActive();
           connectionCache.incrementNewConnectionErrors();
           sqlConnection.close();
 
