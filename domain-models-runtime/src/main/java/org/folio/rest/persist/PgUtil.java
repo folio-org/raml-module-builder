@@ -89,8 +89,9 @@ public final class PgUtil {
    * <p>
    * 2 = <code>=(</code>
    */
+  @SuppressWarnings("java:S5852")  // linear runtime thanks to atomic groups (?>)
   private static final Pattern KEY_ALREADY_EXISTS_PATTERN = Pattern.compile(
-      "^Key \\(([^=]+)\\)=\\((.*)\\) already exists.$");
+      "^Key (?>\\((.+)\\)=\\()(.*)\\) already exists.$");
   /**
    * Assume this String:
    * <p>
@@ -104,8 +105,9 @@ public final class PgUtil {
    * <p>
    * 3 = <code>users</code>
    */
+  @SuppressWarnings("java:S5852")  // linear runtime thanks to atomic groups (?>)
   private static final Pattern KEY_NOT_PRESENT_PATTERN = Pattern.compile(
-      "^Key [(]([^=]+)[)]=[(](.*)[)] is not present in table \"(.*)\".$");
+      "^Key (?>(?>[(](.+)[)]=[(])(.*)[)]) is not present in table \"([^\"]+)\".$");
   /**
    * Assume this String:
    * <p>
@@ -119,8 +121,10 @@ public final class PgUtil {
    * <p>
    * 3 = <code>referencing</code>
    */
+  @SuppressWarnings("java:S5852")  // linear runtime thanks to atomic groups (?>)
   private static final Pattern KEY_STILL_REFERENCED_PATTERN = Pattern.compile(
-      "^Key [(]([^=]+)[)]=[(](.*)[)] is still referenced from table \"(.*)\".$");
+      "^Key (?>(?>[(](.+)[)]=[(])(.*)[)]) is still referenced from table \"([^\"]+)\".$");
+
   /** Number of records to read from the sort index in getWithOptimizedSql and generateOptimizedSql method */
   private static int optimizedSqlSize = 10000;
 

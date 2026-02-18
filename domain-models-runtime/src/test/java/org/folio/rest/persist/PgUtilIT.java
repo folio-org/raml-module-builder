@@ -1070,50 +1070,139 @@ public class PgUtilIT {
   }
 
   @Test
-  public void responseForeignKeyViolationNoMatch422(TestContext testContext) throws Exception {
-    Exception genericDatabaseException = new PgException("", null, "", "bazMessage");
-    PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
-    Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
-    Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
-    Method respond422 = PgUtil.respond422method(ResponseWith422.class);
-    Future<Response> future = PgUtil.responseForeignKeyViolation("mytable", "myid", exception, respond422, respond400, respond500);
-    assertTrue(future.succeeded());
-    assertThat(future.result().getStatus(), is(422));
-    Errors errors = (Errors) future.result().getEntity();
-    assertThat(errors.getErrors().get(0).getMessage(), containsString("bazMessage"));
+  public void responseForeignKeyViolationNoMatch422() {
+    var msg = responseForeignKeyViolation("bazMessage");
+    assertThat(msg, containsString("bazMessage"));
   }
 
   @Test
-  public void responseUniqueViolationException(TestContext testContext) {
+  @SuppressWarnings("java:S5976")  // cannot use parameterized tests because we
+  // cannot combine @RunWith(VertxUnitRunner.class) and @RunWith(VertxUnitRunner.class)
+  public void keyNotPresentSimple() {
+    var msg = responseForeignKeyViolation("Key (name)=(x) is not present in table \"status\".");
+    assertThat(msg, is("Cannot set t.name = x because it does not exist in status.id."));
+  }
+
+  @Test
+  public void keyNotPresentComplex() {
+    var msg = responseForeignKeyViolation(
+        "Key (lower(jsonb ->> 'barcode'::text))=(foo(bar)baz) is not present in table \"status\".");
+    assertThat(msg, is(
+        "Cannot set t.lower(jsonb ->> 'barcode'::text) = foo(bar)baz because it does not exist in status.id."));
+  }
+
+  @Test
+  public void keyNotPresentComplex2() {
+    var msg = responseForeignKeyViolation(
+        "Key (CASE WHEN barcode='nil' THEN 'n/a' ELSE barcode END)=(foo(bar)baz) is not present in table \"status\".");
+    assertThat(msg, is("Cannot set t.CASE WHEN barcode='nil' THEN 'n/a' ELSE barcode END = foo(bar)baz "
+        + "because it does not exist in status.id."));
+  }
+
+  @Test
+  public void keyStillReferencedSimple() {
+    var msg = responseForeignKeyViolation("Key (name)=(x) is still referenced from table \"status\".");
+    assertThat(msg, is("Cannot delete t.name = x because id is still referenced from table status."));
+  }
+
+  @Test
+  public void keyStillReferencedComplex() {
+    var msg = responseForeignKeyViolation(
+        "Key (lower(jsonb ->> 'barcode'::text))=(foo(bar)baz) is still referenced from table \"status\".");
+    assertThat(msg, is("Cannot delete t.lower(jsonb ->> 'barcode'::text) = foo(bar)baz "
+        + "because id is still referenced from table status."));
+  }
+
+  @Test
+  public void keyStillReferencedComplex2() {
+    var msg = responseForeignKeyViolation("Key (CASE WHEN barcode='nil' THEN 'n/a' ELSE barcode END)=(foo(bar)baz) "
+        + "is still referenced from table \"status\".");
+    assertThat(msg, is("Cannot delete t.CASE WHEN barcode='nil' THEN 'n/a' ELSE barcode END = foo(bar)baz "
+        + "because id is still referenced from table status."));
+  }
+
+  private String responseForeignKeyViolation(String detail) {
+    var e = new PgException("errorMessage", "severity", "code", detail);
+    var future = responseForeignKeyViolation(true, new PgExceptionFacade(e));
+    assertTrue(future.succeeded());
+    assertThat(future.result().getStatus(), is(422));
+    var errors = (Errors) future.result().getEntity();
+    return errors.getErrors().get(0).getMessage();
+  }
+
+  private Future<Response> responseForeignKeyViolation(boolean with422method, PgExceptionFacade pgExceptionFacade) {
+    try {
+      var respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
+      var respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
+      var respond422 = with422method ? PgUtil.respond422method(ResponseWith422.class) : null;
+      return PgUtil.responseForeignKeyViolation("t", "myid", pgExceptionFacade, respond422, respond400, respond500);
+    } catch (NoSuchMethodException | SecurityException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
+  @Test
+  public void responseUniqueViolationException() {
     Future<Response> future = PgUtil.responseUniqueViolation(null, null, null, null, null, null);
     assertTrue(future.failed());
     assertThat(future.cause(), is(instanceOf(NullPointerException.class)));
   }
 
   @Test
-  public void responseUniqueViolationNoMatch400(TestContext testContext) throws Exception {
-    Exception genericDatabaseException = new PgException("", null, "", "fooMessage");
-    PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
-    Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
-    Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
-    Future<Response> future = PgUtil.responseUniqueViolation("mytable", "myid", exception, null, respond400, respond500);
+  public void responseUniqueViolationNoMatch400() {
+    var e = new PgException("", null, "", "fooMessage");
+    Future<Response> future = responseUniqueViolation(false, new PgExceptionFacade(e));
     assertTrue(future.succeeded());
     assertThat(future.result().getStatus(), is(400));
     assertThat(future.result().getEntity().toString(), containsString("fooMessage"));
   }
 
   @Test
-  public void responseUniqueViolationNoMatch422(TestContext testContext) throws Exception {
-    Exception genericDatabaseException = new PgException("", null, "", "fooMessage");
-    PgExceptionFacade exception = new PgExceptionFacade(genericDatabaseException);
-    Method respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
-    Method respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
-    Method respond422 = PgUtil.respond422method(ResponseWith422.class);
-    Future<Response> future = PgUtil.responseUniqueViolation("mytable", "myid", exception, respond422, respond400, respond500);
+  public void responseUniqueViolationNoMatch() {
+    var msg = responseUniqueViolation("fooMessage");
+    assertThat(msg, containsString("fooMessage"));
+  }
+
+  @Test
+  @SuppressWarnings("java:S5976")  // cannot use parameterized tests because we
+  // cannot combine @RunWith(VertxUnitRunner.class) and @RunWith(VertxUnitRunner.class)
+  public void responseUniqueViolationSimple() {
+    var msg = responseUniqueViolation("Key (barcode)=(12345) already exists.");
+    assertThat(msg, is("barcode value already exists in table mytable: 12345"));
+  }
+
+  @Test
+  public void responseUniqueViolationComplex() {
+    var msg = responseUniqueViolation("Key (lower(jsonb ->> 'barcode'::text))=(foo(bar)baz) already exists.");
+    assertThat(msg, is("lower(jsonb ->> 'barcode'::text) value already exists in table mytable: foo(bar)baz"));
+  }
+
+  @Test
+  public void responseUniqueViolationComplex2() {
+    var msg = responseUniqueViolation(
+        "Key (CASE WHEN barcode='nil' THEN 'n/a' ELSE barcode END)=(foo(bar)baz) already exists.");
+    assertThat(msg, is(
+        "CASE WHEN barcode='nil' THEN 'n/a' ELSE barcode END value already exists in table mytable: foo(bar)baz"));
+  }
+
+  private String responseUniqueViolation(String detail) {
+    var e = new PgException("errorMessage", "severity", "code", detail);
+    var future = responseUniqueViolation(true, new PgExceptionFacade(e));
     assertTrue(future.succeeded());
     assertThat(future.result().getStatus(), is(422));
-    Errors errors = (Errors) future.result().getEntity();
-    assertThat(errors.getErrors().get(0).getMessage(), containsString("fooMessage"));
+    var errors = (Errors) future.result().getEntity();
+    return errors.getErrors().get(0).getMessage();
+  }
+
+  private Future<Response> responseUniqueViolation(boolean with422method, PgExceptionFacade pgExceptionFacade) {
+    try {
+      var respond400 = ResponseImpl.class.getMethod("respond400WithTextPlain", Object.class);
+      var respond500 = ResponseImpl.class.getMethod("respond500WithTextPlain", Object.class);
+      var respond422 = with422method ? PgUtil.respond422method(ResponseWith422.class) : null;
+      return PgUtil.responseUniqueViolation("mytable", "myid", pgExceptionFacade, respond422, respond400, respond500);
+    } catch (NoSuchMethodException | SecurityException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Test(expected = NoSuchMethodException.class)
