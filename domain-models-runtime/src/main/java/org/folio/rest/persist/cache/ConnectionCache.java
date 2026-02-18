@@ -83,7 +83,8 @@ public class ConnectionCache {
           cache.stream().filter(connection ->
               connection.getTenantId().equals(tenantId) &&
               connection.getSchemaName().equals(schemaName) &&
-              connection.isAvailable()).findFirst();
+              connection.isAvailable())
+              .findFirst();
 
       // If The first attempt fails, try to find the oldest connection for another tenant that is available.
       if (connectionOptional.isEmpty()) {

@@ -126,27 +126,24 @@ public class CachedConnectionManager {
       throw new IllegalStateException("Attempted to wrap CachedPgConnection in another CachedPgConnection");
     }
 
-    String sql = getSetRoleAndSchemaSql(schemaName, tenantId);
+    String sql = getSqlToSetRoleAndSchema(schemaName, tenantId);
     return sqlConnection.query(sql).execute()
-        .map(r -> {
-          var cachedConnection = new CachedPgConnection(tenantId, schemaName, (PgConnection) sqlConnection,
-              this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
+        .compose(r -> {
+          var cachedConnection = new CachedPgConnection(tenantId, schemaName,
+              (PgConnection) sqlConnection, this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
 
           connectionCache.incrementActive();
           connectionCache.incrementNewConnections();
 
           LOG.debug("Created new connection session for tenant {}: {}", tenantId, cachedConnection.getSessionId());
 
-          return (PgConnection) cachedConnection;
+          return Future.succeededFuture((PgConnection) cachedConnection);
         })
-        .recover(e -> {
-          //  Clean up on failure
+        .onFailure(e -> {
           connectionCache.incrementNewConnectionErrors();
           sqlConnection.close();
 
           LOG.error("Failed to create connection session for tenant {}: {}", tenantId, e.getMessage());
-
-          return Future.failedFuture(e);
         });
   }
 
@@ -154,29 +151,27 @@ public class CachedConnectionManager {
                                                            String tenantId,
                                                            CachedPgConnection connection) {
     String originalTenantId = connection.getTenantId();
-    String sql = getSetRoleAndSchemaSql(schemaName, tenantId);
+    String sql = getSqlToSetRoleAndSchema(schemaName, tenantId);
     // Reuse existing CachedPgConnection
     return connection.query(sql).execute()
-        .map(result -> {
+        .compose(result -> {
           // Update tenant id and schema metadata only AFTER SQL succeeds
           connection.setTenantAndSchema(tenantId, schemaName);
           connectionCache.incrementRecycled();
 
           LOG.debug("Recycled connection from {} to {}: {}", originalTenantId, tenantId, connection.getSessionId());
 
-          return (PgConnection) connection;
+          return Future.succeededFuture((PgConnection) connection);
         })
-        .recover(e -> {
+        .onFailure(e -> {
           connection.setAvailable(); // Return to cache with original tenantId on error
           connectionCache.incrementRecycleErrors();
 
           LOG.error("Failed to recycle connection from {} to {}: {}", originalTenantId, tenantId, e.getMessage());
-
-          return Future.failedFuture(e);
         });
   }
 
-  private static String getSetRoleAndSchemaSql(String schemaName, String tenantId) {
+  private static String getSqlToSetRoleAndSchema(String schemaName, String tenantId) {
     return PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
         ? "SET ROLE NONE; SET SCHEMA ''"
         : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
