@@ -126,7 +126,7 @@ class CachedConnectionManagerIT extends TenantHelper {
   private Future<CachedPgConnection> getConnection(String tenant) {
     return PostgresClient.getInstance(vertx, tenant)
         .getConnection()
-        .map(conn -> (CachedPgConnection) conn);
+        .map(CachedPgConnection.class::cast);
   }
 
   private Future<CachedPgConnection> recoverAfterFailure(String originalTenant, String failingTenant, CachedPgConnection cachedConn) {

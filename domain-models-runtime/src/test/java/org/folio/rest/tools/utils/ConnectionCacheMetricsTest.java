@@ -1,15 +1,14 @@
 package org.folio.rest.tools.utils;
 
-import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.jupiter.api.Test;
 
-public class ConnectionCacheMetricsTest {
+class ConnectionCacheMetricsTest {
 
   @Test
-  public void incrementsAndClearWork() {
+  void incrementsAndClearWork() {
     ConnectionCacheMetrics metrics = new ConnectionCacheMetrics();
 
     metrics.incrementHits();
@@ -43,7 +42,7 @@ public class ConnectionCacheMetricsTest {
   }
 
   @Test
-  public void countersWrapOnMaxValue() {
+  void countersWrapOnMaxValue() {
     ConnectionCacheMetrics metrics = new ConnectionCacheMetrics();
 
     setField(metrics, "hits", Integer.MAX_VALUE);
@@ -69,7 +68,7 @@ public class ConnectionCacheMetricsTest {
   }
 
   @Test
-  public void toStringContainsMessageAndNumbers() {
+  void toStringContainsMessageAndNumbers() {
     ConnectionCacheMetrics metrics = new ConnectionCacheMetrics();
 
     setField(metrics, "hits", 2);
