@@ -1,9 +1,10 @@
 package org.folio.rest.tools.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 public class ConnectionCacheMetricsTest {
 
@@ -22,23 +23,23 @@ public class ConnectionCacheMetricsTest {
     metrics.decrementActive();
     metrics.setPoolSize(5);
 
-    assertEquals(1, metrics.getHits());
-    assertEquals(1, metrics.getMisses());
-    assertEquals(1, metrics.getNewConnections());
-    assertEquals(1, metrics.getNewConnectionErrors());
-    assertEquals(1, metrics.getRecycled());
-    assertEquals(1, metrics.getRecycleErrors());
-    assertEquals(1, metrics.getActive());
-    assertEquals(5, metrics.getPoolSize());
+    assertThat(metrics.getHits(), is(1));
+    assertThat(metrics.getMisses(), is(1));
+    assertThat(metrics.getNewConnections(), is(1));
+    assertThat(metrics.getNewConnectionErrors(), is(1));
+    assertThat(metrics.getRecycled(), is(1));
+    assertThat(metrics.getRecycleErrors(), is(1));
+    assertThat(metrics.getActive(), is(1));
+    assertThat(metrics.getPoolSize(), is(5));
 
     metrics.clear();
-    assertEquals(0, metrics.getHits());
-    assertEquals(0, metrics.getMisses());
-    assertEquals(0, metrics.getNewConnections());
-    assertEquals(0, metrics.getNewConnectionErrors());
-    assertEquals(0, metrics.getRecycled());
-    assertEquals(0, metrics.getRecycleErrors());
-    assertEquals(0, metrics.getActive());
+    assertThat(metrics.getHits(), is(0));
+    assertThat(metrics.getMisses(), is(0));
+    assertThat(metrics.getNewConnections(), is(0));
+    assertThat(metrics.getNewConnectionErrors(), is(0));
+    assertThat(metrics.getRecycled(), is(0));
+    assertThat(metrics.getRecycleErrors(), is(0));
+    assertThat(metrics.getActive(), is(0));
   }
 
   @Test
@@ -59,35 +60,31 @@ public class ConnectionCacheMetricsTest {
     metrics.incrementRecycled();
     metrics.incrementRecycleErrors();
 
-    assertEquals(0, metrics.getHits());
-    assertEquals(0, metrics.getMisses());
-    assertEquals(0, metrics.getNewConnections());
-    assertEquals(0, metrics.getNewConnectionErrors());
-    assertEquals(0, metrics.getRecycled());
-    assertEquals(0, metrics.getRecycleErrors());
+    assertThat(metrics.getHits(), is(0));
+    assertThat(metrics.getMisses(), is(0));
+    assertThat(metrics.getNewConnections(), is(0));
+    assertThat(metrics.getNewConnectionErrors(), is(0));
+    assertThat(metrics.getRecycled(), is(0));
+    assertThat(metrics.getRecycleErrors(), is(0));
   }
 
   @Test
   public void toStringContainsMessageAndNumbers() {
     ConnectionCacheMetrics metrics = new ConnectionCacheMetrics();
-    metrics.incrementHits();
-    metrics.incrementMisses();
-    metrics.incrementRecycled();
-    metrics.incrementRecycleErrors();
-    metrics.incrementNewConnections();
-    metrics.incrementNewConnectionErrors();
-    metrics.incrementActive();
-    metrics.setPoolSize(3);
 
-    String s = metrics.toString("msg", 2);
+    setField(metrics, "hits", 2);
+    setField(metrics, "misses", 3);
+    setField(metrics, "recycled", 4);
+    setField(metrics, "recycleErrors", 5);
+    setField(metrics, "newConnections", 6);
+    setField(metrics, "newConnectionErrors", 7);
+    setField(metrics, "active", 8);
+    setField(metrics, "poolSize", 9);
 
-    assertTrue(s.contains("msg"));
-    assertTrue(s.contains("hits"));
-    assertTrue(s.contains("misses"));
-    assertTrue(s.contains("recycled"));
-    assertTrue(s.contains("recycleErrors"));
-    assertTrue(s.contains("newConnections"));
-    assertTrue(s.contains("newConnectionErrors"));
+    var result = metrics.toString("msg", 10);
+
+    assertThat(result, is("msg:: 2 hits, 3 misses, 4 recycled, 5 recycleErrors, 6 newConnections, "
+        + "7 newConnectionErrors, 10 size, 8 active, 9 pool"));
   }
 
   private static void setField(Object target, String fieldName, int value) {
