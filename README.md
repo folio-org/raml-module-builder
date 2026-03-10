@@ -356,7 +356,7 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_QUERYTIMEOUT
  - DB_CHARSET
  - DB_MAXPOOLSIZE
- - DB_MAXSHAREDPOOLSIZE
+ - DB_MAXSHAREDPOOLSIZE (buggy, do not use: [RMB-1030](https://folio-org.atlassian.net/browse/RMB-1030))
  - DB_CONNECTIONRELEASEDELAY
  - DB_MAX_LIFETIME
  - DB_RECONNECTATTEMPTS
@@ -373,7 +373,7 @@ See the [Vert.x Async PostgreSQL Client Configuration documentation](https://ver
 
 The environment variable `DB_MAXPOOLSIZE` sets the maximum number of concurrent connections for a tenant that one module instance opens. They are only opened if needed. If all connections for a tenant are in use further requests for that tenant will wait until one connection becomes free. Other tenants and other instances of a module are unaffected. The default is 4.
 
-The environment variable `DB_MAXSHAREDPOOLSIZE` sets the maximum number of concurrent connections that one module instance opens. They are only opened if needed. If all connections are in use further requests will wait until one connection becomes free. This way one tenant may block other tenants. If the variable is set `DB_MAXPOOLSIZE` is ignored and all connections are shared across tenants.
+`DB_MAXSHAREDPOOLSIZE` is buggy ([RMB-1030](https://folio-org.atlassian.net/browse/RMB-1030)), DO NOT USE! The environment variable `DB_MAXSHAREDPOOLSIZE` sets the maximum number of concurrent connections that one module instance opens. They are only opened if needed. If all connections are in use further requests will wait until one connection becomes free. This way one tenant may block other tenants. If the variable is set `DB_MAXPOOLSIZE` is ignored and all connections are shared across tenants.
 
 Use `DB_SERVER_PEM` (or `server_pem` in the JSON config) to set SSL/TLS certificate(s) in PEM format to validate the PostgreSQL server certificate, this can be the server certificate, the root CA certificate, or the chain of the intermediate CA and the CA certificate. Defaults to none allowing unencrypted connection only. If set requires a TLSv1.3 connection and a valid server certificate, and rejects unencrypted connections.
 
