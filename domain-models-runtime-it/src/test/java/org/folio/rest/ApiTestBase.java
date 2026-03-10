@@ -14,7 +14,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.http.ContentType;
-import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
 import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
@@ -29,8 +28,6 @@ import org.folio.rest.tools.utils.VertxUtils;
 import org.junit.jupiter.api.BeforeAll;
 
 public class ApiTestBase {
-  private static final int TENANT_REQUEST_RETRIES = 10;
-  private static final long TENANT_REQUEST_RETRY_DELAY_MS = 500;
   static Vertx vertx;
   /** default request header with "x-okapi-tenant: testlib" and "Content-type: application/json"
    *  and ErrorLoggingFilter (logs to System.out).
@@ -78,7 +75,7 @@ public class ApiTestBase {
     ta = new TenantAttributes().withModuleTo("mod-api-1.0.0").withParameters(list);
 
     // create tenant (schema, tables, ...)
-    String location = postTenantWithRetry(ta, 201).header("Location");
+    String location = postTenantWithRetry(ta, 201);
 
     given(r)
         .header("x-okapi-url-to", "http://localhost:" + port)
@@ -89,38 +86,20 @@ public class ApiTestBase {
         .body("error", is(nullValue()));
   }
 
-  private static Response postTenantWithRetry(TenantAttributes tenantAttributes, int expectedStatus) {
-    var responseRef = new AtomicReference<Response>();
-    Awaitility.await()
-        .atMost(TENANT_REQUEST_RETRIES * TENANT_REQUEST_RETRY_DELAY_MS, TimeUnit.MILLISECONDS)
-        .pollDelay(0, TimeUnit.MILLISECONDS)
-        .pollInterval(TENANT_REQUEST_RETRY_DELAY_MS, TimeUnit.MILLISECONDS)
-        .until(() -> {
-          Response response = given(r)
-              .header("x-okapi-url-to", "http://localhost:" + port)
-              .contentType(ContentType.JSON)
-              .body(Json.encode(tenantAttributes))
-              .when()
-              .post("/_/tenant");
-          responseRef.set(response);
-          return response.statusCode() == expectedStatus
-              || !isTransientConnectionStartupFailure(response);
-        });
-    Response response = responseRef.get();
-    if (response.statusCode() != expectedStatus) {
-      throw new AssertionError(String.format(
-          "Expected status code <%d> but was <%d>. Response body: %s",
-          expectedStatus, response.statusCode(), response.asString()));
-    }
-    return response;
-  }
-
-  private static boolean isTransientConnectionStartupFailure(Response response) {
-    if (response.statusCode() != 400 && response.statusCode() != 500 && response.statusCode() != 503) {
-      return false;
-    }
-    String body = response.asString();
-    return body != null && body.contains("Connection refused");
+  private static String postTenantWithRetry(TenantAttributes tenantAttributes, int expectedStatus) {
+    var location = new AtomicReference<String>();
+    Awaitility.await().untilAsserted(() -> location.set(
+        given(r)
+        .header("x-okapi-url-to", "http://localhost:" + port)
+        .contentType(ContentType.JSON)
+        .body(Json.encode(tenantAttributes))
+        .when()
+        .post("/_/tenant")
+        .then()
+        .statusCode(expectedStatus)
+        .extract()
+        .header("Location")));
+    return location.get();
   }
 
   /**
