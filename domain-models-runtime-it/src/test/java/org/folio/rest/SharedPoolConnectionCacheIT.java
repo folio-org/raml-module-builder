@@ -1,10 +1,13 @@
 package org.folio.rest;
 
 import static io.restassured.RestAssured.given;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.oneOf;
 
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -14,9 +17,7 @@ import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowSet;
 import io.restassured.RestAssured;
-import io.restassured.response.Response;
 import java.util.List;
-import java.util.Locale;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -58,11 +59,11 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
 
   @Test
   void sharedPoolEnabledWithThreeTenants() {
-    assertTrue(PostgresClient.isSharedPool());
+    assertThat(PostgresClient.isSharedPool(), is(true));
 
     for (String tenant : TENANTS) {
       var connection = getCachedConnection(tenant);
-      assertEquals(tenant, connection.getTenantId());
+      assertThat(connection.getTenantId(), is(tenant));
       await(connection.close());
     }
   }
@@ -75,8 +76,8 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
       String tenant = TENANTS.get(i % TENANTS.size());
       CachedPgConnection connection = getCachedConnection(tenant);
 
-      assertEquals(1, cachedWrapperDepth(connection));
-      assertFalse(connection.getWrappedConnection() instanceof CachedPgConnection);
+      assertThat(cachedWrapperDepth(connection), is(1));
+      assertThat(connection.getWrappedConnection(), is(not(instanceOf(CachedPgConnection.class))));
 
       await(connection.close());
     }
@@ -89,10 +90,10 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
 
     String nonexistentTenant = "missing_" + System.nanoTime();
     Throwable failure = awaitFailure(PostgresClient.getInstance(vertx, nonexistentTenant).getConnection());
-    assertNotNull(failure);
+    assertThat(failure, is(notNullValue()));
 
     CachedPgConnection recovered = getCachedConnection(TENANT_A);
-    assertEquals(TENANT_A, recovered.getTenantId());
+    assertThat(recovered.getTenantId(), is(TENANT_A));
     assertCurrentSchema(recovered, TENANT_A + "_raml_module_builder");
     await(recovered.close());
   }
@@ -159,7 +160,7 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
       if (i % failureInterval == 0) {
         String missingTenant = "missing_interleaved_" + i + "_" + System.nanoTime();
         Throwable failure = awaitFailure(PostgresClient.getInstance(vertx, missingTenant).getConnection());
-        assertNotNull(failure);
+        assertThat(failure, is(notNullValue()));
         failuresObserved++;
       }
 
@@ -167,13 +168,13 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
       assertTenantHttpCrudHealthy(tenant, i);
 
       CachedPgConnection connection = getCachedConnection(tenant);
-      assertEquals(tenant, connection.getTenantId());
-      assertEquals(1, cachedWrapperDepth(connection));
+      assertThat(connection.getTenantId(), is(tenant));
+      assertThat(cachedWrapperDepth(connection), is(1));
       assertCurrentSchema(connection, tenant + "_raml_module_builder");
       await(connection.close());
     }
 
-    assertTrue(failuresObserved > 0);
+    assertThat(failuresObserved, is(greaterThan(0)));
   }
 
   @Test
@@ -186,7 +187,7 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
     for (int i = 0; i < iterations; i++) {
       if (i % 4 == 0) {
         String missingTenant = "missing_isolation_" + i + "_" + System.nanoTime();
-        assertNotNull(awaitFailure(PostgresClient.getInstance(vertx, missingTenant).getConnection()));
+        assertThat(awaitFailure(PostgresClient.getInstance(vertx, missingTenant).getConnection()), is(notNullValue()));
       }
 
       String churnTenant = (i % 2 == 0) ? TENANT_B : TENANT_C;
@@ -226,7 +227,7 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
 
   private void purgeTenant(String tenant) {
     TenantAttributes attributes = new TenantAttributes().withPurge(true);
-    int statusCode = given(r)
+    given(r)
         .header("x-okapi-tenant", tenant)
         .header("x-okapi-url-to", "http://localhost:" + RestAssured.port)
         .contentType("application/json")
@@ -234,18 +235,13 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
         .when()
         .post("/_/tenant")
         .then()
-        .extract()
-        .statusCode();
-
-    assertTrue(statusCode == 204 || statusCode == 404,
-        "Unexpected purge status for tenant " + tenant + ": " + statusCode);
+        .statusCode(is(oneOf(204, 404)));
   }
 
   private CachedPgConnection getCachedConnection(String tenant) {
     PgConnection connection = awaitOnEventLoop(
         () -> PostgresClient.getInstance(vertx, tenant).getConnection());
-    assertTrue(connection instanceof CachedPgConnection,
-        "Expected CachedPgConnection but got: " + connection.getClass().getName());
+    assertThat(connection, is(instanceOf(CachedPgConnection.class)));
     return (CachedPgConnection) connection;
   }
 
@@ -262,21 +258,16 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
     return depth;
   }
 
-  private void assertNoPermissionDenied(String body) {
-    assertFalse(body.toLowerCase(Locale.ROOT).contains("permission denied for schema"));
-  }
-
   private void assertTenantHttpCrudHealthy(String tenant, int marker) {
     String id = randomUuid();
     createBee(tenant, id, "bee-" + tenant + "-" + marker);
 
-    Response getResponse = given(r)
+    given(r)
         .header("x-okapi-tenant", tenant)
         .when()
-        .get("/bees/bees/" + id);
-    assertEquals(200, getResponse.statusCode(), "Unexpected GET status: " + getResponse.asString());
-    String getBody = getResponse.asString();
-    assertNoPermissionDenied(getBody);
+        .get("/bees/bees/" + id)
+        .then()
+        .statusCode(200);
 
     deleteBee(tenant, id);
   }
@@ -287,43 +278,43 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
         .put("name", name)
         .put("generatedStatus", "ignored");
 
-    Response postResponse = given(r)
+    given(r)
         .header("x-okapi-tenant", tenant)
         .body(payload.encode())
         .when()
-        .post("/bees/bees");
-    assertEquals(201, postResponse.statusCode(), "Unexpected POST status: " + postResponse.asString());
-    String postBody = postResponse.asString();
-    assertNoPermissionDenied(postBody);
+        .post("/bees/bees")
+        .then()
+        .statusCode(201);
   }
 
   private void deleteBee(String tenant, String id) {
-    Response deleteResponse = given(r)
+    given(r)
         .header("x-okapi-tenant", tenant)
         .when()
-        .delete("/bees/bees/" + id);
-    assertEquals(204, deleteResponse.statusCode(), "Unexpected DELETE status: " + deleteResponse.asString());
+        .delete("/bees/bees/" + id)
+        .then()
+        .statusCode(204);
   }
 
   private void assertBeeStatus(String tenant, String id, int statusCode) {
-    Response response = given(r)
+    given(r)
         .header("x-okapi-tenant", tenant)
         .when()
-        .get("/bees/bees/" + id);
-    assertEquals(statusCode, response.statusCode(),
-        "Unexpected status for tenant=" + tenant + " id=" + id + ": " + response.asString());
+        .get("/bees/bees/" + id)
+        .then()
+        .statusCode(statusCode);
   }
 
   private void assertCurrentSchema(CachedPgConnection connection, String expectedSchema) {
     RowSet<Row> result = awaitOnEventLoop(() -> connection.query("SELECT current_schema").execute());
     Row row = result.iterator().next();
-    assertEquals(expectedSchema, row.getString(0));
+    assertThat(row.getString(0), is(expectedSchema));
   }
 
   private void assertConnectionHealthy(CachedPgConnection connection, String tenant) {
-    assertEquals(1, cachedWrapperDepth(connection));
+    assertThat(cachedWrapperDepth(connection), is(1));
     RowSet<Row> pingResult = awaitOnEventLoop(() -> connection.query("SELECT 1").execute());
-    assertNotNull(pingResult.iterator().next());
+    assertThat(pingResult.iterator().next(), is(notNullValue()));
     assertCurrentSchema(connection, tenant + "_raml_module_builder");
     awaitOnEventLoop(connection::close);
   }

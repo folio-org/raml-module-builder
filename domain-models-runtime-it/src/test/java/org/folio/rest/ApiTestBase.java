@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.http.ContentType;
@@ -19,6 +20,7 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import org.awaitility.Awaitility;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -88,37 +90,29 @@ public class ApiTestBase {
   }
 
   private static Response postTenantWithRetry(TenantAttributes tenantAttributes, int expectedStatus) {
-    Response lastResponse = null;
-    for (int attempt = 1; attempt <= TENANT_REQUEST_RETRIES; attempt++) {
-      Response response = given(r)
-          .header("x-okapi-url-to", "http://localhost:" + port)
-          .contentType(ContentType.JSON)
-          .body(Json.encode(tenantAttributes))
-          .when()
-          .post("/_/tenant");
-
-      if (response.statusCode() == expectedStatus) {
-        return response;
-      }
-
-      lastResponse = response;
-      if (!isTransientConnectionStartupFailure(response) || attempt == TENANT_REQUEST_RETRIES) {
-        break;
-      }
-
-      try {
-        Thread.sleep(TENANT_REQUEST_RETRY_DELAY_MS);
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new RuntimeException(e);
-      }
+    var responseRef = new AtomicReference<Response>();
+    Awaitility.await()
+        .atMost(TENANT_REQUEST_RETRIES * TENANT_REQUEST_RETRY_DELAY_MS, TimeUnit.MILLISECONDS)
+        .pollDelay(0, TimeUnit.MILLISECONDS)
+        .pollInterval(TENANT_REQUEST_RETRY_DELAY_MS, TimeUnit.MILLISECONDS)
+        .until(() -> {
+          Response response = given(r)
+              .header("x-okapi-url-to", "http://localhost:" + port)
+              .contentType(ContentType.JSON)
+              .body(Json.encode(tenantAttributes))
+              .when()
+              .post("/_/tenant");
+          responseRef.set(response);
+          return response.statusCode() == expectedStatus
+              || !isTransientConnectionStartupFailure(response);
+        });
+    Response response = responseRef.get();
+    if (response.statusCode() != expectedStatus) {
+      throw new AssertionError(String.format(
+          "Expected status code <%d> but was <%d>. Response body: %s",
+          expectedStatus, response.statusCode(), response.asString()));
     }
-
-    throw new AssertionError(String.format(
-        "Expected status code <%d> but was <%d>. Response body: %s",
-        expectedStatus,
-        lastResponse == null ? -1 : lastResponse.statusCode(),
-        lastResponse == null ? "<none>" : lastResponse.asString()));
+    return response;
   }
 
   private static boolean isTransientConnectionStartupFailure(Response response) {

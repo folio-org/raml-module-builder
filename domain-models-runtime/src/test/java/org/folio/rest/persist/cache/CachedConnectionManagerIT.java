@@ -1,7 +1,6 @@
 package org.folio.rest.persist.cache;
 
 import io.vertx.core.Future;
-import io.vertx.core.Promise;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
 import io.vertx.pgclient.impl.PgConnectionImpl;
@@ -157,14 +156,8 @@ class CachedConnectionManagerIT extends TenantHelper {
   }
 
   private static <T> Future<Void> expectFailure(Future<T> future) {
-    Promise<Void> promise = Promise.promise();
-    future.onComplete(ar -> {
-      if (ar.succeeded()) {
-        promise.fail("Expected future to fail, but it succeeded");
-      } else {
-        promise.complete();
-      }
-    });
-    return promise.future();
+    return future.compose(
+        success -> Future.failedFuture("Expected future to fail, but it succeeded"),
+        e -> Future.succeededFuture());
   }
 }
