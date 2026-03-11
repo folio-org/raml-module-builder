@@ -39,6 +39,10 @@ public class CachedConnectionManager {
     LOG.debug("Cleared connection cache");
   }
 
+  public void closeAllConnectionsInCache() {
+    connectionCache.closeAll();
+  }
+
   public void removeFromCache(CachedPgConnection connection)  {
     connectionCache.remove(connection);
   }
@@ -57,16 +61,15 @@ public class CachedConnectionManager {
    * will be recycled and used for the provided tenant.
    */
   public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId);
+    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId, schemaName);
 
     if (connectionOptional.isPresent()) {
       connectionCache.incrementHits();
       CachedPgConnection connection = connectionOptional.get();
 
       // If it is being used from another tenant (recycled), we now need to set a new role and schema for it.
-      if (!connection.getTenantId().equals(tenantId)) {
-        connection.setTenantId(tenantId);
-        return setRoleAndSchema(vertx, schemaName, tenantId, connection);
+      if (!connection.getTenantId().equals(tenantId) || !connection.getSchemaName().equals(schemaName)) {
+        return setRoleAndSchemaWithRecycle(schemaName, tenantId, connection);
       }
 
       var event = String.format("cache hit %s %s", connection.getTenantId(), connection.getSessionId());
@@ -109,19 +112,68 @@ public class CachedConnectionManager {
 
   private Future<PgConnection> createConnectionSession(Vertx vertx, Pool pool, String schemaName, String tenantId) {
     connectionCache.setPoolSizeMetric(pool.size());
-    return pool.getConnection().compose(sqlConnection -> setRoleAndSchema(vertx, schemaName, tenantId, sqlConnection));
+    return pool
+        .getConnection()
+        .compose(sqlConnection -> setRoleAndSchema(vertx, schemaName, tenantId, sqlConnection));
   }
 
   private Future<PgConnection> setRoleAndSchema(Vertx vertx,
                                                 String schemaName,
                                                 String tenantId,
                                                 SqlConnection sqlConnection) {
-    connectionCache.incrementActive();
-    String sql = PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
+    // Only wrap raw PgConnection, never wrap CachedPgConnection
+    if (sqlConnection instanceof CachedPgConnection) {
+      throw new IllegalStateException("Attempted to wrap CachedPgConnection in another CachedPgConnection");
+    }
+
+    String sql = getSqlToSetRoleAndSchema(schemaName, tenantId);
+    return sqlConnection.query(sql).execute()
+        .compose(r -> {
+          var cachedConnection = new CachedPgConnection(tenantId, schemaName,
+              (PgConnection) sqlConnection, this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
+
+          connectionCache.incrementActive();
+          connectionCache.incrementNewConnections();
+
+          LOG.debug("Created new connection session for tenant {}: {}", tenantId, cachedConnection.getSessionId());
+
+          return Future.succeededFuture((PgConnection) cachedConnection);
+        })
+        .onFailure(e -> {
+          connectionCache.incrementNewConnectionErrors();
+          sqlConnection.close();
+
+          LOG.error("Failed to create connection session for tenant {}: {}", tenantId, e.getMessage());
+        });
+  }
+
+  private Future<PgConnection> setRoleAndSchemaWithRecycle(String schemaName,
+                                                           String tenantId,
+                                                           CachedPgConnection connection) {
+    String originalTenantId = connection.getTenantId();
+    String sql = getSqlToSetRoleAndSchema(schemaName, tenantId);
+    // Reuse existing CachedPgConnection
+    return connection.query(sql).execute()
+        .compose(result -> {
+          // Update tenant id and schema metadata only AFTER SQL succeeds
+          connection.setTenantAndSchema(tenantId, schemaName);
+          connectionCache.incrementRecycled();
+
+          LOG.debug("Recycled connection from {} to {}: {}", originalTenantId, tenantId, connection.getSessionId());
+
+          return Future.succeededFuture((PgConnection) connection);
+        })
+        .onFailure(e -> {
+          connection.setAvailable(); // Return to cache with original tenantId on error
+          connectionCache.incrementRecycleErrors();
+
+          LOG.error("Failed to recycle connection from {} to {}: {}", originalTenantId, tenantId, e.getMessage());
+        });
+  }
+
+  private static String getSqlToSetRoleAndSchema(String schemaName, String tenantId) {
+    return PostgresClient.DEFAULT_SCHEMA.equals(tenantId)
         ? "SET ROLE NONE; SET SCHEMA ''"
         : ("SET ROLE '" + schemaName + "'; SET SCHEMA '" + schemaName + "'");
-    var cachedConnection = new CachedPgConnection(tenantId, (PgConnection) sqlConnection,
-        this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
-    return sqlConnection.query(sql).execute().map(cachedConnection);
   }
 }

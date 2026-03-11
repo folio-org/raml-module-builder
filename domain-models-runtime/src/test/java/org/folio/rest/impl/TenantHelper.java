@@ -99,4 +99,17 @@ public class TenantHelper {
     async.await();
     return id.toString();
   }
+
+  protected static Future<Void> tenantPostSync(TenantAPI api, TenantAttributes tenantAttributes, String tenant) {
+    Map<String,String> headers = Map.of("X-Okapi-Tenant", tenant);
+    return api.postTenantSync(tenantAttributes, headers, vertx.getOrCreateContext())
+        .compose(response -> {
+          assertThat(response.getStatus(), is(204));
+          return api.tenantExists(Vertx.currentContext(), tenant);
+        })
+        .map(bool -> {
+          assertThat("tenant exists after post", bool, is(true));
+          return null;
+        });
+  }
 }

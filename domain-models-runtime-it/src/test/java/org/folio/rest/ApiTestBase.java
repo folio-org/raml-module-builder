@@ -10,6 +10,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicReference;
 import io.restassured.RestAssured;
 import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.http.ContentType;
@@ -18,6 +19,7 @@ import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
 import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonObject;
+import org.awaitility.Awaitility;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.jaxrs.model.Parameter;
 import org.folio.rest.jaxrs.model.TenantAttributes;
@@ -66,24 +68,14 @@ public class ApiTestBase {
 
     // delete tenant (schema, tables, ...) if it exists from previous tests
     TenantAttributes ta = new TenantAttributes().withPurge(true);
-    given(r).header("x-okapi-url-to", "http://localhost:" + port).
-        contentType(ContentType.JSON)
-        .body(Json.encode(ta))
-        .when().post("/_/tenant")
-        .then().statusCode(204);
+    postTenantWithRetry(ta, 204);
 
     List<Parameter> list = new LinkedList<>();
     list.add(new Parameter().withKey("loadReference").withValue("true"));
     ta = new TenantAttributes().withModuleTo("mod-api-1.0.0").withParameters(list);
 
     // create tenant (schema, tables, ...)
-    String location = given(r)
-        .header("x-okapi-url-to", "http://localhost:" + port)
-        .contentType(ContentType.JSON)
-        .body(Json.encode(ta))
-        .when().post("/_/tenant")
-        .then().statusCode(201)
-        .extract().header("Location");
+    String location = postTenantWithRetry(ta, 201);
 
     given(r)
         .header("x-okapi-url-to", "http://localhost:" + port)
@@ -92,6 +84,22 @@ public class ApiTestBase {
         .statusCode(200)
         .body("complete", is(true))
         .body("error", is(nullValue()));
+  }
+
+  private static String postTenantWithRetry(TenantAttributes tenantAttributes, int expectedStatus) {
+    var location = new AtomicReference<String>();
+    Awaitility.await().untilAsserted(() -> location.set(
+        given(r)
+        .header("x-okapi-url-to", "http://localhost:" + port)
+        .contentType(ContentType.JSON)
+        .body(Json.encode(tenantAttributes))
+        .when()
+        .post("/_/tenant")
+        .then()
+        .statusCode(expectedStatus)
+        .extract()
+        .header("Location")));
+    return location.get();
   }
 
   /**

@@ -31,6 +31,7 @@ public class CachedPgConnection implements PgConnection {
   private final CachedConnectionManager manager;
   private final UUID sessionId;
   private String tenantId;
+  private String schemaName;
   private long idleSince;
   private boolean available;
   private Handler<Void> closeHandler;
@@ -38,6 +39,7 @@ public class CachedPgConnection implements PgConnection {
   private final ReleaseDelayObserver observer;
 
   public CachedPgConnection(String tenantId,
+                            String schemaName,
                             PgConnection connection,
                             CachedConnectionManager manager,
                             Vertx vertx,
@@ -47,6 +49,7 @@ public class CachedPgConnection implements PgConnection {
     }
 
     this.tenantId = tenantId;
+    this.schemaName = schemaName;
     this.connection = connection;
     this.manager = manager;
     this.sessionId = UUID.randomUUID();
@@ -173,8 +176,13 @@ public class CachedPgConnection implements PgConnection {
     return tenantId;
   }
 
-  public void setTenantId(String tenantId) {
+  public String getSchemaName() {
+    return schemaName;
+  }
+
+  public void setTenantAndSchema(String tenantId, String schemaName) {
     this.tenantId = tenantId;
+    this.schemaName = schemaName;
   }
 
   public PgConnection getWrappedConnection() {
