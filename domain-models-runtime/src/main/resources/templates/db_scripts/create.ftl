@@ -12,7 +12,14 @@ BEGIN
   GRANT ${myuniversity}_${mymodule} TO CURRENT_USER;
 END $$;
 
-CREATE SCHEMA IF NOT EXISTS ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
+DO $$
+BEGIN
+  PERFORM FROM information_schema.schemata WHERE schema_name = '${myuniversity}_${mymodule}';
+  IF FOUND THEN
+    RETURN;
+  END IF;
+  CREATE SCHEMA IF NOT EXISTS ${myuniversity}_${mymodule} AUTHORIZATION ${myuniversity}_${mymodule};
+END $$;
 
 </#if>
 
