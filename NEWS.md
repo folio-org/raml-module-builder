@@ -1,3 +1,30 @@
+## 36.0.0 2026-04-09
+
+Trillium (2026 R1) release, see [upgrade notes](doc/upgrading.md#version-360).
+
+* [RMB-1025](https://folio-org.atlassian.net/browse/RMB-1025) Create schema even if role already exists
+* [RMB-1028](https://folio-org.atlassian.net/browse/RMB-1028) readonly custom field should delete property
+* [RMB-785](https://folio-org.atlassian.net/browse/RMB-785) Replace GenerateRunner with domain-models-maven-plugin in README.md
+* [RMB-1027](https://folio-org.atlassian.net/browse/RMB-1027) Migrate Vert.x from 4 to 5
+* [RMB-1031](https://folio-org.atlassian.net/browse/RMB-1031) validate module\_to which will be stored in DB
+* [RMB-1023](https://folio-org.atlassian.net/browse/RMB-1023) Remove/Reduce Ineffective/Verbose Log Lines For CQL2PgJSON
+* [RMB-1032](https://folio-org.atlassian.net/browse/RMB-1032) Add futurized TenantAPI.postTenantSync
+* [RMB-1033](https://folio-org.atlassian.net/browse/RMB-1033) RestRouting null removal: allow array in path
+* [FAT-22537](https://folio-org.atlassian.net/browse/FAT-22537) Added upgrading note about ServicesResourceTransformer to avoid race condition during FolioLocal initialization
+* [RMB-1036](https://folio-org.atlassian.net/browse/RMB-1036) Initialize loggers before setting log level
+* [RMB-1029](https://folio-org.atlassian.net/browse/RMB-1029) TRUNCATE rmb\_internal\_analyze; ERROR: canceling statement due to lock timeout (55P03)
+* [RMB-1026](https://folio-org.atlassian.net/browse/RMB-1026) DB\_MAX\_LIFETIME option with default of 30 minutes
+* [RMB-1040](https://folio-org.atlassian.net/browse/RMB-1040) Don't "WARN TenantLoading TenantLoading.perform No X-Okapi-Url-to header"
+* [RMB-1041](https://folio-org.atlassian.net/browse/RMB-1041) HttpStatus, HttpHeaders - drop-in replacement of httpcomponents
+* [RMB-1042](https://folio-org.atlassian.net/browse/RMB-1042) Vert.x 5.0.6 fixing CVE-2025-67735 Netty CRLF injection request smuggling
+* [RMB-1045](https://folio-org.atlassian.net/browse/RMB-1045) upgrade to test-containers 2.0.3
+* [RMB-1046](https://folio-org.atlassian.net/browse/RMB-1046) Avoid regex in `.replaceAll(" +[*]", "")`
+* [RMB-1047](https://folio-org.atlassian.net/browse/RMB-1047) Fix polynomial runtime regex in PgUtil -  Support `)` and `=` in error message fields
+* [RMB-1030](https://folio-org.atlassian.net/browse/RMB-1030) CachedConnectionManager "permission denied": Better recovery from error state, warn about buggy DB\_MAXSHAREDPOOLSIZE
+* [RMB-1051](https://folio-org.atlassian.net/browse/RMB-1051) Trillium: Bump dependencies (Vertx 5.0.10, log4j 2.25.4, …)
+* [RMB-1052](https://folio-org.atlassian.net/browse/RMB-1052) ERROR: 42501: permission denied for "CREATE SCHEMA IF NOT EXISTS"
+* [RMB-1048](https://folio-org.atlassian.net/browse/RMB-1048) Enable maven workflows, disable Jenkins workflow
+
 ## 35.4.0 2025-02-28
 
 Sunflower (2025 R1) release, see [upgrade notes](doc/upgrading.md#version-354).
