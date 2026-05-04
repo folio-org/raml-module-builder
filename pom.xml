@@ -6,7 +6,6 @@
   <packaging>pom</packaging>
   <name>raml-module-builder</name>
   <modules>
-    <module>testing</module>
     <module>util</module>
     <module>postgres-testing</module>
     <module>dbschema</module>
