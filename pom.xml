@@ -33,11 +33,11 @@
 
     <aspectj.version>1.9.22.1</aspectj.version>
     <maven.version>3.9.9</maven.version>
-    <vertx.version>4.5.23</vertx.version>
-    <micrometer.version>1.12.13</micrometer.version> <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
+    <vertx.version>4.5.31</vertx.version>
+    <micrometer.version>1.15.12</micrometer.version> <!-- security fix https://spring.io/security/cve-2026-40984 -->
     <awaitility.version>4.3.0</awaitility.version>
     <hamcrest.version>3.0</hamcrest.version>
-    <okapi.version>6.2.0</okapi.version>
+    <okapi.version>6.2.9</okapi.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -65,7 +65,7 @@
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
         <artifactId>log4j-bom</artifactId>
-        <version>2.24.1</version>
+        <version>2.25.5</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
