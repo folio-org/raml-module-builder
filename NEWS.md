@@ -1,3 +1,8 @@
+## 35.4.3 2026-07-22
+
+* [RMB-1048](https://folio-org.atlassian.net/browse/RMB-1048) Enable maven workflows, drop Jenkins workflow
+* [RMB-1055](https://folio-org.atlassian.net/browse/RMB-1055) Vertx 4.5.31, Netty 4.1.136.Final, micrometer 1.15.12, okapi 6.2.9, log4j 2.25.5
+
 ## 35.4.2 2025-12-17
 
 * [RMB-1043](https://folio-org.atlassian.net/browse/RMB-1043) Vert.x 4.5.23 fixing CVE-2025-67735 Netty CRLF injection
