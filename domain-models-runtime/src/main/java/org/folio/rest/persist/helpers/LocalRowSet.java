@@ -5,6 +5,7 @@ import io.vertx.sqlclient.Row;
 import io.vertx.sqlclient.RowIterator;
 import io.vertx.sqlclient.RowSet;
 import io.vertx.sqlclient.desc.ColumnDescriptor;
+import io.vertx.sqlclient.desc.RowDescriptor;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -37,6 +38,11 @@ public class LocalRowSet implements RowSet<Row> {
   @Override
   public int rowCount() {
     return rowCount;
+  }
+
+  @Override
+  public RowDescriptor rowDescriptor() {
+    return localRowDesc;
   }
 
   @Override
@@ -86,5 +92,4 @@ public class LocalRowSet implements RowSet<Row> {
       return iterator.next();
     }
   }
-
 }

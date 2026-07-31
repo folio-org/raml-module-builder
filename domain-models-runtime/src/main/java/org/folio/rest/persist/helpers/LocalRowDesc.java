@@ -1,13 +1,13 @@
 package org.folio.rest.persist.helpers;
 
 import io.vertx.sqlclient.desc.ColumnDescriptor;
-
+import io.vertx.sqlclient.desc.RowDescriptor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-public class LocalRowDesc {
+public class LocalRowDesc implements RowDescriptor {
   private final ColumnDescriptor[] columnDescriptors;
   private List<String> columnNames;
   private List<ColumnDescriptor> columnDescriptorsList;
@@ -28,6 +28,7 @@ public class LocalRowDesc {
     return columnDescriptors;
   }
 
+  @Override
   public List<String> columnNames() {
     if (columnNames == null) {
       columnNames = new ArrayList<>(columnDescriptors.length);
@@ -39,10 +40,24 @@ public class LocalRowDesc {
     return columnNames;
   }
 
-  public List<ColumnDescriptor> columnDescriptor() {
+  @Override
+  public List<ColumnDescriptor> columnDescriptors() {
     if (columnDescriptorsList == null) {
       columnDescriptorsList = Collections.unmodifiableList(Arrays.asList(columnDescriptors));
     }
     return columnDescriptorsList;
   }
+
+  public List<ColumnDescriptor> columnDescriptor() {
+    return columnDescriptors();
+  }
+
+  @Override
+  public int columnIndex(String columnName) {
+    if (columnName == null) {
+      throw new NullPointerException("columnName must not be null");
+    }
+    return columnNames().indexOf(columnName);
+  }
+
 }
