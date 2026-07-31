@@ -55,7 +55,7 @@ public class LocalRowDesc implements RowDescriptor {
   @Override
   public int columnIndex(String columnName) {
     if (columnName == null) {
-      throw new NullPointerException("columnName must not be null");
+      throw new IllegalArgumentException("columnName must not be null");
     }
     return columnNames().indexOf(columnName);
   }

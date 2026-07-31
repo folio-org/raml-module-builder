@@ -26,7 +26,7 @@ class LocalRowDescTest {
   @Test
   void columnIndexNull() {
     var localRowDesc = new LocalRowDesc(List.of("foo", "bar"));
-    assertThrows(NullPointerException.class, () -> localRowDesc.columnIndex(null));
+    assertThrows(IllegalArgumentException.class, () -> localRowDesc.columnIndex(null));
   }
 
   @ParameterizedTest
