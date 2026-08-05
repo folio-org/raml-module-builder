@@ -1,3 +1,11 @@
+## 36.0.1 2026-08-05
+
+Trillium (2026 R1) CSP.
+
+* [RMB-815](https://folio-org.atlassian.net/browse/RMB-815) Delete empty testing subproject
+* [RMB-1056](https://folio-org.atlassian.net/browse/RMB-1056) Bump deps fixing vulns (Vertx 5.1.5, Jackson 2.21.5, Netty 4.2.16, …)
+* [RMB-1057](https://folio-org.atlassian.net/browse/RMB-1057) Bump deps fixing vulns (Vertx 5.1.6, Netty 4.2.17, okapi-common 7.0.6)
+
 ## 36.0.0 2026-04-09
 
 Trillium (2026 R1) release, see [upgrade notes](doc/upgrading.md#version-360).
