@@ -1,6 +1,7 @@
 package org.folio.rest.tools.client;
 
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import io.vertx.core.Future;
@@ -135,7 +136,7 @@ public class HttpModuleClient2Test {
     cf = httpModuleClient2.request("/test2");
     response = cf.get(5, TimeUnit.SECONDS);
 
-    context.assertTrue(response.error.getString("errorMessage").contains("Client is closed"), response.error.getString("errorMessage"));
+    assertThat(response.error.getString("errorMessage"), is("java.lang.IllegalStateException"));
   }
 
   @Test
