@@ -32,11 +32,11 @@
 
     <aspectj.version>1.9.22.1</aspectj.version>
     <maven.version>3.9.14</maven.version>
-    <vertx.version>5.1.5</vertx.version>
-    <micrometer.version>1.17.0</micrometer.version> <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L41 -->
+    <vertx.version>5.1.6</vertx.version>
+    <micrometer.version>1.17.0</micrometer.version> <!-- https://github.com/vert-x3/vertx-micrometer-metrics/blob/master/pom.xml#L39 -->
     <awaitility.version>4.3.0</awaitility.version>
     <hamcrest.version>3.0</hamcrest.version>
-    <okapi.version>7.0.3</okapi.version>
+    <okapi.version>7.0.6</okapi.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
