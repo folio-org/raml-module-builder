@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -47,7 +48,10 @@ public class GenerateRunner {
   static final Logger log = Logger.getLogger(GenerateRunner.class.getName());
 
   private static final String MODEL_PACKAGE_DEFAULT = "org.folio.rest.jaxrs.model";
+  private static final Pattern DEFAULT_IMPORT_PATTERN = Pattern.compile(
+      "^import " + Pattern.quote(MODEL_PACKAGE_DEFAULT) + "\\.(\\w+);", Pattern.MULTILINE);
   private static final String SCHEMA_CONFIG_PROPERTY_PREFIX = "jsonschema2pojo.config.";
+  private static final String JAVA_FILE_EXTENSION = ".java";
 
   private String outputDirectory = null;
   private String outputDirectoryWithPackage = null;
@@ -185,7 +189,67 @@ public class GenerateRunner {
       }
     }
     migrateToJakarta();
+    fixModelPackageImports();
     log.info("processed: " + numMatches + " raml files");
+  }
+
+  /**
+   * Fix imports in generated resource interfaces where a JSON schema's "javaType" field
+   * redirected POJO generation to a package other than MODEL_PACKAGE_DEFAULT.
+   * <p>
+   * The jaxrs-code-generator library computes the interface parameter type from the schema
+   * path alone (always resolving to MODEL_PACKAGE_DEFAULT), while jsonschema2pojo internally
+   * respects "javaType" and generates the POJO in the declared package. This leaves the
+   * interfaces with stale imports. We fix them here by scanning all generated model classes
+   * and rewriting any mismatched import in the resource interfaces.
+   */
+  private void fixModelPackageImports() {
+    try {
+      var genDir = Paths.get(outputDirectory);
+      var resourceDir = genDir.resolve(Path.of("org", "folio", "rest", "jaxrs", "resource"));
+      if (!Files.exists(resourceDir)) {
+        return;
+      }
+      var classPackageMap = buildClassPackageMap(genDir, resourceDir);
+      try (Stream<Path> paths = Files.walk(resourceDir)) {
+        paths.filter(p -> p.toString().endsWith(JAVA_FILE_EXTENSION))
+             .forEach(p -> fixImports(p, classPackageMap));
+      }
+    } catch (IOException e) {
+      throw new UncheckedException(e);
+    }
+  }
+
+  private Map<String, String> buildClassPackageMap(Path genDir, Path resourceDir) throws IOException {
+    Map<String, String> map = new HashMap<>();
+    try (Stream<Path> paths = Files.walk(genDir)) {
+      paths.filter(p -> p.toString().endsWith(JAVA_FILE_EXTENSION))
+           .filter(p -> !p.startsWith(resourceDir))
+           .forEach(p -> {
+             String simpleName = p.getFileName().toString().replace(JAVA_FILE_EXTENSION, "");
+             String pkg = genDir.relativize(p.getParent()).toString().replace(File.separatorChar, '.');
+             map.put(simpleName, pkg);
+           });
+    }
+    return map;
+  }
+
+  private void fixImports(Path file, Map<String, String> classPackageMap) {
+    try {
+      var content = Files.readString(file, StandardCharsets.UTF_8);
+      var fixed = DEFAULT_IMPORT_PATTERN.matcher(content).replaceAll(mr -> {
+        var simpleName = mr.group(1);
+        var actualPkg = classPackageMap.get(simpleName);
+        return (actualPkg != null)
+            ? "import " + actualPkg + "." + simpleName + ";"
+            : mr.group(0);
+      });
+      if (!fixed.equals(content)) {
+        Files.writeString(file, fixed, StandardCharsets.UTF_8);
+      }
+    } catch (IOException e) {
+      throw new UncheckedException(e);
+    }
   }
 
   private void migrateToJakarta() {
