@@ -240,7 +240,7 @@ public class GenerateRunner {
       var fixed = DEFAULT_IMPORT_PATTERN.matcher(content).replaceAll(mr -> {
         var simpleName = mr.group(1);
         var actualPkg = classPackageMap.get(simpleName);
-        return (actualPkg != null && !actualPkg.equals(MODEL_PACKAGE_DEFAULT))
+        return (actualPkg != null)
             ? "import " + actualPkg + "." + simpleName + ";"
             : mr.group(0);
       });
