@@ -356,7 +356,7 @@ RMB implementing modules expect a set of environment variables to be passed in a
  - DB_QUERYTIMEOUT
  - DB_CHARSET
  - DB_MAXPOOLSIZE
- - DB_MAXSHAREDPOOLSIZE (buggy, do not use: [RMB-1030](https://folio-org.atlassian.net/browse/RMB-1030))
+ - DB_MAXSHAREDPOOLSIZE (Only use in Trillium (RMB 36.0.0) or later; it's buggy in older versions: [RMB-1030](https://folio-org.atlassian.net/browse/RMB-1030))
  - DB_CONNECTIONRELEASEDELAY
  - DB_MAX_LIFETIME
  - DB_RECONNECTATTEMPTS
