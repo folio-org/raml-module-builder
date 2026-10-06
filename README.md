@@ -422,7 +422,7 @@ RMB supports both [synchronous standby servers](https://www.postgresql.org/docs/
 
 PostgreSQL's default asynchronous replication is supported by RMB by configuring `DB_HOST_READER_ASYNC` and `DB_PORT_READER_ASYNC`. Asynchronous replication is eventually consistent and suitable for read-only applications like reporting, analytics, and data warehousing. To use the async read host in queries, get an instance of `PostgresClient` using `PostgresClientWithAsyncReadConn.getInstance(...)`. If no async read host is configured, it falls back to the sync read host if configured, otherwise it uses the write host.
 
-AWS RDS does not support synchronous replication. For AWS it is recommended to only use `DB_HOST` and `DB_HOST_ASYNC_READER` in a given deployment.
+AWS RDS does not support synchronous replication. For AWS it is recommended to only use `DB_HOST` and `DB_HOST_READER_ASYNC` in a given deployment.
 
 APIs using the async client should provide a warning in the API documentation that the API uses stale data (for performance reasons).
 
