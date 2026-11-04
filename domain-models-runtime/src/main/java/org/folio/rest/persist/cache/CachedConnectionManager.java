@@ -10,6 +10,8 @@ import io.vertx.core.Future;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.SqlConnection;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -29,21 +31,24 @@ public class CachedConnectionManager {
       PostgresClientInitializer.DEFAULT_CONNECTION_RELEASE_DELAY);
 
   private final ConnectionCache connectionCache = new ConnectionCache();
+  // IdentityHashMap uses reference identity, so Comparable keys cannot improve its lookups.
+  @SuppressWarnings("java:S6411")
+  private final Map<Pool, Integer> pendingAcquisitions = new IdentityHashMap<>();
 
   public int getCacheSize() {
     return connectionCache.size();
   }
 
-  public void clearCache() {
+  public synchronized void clearCache() {
     connectionCache.clear();
     LOG.debug("Cleared connection cache");
   }
 
-  public void closeAllConnectionsInCache() {
+  public synchronized void closeAllConnectionsInCache() {
     connectionCache.closeAll();
   }
 
-  public void removeFromCache(CachedPgConnection connection)  {
+  public synchronized void removeFromCache(CachedPgConnection connection)  {
     connectionCache.remove(connection);
   }
 
@@ -51,17 +56,32 @@ public class CachedConnectionManager {
    * Try to add the provided connection to the cache. If the connection has already been added do nothing. Also
    * attempts to remove the oldest available connection if the cache is full (for any tenant).
    */
-  public void tryAddToCache(CachedPgConnection connection) {
+  public synchronized void tryAddToCache(CachedPgConnection connection) {
     connectionCache.tryAdd(connection);
     limitCacheSize();
+  }
+
+  /** Return leases to Vert.x while acquisitions are outstanding, rather than stranding its waiters. */
+  synchronized void releaseConnection(CachedPgConnection connection) {
+    if (connection.isReturnedToPool()) {
+      return;
+    }
+    if (pendingAcquisitions.containsKey(connection.getPool())) {
+      removeFromCache(connection);
+      connection.returnToPool();
+    } else {
+      connection.makeAvailableForReuse();
+      tryAddToCache(connection);
+    }
   }
 
   /**
    * Get a connection from the manager. If a connection for the tenant is not available, another available connection
    * will be recycled and used for the provided tenant.
    */
-  public Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId, schemaName);
+  public synchronized Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
+    Optional<CachedPgConnection> connectionOptional =
+        connectionCache.getAvailableConnection(tenantId, schemaName, pool);
 
     if (connectionOptional.isPresent()) {
       connectionCache.incrementHits();
@@ -85,6 +105,10 @@ public class CachedConnectionManager {
     // Create a new session. If the underlying PgPool is maxed out this connection request will be added to its
     // wait queue and will be completed when a connection is available in the underlying PgPool.
     return createConnectionSession(vertx, pool, schemaName, tenantId);
+  }
+
+  private synchronized void acquisitionCompleted(Pool pool) {
+    pendingAcquisitions.compute(pool, (key, count) -> count == 1 ? null : (count - 1));
   }
 
   private static int getIntFromEnvOrDefault(Envs envKey, int defaultValue) {
@@ -112,12 +136,21 @@ public class CachedConnectionManager {
 
   private Future<PgConnection> createConnectionSession(Vertx vertx, Pool pool, String schemaName, String tenantId) {
     connectionCache.setPoolSizeMetric(pool.size());
-    return pool
-        .getConnection()
-        .compose(sqlConnection -> setRoleAndSchema(vertx, schemaName, tenantId, sqlConnection));
+    pendingAcquisitions.merge(pool, 1, Integer::sum);
+    Future<SqlConnection> acquisition;
+    try {
+      acquisition = pool.getConnection();
+    } catch (RuntimeException error) {
+      acquisitionCompleted(pool);
+      throw error;
+    }
+    // Tenant setup holds a lease but is no longer waiting for the pool.
+    return acquisition.andThen(result -> acquisitionCompleted(pool))
+        .compose(sqlConnection -> setRoleAndSchema(vertx, pool, schemaName, tenantId, sqlConnection));
   }
 
   private Future<PgConnection> setRoleAndSchema(Vertx vertx,
+                                                Pool pool,
                                                 String schemaName,
                                                 String tenantId,
                                                 SqlConnection sqlConnection) {
@@ -130,7 +163,7 @@ public class CachedConnectionManager {
     return sqlConnection.query(sql).execute()
         .compose(r -> {
           var cachedConnection = new CachedPgConnection(tenantId, schemaName,
-              (PgConnection) sqlConnection, this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
+              (PgConnection) sqlConnection, this, vertx, CONNECTION_RELEASE_DELAY_SECONDS, pool);
 
           connectionCache.incrementActive();
           connectionCache.incrementNewConnections();
@@ -164,7 +197,7 @@ public class CachedConnectionManager {
           return Future.succeededFuture((PgConnection) connection);
         })
         .onFailure(e -> {
-          connection.setAvailable(); // Return to cache with original tenantId on error
+          releaseConnection(connection); // Retains the original tenant identity on recycling failure.
           connectionCache.incrementRecycleErrors();
 
           LOG.error("Failed to recycle connection from {} to {}: {}", originalTenantId, tenantId, e.getMessage());

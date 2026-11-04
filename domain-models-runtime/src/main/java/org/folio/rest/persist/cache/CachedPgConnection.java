@@ -6,6 +6,7 @@ import io.vertx.core.Vertx;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotice;
 import io.vertx.pgclient.PgNotification;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.PreparedStatement;
@@ -28,12 +29,14 @@ import org.apache.logging.log4j.Logger;
 public class CachedPgConnection implements PgConnection {
   private static final Logger LOG = LogManager.getLogger(CachedPgConnection.class);
   private final PgConnection connection;
+  private final Pool pool;
   private final CachedConnectionManager manager;
   private final UUID sessionId;
   private String tenantId;
   private String schemaName;
   private long idleSince;
   private boolean available;
+  private boolean returnedToPool;
   private Handler<Void> closeHandler;
 
   private final ReleaseDelayObserver observer;
@@ -44,6 +47,16 @@ public class CachedPgConnection implements PgConnection {
                             CachedConnectionManager manager,
                             Vertx vertx,
                             int releaseDelaySeconds) {
+    this(tenantId, schemaName, connection, manager, vertx, releaseDelaySeconds, null);
+  }
+
+  CachedPgConnection(String tenantId,
+                     String schemaName,
+                     PgConnection connection,
+                     CachedConnectionManager manager,
+                     Vertx vertx,
+                     int releaseDelaySeconds,
+                     Pool pool) {
     if (tenantId == null || tenantId.isEmpty() || connection == null || manager == null) {
       throw new IllegalArgumentException();
     }
@@ -51,6 +64,7 @@ public class CachedPgConnection implements PgConnection {
     this.tenantId = tenantId;
     this.schemaName = schemaName;
     this.connection = connection;
+    this.pool = pool;
     this.manager = manager;
     this.sessionId = UUID.randomUUID();
     this.idleSince = System.currentTimeMillis();
@@ -61,14 +75,31 @@ public class CachedPgConnection implements PgConnection {
   public Future<Void> close() {
     LOG.debug("Calling close: {} {}", tenantId, sessionId);
 
-    available = true;
-    observer.startCountdown(this::handleReleaseDelayCompletion);
-    manager.tryAddToCache(this);
+    manager.releaseConnection(this);
 
     if (closeHandler != null) {
       closeHandler.handle(null);
     }
     return Future.succeededFuture();
+  }
+
+  Pool getPool() {
+    return pool;
+  }
+
+  boolean isReturnedToPool() {
+    return returnedToPool;
+  }
+
+  void returnToPool() {
+    returnedToPool = true;
+    setUnavailable();
+    connection.close();
+  }
+
+  void makeAvailableForReuse() {
+    available = true;
+    observer.startCountdown(this::handleReleaseDelayCompletion);
   }
 
   @Override

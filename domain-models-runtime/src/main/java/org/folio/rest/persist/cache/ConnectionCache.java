@@ -1,5 +1,6 @@
 package org.folio.rest.persist.cache;
 
+import io.vertx.sqlclient.Pool;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -77,10 +78,17 @@ public class ConnectionCache {
    * @return An optional wrapping the potentially null connection.
    */
   public Optional<CachedPgConnection> getAvailableConnection(String tenantId, String schemaName) {
+    return getAvailableConnection(tenantId, schemaName, null);
+  }
+
+  /** Select only sessions from the requested pool; null preserves the unfiltered public lookup. */
+  Optional<CachedPgConnection> getAvailableConnection(String tenantId, String schemaName, Pool pool) {
     synchronized (cache) {
       // First attempt to find a connection for the tenant that is available.
       Optional<CachedPgConnection> connectionOptional =
-          cache.stream().filter(connection ->
+          cache.stream()
+              .filter(connection -> pool == null || connection.getPool() == pool)
+              .filter(connection ->
               connection.getTenantId().equals(tenantId) &&
               connection.getSchemaName().equals(schemaName) &&
               connection.isAvailable())
@@ -89,6 +97,7 @@ public class ConnectionCache {
       // If The first attempt fails, try to find the oldest connection for another tenant that is available.
       if (connectionOptional.isEmpty()) {
         connectionOptional = cache.stream()
+            .filter(connection -> pool == null || connection.getPool() == pool)
             .filter(CachedPgConnection::isAvailable)
             .min(Comparator.comparingLong(CachedPgConnection::getIdleSince));
       }

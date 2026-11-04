@@ -31,12 +31,15 @@ public class ForeignKeyPerformanceIT {
 
   @BeforeClass
   static public void setupClass(TestContext context) {
-    vertx = VertxUtils.getVertxWithExceptionHandler();
     Assume.assumeTrue("TEST_PERFORMANCE=yes", "yes".equals(System.getenv("TEST_PERFORMANCE")));
+    vertx = VertxUtils.getVertxWithExceptionHandler();
   }
 
   @AfterClass
   static public void teardownClass(TestContext context) {
+    if (vertx == null) {
+      return;
+    }
     dropTables(context);
     vertx.close()
     .onComplete(context.asyncAssertSuccess());
