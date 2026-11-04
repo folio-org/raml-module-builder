@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -40,6 +43,35 @@ class CachedConnectionManagerIT extends TenantHelper {
   void beforeEachTest() {
     PostgresClientHelper.setSharedPgPool(true);
     PostgresClient.clearConnectionCache();
+  }
+
+  @Test
+  void returnedConnectionShouldUnblockQueuedAcquisition(VertxTestContext testContext) {
+    prepareTenants("tenant1", "tenant2")
+        .compose(v -> {
+          List<Future<CachedPgConnection>> acquisitions = new ArrayList<>();
+          for (int i = 0; i < PostgresClient.DEFAULT_MAX_POOL_SIZE; i++) {
+            acquisitions.add(getConnection("tenant1"));
+          }
+          return Future.all(acquisitions);
+        })
+        .compose(acquired -> {
+          List<CachedPgConnection> held = acquired.list();
+          var waiting = getConnection("tenant2");
+          assertThat(waiting.isComplete(), is(false));
+          return held.getFirst().close()
+              .compose(v -> waiting.timeout(2, TimeUnit.SECONDS))
+              .compose(connection -> connection.query("SELECT current_schema, current_user").execute()
+                  .onSuccess(rows -> {
+                    var row = rows.iterator().next();
+                    assertThat(row.getString(0), is("tenant2_raml_module_builder"));
+                    assertThat(row.getString(1), is("tenant2_raml_module_builder"));
+                  })
+                  .andThen(result -> connection.close()))
+              .onFailure(error -> waiting.onSuccess(CachedPgConnection::close))
+              .andThen(result -> held.forEach(CachedPgConnection::close));
+        })
+        .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test

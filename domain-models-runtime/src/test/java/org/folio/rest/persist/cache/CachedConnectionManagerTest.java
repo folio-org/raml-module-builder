@@ -3,8 +3,12 @@ package org.folio.rest.persist.cache;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import io.vertx.core.Handler;
+import io.vertx.core.Future;
 import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
@@ -23,6 +27,35 @@ public class CachedConnectionManagerTest {
   @AfterClass
   public static void afterClass() {
     PostgresClientHelper.setSharedPgPool(false);
+  }
+
+  @Test
+  public void failedAcquisitionDoesNotDisableCacheReuse(TestContext context) {
+    var manager = new CachedConnectionManager();
+    var vertx = Vertx.vertx();
+    var pool = mock(Pool.class);
+    when(pool.getConnection()).thenReturn(Future.failedFuture("unavailable"));
+    manager.getConnection(vertx, pool, "schema1", "tenant1")
+        .onComplete(context.asyncAssertFailure(error -> {
+          assertEquals("unavailable", error.getMessage());
+          var connection = new CachedPgConnection("tenant1", "schema1", new PgConnectionMock(), manager, vertx, 1);
+          connection.close();
+          assertTrue(connection.isAvailable());
+          vertx.close();
+        }));
+  }
+
+  @Test
+  public void thrownAcquisitionDoesNotDisableCacheReuse() {
+    var manager = new CachedConnectionManager();
+    var vertx = Vertx.vertx();
+    var pool = mock(Pool.class);
+    when(pool.getConnection()).thenThrow(new IllegalStateException("closed"));
+    assertThrows(IllegalStateException.class, () -> manager.getConnection(vertx, pool, "schema1", "tenant1"));
+    var connection = new CachedPgConnection("tenant1", "schema1", new PgConnectionMock(), manager, vertx, 1);
+    connection.close();
+    assertTrue(connection.isAvailable());
+    vertx.close();
   }
 
   @Test

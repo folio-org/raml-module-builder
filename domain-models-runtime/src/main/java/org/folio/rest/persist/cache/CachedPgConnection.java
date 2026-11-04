@@ -34,6 +34,7 @@ public class CachedPgConnection implements PgConnection {
   private String schemaName;
   private long idleSince;
   private boolean available;
+  private boolean returnedToPool;
   private Handler<Void> closeHandler;
 
   private final ReleaseDelayObserver observer;
@@ -61,14 +62,27 @@ public class CachedPgConnection implements PgConnection {
   public Future<Void> close() {
     LOG.debug("Calling close: {} {}", tenantId, sessionId);
 
-    available = true;
-    observer.startCountdown(this::handleReleaseDelayCompletion);
-    manager.tryAddToCache(this);
+    manager.releaseConnection(this);
 
     if (closeHandler != null) {
       closeHandler.handle(null);
     }
     return Future.succeededFuture();
+  }
+
+  boolean isReturnedToPool() {
+    return returnedToPool;
+  }
+
+  void returnToPool() {
+    returnedToPool = true;
+    setUnavailable();
+    connection.close();
+  }
+
+  void makeAvailableForReuse() {
+    available = true;
+    observer.startCountdown(this::handleReleaseDelayCompletion);
   }
 
   @Override
