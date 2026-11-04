@@ -31,6 +31,8 @@ public class CachedConnectionManager {
       PostgresClientInitializer.DEFAULT_CONNECTION_RELEASE_DELAY);
 
   private final ConnectionCache connectionCache = new ConnectionCache();
+  // IdentityHashMap uses reference identity, so Comparable keys cannot improve its lookups.
+  @SuppressWarnings("java:S6411")
   private final Map<Pool, Integer> pendingAcquisitions = new IdentityHashMap<>();
 
   public int getCacheSize() {
@@ -78,7 +80,8 @@ public class CachedConnectionManager {
    * will be recycled and used for the provided tenant.
    */
   public synchronized Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId, schemaName, pool);
+    Optional<CachedPgConnection> connectionOptional =
+        connectionCache.getAvailableConnection(tenantId, schemaName, pool);
 
     if (connectionOptional.isPresent()) {
       connectionCache.incrementHits();
@@ -105,7 +108,7 @@ public class CachedConnectionManager {
   }
 
   private synchronized void acquisitionCompleted(Pool pool) {
-    pendingAcquisitions.compute(pool, (key, count) -> count == 1 ? null : count - 1);
+    pendingAcquisitions.compute(pool, (key, count) -> count == 1 ? null : (count - 1));
   }
 
   private static int getIntFromEnvOrDefault(Envs envKey, int defaultValue) {
