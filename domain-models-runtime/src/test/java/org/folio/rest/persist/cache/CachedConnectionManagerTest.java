@@ -2,6 +2,7 @@ package org.folio.rest.persist.cache;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -124,6 +125,31 @@ public class CachedConnectionManagerTest {
   }
 
   @Test
+  public void cachedReaderAndWriterSessionsStayInTheirSourcePools() {
+    var manager = new CachedConnectionManager();
+    var vertx = Vertx.vertx();
+    var writer = mock(Pool.class);
+    var reader = mock(Pool.class);
+    var writerRaw = connectionWithSetup(Future.succeededFuture());
+    var readerRaw = connectionWithSetup(Future.succeededFuture());
+    when(writer.getConnection()).thenReturn(Future.succeededFuture(writerRaw));
+    when(reader.getConnection()).thenReturn(Future.succeededFuture(readerRaw));
+    try {
+      var writerSession = manager.getConnection(vertx, writer, "schema1", "tenant1").result();
+      writerSession.close();
+      var readerSession = (CachedPgConnection) manager.getConnection(vertx, reader, "schema1", "tenant1").result();
+      assertSame(readerRaw, readerSession.getWrappedConnection());
+      readerSession.close();
+      var reusedWriter = manager.getConnection(vertx, writer, "schema1", "tenant1").result();
+      assertSame(writerSession, reusedWriter);
+      reusedWriter.close();
+    } finally {
+      manager.closeAllConnectionsInCache();
+      vertx.close();
+    }
+  }
+
+  @Test
   public void pendingAcquisitionReturnsLeaseExactlyOnce() {
     var manager = new CachedConnectionManager();
     var vertx = Vertx.vertx();
@@ -194,10 +220,10 @@ public class CachedConnectionManagerTest {
     PostgresClientHelper.setSharedPgPool(true);
     var manager = new CachedConnectionManager();
     var vertx = Vertx.vertx();
-    var connectionToGet = new CachedPgConnection("tenant1", "schema1", new PgConnectionMock(), manager, vertx, 1);
+    var pool = Pool.pool(new SqlConnectOptions());
+    var connectionToGet = new CachedPgConnection("tenant1", "schema1", new PgConnectionMock(), manager, vertx, 1, pool);
     connectionToGet.close();
     manager.tryAddToCache(connectionToGet);
-    var pool = Pool.pool(new SqlConnectOptions());
     manager.getConnection(vertx, pool, "schema1", "tenant1").onComplete(context.asyncAssertSuccess(pgConnection -> {
       var gotConnection = (CachedPgConnection) pgConnection;
       assertEquals(connectionToGet.getSessionId(), gotConnection.getSessionId());

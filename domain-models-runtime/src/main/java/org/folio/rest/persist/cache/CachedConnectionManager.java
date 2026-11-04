@@ -78,7 +78,7 @@ public class CachedConnectionManager {
    * will be recycled and used for the provided tenant.
    */
   public synchronized Future<PgConnection> getConnection(Vertx vertx, Pool pool, String schemaName, String tenantId) {
-    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId, schemaName);
+    Optional<CachedPgConnection> connectionOptional = connectionCache.getAvailableConnection(tenantId, schemaName, pool);
 
     if (connectionOptional.isPresent()) {
       connectionCache.incrementHits();
