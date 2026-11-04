@@ -10,8 +10,9 @@ import io.vertx.core.Future;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.SqlConnection;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Manages cached connections. Cached connections are tenant session connections. A session is a connection
@@ -30,7 +31,7 @@ public class CachedConnectionManager {
       PostgresClientInitializer.DEFAULT_CONNECTION_RELEASE_DELAY);
 
   private final ConnectionCache connectionCache = new ConnectionCache();
-  private final AtomicInteger pendingAcquisitions = new AtomicInteger();
+  private final Map<Pool, Integer> pendingAcquisitions = new IdentityHashMap<>();
 
   public int getCacheSize() {
     return connectionCache.size();
@@ -63,7 +64,7 @@ public class CachedConnectionManager {
     if (connection.isReturnedToPool()) {
       return;
     }
-    if (pendingAcquisitions.get() > 0) {
+    if (pendingAcquisitions.containsKey(connection.getPool())) {
       removeFromCache(connection);
       connection.returnToPool();
     } else {
@@ -100,14 +101,11 @@ public class CachedConnectionManager {
 
     // Create a new session. If the underlying PgPool is maxed out this connection request will be added to its
     // wait queue and will be completed when a connection is available in the underlying PgPool.
-    pendingAcquisitions.incrementAndGet();
-    try {
-      return createConnectionSession(vertx, pool, schemaName, tenantId)
-          .andThen(result -> pendingAcquisitions.decrementAndGet());
-    } catch (RuntimeException error) {
-      pendingAcquisitions.decrementAndGet();
-      throw error;
-    }
+    return createConnectionSession(vertx, pool, schemaName, tenantId);
+  }
+
+  private synchronized void acquisitionCompleted(Pool pool) {
+    pendingAcquisitions.compute(pool, (key, count) -> count == 1 ? null : count - 1);
   }
 
   private static int getIntFromEnvOrDefault(Envs envKey, int defaultValue) {
@@ -135,12 +133,21 @@ public class CachedConnectionManager {
 
   private Future<PgConnection> createConnectionSession(Vertx vertx, Pool pool, String schemaName, String tenantId) {
     connectionCache.setPoolSizeMetric(pool.size());
-    return pool
-        .getConnection()
-        .compose(sqlConnection -> setRoleAndSchema(vertx, schemaName, tenantId, sqlConnection));
+    pendingAcquisitions.merge(pool, 1, Integer::sum);
+    Future<SqlConnection> acquisition;
+    try {
+      acquisition = pool.getConnection();
+    } catch (RuntimeException error) {
+      acquisitionCompleted(pool);
+      throw error;
+    }
+    // Tenant setup holds a lease but is no longer waiting for the pool.
+    return acquisition.andThen(result -> acquisitionCompleted(pool))
+        .compose(sqlConnection -> setRoleAndSchema(vertx, pool, schemaName, tenantId, sqlConnection));
   }
 
   private Future<PgConnection> setRoleAndSchema(Vertx vertx,
+                                                Pool pool,
                                                 String schemaName,
                                                 String tenantId,
                                                 SqlConnection sqlConnection) {
@@ -153,7 +160,7 @@ public class CachedConnectionManager {
     return sqlConnection.query(sql).execute()
         .compose(r -> {
           var cachedConnection = new CachedPgConnection(tenantId, schemaName,
-              (PgConnection) sqlConnection, this, vertx, CONNECTION_RELEASE_DELAY_SECONDS);
+              (PgConnection) sqlConnection, this, vertx, CONNECTION_RELEASE_DELAY_SECONDS, pool);
 
           connectionCache.incrementActive();
           connectionCache.incrementNewConnections();

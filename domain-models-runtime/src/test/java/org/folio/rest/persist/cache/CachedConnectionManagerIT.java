@@ -47,30 +47,32 @@ class CachedConnectionManagerIT extends TenantHelper {
 
   @Test
   void returnedConnectionShouldUnblockQueuedAcquisition(VertxTestContext testContext) {
+    List<Future<CachedPgConnection>> acquisitions = new ArrayList<>();
     prepareTenants("tenant1", "tenant2")
         .compose(v -> {
-          List<Future<CachedPgConnection>> acquisitions = new ArrayList<>();
-          for (int i = 0; i < PostgresClient.DEFAULT_MAX_POOL_SIZE; i++) {
+          var config = PostgresClient.getInstance(vertx, "tenant1").getConnectionConfig();
+          int maxPoolSize = config.getInteger("maxSharedPoolSize",
+              config.getInteger("maxPoolSize", PostgresClient.DEFAULT_MAX_POOL_SIZE));
+          for (int i = 0; i < maxPoolSize; i++) {
             acquisitions.add(getConnection("tenant1"));
           }
-          return Future.all(acquisitions);
+          return Future.all(acquisitions).timeout(5, TimeUnit.SECONDS);
         })
         .compose(acquired -> {
-          List<CachedPgConnection> held = acquired.list();
           var waiting = getConnection("tenant2");
+          acquisitions.add(waiting);
           assertThat(waiting.isComplete(), is(false));
-          return held.getFirst().close()
+          return acquisitions.removeFirst().result().close()
               .compose(v -> waiting.timeout(2, TimeUnit.SECONDS))
               .compose(connection -> connection.query("SELECT current_schema, current_user").execute()
                   .onSuccess(rows -> {
                     var row = rows.iterator().next();
                     assertThat(row.getString(0), is("tenant2_raml_module_builder"));
                     assertThat(row.getString(1), is("tenant2_raml_module_builder"));
-                  })
-                  .andThen(result -> connection.close()))
-              .onFailure(error -> waiting.onSuccess(CachedPgConnection::close))
-              .andThen(result -> held.forEach(CachedPgConnection::close));
+                  }));
         })
+        // Also close acquisitions that complete after a timeout or failed assertion.
+        .andThen(result -> acquisitions.forEach(future -> future.onSuccess(CachedPgConnection::close)))
         .onComplete(testContext.succeedingThenComplete());
   }
 
