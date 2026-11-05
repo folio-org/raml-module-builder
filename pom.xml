@@ -33,11 +33,11 @@
 
     <aspectj.version>1.9.22.1</aspectj.version>
     <maven.version>3.9.9</maven.version>
-    <vertx.version>4.5.31</vertx.version>
-    <micrometer.version>1.15.12</micrometer.version> <!-- security fix https://spring.io/security/cve-2026-40984 -->
+    <vertx.version>4.5.36</vertx.version>
+    <micrometer.version>1.17.2</micrometer.version> <!-- security fixes https://www.cve.org/CVERecord?id=CVE-2026-59295 https://spring.io/security/cve-2026-59296 -->
     <awaitility.version>4.3.0</awaitility.version>
     <hamcrest.version>3.0</hamcrest.version>
-    <okapi.version>6.2.9</okapi.version>
+    <okapi.version>6.2.14</okapi.version>
 
     <!-- ramlfiles_path needed to generate interfaces, pojos and api mapping
     path to func, ui of raml -->
@@ -60,7 +60,7 @@
       <dependency>
         <groupId>com.google.guava</groupId>
         <artifactId>guava</artifactId>
-        <version>33.3.1-jre</version>
+        <version>33.8.0-jre</version>
       </dependency>
       <dependency>
         <groupId>org.apache.logging.log4j</groupId>
@@ -160,7 +160,7 @@
       <dependency>
         <groupId>org.hibernate.validator</groupId>
         <artifactId>hibernate-validator</artifactId>
-        <version>8.0.2.Final</version>
+        <version>8.0.6.Final</version>
       </dependency>
       <dependency>
         <groupId>org.glassfish</groupId>
