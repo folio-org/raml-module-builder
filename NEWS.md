@@ -1,3 +1,7 @@
+## 35.4.4 2026-11-05
+
+* [RMB-1061](https://folio-org.atlassian.net/browse/RMB-1061) Bump deps fixing vulns: Vertx 4.5.36, Netty 4.1.136, Jackson 2.21.8, Micrometer 1.17.2, Guava 33.8.0, Hibernate 8.0.6, Freemarker 2.3.35, okapi-common 6.2.14
+
 ## 35.4.3 2026-07-22
 
 * [RMB-1048](https://folio-org.atlassian.net/browse/RMB-1048) Enable maven workflows, drop Jenkins workflow
