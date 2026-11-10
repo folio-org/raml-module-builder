@@ -24,6 +24,12 @@ import io.vertx.ext.unit.junit.VertxUnitRunner;
  * <p>
  * Only runs if environment variable TEST_PERFORMANCE=yes, for example <br>
  * TEST_PERFORMANCE=yes mvn verify
+ * <p>
+ * Requires a running database, for example
+ * <pre>
+ * docker run --name postgres5432 -e POSTGRES_USER=username -e POSTGRES_PASSWORD=password -e POSTGRES_DB=postgres \
+ *   -p 5432:5432 -d postgres:16-alpine -c 'shared_buffers=512MB' -c 'max_connections=500'
+ * </pre>
  */
 @RunWith(VertxUnitRunner.class)
 public class ForeignKeyPerformanceIT {
