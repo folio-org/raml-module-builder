@@ -159,7 +159,7 @@
       <dependency>
         <groupId>org.hibernate.validator</groupId>
         <artifactId>hibernate-validator</artifactId>
-        <version>9.1.6.Final</version>
+        <version>8.0.6.Final</version>
       </dependency>
       <dependency>
         <groupId>org.glassfish</groupId>

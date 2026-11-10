@@ -6,10 +6,10 @@ import org.folio.util.PostgresTester;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.images.builder.Transferable;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 public class PostgresTesterContainer implements PostgresTester {
   public static final String DEFAULT_IMAGE_NAME = "postgres:16-alpine";
@@ -50,8 +50,8 @@ public class PostgresTesterContainer implements PostgresTester {
 
   private static boolean hasLog;
 
-  private PostgreSQLContainer<?> primary;
-  private PostgreSQLContainer<?> standby;
+  private PostgreSQLContainer primary;
+  private PostgreSQLContainer standby;
   private String dockerImageName;
   private Network network = Network.newNetwork();
 
@@ -135,7 +135,7 @@ public class PostgresTesterContainer implements PostgresTester {
       replicationSh = Transferable.of(simulatedDelayConfig + baseReplicationSh);
     }
 
-    primary = new PostgreSQLContainer<>(dockerImageName)
+    primary = new FixedPostgreSQLContainer(dockerImageName)
         .withCopyToContainer(replicationSh, "/docker-entrypoint-initdb.d/replication.sh")
         .withDatabaseName(database)
         .withUsername(username)
@@ -155,7 +155,7 @@ public class PostgresTesterContainer implements PostgresTester {
             + "pg_basebackup -h postgresprimary -p 5432 -U replicator -D /var/lib/postgresql/data -Fp -Xs -R -P\n"
             + "pg_ctl -D /var/lib/postgresql/data start\n",
         FILE_MODE);
-    standby = new PostgreSQLContainer<>(dockerImageName)
+    standby = new FixedPostgreSQLContainer(dockerImageName)
         .withCopyToContainer(basebackupSh, "/docker-entrypoint-initdb.d/basebackup.sh")
         .withUsername(username)
         .withPassword(password)

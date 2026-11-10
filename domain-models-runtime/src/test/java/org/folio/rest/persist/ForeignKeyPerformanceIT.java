@@ -49,6 +49,7 @@ public class ForeignKeyPerformanceIT {
     dropTables(context);
     vertx.close()
     .onComplete(context.asyncAssertSuccess());
+    vertx = null;
   }
 
   static private void runSQL(TestContext context, String inputSql) {
