@@ -12,6 +12,7 @@ import io.vertx.junit5.VertxTestContext;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import org.folio.postgres.testing.FixedPostgreSQLContainer;
 import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.rest.tools.utils.Envs;
 import org.folio.util.ResourceUtil;
@@ -20,9 +21,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
 @Timeout(5000)
@@ -35,8 +36,8 @@ class PostgresClientSslTest {
   static final String CONF_PATH = "/var/lib/postgresql/data/postgresql.conf";
   static final String CONF_BAK_PATH = "/var/lib/postgresql/data/postgresql.conf.bak";
   @Container
-  static final PostgreSQLContainer<?> POSTGRES =
-      new PostgreSQLContainer<>(PostgresTesterContainer.DEFAULT_IMAGE_NAME);
+  static final PostgreSQLContainer POSTGRES =
+      new FixedPostgreSQLContainer(PostgresTesterContainer.DEFAULT_IMAGE_NAME);
 
   static void exec(String... command) {
     try {
