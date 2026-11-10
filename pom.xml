@@ -375,6 +375,12 @@
           <tagNameFormat>v@{project.version}</tagNameFormat>
           <pushChanges>false</pushChanges>
           <localCheckout>true</localCheckout>
+          <!--
+            use SemVerMinorDevelopment for main/master branch,
+            use SemVerPatchDevelopment for release branch (like b36.0)
+            https://maven.apache.org/maven-release/maven-release-plugin/versioning-policies.html
+          -->
+          <projectVersionPolicyId>SemVerMinorDevelopment</projectVersionPolicyId>
         </configuration>
       </plugin>
 
