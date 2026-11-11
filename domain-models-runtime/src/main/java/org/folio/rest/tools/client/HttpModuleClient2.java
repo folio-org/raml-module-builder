@@ -135,7 +135,8 @@ public class HttpModuleClient2 implements HttpClientInterface {
       .onComplete(responseHandler);
     } catch (Exception e) {
       Response r = new Response();
-      r.populateError(endpoint, -1, e.getMessage());
+      var msg = e.getMessage() == null ? e.getClass().getName() : e.getMessage();
+      r.populateError(endpoint, -1, msg);
       r.exception = e;
       cf2.complete(r);
     }

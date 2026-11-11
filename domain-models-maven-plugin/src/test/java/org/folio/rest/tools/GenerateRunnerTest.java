@@ -3,6 +3,7 @@ package org.folio.rest.tools;
 import static org.hamcrest.core.Is.is;
 import static org.hamcrest.CoreMatchers.allOf;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.empty;
@@ -115,6 +116,27 @@ public class GenerateRunnerTest {
     GenerateRunner.main(null);
     assertJobMsgs();
     assertElementAnnotations();
+  }
+
+  /**
+   * A schema with "javaType" pointing to a non-default package must cause the generated
+   * resource interface to import that package, not org.folio.rest.jaxrs.model.
+   *
+   * Regression test for the mismatch between jaxrs-code-generator (which derives the
+   * import from the schema path) and jsonschema2pojo (which respects "javaType" when
+   * writing the POJO), fixed in GenerateRunner.fixModelPackageImports().
+   */
+  @Test
+  public void fixModelPackageImports_usesJavaTypePackageInResourceInterface() throws Exception {
+    String javaTypeResourcesDir = userDir + "/src/test/resources/javatype";
+    System.setProperty("raml_files", javaTypeResourcesDir);
+    System.setProperty("project.basedir", baseDir);
+    FileUtils.copyDirectory(new File(javaTypeResourcesDir), new File(baseDir + "/ramls/"));
+    GenerateRunner.main(null);
+
+    String widgetsResource = IoUtil.toStringUtf8(baseDir + jaxrsDir + "/resource/Widgets.java");
+    assertThat(widgetsResource, containsString("import org.folio.acme.Widget;"));
+    assertThat(widgetsResource, not(containsString("import org.folio.rest.jaxrs.model.Widget;")));
   }
 
   @Test(expected=IOException.class)

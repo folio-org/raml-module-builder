@@ -1,6 +1,5 @@
 package org.folio.cql2pgjson;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -8,14 +7,15 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
+import org.folio.postgres.testing.FixedPostgreSQLContainer;
+import org.folio.postgres.testing.PostgresTesterContainer;
 import org.folio.util.ResourceUtil;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 
 /**
  * Provide conn with a java.sql.Connection to the test database.
@@ -26,7 +26,7 @@ public class DatabaseTestBase {
   private static final String DB_NAME = "test_cql2pgjson";
   private static final String EMBEDDED_USERNAME = "test";
   private static final String EMBEDDED_PASSWORD = "test";
-  private static PostgreSQLContainer<?> postgresSQLContainer;
+  private static PostgreSQLContainer postgresSQLContainer;
   /** java.sql.Connection to be used for the tests */
   static Connection conn;
 
@@ -92,6 +92,7 @@ public class DatabaseTestBase {
    * jdbc:postgresql://127.0.0.1:5433/postgres?currentSchema=public&user=postgres&password=postgres<br>
    * starting an new embedded postgres
    */
+  @java.lang.SuppressWarnings({"squid:S2095", "resource"})  // intentionally don't close postgresSQLContainer
   public static void setupConnection() {
     List<String> urls = new ArrayList<>(3);
     int port = 5432;
@@ -143,7 +144,7 @@ public class DatabaseTestBase {
     }
 
     try {
-      postgresSQLContainer = new PostgreSQLContainer<>("postgres:16-alpine")
+      postgresSQLContainer = new FixedPostgreSQLContainer(PostgresTesterContainer.DEFAULT_IMAGE_NAME)
           .withDatabaseName(DB_NAME)
           .withUsername(EMBEDDED_USERNAME)
           .withPassword(EMBEDDED_PASSWORD);

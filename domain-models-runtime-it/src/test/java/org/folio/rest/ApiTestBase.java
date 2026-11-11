@@ -54,7 +54,7 @@ public class ApiTestBase {
       vertx.deployVerticle(RestVerticle.class, deploymentOptions)
       .toCompletionStage()
       .toCompletableFuture()
-      .get(10, TimeUnit.SECONDS);
+      .get(30, TimeUnit.SECONDS);
     } catch (InterruptedException | ExecutionException | TimeoutException e) {
       throw new RuntimeException(e);
     }
