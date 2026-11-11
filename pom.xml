@@ -28,7 +28,7 @@
 
   <properties>
 
-    <project.build.outputTimestamp>2026-08-05T12:00:16Z</project.build.outputTimestamp>
+    <project.build.outputTimestamp>2026-11-10T14:37:55Z</project.build.outputTimestamp>
 
     <aspectj.version>1.9.22.1</aspectj.version>
     <maven.version>3.9.14</maven.version>
@@ -375,6 +375,12 @@
           <tagNameFormat>v@{project.version}</tagNameFormat>
           <pushChanges>false</pushChanges>
           <localCheckout>true</localCheckout>
+          <!--
+            use SemVerMinorDevelopment for main/master branch,
+            use SemVerPatchDevelopment for release branch (like b36.0)
+            https://maven.apache.org/maven-release/maven-release-plugin/versioning-policies.html
+          -->
+          <projectVersionPolicyId>SemVerMinorDevelopment</projectVersionPolicyId>
         </configuration>
       </plugin>
 

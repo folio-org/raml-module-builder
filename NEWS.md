@@ -1,3 +1,13 @@
+## 36.0.2 2026-11-10
+
+Trillium (R1-2026) CSP.
+
+* [RMB-1058](https://folio-org.atlassian.net/browse/RMB-1058) Fix generated resource interfaces using wrong import package when schema defines javaType
+* [RMB-1030](https://folio-org.atlassian.net/browse/RMB-1030) Mention fix release for DB\_MAXSHAREDPOOLSIZE warning
+* [RMB-1060](https://folio-org.atlassian.net/browse/RMB-1060) Bump deps: Vertx 5.2.3, Netty, Jackson, Micrometer, Guava, Hibernate, Freemarker, okapi-common
+* [RMB-1062](https://folio-org.atlassian.net/browse/RMB-1062) Downgrade hibernate-validator from 9.1.6 to 8.0.6
+* [RMB-1063](https://folio-org.atlassian.net/browse/RMB-1063) Sporadic timeouts in testcontainers PostgreSQLContainer
+
 ## 36.0.1 2026-08-05
 
 Trillium (2026 R1) CSP.
