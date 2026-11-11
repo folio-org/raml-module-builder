@@ -284,6 +284,7 @@ class SharedPoolConnectionCacheIT extends ApiTestBase {
         .when()
         .post("/bees/bees")
         .then()
+        .log().ifValidationFails()
         .statusCode(201);
   }
 

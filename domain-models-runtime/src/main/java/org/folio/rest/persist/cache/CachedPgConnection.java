@@ -2,10 +2,12 @@ package org.folio.rest.persist.cache;
 
 import io.vertx.core.Future;
 import io.vertx.core.Handler;
+import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import io.vertx.pgclient.PgConnection;
 import io.vertx.pgclient.PgNotice;
 import io.vertx.pgclient.PgNotification;
+import io.vertx.sqlclient.Pool;
 import io.vertx.sqlclient.PrepareOptions;
 import io.vertx.sqlclient.PreparedQuery;
 import io.vertx.sqlclient.PreparedStatement;
@@ -28,12 +30,16 @@ import org.apache.logging.log4j.Logger;
 public class CachedPgConnection implements PgConnection {
   private static final Logger LOG = LogManager.getLogger(CachedPgConnection.class);
   private final PgConnection connection;
+  private final Pool pool;
   private final CachedConnectionManager manager;
   private final UUID sessionId;
   private String tenantId;
   private String schemaName;
   private long idleSince;
   private boolean available;
+  private boolean returnedToPool;
+  private Future<Void> closeResult;
+  private Future<Void> poolReturn;
   private Handler<Void> closeHandler;
 
   private final ReleaseDelayObserver observer;
@@ -44,6 +50,16 @@ public class CachedPgConnection implements PgConnection {
                             CachedConnectionManager manager,
                             Vertx vertx,
                             int releaseDelaySeconds) {
+    this(tenantId, schemaName, connection, manager, vertx, releaseDelaySeconds, null);
+  }
+
+  CachedPgConnection(String tenantId,
+                     String schemaName,
+                     PgConnection connection,
+                     CachedConnectionManager manager,
+                     Vertx vertx,
+                     int releaseDelaySeconds,
+                     Pool pool) {
     if (tenantId == null || tenantId.isEmpty() || connection == null || manager == null) {
       throw new IllegalArgumentException();
     }
@@ -51,24 +67,86 @@ public class CachedPgConnection implements PgConnection {
     this.tenantId = tenantId;
     this.schemaName = schemaName;
     this.connection = connection;
+    this.pool = pool;
     this.manager = manager;
     this.sessionId = UUID.randomUUID();
     this.idleSince = System.currentTimeMillis();
     observer = new ReleaseDelayObserver(vertx, releaseDelaySeconds);
   }
 
+  private CachedPgConnection(CachedPgConnection previous, Vertx vertx) {
+    connection = previous.connection;
+    pool = previous.pool;
+    manager = previous.manager;
+    sessionId = previous.sessionId;
+    tenantId = previous.tenantId;
+    schemaName = previous.schemaName;
+    idleSince = previous.idleSince;
+    observer = new ReleaseDelayObserver(vertx, previous.observer.getReleaseDelaySeconds());
+  }
+
+  /** A new handle owns each checkout; an earlier borrower can only close its own handle. */
+  CachedPgConnection checkout(Vertx vertx) {
+    if (closeResult == null) {
+      closeResult = Future.succeededFuture();
+    }
+    return new CachedPgConnection(this, vertx);
+  }
+
   @Override
   public Future<Void> close() {
-    LOG.debug("Calling close: {} {}", tenantId, sessionId);
+    synchronized (manager) {
+      if (closeResult != null) {
+        return closeResult;
+      }
+      // Publish the result before releasing: completing a pool checkout can invoke callbacks inline.
+      var completion = Promise.<Void>promise();
+      closeResult = completion.future();
+      manager.releaseConnection(this).onComplete(result -> {
+        completion.handle(result);
+        if (closeHandler != null) {
+          closeHandler.handle(null);
+        }
+      });
+      return closeResult;
+    }
+  }
 
+  void expireIfIdle() {
+    manager.expireConnection(this);
+  }
+
+  Pool getPool() {
+    return pool;
+  }
+
+  boolean isReturnedToPool() {
+    return returnedToPool;
+  }
+
+  Future<Void> returnToPool() {
+    synchronized (manager) {
+      if (poolReturn != null) {
+        return poolReturn;
+      }
+      var completion = Promise.<Void>promise();
+      poolReturn = completion.future();
+      returnedToPool = true;
+      setUnavailable();
+      manager.removeFromCache(this);
+      poolReturn.onFailure(error -> LOG.warn("Failed to return connection session {} to pool", sessionId, error));
+      try {
+        connection.close().onComplete(completion);
+      } catch (RuntimeException error) {
+        completion.tryFail(error);
+      }
+      return poolReturn;
+    }
+  }
+
+  void makeAvailableForReuse() {
     available = true;
     observer.startCountdown(this::handleReleaseDelayCompletion);
-    manager.tryAddToCache(this);
-
-    if (closeHandler != null) {
-      closeHandler.handle(null);
-    }
-    return Future.succeededFuture();
   }
 
   @Override
@@ -194,11 +272,6 @@ public class CachedPgConnection implements PgConnection {
   }
 
   private void handleReleaseDelayCompletion() {
-    available = false;
-    connection.close();
-    manager.removeFromCache(this);
-
-    LOG.debug("Release delay completed after {} seconds: {} {}",
-        observer.getReleaseDelaySeconds(), tenantId, sessionId);
+    manager.expireConnection(this);
   }
 }
