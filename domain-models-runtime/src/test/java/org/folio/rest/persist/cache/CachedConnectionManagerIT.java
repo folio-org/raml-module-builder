@@ -77,6 +77,52 @@ class CachedConnectionManagerIT extends TenantHelper {
   }
 
   @Test
+  void staleCloseMustNotReleaseRecycledTenantsConnection(VertxTestContext testContext) {
+    List<Future<CachedPgConnection>> held = new ArrayList<>();
+    var first = new AtomicReference<CachedPgConnection>();
+    var second = new AtomicReference<CachedPgConnection>();
+    prepareTenants("tenant1", "tenant2")
+        .compose(v -> getConnection("tenant1"))
+        .compose(connection -> {
+          first.set(connection);
+          return connection.close();
+        })
+        .compose(v -> getConnection("tenant2"))
+        .compose(connection -> {
+          second.set(connection);
+          var config = PostgresClient.getInstance(vertx, "tenant1").getConnectionConfig();
+          int maxPoolSize = config.getInteger("maxSharedPoolSize",
+              config.getInteger("maxPoolSize", PostgresClient.DEFAULT_MAX_POOL_SIZE));
+          for (int i = 1; i < maxPoolSize; i++) {
+            held.add(getConnection("tenant1"));
+          }
+          return Future.all(held).timeout(5, TimeUnit.SECONDS);
+        })
+        .compose(v -> {
+          var waiting = getConnection("tenant1");
+          held.add(waiting);
+          assertThat(waiting.isComplete(), is(false));
+          return first.get().close()
+              .compose(ignored -> second.get().query("SELECT current_schema, current_user").execute())
+              .compose(rows -> {
+                var row = rows.iterator().next();
+                assertThat(row.getString(0), is("tenant2_raml_module_builder"));
+                assertThat(row.getString(1), is("tenant2_raml_module_builder"));
+                assertThat(waiting.isComplete(), is(false));
+                return second.get().close();
+              })
+              .compose(ignored -> waiting.timeout(2, TimeUnit.SECONDS));
+        })
+        .andThen(result -> {
+          if (second.get() != null) {
+            second.get().close();
+          }
+          held.forEach(future -> future.onSuccess(CachedPgConnection::close));
+        })
+        .onComplete(testContext.succeedingThenComplete());
+  }
+
+  @Test
   void shouldNotCreateNestedWrappers(VertxTestContext testContext) {
     var originalSessionId = new AtomicReference<UUID>();
 

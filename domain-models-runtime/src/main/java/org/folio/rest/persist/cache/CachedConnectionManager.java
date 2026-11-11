@@ -62,16 +62,19 @@ public class CachedConnectionManager {
   }
 
   /** Return leases to Vert.x while acquisitions are outstanding, rather than stranding its waiters. */
-  synchronized void releaseConnection(CachedPgConnection connection) {
-    if (connection.isReturnedToPool()) {
-      return;
+  synchronized Future<Void> releaseConnection(CachedPgConnection connection) {
+    if (connection.isReturnedToPool() || pendingAcquisitions.containsKey(connection.getPool())) {
+      return connection.returnToPool();
     }
-    if (pendingAcquisitions.containsKey(connection.getPool())) {
-      removeFromCache(connection);
+    connection.makeAvailableForReuse();
+    tryAddToCache(connection);
+    return connection.isReturnedToPool() ? connection.returnToPool() : Future.succeededFuture();
+  }
+
+  /** Recheck availability under the checkout lock, even if a cancelled timer was already dispatched. */
+  synchronized void expireConnection(CachedPgConnection connection) {
+    if (connection.isAvailable() && !connection.isReturnedToPool()) {
       connection.returnToPool();
-    } else {
-      connection.makeAvailableForReuse();
-      tryAddToCache(connection);
     }
   }
 
@@ -85,7 +88,9 @@ public class CachedConnectionManager {
 
     if (connectionOptional.isPresent()) {
       connectionCache.incrementHits();
-      CachedPgConnection connection = connectionOptional.get();
+      CachedPgConnection previous = connectionOptional.get();
+      CachedPgConnection connection = previous.checkout(vertx);
+      connectionCache.replace(previous, connection);
 
       // If it is being used from another tenant (recycled), we now need to set a new role and schema for it.
       if (!connection.getTenantId().equals(tenantId) || !connection.getSchemaName().equals(schemaName)) {

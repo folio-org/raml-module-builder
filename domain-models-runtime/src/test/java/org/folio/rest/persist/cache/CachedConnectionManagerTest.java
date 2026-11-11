@@ -141,7 +141,7 @@ public class CachedConnectionManagerTest {
       assertSame(readerRaw, readerSession.getWrappedConnection());
       readerSession.close();
       var reusedWriter = manager.getConnection(vertx, writer, "schema1", "tenant1").result();
-      assertSame(writerSession, reusedWriter);
+      assertSame(writerRaw, ((CachedPgConnection) reusedWriter).getWrappedConnection());
       reusedWriter.close();
     } finally {
       manager.closeAllConnectionsInCache();

@@ -55,17 +55,26 @@ public class ConnectionCache {
    * Remove the oldest available connection and close the underlying (wrapped) connection if it is the oldest available.
    */
   public void removeOldestAvailableAndClose() {
+    Optional<CachedPgConnection> oldest;
     synchronized (cache) {
-      cache.stream()
+      oldest = cache.stream()
           .filter(CachedPgConnection::isAvailable)
-          .min(Comparator.comparingLong(CachedPgConnection::getIdleSince))
-          .ifPresent(connection -> {
-            connection.getWrappedConnection().close();
-            cache.remove(connection);
-            metrics.decrementActive();
-            LOG.debug("Removed and closed oldest available connection: {} {}",
-                connection.getTenantId(), connection.getSessionId());
-          });
+          .min(Comparator.comparingLong(CachedPgConnection::getIdleSince));
+    }
+    // Never take the manager lock while holding the cache lock.
+    oldest.ifPresent(connection -> {
+      connection.expireIfIdle();
+      synchronized (cache) {
+        if (connection.isReturnedToPool() && cache.remove(connection)) {
+          metrics.decrementActive();
+        }
+      }
+    });
+  }
+
+  void replace(CachedPgConnection previous, CachedPgConnection current) {
+    synchronized (cache) {
+      cache.set(cache.indexOf(previous), current);
     }
   }
 
@@ -116,9 +125,16 @@ public class ConnectionCache {
   }
 
   public void closeAll() {
+    List<CachedPgConnection> connections;
     synchronized (cache) {
-      for (CachedPgConnection conn : cache) {
-        conn.getWrappedConnection().close();
+      connections = new ArrayList<>(cache);
+    }
+    for (CachedPgConnection connection : connections) {
+      connection.returnToPool();
+      synchronized (cache) {
+        if (cache.remove(connection)) {
+          metrics.decrementActive();
+        }
       }
     }
   }
