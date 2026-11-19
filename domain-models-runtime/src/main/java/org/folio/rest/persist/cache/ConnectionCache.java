@@ -1,5 +1,6 @@
 package org.folio.rest.persist.cache;
 
+import io.vertx.sqlclient.Pool;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -54,17 +55,26 @@ public class ConnectionCache {
    * Remove the oldest available connection and close the underlying (wrapped) connection if it is the oldest available.
    */
   public void removeOldestAvailableAndClose() {
+    Optional<CachedPgConnection> oldest;
     synchronized (cache) {
-      cache.stream()
+      oldest = cache.stream()
           .filter(CachedPgConnection::isAvailable)
-          .min(Comparator.comparingLong(CachedPgConnection::getIdleSince))
-          .ifPresent(connection -> {
-            connection.getWrappedConnection().close();
-            cache.remove(connection);
-            metrics.decrementActive();
-            LOG.debug("Removed and closed oldest available connection: {} {}",
-                connection.getTenantId(), connection.getSessionId());
-          });
+          .min(Comparator.comparingLong(CachedPgConnection::getIdleSince));
+    }
+    // Never take the manager lock while holding the cache lock.
+    oldest.ifPresent(connection -> {
+      connection.expireIfIdle();
+      synchronized (cache) {
+        if (connection.isReturnedToPool() && cache.remove(connection)) {
+          metrics.decrementActive();
+        }
+      }
+    });
+  }
+
+  void replace(CachedPgConnection previous, CachedPgConnection current) {
+    synchronized (cache) {
+      cache.set(cache.indexOf(previous), current);
     }
   }
 
@@ -77,10 +87,17 @@ public class ConnectionCache {
    * @return An optional wrapping the potentially null connection.
    */
   public Optional<CachedPgConnection> getAvailableConnection(String tenantId, String schemaName) {
+    return getAvailableConnection(tenantId, schemaName, null);
+  }
+
+  /** Select only sessions from the requested pool; null preserves the unfiltered public lookup. */
+  Optional<CachedPgConnection> getAvailableConnection(String tenantId, String schemaName, Pool pool) {
     synchronized (cache) {
       // First attempt to find a connection for the tenant that is available.
       Optional<CachedPgConnection> connectionOptional =
-          cache.stream().filter(connection ->
+          cache.stream()
+              .filter(connection -> pool == null || connection.getPool() == pool)
+              .filter(connection ->
               connection.getTenantId().equals(tenantId) &&
               connection.getSchemaName().equals(schemaName) &&
               connection.isAvailable())
@@ -89,6 +106,7 @@ public class ConnectionCache {
       // If The first attempt fails, try to find the oldest connection for another tenant that is available.
       if (connectionOptional.isEmpty()) {
         connectionOptional = cache.stream()
+            .filter(connection -> pool == null || connection.getPool() == pool)
             .filter(CachedPgConnection::isAvailable)
             .min(Comparator.comparingLong(CachedPgConnection::getIdleSince));
       }
@@ -107,9 +125,16 @@ public class ConnectionCache {
   }
 
   public void closeAll() {
+    List<CachedPgConnection> connections;
     synchronized (cache) {
-      for (CachedPgConnection conn : cache) {
-        conn.getWrappedConnection().close();
+      connections = new ArrayList<>(cache);
+    }
+    for (CachedPgConnection connection : connections) {
+      connection.returnToPool();
+      synchronized (cache) {
+        if (cache.remove(connection)) {
+          metrics.decrementActive();
+        }
       }
     }
   }

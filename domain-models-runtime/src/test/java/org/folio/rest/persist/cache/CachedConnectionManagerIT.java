@@ -17,6 +17,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.UUID;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -40,6 +43,83 @@ class CachedConnectionManagerIT extends TenantHelper {
   void beforeEachTest() {
     PostgresClientHelper.setSharedPgPool(true);
     PostgresClient.clearConnectionCache();
+  }
+
+  @Test
+  void returnedConnectionShouldUnblockQueuedAcquisition(VertxTestContext testContext) {
+    List<Future<CachedPgConnection>> acquisitions = new ArrayList<>();
+    prepareTenants("tenant1", "tenant2")
+        .compose(v -> {
+          var config = PostgresClient.getInstance(vertx, "tenant1").getConnectionConfig();
+          int maxPoolSize = config.getInteger("maxSharedPoolSize",
+              config.getInteger("maxPoolSize", PostgresClient.DEFAULT_MAX_POOL_SIZE));
+          for (int i = 0; i < maxPoolSize; i++) {
+            acquisitions.add(getConnection("tenant1"));
+          }
+          return Future.all(acquisitions).timeout(5, TimeUnit.SECONDS);
+        })
+        .compose(acquired -> {
+          var waiting = getConnection("tenant2");
+          acquisitions.add(waiting);
+          assertThat(waiting.isComplete(), is(false));
+          return acquisitions.removeFirst().result().close()
+              .compose(v -> waiting.timeout(2, TimeUnit.SECONDS))
+              .compose(connection -> connection.query("SELECT current_schema, current_user").execute()
+                  .onSuccess(rows -> {
+                    var row = rows.iterator().next();
+                    assertThat(row.getString(0), is("tenant2_raml_module_builder"));
+                    assertThat(row.getString(1), is("tenant2_raml_module_builder"));
+                  }));
+        })
+        // Also close acquisitions that complete after a timeout or failed assertion.
+        .andThen(result -> acquisitions.forEach(future -> future.onSuccess(CachedPgConnection::close)))
+        .onComplete(testContext.succeedingThenComplete());
+  }
+
+  @Test
+  void staleCloseMustNotReleaseRecycledTenantsConnection(VertxTestContext testContext) {
+    List<Future<CachedPgConnection>> held = new ArrayList<>();
+    var first = new AtomicReference<CachedPgConnection>();
+    var second = new AtomicReference<CachedPgConnection>();
+    prepareTenants("tenant1", "tenant2")
+        .compose(v -> getConnection("tenant1"))
+        .compose(connection -> {
+          first.set(connection);
+          return connection.close();
+        })
+        .compose(v -> getConnection("tenant2"))
+        .compose(connection -> {
+          second.set(connection);
+          var config = PostgresClient.getInstance(vertx, "tenant1").getConnectionConfig();
+          int maxPoolSize = config.getInteger("maxSharedPoolSize",
+              config.getInteger("maxPoolSize", PostgresClient.DEFAULT_MAX_POOL_SIZE));
+          for (int i = 1; i < maxPoolSize; i++) {
+            held.add(getConnection("tenant1"));
+          }
+          return Future.all(held).timeout(5, TimeUnit.SECONDS);
+        })
+        .compose(v -> {
+          var waiting = getConnection("tenant1");
+          held.add(waiting);
+          assertThat(waiting.isComplete(), is(false));
+          return first.get().close()
+              .compose(ignored -> second.get().query("SELECT current_schema, current_user").execute())
+              .compose(rows -> {
+                var row = rows.iterator().next();
+                assertThat(row.getString(0), is("tenant2_raml_module_builder"));
+                assertThat(row.getString(1), is("tenant2_raml_module_builder"));
+                assertThat(waiting.isComplete(), is(false));
+                return second.get().close();
+              })
+              .compose(ignored -> waiting.timeout(2, TimeUnit.SECONDS));
+        })
+        .andThen(result -> {
+          if (second.get() != null) {
+            second.get().close();
+          }
+          held.forEach(future -> future.onSuccess(CachedPgConnection::close));
+        })
+        .onComplete(testContext.succeedingThenComplete());
   }
 
   @Test
