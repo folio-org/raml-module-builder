@@ -7,6 +7,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.runner.RunWith;
+import org.z3950.zing.cql.CQLParser;
+import org.z3950.zing.cql.CQLTermNode;
 import org.z3950.zing.cql.ModifierSet;
 
 import java.io.IOException;
@@ -389,6 +391,26 @@ public class CQL2PgJSONTest extends DatabaseTestBase {
   })
   public void special(String testcase) {
     select("special.sql", testcase);
+  }
+
+  @Test
+  public void quotedWindowsPathPreservesEscapeSequences() throws Exception {
+    // https://github.com/indexdata/cql-java/issues/5
+    // Preserve escapes even before ordinary characters, leaving their
+    // interpretation to the translator. Doubled backslashes already worked in 1.13.
+    String path = "C:\\Program Files\\FOLIO\\records.json";
+    CQLTermNode term = (CQLTermNode) new CQLParser().parse("path==\"" + path + "\"");
+    assertEquals(path, term.getTerm());
+  }
+
+  @Test
+  @Parameters({
+    "path==\"C:\\\\Program Files\\\\FOLIO\\\\records.json\" # file",
+    "path==\"C:\\\\Program Files\\\\FOLIO\\\\\" # directory"
+  })
+  public void quotedWindowsPath(String testcase) {
+    // Each literal backslash is doubled for CQL, then doubled again for Java.
+    select("windowsPaths.sql", testcase);
   }
 
   @Test
